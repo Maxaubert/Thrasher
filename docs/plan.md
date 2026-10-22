@@ -113,7 +113,8 @@ Tracked as issues under the epic [#1](https://github.com/Maxaubert/Thrasher/issu
 - **Noise suppression and auto gain** (local), and **auto-split on silence**.
 - **Global hotkeys, tray icon and mini mode.**
 - **UI:** minimalist, modern, dark with strong contrast and one accent color. Wireframes and mockups come before the window is built (issue [#3](https://github.com/Maxaubert/Thrasher/issues/3)), including a settings page, a model download page and the clip library with a timeline.
-- **Still undecided:** markers and tags (issue [#13](https://github.com/Maxaubert/Thrasher/issues/13)), and the UI toolkit.
+- **Skipped for now:** markers and tags (issue [#13](https://github.com/Maxaubert/Thrasher/issues/13), closed as not planned; can be reopened).
+- **Still undecided:** the UI toolkit.
 
 ## 10. Next steps
 

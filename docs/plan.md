@@ -99,8 +99,25 @@ Each phase ends with something runnable.
 - Language: Rust.
 - Platform: Windows first. The core stays portable.
 
-## 9. Next steps
+## 9. Additions agreed 2026-10-22
+
+Tracked as issues under the epic [#1](https://github.com/Maxaubert/Thrasher/issues/1).
+
+- **Output settings:** default output folder, filename template with placeholders (for example `{date}_{time}_{n}`) and configurable date formats, and a default file type like OBS (WAV, FLAC, MP3). A regex can validate a template but cannot build names, so the template is the main mechanism.
+- **Microphone choice** and **system audio**, including **both at the same time** (for example a meeting): two separate tracks plus an optional mix, with gain and a level meter per source.
+- **Transcription:** optional local models downloaded on demand from the settings page (for example Whisper, including a Norwegian model if available), a language setting, and **word-level timestamps** stored next to the clip.
+- **Silence tags in the transcript**, for example `[silence:7s]`. Editing the tag to `[silence:2s]` shortens that pause in the exported audio. Non-destructive and undoable.
+- **Synced transcript player:** words are highlighted as they are spoken, clicking a word jumps to it, and search works across all transcripts.
+- **Subtitle export** (SRT, VTT, word-level JSON) and **edit by transcript** (delete words to cut audio).
+- **Voice visualizer:** adaptive frequency bars scaled to the speaker's own voice range after a short calibration, so a low voice still fills the display and bass rumble is ignored. Louder speech moves the bars more.
+- **Noise suppression and auto gain** (local), and **auto-split on silence**.
+- **Global hotkeys, tray icon and mini mode.**
+- **UI:** minimalist, modern, dark with strong contrast and one accent color. Wireframes and mockups come before the window is built (issue [#3](https://github.com/Maxaubert/Thrasher/issues/3)), including a settings page, a model download page and the clip library with a timeline.
+- **Still undecided:** markers and tags (issue [#13](https://github.com/Maxaubert/Thrasher/issues/13)), and the UI toolkit.
+
+## 10. Next steps
 
 1. Approve this plan or change it.
-2. Phase 0 on a branch with a pull request.
-3. Phase 1.
+2. Wireframes and mockups for the dark UI.
+3. Phase 0 on a branch with a pull request.
+4. Phase 1.

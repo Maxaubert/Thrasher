@@ -373,12 +373,12 @@ pub struct Edl {
     pieces: Vec<Piece>,
 }
 
-/// Mono loudness (RMS) of a 10 ms window centred on `t`.
+/// Mono loudness (RMS) of a 20 ms window centred on `t`.
 fn rms_at(buffer: &Buffer, t: f64) -> f64 {
     let rate = buffer.sample_rate as f64;
     let ch = buffer.channels.max(1) as usize;
     let frames = buffer.frames() as usize;
-    let half = (0.005 * rate) as usize;
+    let half = (0.01 * rate) as usize;
     let c = (t * rate) as usize;
     let (a, b) = (c.saturating_sub(half), (c + half).min(frames));
     if b <= a {
@@ -393,27 +393,48 @@ fn rms_at(buffer: &Buffer, t: f64) -> f64 {
     (sum / (b - a) as f64).sqrt()
 }
 
-/// The latest point in `lo..hi` that is about as quiet as the quietest point there
-/// (within 6 dB). Cutting right before a word starts keeps the pause in front of the
-/// cut, so the sentence keeps its rhythm.
+fn db(rms: f64) -> f64 {
+    20.0 * (rms + 1e-9).log10()
+}
+
+/// The latest quiet point in `lo..hi`. Quiet is judged against the speech around it:
+/// closer to the noise floor than to the loudest speech nearby (40% of the way up,
+/// in dB). A short breath between two words counts, so a cut stops before the
+/// word in front of it even when Whisper's times are well off. Cutting right before
+/// a word starts keeps the pause in front of the cut, so the sentence keeps its
+/// rhythm.
 fn quiet_before(buffer: &Buffer, lo: f64, hi: f64, fallback: f64) -> f64 {
     let hi = hi.min(buffer.duration_secs());
     if hi - lo < 0.01 {
         return fallback.clamp(lo.min(hi), hi.max(lo));
     }
-    let steps = ((hi - lo) / 0.005) as usize;
-    let levels: Vec<(f64, f64)> = (0..=steps)
-        .map(|i| {
-            let t = lo + i as f64 * 0.005;
-            (t, rms_at(buffer, t))
-        })
-        .collect();
-    let min = levels.iter().map(|l| l.1).fold(f64::INFINITY, f64::min);
-    let limit = min * 2.0 + 1e-5;
+    let level = |t: f64| db(rms_at(buffer, t));
+    let range = |a: f64, b: f64| -> Vec<(f64, f64)> {
+        let steps = ((b - a) / 0.005).max(0.0) as usize;
+        (0..=steps)
+            .map(|i| {
+                let t = a + i as f64 * 0.005;
+                (t, level(t))
+            })
+            .collect()
+    };
+    let levels = range(lo, hi);
+    let around = range((lo - 0.5).max(0.0), hi + 0.5);
+    // Digital silence would make every real gap look loud, so the floor stops at -100 dB.
+    let floor = around
+        .iter()
+        .map(|l| l.1)
+        .fold(f64::INFINITY, f64::min)
+        .max(-100.0);
+    let peak = around.iter().map(|l| l.1).fold(f64::NEG_INFINITY, f64::max);
+    let limit = floor + (peak - floor) * 0.4;
+    if let Some(l) = levels.iter().rev().find(|l| l.1 <= limit) {
+        return l.0;
+    }
+    // No real gap (fast speech): the quietest point.
     levels
         .iter()
-        .rev()
-        .find(|l| l.1 <= limit)
+        .min_by(|a, b| a.1.total_cmp(&b.1))
         .map_or(fallback, |l| l.0)
 }
 
@@ -854,6 +875,30 @@ mod tests {
         // The pause after "skal" stays, so the words do not run together.
         let gap = edl.to_edited(1.5) - edl.to_edited(1.0);
         assert!(gap > 0.08 && gap < 0.12, "gap {gap}");
+    }
+
+    #[test]
+    fn cut_keeps_a_word_whisper_placed_too_early() {
+        // Real case: after a long pause Whisper put "OK." 0.7 s before it was said.
+        // Cutting the next word must not take "OK." with it. Low room noise between
+        // the words, deeper silence before "OK.".
+        let rate = 1000usize;
+        let mut buf = audio(&[(1.6, 2.0), (2.3, 2.8), (3.0, 3.4)], 3.6);
+        for (f, x) in buf.samples.iter_mut().enumerate() {
+            let t = f as f64 / rate as f64;
+            if *x == 0.0 && t > 1.45 {
+                // About -66 dB, like the breath gaps in Max's recordings.
+                *x = if f % 2 == 0 { 0.0005 } else { -0.0005 };
+            }
+        }
+        let mut w = number_words(vec![
+            ("OK.".into(), 0.86, 1.43),
+            ("Så".into(), 2.34, 2.82),
+            ("litt".into(), 3.0, 3.4),
+        ]);
+        apply_text("OK. litt", &mut w, &mut Vec::new()).unwrap();
+        let out = plan(&w, &[], &buf).render(&buf);
+        assert_eq!(loud_frames(&out), 400 + 400);
     }
 
     #[test]

@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use thrasher_core::library::Library;
+use thrasher_core::models::{self, CATALOG, ModelInfo};
 use thrasher_core::player::load_clip;
 use thrasher_core::sidecar::Sidecar;
 use thrasher_core::transcribe::{self, Options, Transcriber};
@@ -43,7 +44,7 @@ impl Engine {
         std::thread::Builder::new()
             .name("thrasher-transcribe".into())
             .spawn(move || {
-                let result = run(&loaded, &library, &name, &model, &language, &weak);
+                let result = run(&loaded, &library, &name, model, &language, &weak);
                 let _ = weak.upgrade_in_event_loop(move |ui| {
                     ui.set_transcribing(false);
                     match result {
@@ -63,7 +64,7 @@ fn run(
     loaded: &Mutex<Option<(PathBuf, WhisperTranscriber)>>,
     library: &Library,
     name: &str,
-    model: &PathBuf,
+    model: &ModelInfo,
     language: &str,
     weak: &slint::Weak<AppWindow>,
 ) -> Result<(String, f64), String> {
@@ -76,8 +77,13 @@ fn run(
     let mut guard = loaded
         .lock()
         .map_err(|_| "model lock poisoned".to_string())?;
-    if guard.as_ref().is_none_or(|(p, _)| p != model) {
-        *guard = Some((model.clone(), WhisperTranscriber::load(model, true)?));
+    let path = model.path();
+    if guard.as_ref().is_none_or(|(p, _)| p != &path) {
+        *guard = None;
+        *guard = Some((
+            path.clone(),
+            WhisperTranscriber::load(&path, model.heads, true)?,
+        ));
     }
     let engine = &mut guard.as_mut().unwrap().1;
     let options = Options {
@@ -107,4 +113,53 @@ fn run(
     sc.silences = silences;
     sc.save(&path).map_err(|e| e.to_string())?;
     Ok((text, started.elapsed().as_secs_f64()))
+}
+
+/// Fills the model list in the window.
+pub fn show_models(ui: &AppWindow, active: &str) {
+    let rows: Vec<crate::ModelRow> = CATALOG
+        .iter()
+        .map(|m| crate::ModelRow {
+            name: m.name.into(),
+            description: m.description.into(),
+            size: format!("{:.1} GB", m.bytes as f64 / 1e9).into(),
+            downloaded: m.is_downloaded(),
+            active: m.id == active,
+        })
+        .collect();
+    ui.set_models(slint::ModelRc::new(slint::VecModel::from(rows)));
+}
+
+/// Downloads one model on a background thread.
+pub fn download(ui: &AppWindow, index: usize, cancel: Arc<AtomicBool>, active: String) {
+    let Some(model) = CATALOG.get(index) else {
+        return;
+    };
+    cancel.store(false, std::sync::atomic::Ordering::Relaxed);
+    ui.set_downloading(index as i32);
+    ui.set_download_progress(0.0);
+    let weak = ui.as_weak();
+    std::thread::spawn(move || {
+        let w = weak.clone();
+        let mut last = 0.0f32;
+        let result = models::download(
+            model,
+            &mut |done, total| {
+                let p = done as f32 / total as f32;
+                if p - last >= 0.005 {
+                    last = p;
+                    let _ = w.upgrade_in_event_loop(move |ui| ui.set_download_progress(p));
+                }
+            },
+            &cancel,
+        );
+        let _ = weak.upgrade_in_event_loop(move |ui| {
+            ui.set_downloading(-1);
+            match result {
+                Ok(_) => ui.set_status(format!("Downloaded {}", model.name).into()),
+                Err(e) => ui.set_status(format!("{}: {e}", model.name).into()),
+            }
+            show_models(&ui, &active);
+        });
+    });
 }

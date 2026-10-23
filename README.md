@@ -4,7 +4,7 @@ A small, fast, polished audio recorder for Windows, written in Rust.
 
 The thrasher is a bird that copies almost any sound it hears and sings it back. This app does the same: it listens, keeps what you say as clean clips, and plays it back.
 
-**Status:** planning. No code yet. See [docs/plan.md](docs/plan.md).
+**Status:** early working version. Records mic and system audio, keeps a clip library, plays clips back, exports FLAC/WAV, and transcribes locally with Whisper (Norwegian NB-Whisper by default). The window is a plain first version that will be redesigned. See [docs/plan.md](docs/plan.md) and [docs/building.md](docs/building.md).
 
 ## Why
 
@@ -29,7 +29,7 @@ Thrasher replaces a quick Python and Tkinter recorder that saves numbered WAV cl
 - Cloud sync.
 - Streaming or live broadcast.
 
-## Repository layout (planned)
+## Repository layout
 
 ```
 crates/
@@ -37,6 +37,7 @@ crates/
   thrasher-app/    window, tray, hotkeys
 docs/
   plan.md          spec and implementation plan
+  building.md      how to build, including GPU transcription
 ```
 
 ## License

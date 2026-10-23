@@ -1,7 +1,7 @@
 // Thrasher, first window. Deliberately plain: it will be redesigned after the
 // mockups (issue #3). Two modes: the full window, and a small always-on-top widget.
 
-import { ComboBox, CheckBox, LineEdit, ListView, Button, ScrollView } from "std-widgets.slint";
+import { ComboBox, CheckBox, LineEdit, ListView, Button, ScrollView, TextEdit } from "std-widgets.slint";
 
 // The notification-area icon. Its image is drawn in Rust (red dot while recording).
 export component Tray inherits SystemTrayIcon {
@@ -33,6 +33,19 @@ export component Tray inherits SystemTrayIcon {
             activated => { quit(); }
         }
     }
+}
+
+export struct ModelRow {
+    name: string,
+    description: string,
+    size: string,
+    downloaded: bool,
+    active: bool,
+}
+
+export struct WordRow {
+    text: string,
+    is-silence: bool,
 }
 
 export struct ClipRow {
@@ -160,6 +173,14 @@ export component AppWindow inherits Window {
     in property <bool> transcribing;
     in property <float> transcribe-progress;
     in property <string> transcript;
+    in property <[ModelRow]> models;
+    in property <int> downloading: -1;
+    in property <float> download-progress;
+    in-out property <bool> show-models;
+    in property <[WordRow]> words;
+    in property <int> current-word: -1;
+    in-out property <bool> editing-transcript;
+    in-out property <int> export-format;
     in-out property <bool> pinned;
     in-out property <bool> compact;
     in-out property <bool> renaming;
@@ -182,6 +203,12 @@ export component AppWindow inherits Window {
     callback export-selected();
     callback transcribe-selected();
     callback selection-changed(int);
+    callback apply-transcript(string);
+    callback seek-word(int);
+    callback export-format-changed(int);
+    callback download-model(int);
+    callback cancel-download();
+    callback use-model(int);
     callback quit();
 
     changed selected => { root.selection-changed(root.selected); }
@@ -285,6 +312,10 @@ export component AppWindow inherits Window {
                     vertical-alignment: center;
                 }
                 Rectangle { }
+                if root.can-transcribe: Button {
+                    text: root.show-models ? "Clips" : "Models";
+                    clicked => { root.show-models = !root.show-models; }
+                }
                 IconButton {
                     icon: "pin";
                     active: root.pinned;
@@ -354,8 +385,57 @@ export component AppWindow inherits Window {
                 }
             }
 
+            if root.show-models: VerticalLayout {
+                spacing: 8px;
+                vertical-stretch: 1;
+                Text {
+                    text: "Transcription models. Downloaded once, then everything runs on this PC.";
+                    color: Theme.muted;
+                    wrap: word-wrap;
+                }
+                for m[i] in root.models: Rectangle {
+                    background: m.active ? #1e3a5f : Theme.surface;
+                    border-radius: 8px;
+                    HorizontalLayout {
+                        padding: 10px;
+                        spacing: 8px;
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 2px;
+                            Text { text: m.name; color: Theme.text; font-weight: 600; overflow: elide; }
+                            Text {
+                                text: root.downloading == i
+                                    ? "Downloading " + round(root.download-progress * 100) + "%"
+                                    : m.description;
+                                color: Theme.muted;
+                                font-size: 11px;
+                                wrap: word-wrap;
+                            }
+                        }
+                        VerticalLayout {
+                            alignment: center;
+                            if m.downloaded && !m.active: Button {
+                                text: "Use";
+                                clicked => { root.use-model(i); }
+                            }
+                            if m.downloaded && m.active: Text { text: "In use"; color: Theme.accent; }
+                            if !m.downloaded && root.downloading != i: Button {
+                                text: "Download " + m.size;
+                                enabled: root.downloading < 0;
+                                clicked => { root.download-model(i); }
+                            }
+                            if root.downloading == i: Button {
+                                text: "Cancel";
+                                clicked => { root.cancel-download(); }
+                            }
+                        }
+                    }
+                }
+                Rectangle { vertical-stretch: 1; }
+            }
+
             // Clips
-            HorizontalLayout {
+            if !root.show-models: HorizontalLayout {
                 spacing: 6px;
                 Text {
                     text: "Clips";
@@ -372,7 +452,7 @@ export component AppWindow inherits Window {
                     clicked => { root.open-folder(); }
                 }
             }
-            ListView {
+            if !root.show-models: ListView {
                 vertical-stretch: 1;
                 content-y <=> root.list-y;
                 init => { root.list-height = self.visible-height; }
@@ -411,20 +491,79 @@ export component AppWindow inherits Window {
                 }
             }
 
-            if root.transcript != "" || root.transcribing: Rectangle {
-                background: Theme.surface;
-                border-radius: 8px;
-                height: 120px;
-                ScrollView {
-                    VerticalLayout {
-                        padding: 10px;
-                        Text {
-                            text: root.transcribing
-                                ? "Transcribing… " + round(root.transcribe-progress * 100) + "%"
-                                : root.transcript;
-                            color: root.transcribing ? Theme.muted : Theme.text;
-                            wrap: word-wrap;
+            if root.transcribing: Text {
+                text: "Transcribing… " + round(root.transcribe-progress * 100) + "%";
+                color: Theme.muted;
+            }
+            // Synced transcript: the word being heard is highlighted; click a word to jump.
+            if root.transcript != "" && !root.transcribing && !root.editing-transcript: VerticalLayout {
+                spacing: 4px;
+                Rectangle {
+                    background: Theme.surface;
+                    border-radius: 8px;
+                    height: 130px;
+                    ScrollView {
+                        FlexboxLayout {
+                            padding: 8px;
+                            spacing: 2px;
+                            flex-wrap: wrap;
+                            for w[i] in root.words: Rectangle {
+                                border-radius: 4px;
+                                background: i == root.current-word ? Theme.accent : (wt.has-hover ? Theme.surface-hi : transparent);
+                                width: label.preferred-width + 6px;
+                                height: label.preferred-height + 2px;
+                                label := Text {
+                                    text: w.text;
+                                    color: w.is-silence ? Theme.muted : Theme.text;
+                                    font-size: w.is-silence ? 11px : 13px;
+                                }
+                                wt := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => { root.seek-word(i); keys.focus(); }
+                                }
+                            }
                         }
+                    }
+                }
+                HorizontalLayout {
+                    Text {
+                        text: "Click a word to play from there.";
+                        color: Theme.muted;
+                        font-size: 11px;
+                        vertical-alignment: center;
+                        horizontal-stretch: 1;
+                    }
+                    Button {
+                        text: "Edit pauses";
+                        clicked => { root.editing-transcript = true; }
+                    }
+                }
+            }
+            if root.transcript != "" && !root.transcribing && root.editing-transcript: VerticalLayout {
+                spacing: 4px;
+                transcript-edit := TextEdit {
+                    height: 130px;
+                    text: root.transcript;
+                    wrap: word-wrap;
+                }
+                HorizontalLayout {
+                    spacing: 6px;
+                    Text {
+                        text: "Change a [silence:7s] tag to shorten that pause in exports.";
+                        color: Theme.muted;
+                        font-size: 11px;
+                        vertical-alignment: center;
+                        overflow: elide;
+                        horizontal-stretch: 1;
+                    }
+                    Button {
+                        text: "Cancel";
+                        clicked => { root.editing-transcript = false; keys.focus(); }
+                    }
+                    Button {
+                        text: "Apply";
+                        enabled: transcript-edit.text != root.transcript;
+                        clicked => { root.apply-transcript(transcript-edit.text); keys.focus(); }
                     }
                 }
             }
@@ -463,6 +602,11 @@ export component AppWindow inherits Window {
                     text: "Export";
                     enabled: root.selected >= 0;
                     clicked => { root.export-selected(); keys.focus(); }
+                }
+                ComboBox {
+                    model: ["FLAC", "WAV", "MP3"];
+                    current-index <=> root.export-format;
+                    selected => { root.export-format-changed(self.current-index); keys.focus(); }
                 }
                 if root.can-transcribe: Button {
                     text: "Transcribe";

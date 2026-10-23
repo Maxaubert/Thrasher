@@ -207,6 +207,7 @@ pub fn silences(words: &[Word], duration: f64, min_gap: f64) -> Vec<Silence> {
             out.push(Silence {
                 start: round_ms(prev_end),
                 end: round_ms(w.start),
+                keep: None,
             });
         }
         prev_end = prev_end.max(w.end);
@@ -215,6 +216,7 @@ pub fn silences(words: &[Word], duration: f64, min_gap: f64) -> Vec<Silence> {
         out.push(Silence {
             start: round_ms(prev_end),
             end: round_ms(duration),
+            keep: None,
         });
     }
     out
@@ -224,13 +226,7 @@ pub fn silences(words: &[Word], duration: f64, min_gap: f64) -> Vec<Silence> {
 pub fn render_text(words: &[Word], silences: &[Silence]) -> String {
     let mut parts: Vec<(f64, String)> = words.iter().map(|w| (w.start, w.text.clone())).collect();
     for s in silences {
-        let secs = s.end - s.start;
-        let tag = if secs >= 10.0 {
-            format!("[silence:{}s]", secs.round())
-        } else {
-            format!("[silence:{:.1}s]", secs).replace(".0s", "s")
-        };
-        parts.push((s.start, tag));
+        parts.push((s.start, crate::edit::tag(crate::edit::kept(s))));
     }
     parts.sort_by(|a, b| a.0.total_cmp(&b.0));
     parts.into_iter().map(|p| p.1).collect::<Vec<_>>().join(" ")
@@ -340,11 +336,13 @@ mod tests {
             vec![
                 Silence {
                     start: 0.5,
-                    end: 7.5
+                    end: 7.5,
+                    keep: None
                 },
                 Silence {
                     start: 8.2,
-                    end: 20.0
+                    end: 20.0,
+                    keep: None
                 }
             ]
         );

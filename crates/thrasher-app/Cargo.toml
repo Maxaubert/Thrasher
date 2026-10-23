@@ -19,8 +19,10 @@ serde_json.workspace = true
 slint.workspace = true
 
 [features]
+default = ["mp3"]
+mp3 = ["thrasher-core/mp3"]
 # Local transcription. `whisper-cuda` needs the CUDA toolkit at build time.
-whisper = ["thrasher-core/whisper"]
+whisper = ["thrasher-core/whisper", "thrasher-core/download"]
 whisper-cuda = ["whisper", "thrasher-core/whisper-cuda"]
 
 [build-dependencies]

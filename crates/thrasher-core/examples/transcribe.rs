@@ -31,7 +31,8 @@ fn main() {
     );
 
     let t = Instant::now();
-    let mut engine = WhisperTranscriber::load(model, true).expect("load model");
+    let mut engine = WhisperTranscriber::load(model, thrasher_core::models::Heads::LargeV3, true)
+        .expect("load model");
     println!("model loaded in {:.1}s", t.elapsed().as_secs_f64());
 
     let t = Instant::now();

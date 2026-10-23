@@ -14,10 +14,12 @@ pub struct Settings {
     pub pinned: bool,
     /// Starts and stops recording from any app, for example "Ctrl+Alt+R". Empty turns it off.
     pub hotkey: String,
-    /// Whisper model in GGML format.
-    pub model_path: PathBuf,
+    /// Id of the transcription model, from `thrasher_core::models::CATALOG`.
+    pub model: String,
     /// Transcription language code such as "no"; empty means detect.
     pub language: String,
+    /// Export format: "flac", "wav" or "mp3".
+    pub export_format: String,
 }
 
 impl Default for Settings {
@@ -32,13 +34,9 @@ impl Default for Settings {
             record_system: false,
             pinned: false,
             hotkey: "Ctrl+Alt+R".into(),
-            model_path: directories::BaseDirs::new()
-                .map(|b| b.data_local_dir().join("Thrasher"))
-                .unwrap_or_default()
-                .join("models")
-                .join("nb-whisper-large")
-                .join("ggml-model.bin"),
+            model: "nb-whisper-large".into(),
             language: "no".into(),
+            export_format: "flac".into(),
         }
     }
 }

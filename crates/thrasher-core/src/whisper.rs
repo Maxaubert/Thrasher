@@ -5,6 +5,7 @@
 //! chunks of at most 28 s here, each chunk is decoded on its own, and its offset is
 //! added to the token times.
 
+use crate::models::Heads;
 use crate::transcribe::{self, Options, Token, Transcriber, Transcript};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -19,14 +20,18 @@ pub struct WhisperTranscriber {
 
 impl WhisperTranscriber {
     /// Loads a GGML model. `use_gpu` falls back to the CPU when no GPU backend was built.
-    pub fn load(model: &Path, use_gpu: bool) -> Result<Self, String> {
+    /// `heads` must match the model's architecture, or word times come out wrong.
+    pub fn load(model: &Path, heads: Heads, use_gpu: bool) -> Result<Self, String> {
         let mut params = WhisperContextParameters::default();
         params.use_gpu(use_gpu);
-        // NB-Whisper large is a fine-tune of large-v3 and shares its alignment heads.
+        // The NB-Whisper models are fine-tunes and share the original models' heads.
+        let model_preset = match heads {
+            Heads::Medium => DtwModelPreset::Medium,
+            Heads::LargeV3 => DtwModelPreset::LargeV3,
+            Heads::LargeV3Turbo => DtwModelPreset::LargeV3Turbo,
+        };
         params.dtw_parameters(DtwParameters {
-            mode: DtwMode::ModelPreset {
-                model_preset: DtwModelPreset::LargeV3,
-            },
+            mode: DtwMode::ModelPreset { model_preset },
             ..Default::default()
         });
         let ctx = WhisperContext::new_with_params(model, params)

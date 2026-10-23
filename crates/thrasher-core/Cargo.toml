@@ -14,11 +14,17 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 whisper-rs = { version = "0.16", optional = true }
+ureq = { version = "3", optional = true }
+mp3lame-encoder = { version = "0.2", optional = true }
 
 [features]
 # Local transcription with whisper.cpp. Needs CMake; `whisper-cuda` also needs the CUDA toolkit.
 whisper = ["dep:whisper-rs"]
 whisper-cuda = ["whisper", "whisper-rs/cuda"]
+# Model downloads over HTTPS.
+download = ["dep:ureq"]
+# MP3 export with LAME (LGPL; see docs/open-questions.md before sharing binaries).
+mp3 = ["dep:mp3lame-encoder"]
 
 [target.'cfg(windows)'.dependencies]
 wasapi.workspace = true

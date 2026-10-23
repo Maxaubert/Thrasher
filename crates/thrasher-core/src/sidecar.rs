@@ -37,6 +37,9 @@ pub struct Word {
 pub struct Silence {
     pub start: f64,
     pub end: f64,
+    /// Seconds of this pause to keep when exporting; `None` keeps all of it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keep: Option<f64>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]

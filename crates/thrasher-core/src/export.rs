@@ -11,6 +11,8 @@ use std::path::{Path, PathBuf};
 pub enum Format {
     Wav,
     Flac,
+    /// Needs the `mp3` feature (LAME).
+    Mp3,
 }
 
 impl Format {
@@ -18,6 +20,7 @@ impl Format {
         match self {
             Format::Wav => "wav",
             Format::Flac => "flac",
+            Format::Mp3 => "mp3",
         }
     }
 }
@@ -42,9 +45,13 @@ pub fn export_dir(library: &Library) -> PathBuf {
     library.dir().join("export")
 }
 
-/// Exports the clip (mic and system audio mixed, as heard in the player).
+/// Exports the clip (mic and system audio mixed, as heard in the player), with any
+/// shortened pauses from the sidecar applied.
 pub fn export_clip(library: &Library, name: &str, options: ExportOptions) -> io::Result<PathBuf> {
-    let buffer = load_clip(library, name)?;
+    let mut buffer = load_clip(library, name)?;
+    if let Ok(sc) = crate::sidecar::Sidecar::load(&library.sidecar_path(name)) {
+        buffer = crate::edit::render(&buffer, &sc.silences);
+    }
     let dir = export_dir(library);
     std::fs::create_dir_all(&dir)?;
     let path = dir.join(format!("{name}.{}", options.format.extension()));
@@ -53,6 +60,11 @@ pub fn export_clip(library: &Library, name: &str, options: ExportOptions) -> io:
 }
 
 pub fn export_buffer(buffer: &Buffer, path: &Path, options: ExportOptions) -> io::Result<()> {
+    if options.format == Format::Mp3 {
+        let tmp = path.with_extension("part");
+        write_mp3(&tmp, buffer)?;
+        return std::fs::rename(&tmp, path);
+    }
     if options.bits != 16 && options.bits != 24 {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
@@ -78,6 +90,7 @@ pub fn export_buffer(buffer: &Buffer, path: &Path, options: ExportOptions) -> io
             options.bits,
             &ints,
         )?,
+        Format::Mp3 => unreachable!("handled above"),
     }
     std::fs::rename(&tmp, path)
 }
@@ -151,6 +164,46 @@ fn write_flac(path: &Path, rate: u32, channels: u16, bits: u16, samples: &[i32])
     std::fs::write(path, sink.as_slice())
 }
 
+/// 192 kbit/s MP3 through LAME. Mono stays mono.
+#[cfg(feature = "mp3")]
+fn write_mp3(path: &Path, buffer: &Buffer) -> io::Result<()> {
+    use mp3lame_encoder::{Bitrate, Builder, FlushNoGap, InterleavedPcm, MonoPcm, Quality};
+    let err = |e: &dyn std::fmt::Debug| io::Error::other(format!("MP3 encoder: {e:?}"));
+    if buffer.channels > 2 {
+        return Err(io::Error::other("MP3 export supports mono and stereo only"));
+    }
+    let mut b = Builder::new().ok_or_else(|| io::Error::other("cannot start LAME"))?;
+    b.set_num_channels(buffer.channels as u8)
+        .map_err(|e| err(&e))?;
+    b.set_sample_rate(buffer.sample_rate).map_err(|e| err(&e))?;
+    b.set_brate(Bitrate::Kbps192).map_err(|e| err(&e))?;
+    b.set_quality(Quality::Best).map_err(|e| err(&e))?;
+    let mut enc = b.build().map_err(|e| err(&e))?;
+    let mut out = Vec::new();
+    let frames_per_call = 1 << 16;
+    let ch = buffer.channels as usize;
+    for chunk in buffer.samples.chunks(frames_per_call * ch) {
+        out.reserve(mp3lame_encoder::max_required_buffer_size(chunk.len() / ch));
+        let r = if ch == 1 {
+            enc.encode_to_vec(MonoPcm(chunk), &mut out)
+        } else {
+            enc.encode_to_vec(InterleavedPcm(chunk), &mut out)
+        };
+        r.map_err(|e| err(&e))?;
+    }
+    out.reserve(7200);
+    enc.flush_to_vec::<FlushNoGap>(&mut out)
+        .map_err(|e| err(&e))?;
+    std::fs::write(path, out)
+}
+
+#[cfg(not(feature = "mp3"))]
+fn write_mp3(_: &Path, _: &Buffer) -> io::Result<()> {
+    Err(io::Error::other(
+        "this build has no MP3 encoder (build with the mp3 feature)",
+    ))
+}
+
 impl WavSpec {
     fn format_bytes(&self) -> u16 {
         match self.format {
@@ -171,6 +224,26 @@ mod tests {
         let tone: Vec<f32> = (0..48_000).map(|i| (i as f32 * 0.05).sin() * 0.5).collect();
         w.write(&tone).unwrap();
         w.finalize().unwrap();
+    }
+
+    #[cfg(feature = "mp3")]
+    #[test]
+    fn mp3_export_has_frames() {
+        let dir = tempfile::tempdir().unwrap();
+        let lib = Library::open(dir.path()).unwrap();
+        clip(&lib);
+        let o = ExportOptions {
+            format: Format::Mp3,
+            bits: 16,
+        };
+        let bytes = std::fs::read(export_clip(&lib, "c", o).unwrap()).unwrap();
+        // An MP3 frame starts with 11 set sync bits.
+        assert!(
+            bytes
+                .windows(2)
+                .any(|w| w[0] == 0xFF && w[1] & 0xE0 == 0xE0)
+        );
+        assert!(bytes.len() > 10_000 && bytes.len() < 48_000);
     }
 
     #[test]

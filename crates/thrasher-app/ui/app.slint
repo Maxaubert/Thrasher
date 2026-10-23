@@ -181,6 +181,7 @@ export component AppWindow inherits Window {
     in property <int> current-word: -1;
     in-out property <bool> editing-transcript;
     in-out property <int> export-format;
+    in-out property <bool> clean-voice;
     in-out property <bool> pinned;
     in-out property <bool> compact;
     in-out property <bool> renaming;
@@ -206,6 +207,7 @@ export component AppWindow inherits Window {
     callback apply-transcript(string);
     callback seek-word(int);
     callback export-format-changed(int);
+    callback clean-voice-changed(bool);
     callback download-model(int);
     callback cancel-download();
     callback use-model(int);
@@ -602,6 +604,11 @@ export component AppWindow inherits Window {
                     text: "Export";
                     enabled: root.selected >= 0;
                     clicked => { root.export-selected(); keys.focus(); }
+                }
+                CheckBox {
+                    text: "Clean voice";
+                    checked <=> root.clean-voice;
+                    toggled => { root.clean-voice-changed(self.checked); keys.focus(); }
                 }
                 ComboBox {
                     model: ["FLAC", "WAV", "MP3"];

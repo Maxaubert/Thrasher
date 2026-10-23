@@ -10,6 +10,7 @@ chrono.workspace = true
 flacenc = "0.5"
 directories.workspace = true
 sha2 = "0.10"
+sonora = "0.2"
 rtrb.workspace = true
 serde.workspace = true
 serde_json.workspace = true

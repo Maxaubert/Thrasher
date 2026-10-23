@@ -2,6 +2,7 @@
 //! No UI code lives here.
 
 pub mod capture;
+pub mod cleanup;
 pub mod edit;
 pub mod export;
 pub mod library;

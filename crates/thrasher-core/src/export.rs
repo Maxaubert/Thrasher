@@ -2,7 +2,7 @@
 //! inside the clip folder, so they never show up as clips themselves.
 
 use crate::library::Library;
-use crate::player::{Buffer, load_clip};
+use crate::player::Buffer;
 use crate::wav::{SampleFormat, WavSpec};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -30,6 +30,8 @@ pub struct ExportOptions {
     pub format: Format,
     /// 16 or 24.
     pub bits: u16,
+    /// Noise suppression, high-pass filter and automatic gain on the mic track.
+    pub clean_voice: bool,
 }
 
 impl Default for ExportOptions {
@@ -37,6 +39,7 @@ impl Default for ExportOptions {
         Self {
             format: Format::Flac,
             bits: 24,
+            clean_voice: false,
         }
     }
 }
@@ -48,7 +51,12 @@ pub fn export_dir(library: &Library) -> PathBuf {
 /// Exports the clip (mic and system audio mixed, as heard in the player), with any
 /// shortened pauses from the sidecar applied.
 pub fn export_clip(library: &Library, name: &str, options: ExportOptions) -> io::Result<PathBuf> {
-    let mut buffer = load_clip(library, name)?;
+    let filter: Option<crate::player::MicFilter> = if options.clean_voice {
+        Some(&crate::cleanup::clean_voice)
+    } else {
+        None
+    };
+    let mut buffer = crate::player::load_clip_with(library, name, filter)?;
     if let Ok(sc) = crate::sidecar::Sidecar::load(&library.sidecar_path(name)) {
         buffer = crate::edit::render(&buffer, &sc.silences);
     }
@@ -275,6 +283,7 @@ mod tests {
         let o = ExportOptions {
             format: Format::Mp3,
             bits: 16,
+            clean_voice: false,
         };
         let bytes = std::fs::read(export_clip(&lib, "c", o).unwrap()).unwrap();
         // An MP3 frame starts with 11 set sync bits.
@@ -306,6 +315,7 @@ mod tests {
             ExportOptions {
                 format: Format::Wav,
                 bits: 16,
+                clean_voice: false,
             },
         )
         .unwrap();

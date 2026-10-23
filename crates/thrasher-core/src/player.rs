@@ -28,7 +28,22 @@ impl Buffer {
 /// Loads a clip for playback. When the clip has a system-audio track at the same
 /// sample rate, the two are mixed to stereo; otherwise only the mic track is used.
 pub fn load_clip(library: &Library, name: &str) -> std::io::Result<Buffer> {
-    let (spec, mic) = wav::read_f32(&library.track_path(name, TrackKind::Mic))?;
+    load_clip_with(library, name, None)
+}
+
+/// Processes the mic track before mixing: takes samples, rate and channels.
+pub type MicFilter<'a> = &'a dyn Fn(&[f32], u32, u16) -> Result<Vec<f32>, String>;
+
+/// Like [`load_clip`], with an optional filter run on the mic track first.
+pub fn load_clip_with(
+    library: &Library,
+    name: &str,
+    mic_filter: Option<MicFilter>,
+) -> std::io::Result<Buffer> {
+    let (spec, mut mic) = wav::read_f32(&library.track_path(name, TrackKind::Mic))?;
+    if let Some(f) = mic_filter {
+        mic = f(&mic, spec.sample_rate, spec.channels).map_err(std::io::Error::other)?;
+    }
     let sys_path = library.track_path(name, TrackKind::System);
     let system = sys_path
         .exists()

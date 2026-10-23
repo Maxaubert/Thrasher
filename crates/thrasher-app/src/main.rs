@@ -606,6 +606,16 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
+    ui.set_clean_voice(app.borrow().settings.clean_voice);
+    ui.on_clean_voice_changed({
+        let app = app.clone();
+        move |on| {
+            let mut a = app.borrow_mut();
+            a.settings.clean_voice = on;
+            a.settings.save();
+        }
+    });
+
     ui.on_export_selected({
         let (app, weak) = (app.clone(), ui.as_weak());
         move || {
@@ -615,17 +625,20 @@ fn main() -> Result<(), slint::PlatformError> {
                 return;
             };
             use thrasher_core::export::{ExportOptions, Format};
-            let options = match a.settings.export_format.as_str() {
+            let mut options = match a.settings.export_format.as_str() {
                 "wav" => ExportOptions {
                     format: Format::Wav,
                     bits: 24,
+                    ..Default::default()
                 },
                 "mp3" => ExportOptions {
                     format: Format::Mp3,
                     bits: 16,
+                    ..Default::default()
                 },
                 _ => ExportOptions::default(),
             };
+            options.clean_voice = a.settings.clean_voice;
             match thrasher_core::export::export_clip(&a.library, &name, options) {
                 Ok(p) => {
                     let subs = thrasher_core::export::export_subtitles(&a.library, &name)

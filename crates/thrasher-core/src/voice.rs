@@ -20,8 +20,9 @@ use std::path::PathBuf;
 
 /// Less continuous speech than this cannot give a usable voice sample.
 pub const MIN_REFERENCE_SECS: f64 = 5.0;
-/// The reference is cut down to about this much speech.
-pub const MAX_REFERENCE_SECS: f64 = 12.0;
+/// The reference is cut down to about this much speech. A 20 s sample kept Max's
+/// accent clearly better than 10 s in a listening test (2026-10-23).
+pub const MAX_REFERENCE_SECS: f64 = 20.0;
 /// Words further apart than this belong to different stretches of speech.
 const RUN_GAP_SECS: f64 = 0.6;
 /// Context words generated around the new words, so they get sentence intonation.
@@ -58,7 +59,7 @@ impl std::fmt::Display for TooShort {
 }
 
 /// Picks the voice sample: the longest stretch of continuous speech in the recording,
-/// cut to at most 12 s at a word end. When no single stretch is long enough, several
+/// cut to at most 20 s at a word end. When no single stretch is long enough, several
 /// are joined. Fails when the clip has less than 5 s of speech in all.
 pub fn pick_reference(sc: &Sidecar) -> Result<Vec<(f64, f64)>, TooShort> {
     // Stretches of speech: words closer together than RUN_GAP_SECS.
@@ -92,7 +93,7 @@ pub fn pick_reference(sc: &Sidecar) -> Result<Vec<(f64, f64)>, TooShort> {
         let (s, e) = cut(r);
         picked.push((s, e));
         have += e - s;
-        if have >= MIN_REFERENCE_SECS * 2.0 || have >= MAX_REFERENCE_SECS - 1.0 {
+        if have >= MAX_REFERENCE_SECS - 1.0 {
             break;
         }
     }
@@ -366,9 +367,9 @@ mod tests {
 
     #[test]
     fn reference_prefers_the_longest_stretch() {
-        // 3 s stretch, then a 20 s stretch of 1 s words.
+        // 3 s stretch, then a 30 s stretch of 1 s words.
         let mut spec = vec![("a", 0.0, 1.0), ("b", 1.0, 2.0), ("c", 2.0, 3.0)];
-        let long: Vec<(String, f64, f64)> = (0..20)
+        let long: Vec<(String, f64, f64)> = (0..30)
             .map(|i| ("w".to_string(), 10.0 + i as f64, 11.0 + i as f64))
             .collect();
         spec.extend(long.iter().map(|(t, a, b)| (t.as_str(), *a, *b)));
@@ -376,7 +377,7 @@ mod tests {
             words: words(&spec),
             ..Default::default()
         };
-        assert_eq!(pick_reference(&sc).unwrap(), vec![(10.0, 22.0)]);
+        assert_eq!(pick_reference(&sc).unwrap(), vec![(10.0, 30.0)]);
         // Two short stretches are joined when no single one is long enough.
         let sc = Sidecar {
             words: words(&[("a", 0.0, 3.0), ("b", 5.0, 8.0)]),

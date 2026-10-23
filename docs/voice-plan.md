@@ -31,7 +31,7 @@ voice, fitted into the sentence. Fully local. The recording itself is never chan
 1. Max types new words in Edit and applies. Words that match no audio become an
    *insert* (stored in the sidecar) instead of being ignored.
 2. Thrasher picks the reference: the longest stretch of continuous speech in the clip,
-   5 to 12 s, between two pauses.
+   up to 20 s (a 20 s sample kept the accent better than 10 s in a listening test), between two pauses.
 3. The voice worker generates a short phrase: the word before, the new words, and the
    word after, so the new words get natural sentence intonation.
 4. Thrasher transcribes that phrase with the existing whisper worker to find where the

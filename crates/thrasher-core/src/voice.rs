@@ -220,24 +220,55 @@ pub fn jobs(sc: &Sidecar) -> Vec<Job> {
     out
 }
 
-/// Finds the job's new words in the generated phrase, using the generated audio's own
-/// transcript, and cuts out each word's audio at quiet points. Returns mono samples per
-/// insert id, at the generated audio's rate.
-pub fn extract(job: &Job, generated: &Buffer, gen_words: &[Word]) -> Result<Vec<Vec<f32>>, String> {
-    let k = job.words.len();
-    let n = gen_words.len();
-    let lost = || "the new word was not heard in the generated speech".to_string();
-    if n < k || k == 0 {
-        return Err(lost());
+/// Where the new words are among the generated words, as an index range. Every word
+/// matching is best, but the model may say a word differently from how it was typed
+/// ("24." becomes "tjuefjerde"), so otherwise the first and last new word, or the
+/// context words around them, mark the ends.
+fn phrase_span(job: &Job, gen_words: &[Word]) -> Option<(usize, usize)> {
+    let (k, n) = (job.words.len(), gen_words.len());
+    if k == 0 || n == 0 {
+        return None;
     }
-    // Where the new words are: all must match, nearest to where they were asked for.
-    let p = (0..=n - k)
-        .filter(|&p| (0..k).all(|j| similar(&gen_words[p + j].text, &job.words[j])))
-        .min_by_key(|&p| p.abs_diff(job.before.len()))
-        .ok_or_else(lost)?;
+    let like = |i: usize, w: &str| similar(&gen_words[i].text, w);
+    if n >= k
+        && let Some(p) = (0..=n - k)
+            .filter(|&p| (0..k).all(|j| like(p + j, &job.words[j])))
+            .min_by_key(|&p| p.abs_diff(job.before.len()))
+    {
+        return Some((p, p + k));
+    }
+    let b = job.before.len();
+    let start = (0..n)
+        .filter(|&i| like(i, &job.words[0]))
+        .min_by_key(|&i| i.abs_diff(b))
+        .or_else(|| match job.before.last() {
+            None => Some(0),
+            Some(w) => (b > 0 && b <= n && like(b - 1, w)).then_some(b),
+        })?;
+    let end = (start..n)
+        .filter(|&i| like(i, &job.words[k - 1]))
+        .min_by_key(|&i| i.abs_diff(start + k - 1))
+        .map(|i| i + 1)
+        .or_else(|| match job.after.first() {
+            None => Some(n),
+            Some(w) => (start + 1..n)
+                .filter(|&i| like(i, w))
+                .min_by_key(|&i| i.abs_diff(start + k)),
+        })?;
+    (end > start).then_some((start, end))
+}
+
+/// Finds the job's new words in the generated phrase, using the generated audio's own
+/// transcript, and cuts them out at quiet points, as one piece: words next to each
+/// other keep the way they were spoken together. Mono samples at the generated
+/// audio's rate.
+pub fn extract(job: &Job, generated: &Buffer, gen_words: &[Word]) -> Result<Vec<f32>, String> {
+    let n = gen_words.len();
+    let lost = || "the new words were not heard in the generated speech".to_string();
+    let (s, e) = phrase_span(job, gen_words).ok_or_else(lost)?;
     let dur = generated.duration_secs();
     let mid = |w: &Word| (w.start + w.end) / 2.0;
-    // Latest quiet point before word `i` starts (or the end, for i == n).
+    // Quiet point before word `i` starts (or the end, for i == n).
     let edge = |i: usize| -> f64 {
         if i == 0 {
             return 0.0;
@@ -259,35 +290,31 @@ pub fn extract(job: &Job, generated: &Buffer, gen_words: &[Word]) -> Result<Vec<
         let hi = (w.start + 0.06).min(mid(w)).max(lo);
         quietest(generated, lo, hi).unwrap_or(w.start)
     };
-    let mut edges: Vec<f64> = (p..=p + k).map(edge).collect();
-    // Whisper sometimes gives a short word only a few milliseconds ("fin" came out as
-    // 0.04 s), so the next word's start lies inside it. Then move the cut towards the
-    // next word, to a quiet point that leaves this word a plausible length.
-    for j in 0..k {
-        let i = p + j;
-        let want = min_word_secs(&gen_words[i].text);
-        if i + 1 < n && edges[j + 1] - edges[j] < want {
-            let lo = edges[j] + want;
-            // The next word still needs its own plausible length.
-            let next = &gen_words[i + 1];
-            let hi = (next.end - min_word_secs(&next.text)).max(mid(next));
-            if hi > lo {
-                edges[j + 1] = quietest(generated, lo, hi).unwrap_or(lo);
-            }
+    let a = edge(s);
+    let mut b = edge(e);
+    // Whisper sometimes gives a short last word only a few milliseconds ("fin" came
+    // out as 0.04 s), so the next word's start lies inside it. Then move the cut
+    // towards the next word, to a quiet point that leaves the word a plausible length.
+    let last = &gen_words[e - 1];
+    let last_start = if e - 1 == s { a } else { edge(e - 1) };
+    let want = min_word_secs(&last.text);
+    if e < n && b - last_start < want {
+        let lo = last_start + want;
+        // The next word still needs its own plausible length.
+        let next = &gen_words[e];
+        let hi = (next.end - min_word_secs(&next.text)).max(mid(next));
+        if hi > lo {
+            b = quietest(generated, lo, hi).unwrap_or(lo);
         }
     }
     let mono = to_mono(&generated.samples, generated.channels);
     let rate = generated.sample_rate as f64;
     let at = |t: f64| ((t * rate) as usize).min(mono.len());
-    let mut out = Vec::new();
-    for j in 0..k {
-        let (a, b) = (at(edges[j]), at(edges[j + 1]));
-        if b <= a {
-            return Err(lost());
-        }
-        out.push(mono[a..b].to_vec());
+    let (a, b) = (at(a), at(b));
+    if b <= a {
+        return Err(lost());
     }
-    Ok(out)
+    Ok(mono[a..b].to_vec())
 }
 
 /// The shortest a spoken word can plausibly be: about 60 ms per letter.
@@ -498,24 +525,30 @@ mod tests {
             words: vec!["virkelig".into()],
             after: vec!["se".into()],
         };
-        let out = extract(&job, &generated, &gen_words).unwrap();
-        assert_eq!(out.len(), 1);
-        let loud = out[0].iter().filter(|x| x.abs() > 0.1).count();
-        assert_eq!(loud, 500);
+        let loud = |out: Vec<f32>| out.iter().filter(|x| x.abs() > 0.1).count();
+        assert_eq!(loud(extract(&job, &generated, &gen_words).unwrap()), 500);
         // Whisper gives "virkelig" only 0.05 s; the cut still takes the whole word.
         let short = words(&[
             ("jeg", 0.0, 0.35),
             ("virkelig", 0.35, 0.4),
             ("se", 0.4, 1.3),
         ]);
-        let out = extract(&job, &generated, &short).unwrap();
-        assert_eq!(out[0].iter().filter(|x| x.abs() > 0.1).count(), 500);
-        // A word the model did not say is an error, not a wrong splice.
-        let job = Job {
-            words: vec!["kanskje".into()],
+        assert_eq!(loud(extract(&job, &generated, &short).unwrap()), 500);
+        // Heard differently from how it was typed ("24." said as "tjuefjerde"): the
+        // words around it still mark where it is.
+        let other = Job {
+            words: vec!["24.".into()],
+            ..job.clone()
+        };
+        assert_eq!(loud(extract(&other, &generated, &gen_words).unwrap()), 500);
+        // With neither the word nor its context heard, it is an error, not a wrong splice.
+        let lost = Job {
+            before: vec!["hallo".into()],
+            words: vec!["24.".into()],
+            after: vec!["nei".into()],
             ..job
         };
-        assert!(extract(&job, &generated, &gen_words).is_err());
+        assert!(extract(&lost, &generated, &gen_words).is_err());
     }
 
     #[test]

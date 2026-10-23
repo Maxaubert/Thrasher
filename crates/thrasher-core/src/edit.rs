@@ -414,11 +414,14 @@ pub fn apply_text(text: &str, sc: &mut Sidecar) -> Result<Changes, String> {
         // Pair retyped words with the recorded words they replace. Only a similar
         // spelling counts, so deleting a word never hands its audio to another word.
         let mut used = vec![false; typed.len()];
+        // The recorded word each typed word kept, if any.
+        let mut kept_word: Vec<Option<usize>> = vec![None; typed.len()];
         for &wi in &gap_words {
             let hit = (0..typed.len()).find(|&t| !used[t] && similar(&words[wi].text, typed[t]));
             match hit {
                 Some(t) => {
                     used[t] = true;
+                    kept_word[t] = Some(wi);
                     if words[wi].text != typed[t] {
                         words[wi].text = typed[t].to_string();
                         changes.words_retyped += 1;
@@ -461,14 +464,36 @@ pub fn apply_text(text: &str, sc: &mut Sidecar) -> Result<Changes, String> {
             Item::Silence(i) => (silences[i].start, silences[i].end),
             Item::Insert(i) => (inserts[i].at, inserts[i].at),
         };
-        let left = prev.0.checked_sub(1).map(|p| span_of(order[p]).1);
-        let right = (oi < n).then(|| span_of(order[oi]).0);
+        let gap_left = prev.0.checked_sub(1).map(|p| span_of(order[p]).1);
+        let gap_right = (oi < n).then(|| span_of(order[oi]).0);
+        // Retyped words in the gap keep their recording, so they split it: each new
+        // token goes between the nearest kept words (or the gap's ends) around it.
+        let mut word_index = 0;
+        let anchors: Vec<Option<(f64, f64)>> = gap_tokens
+            .iter()
+            .map(|t| match t {
+                Token::Word(_) => {
+                    word_index += 1;
+                    kept_word[word_index - 1].map(|wi| (words[wi].start, words[wi].end))
+                }
+                Token::Tag(_) => None,
+            })
+            .collect();
         let (mut tag_no, mut word_no) = (0, 0);
-        let count = gap_tokens.len();
         for (k, t) in gap_tokens.iter().enumerate() {
-            // Each token gets its own time strictly between the items around the gap,
-            // so sorting by time keeps the typed order, also next to earlier inserts
-            // that sit only a microsecond apart.
+            if anchors[k].is_some() {
+                word_no += 1;
+                continue;
+            }
+            let before = (0..k).rev().find(|&j| anchors[j].is_some());
+            let after = (k + 1..anchors.len()).find(|&j| anchors[j].is_some());
+            let left = before.map_or(gap_left, |j| anchors[j].map(|a| a.1));
+            let right = after.map_or(gap_right, |j| anchors[j].map(|a| a.0));
+            let first = before.map_or(0, |j| j + 1);
+            let (k, count) = (k - first, after.unwrap_or(anchors.len()) - first);
+            // Each token gets its own time strictly between the items around it, so
+            // sorting by time keeps the typed order, also next to earlier inserts that
+            // sit only a microsecond apart.
             let at = match (left, right) {
                 (Some(l), Some(r)) if r > l => l + (r - l) * (k + 1) as f64 / (count + 1) as f64,
                 // No room (the next word starts where the last one ends): step back
@@ -1372,6 +1397,21 @@ mod tests {
     }
 
     #[test]
+    fn new_words_stay_on_their_side_of_a_retyped_word() {
+        // "jeg" retyped as "Jeg" keeps its recording; the new words around it must not
+        // spread across it.
+        for t in ["da skal trolig var Jeg se", "da skal Jeg trolig var se"] {
+            let (w, _) = speech();
+            let mut sc = Sidecar {
+                words: w,
+                ..Default::default()
+            };
+            apply_text(t, &mut sc).unwrap();
+            assert_eq!(shown_words(&sc), t);
+        }
+    }
+
+    #[test]
     fn a_changed_phrase_is_spoken_again_whole() {
         let (w, _) = speech();
         let mut sc = Sidecar {
@@ -1401,7 +1441,11 @@ mod tests {
         // Removing a word of the phrase means speaking the rest again, as one phrase.
         apply_text("da skal hei sammen jeg", &mut sc).unwrap();
         assert_eq!(ready(&sc), 0);
-        assert!(sc.inserts.iter().all(|i| i.file.is_none() && i.with.is_none()));
+        assert!(
+            sc.inserts
+                .iter()
+                .all(|i| i.file.is_none() && i.with.is_none())
+        );
     }
 
     #[test]

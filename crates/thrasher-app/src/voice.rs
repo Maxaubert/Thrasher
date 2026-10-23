@@ -384,10 +384,7 @@ fn speak(
             voice::extract(job, &generated, &gen_sc.words).map(|w| (generated.sample_rate, w))
         })();
         let lead = &job.ids[0];
-        let saved = outcome.and_then(|(rate, words)| {
-            // The words follow each other in the generated speech, so together they
-            // are one stretch: keep it whole, as spoken.
-            let audio = words.concat();
+        let saved = outcome.and_then(|(rate, audio)| {
             let at = sc
                 .inserts
                 .iter()

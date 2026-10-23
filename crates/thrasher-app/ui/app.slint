@@ -49,6 +49,8 @@ export struct WordRow {
     // A word typed in and spoken in the user's voice; pending while it is generated.
     spoken: bool,
     pending: bool,
+    // Generating it failed; editing the phrase tries again.
+    failed: bool,
 }
 
 export struct ClipRow {
@@ -550,7 +552,7 @@ export component AppWindow inherits Window {
                                 label := Text {
                                     text: w.text;
                                     // Spoken words are generated speech: shown in a different colour.
-                                    color: w.is-silence ? Theme.muted : w.pending ? #64748b : w.spoken ? #7dd3fc : Theme.text;
+                                    color: w.is-silence ? Theme.muted : w.failed ? #f87171 : w.pending ? #64748b : w.spoken ? #7dd3fc : Theme.text;
                                     font-size: w.is-silence ? 11px : 13px;
                                     font-italic: w.spoken;
                                 }

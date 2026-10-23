@@ -140,11 +140,34 @@ impl App {
                 text: i.text.into(),
                 is_silence: i.kind == edit::Kind::Pause,
                 spoken: matches!(i.kind, edit::Kind::Spoken { .. }),
-                pending: matches!(i.kind, edit::Kind::Spoken { ready: false, .. }),
+                pending: matches!(
+                    i.kind,
+                    edit::Kind::Spoken {
+                        ready: false,
+                        failed: false
+                    }
+                ),
+                failed: matches!(i.kind, edit::Kind::Spoken { failed: true, .. }),
             })
             .collect();
         ui.set_words(ModelRc::new(VecModel::from(rows)));
         ui.set_current_word(-1);
+        // Typed words still waiting (the app was closed while speaking them) are
+        // spoken now.
+        if !ui.get_speaking()
+            && let Some(name) = self.selected(ui).map(|c| c.name.clone())
+            && Sidecar::load(&self.library.sidecar_path(&name))
+                .is_ok_and(|own| !thrasher_core::voice::jobs(&own).is_empty())
+        {
+            voice::start(
+                ui,
+                &self.library,
+                name,
+                voice::Engine::from_setting(&self.settings.voice_engine),
+                self.settings.model.clone(),
+                self.settings.language.clone(),
+            );
+        }
     }
 
     /// Shows the selected clip's edited length in the list, after an edit.

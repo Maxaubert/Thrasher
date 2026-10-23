@@ -124,3 +124,16 @@ Tracked as issues under the epic [#1](https://github.com/Maxaubert/Thrasher/issu
 2. Wireframes and mockups for the dark UI.
 3. Phase 0 on a branch with a pull request.
 4. Phase 1.
+
+## 11. Decisions 2026-10-23
+
+Max accepted the research defaults (see section 7 for the report link):
+
+- **UI:** Slint. The first window is deliberately bare and will be rebuilt after the mockups (#3). A short Slint vs egui measurement can still overturn this.
+- **Transcription:** whisper.cpp with NbAiLab's GGML models, behind a `Transcriber` trait. Word timing from DTW is good enough (Max: current faster-whisper timings "look alright"). Forced alignment is a possible later upgrade.
+- **Capture:** the `wasapi` crate (not cpal), mic as master clock, system audio by process loopback that excludes Thrasher, endpoint loopback as fallback.
+- **Recording format:** 32-bit float at the device's native rate, one WAV per source (`mic`, `system`), custom incremental writer that switches to RF64 past 4 GiB. Mix rendered on demand.
+- **Export:** flacenc for FLAC, LAME (`mp3lame-encoder`) behind an `mp3` feature, Opus later.
+- **DSP:** sonora (noise suppression, auto gain) applied at export or as an extra track, raw mic always kept.
+- **Widget:** Max wants a small draggable widget (mic button, close to hide) and an always-on-top pin. Exact look decided in the mockups.
+- **Build order:** build as much as possible now; keep UI minimal.

@@ -3,13 +3,13 @@
 //! the new words in what it generated, and splices them in through the clip's sidecar.
 //! See `docs/voice-plan.md`.
 //!
-//! Two engines, chosen in the Models panel:
-//! - OmniVoice (default): best Norwegian accent in Max's listening test (2026-10-23).
-//!   Its weights are CC-BY-NC, so the output may not be used commercially.
-//! - Chatterbox Multilingual V3: MIT, so it can be used commercially.
+//! The voice model is OmniVoice (k2-fsa): it kept Max's Bokmål accent best in a
+//! listening test (2026-10-23). Its weights are CC-BY-NC, so the output may not be used
+//! commercially. Chatterbox (MIT) was tried and dropped: it gave a Stavanger accent.
 //!
-//! Each engine gets its own environment (Python 3.12, PyTorch with CUDA 12.8), created
-//! with `uv` on first use in `%LOCALAPPDATA%\Thrasher\voice`, so the installer stays small.
+//! The environment (Python 3.12, PyTorch with CUDA 12.8, OmniVoice) is created with
+//! `uv` on first use in `%LOCALAPPDATA%\Thrasher\voice\env-omnivoice`, so the
+//! installer stays small.
 
 use crate::AppWindow;
 use slint::ComponentHandle;
@@ -26,89 +26,15 @@ use thrasher_core::transcribe::to_mono;
 use thrasher_core::{voice, wav};
 
 const WORKER: &str = include_str!("../voice/worker.py");
-/// Pinned sources. Archive links, so no git is needed.
-const CHATTERBOX: &str = "https://github.com/resemble-ai/chatterbox/archive/5de7a54aa4e5e2baadb0182dde554908b48b85c2.zip";
-const PERTH: &str =
-    "https://github.com/resemble-ai/Perth/archive/ff1c8ac55a976971245cdd53c18d6131ca00d993.zip";
-const TORCH: &str = "torch==2.8.0+cu128\ntorchaudio==2.8.0+cu128\n";
-
-/// The voice model that speaks new words.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Engine {
-    OmniVoice,
-    Chatterbox,
-}
-
-impl Engine {
-    /// Order of the choices in the Models panel.
-    pub const ALL: [Engine; 2] = [Engine::OmniVoice, Engine::Chatterbox];
-
-    /// From the `voice_engine` setting; anything unknown means the default.
-    pub fn from_setting(s: &str) -> Self {
-        Self::ALL
-            .into_iter()
-            .find(|e| e.id() == s)
-            .unwrap_or(Engine::OmniVoice)
-    }
-
-    pub fn id(self) -> &'static str {
-        match self {
-            Engine::OmniVoice => "omnivoice",
-            Engine::Chatterbox => "chatterbox",
-        }
-    }
-
-    fn name(self) -> &'static str {
-        match self {
-            Engine::OmniVoice => "OmniVoice",
-            Engine::Chatterbox => "Chatterbox",
-        }
-    }
-
-    fn env_dir(self) -> &'static str {
-        match self {
-            Engine::OmniVoice => "env-omnivoice",
-            // Kept from before there was a choice, so existing setups are reused.
-            Engine::Chatterbox => "env",
-        }
-    }
-
-    /// Written into the environment once it is complete; a change forces a fresh setup.
-    fn marker(self) -> &'static str {
-        match self {
-            Engine::OmniVoice => {
-                "omnivoice 0.2.1, transformers 5.20.2, torch 2.8.0+cu128, python 3.12"
-            }
-            Engine::Chatterbox => {
-                "chatterbox 5de7a54, perth ff1c8ac, torch 2.8.0+cu128, python 3.12"
-            }
-        }
-    }
-
-    /// Version overrides and packages to install.
-    fn packages(self) -> (String, Vec<String>) {
-        match self {
-            Engine::OmniVoice => (
-                TORCH.to_string(),
-                vec![
-                    "omnivoice==0.2.1".into(),
-                    "transformers==5.20.2".into(),
-                    "accelerate==1.15.0".into(),
-                    "soundfile".into(),
-                ],
-            ),
-            Engine::Chatterbox => (
-                format!("{TORCH}resemble-perth @ {PERTH}\n"),
-                vec![
-                    // Perth imports pkg_resources, which newer setuptools removed.
-                    "setuptools<81".into(),
-                    "soundfile".into(),
-                    format!("chatterbox-tts @ {CHATTERBOX}"),
-                ],
-            ),
-        }
-    }
-}
+/// Written into the environment once it is complete; a change forces a fresh setup.
+const ENGINE: &str = "omnivoice 0.2.1, transformers 5.20.2, torch 2.8.0+cu128, python 3.12";
+const OVERRIDES: &str = "torch==2.8.0+cu128\ntorchaudio==2.8.0+cu128\n";
+const PACKAGES: [&str; 4] = [
+    "omnivoice==0.2.1",
+    "transformers==5.20.2",
+    "accelerate==1.15.0",
+    "soundfile",
+];
 
 /// Set by Cancel; every step checks it.
 static CANCEL: AtomicBool = AtomicBool::new(false);
@@ -194,23 +120,20 @@ fn find_uv() -> Option<PathBuf> {
     ok(&home).then_some(home)
 }
 
-/// The Python of the engine's environment, setting it up first if needed.
-fn setup(engine: Engine, status: &dyn Fn(String), progress: &Bar) -> Result<PathBuf, String> {
+/// The Python of the voice environment, setting it up first if needed.
+fn setup(status: &dyn Fn(String), progress: &Bar) -> Result<PathBuf, String> {
     let base = base().ok_or("no local app data folder")?;
-    let env = base.join(engine.env_dir());
+    let env = base.join("env-omnivoice");
     let python = env.join("Scripts").join("python.exe");
     let marker = env.join("thrasher-engine.txt");
-    if python.exists() && std::fs::read_to_string(&marker).is_ok_and(|m| m == engine.marker()) {
+    if python.exists() && std::fs::read_to_string(&marker).is_ok_and(|m| m == ENGINE) {
         return Ok(python);
     }
     let uv = find_uv().ok_or(
         "Speaking new words needs uv, a small Python installer. Install it with \
          \"winget install astral-sh.uv\", then try again.",
     )?;
-    status(format!(
-        "Setting up {}. First time only, several GB to download…",
-        engine.name()
-    ));
+    status("Setting up the voice model. First time only, several GB to download…".into());
     progress.set(0.0, 0.3);
     std::fs::create_dir_all(&base).map_err(|e| e.to_string())?;
     run(
@@ -219,9 +142,8 @@ fn setup(engine: Engine, status: &dyn Fn(String), progress: &Bar) -> Result<Path
             .arg(&env),
         &mut |_, _| {},
     )?;
-    let (overrides, packages) = engine.packages();
-    let overrides_file = base.join(format!("overrides-{}.txt", engine.id()));
-    std::fs::write(&overrides_file, overrides).map_err(|e| e.to_string())?;
+    let overrides_file = base.join("overrides-omnivoice.txt");
+    std::fs::write(&overrides_file, OVERRIDES).map_err(|e| e.to_string())?;
     run(
         Command::new(&uv)
             .args(["pip", "install", "--python"])
@@ -234,10 +156,10 @@ fn setup(engine: Engine, status: &dyn Fn(String), progress: &Bar) -> Result<Path
                 "--index-strategy",
                 "unsafe-best-match",
             ])
-            .args(&packages),
+            .args(PACKAGES),
         &mut |_, _| {},
     )?;
-    std::fs::write(&marker, engine.marker()).map_err(|e| e.to_string())?;
+    std::fs::write(&marker, ENGINE).map_err(|e| e.to_string())?;
     Ok(python)
 }
 
@@ -306,7 +228,6 @@ enum Saved {
 fn speak(
     library: &Library,
     name: &str,
-    engine: Engine,
     model_id: &str,
     language: &str,
     status: &dyn Fn(String),
@@ -319,11 +240,10 @@ fn speak(
         return Ok(0);
     }
     let segments = voice::pick_reference(&sc).map_err(|e| e.to_string())?;
-    let python = setup(engine, status, progress)?;
+    let python = setup(status, progress)?;
     let count: usize = jobs.iter().map(|j| j.words.len()).sum();
     status(format!(
-        "{} is generating {count} new word(s). Loading the voice model takes about a minute.",
-        engine.name()
+        "Generating {count} new word(s). Loading the voice model takes about a minute."
     ));
     let reference = voice::write_reference(library, name, &segments).map_err(|e| e.to_string())?;
     let dir = voice::voice_dir(library, name);
@@ -346,7 +266,6 @@ fn speak(
     run(
         Command::new(&python)
             .arg(&worker)
-            .arg(engine.id())
             .arg(&reference)
             .arg(&reference_txt)
             .arg(if language.is_empty() { "no" } else { language })
@@ -475,14 +394,7 @@ fn drop_pending(library: &Library, name: &str) {
 }
 
 /// Starts speaking the clip's new words on a background thread.
-pub fn start(
-    ui: &AppWindow,
-    library: &Library,
-    name: String,
-    engine: Engine,
-    model_id: String,
-    language: String,
-) {
+pub fn start(ui: &AppWindow, library: &Library, name: String, model_id: String, language: String) {
     if ui.get_speaking() {
         return;
     }
@@ -512,7 +424,7 @@ pub fn start(
         let result = lib
             .as_ref()
             .map_err(Clone::clone)
-            .and_then(|lib| speak(lib, &name, engine, &model_id, &language, &status, &bar));
+            .and_then(|lib| speak(lib, &name, &model_id, &language, &status, &bar));
         bar.finish();
         let cancelled = CANCEL.load(Ordering::SeqCst);
         if cancelled && let Ok(lib) = &lib {

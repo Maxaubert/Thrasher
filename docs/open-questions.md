@@ -46,7 +46,8 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
    **Listening test (2026-10-23):** OmniVoice best by ear, then Chatterbox with a 20 s
    sample; the 10 s sample had the wrong dialect. The app now uses 20 s. In the app,
    Chatterbox still had the wrong dialect. **Decision:** an engine setting in Models,
-   OmniVoice by default, Chatterbox (MIT) for a build that may be sold.
+   OmniVoice by default, Chatterbox (MIT) for a build that may be sold. **Later the same
+   day:** OmniVoice only; Chatterbox removed. Thrasher cannot be sold while it uses it.
 13. **Voice: uv for other people.** The voice engine is installed with `uv`. On your PC
    it is there; for a public release the app should download uv itself, or ship a
    ready Python environment. Decide before the first public release.

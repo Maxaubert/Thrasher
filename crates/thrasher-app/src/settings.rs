@@ -22,8 +22,6 @@ pub struct Settings {
     pub export_format: String,
     /// Clean up the voice (noise suppression, automatic gain) when exporting.
     pub clean_voice: bool,
-    /// Voice model for typed-in words: "omnivoice" (non-commercial) or "chatterbox" (MIT).
-    pub voice_engine: String,
 }
 
 impl Default for Settings {
@@ -42,7 +40,6 @@ impl Default for Settings {
             language: "no".into(),
             export_format: "flac".into(),
             clean_voice: false,
-            voice_engine: "omnivoice".into(),
         }
     }
 }

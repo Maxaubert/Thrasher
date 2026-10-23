@@ -10,21 +10,20 @@ voice, fitted into the sentence. Fully local. The recording itself is never chan
 
 ## Decisions
 
-- **Two models get a listening test**: Chatterbox Multilingual V3 (MIT) and OmniVoice
-  (weights non-commercial). VoxCPM2 is skipped: biggest, and no clear quality edge.
-  Max picks by ear. The app supports the winner; the other can be added later.
+- **Model: OmniVoice** (k2-fsa, weights non-commercial). Chatterbox Multilingual V3
+  (MIT) was built first, but in Max's listening test (2026-10-23) it gave a Stavanger
+  accent instead of his Bokmål, so it was removed. VoxCPM2 was skipped: biggest, and no
+  clear quality edge. Thrasher cannot be sold while it uses OmniVoice.
 - **No training.** Both models clone a voice from a few seconds of reference audio
   ("zero-shot"). Thrasher picks that reference automatically from the same clip, so the
   microphone and the room match.
 - **Too little speech, no generation.** The reference needs at least 5 s of clean
   speech (10 s is better). If the clip has less, Thrasher says so and does nothing.
-- **Runtime: a Python worker run by `uv`.** chatterbox.cpp would avoid Python, but it
-  has no Windows build guide and no V3 support yet. The worker is a small script in the
-  repo; the first use creates its environment (PyTorch with CUDA 12.8, about 3 to 4 GB)
-  in `%LOCALAPPDATA%\Thrasher\voice`. The installer does not grow. chatterbox.cpp stays
-  the plan for a later, Python-free version.
+- **Runtime: a Python worker run by `uv`.** The worker is a small script in the repo;
+  the first use creates its environment (PyTorch with CUDA 12.8, several GB) in
+  `%LOCALAPPDATA%\Thrasher\voice\env-omnivoice`. The installer does not grow.
 - **Transparency.** Generated words are marked synthetic in the sidecar and shown
-  differently in the transcript. Chatterbox's built-in watermark stays on.
+  differently in the transcript.
 
 ## How a new word is made
 

@@ -14,6 +14,7 @@ pub mod recorder;
 pub mod sidecar;
 pub mod subtitles;
 pub mod transcribe;
+pub mod voice;
 #[cfg(windows)]
 pub mod wasapi_io;
 pub mod wav;

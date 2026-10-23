@@ -226,11 +226,11 @@ pub fn silences(words: &[Word], duration: f64, min_gap: f64) -> Vec<Silence> {
 /// Plain text with silence tags, such as `Hei [silence:7s] der`. Words and pauses
 /// removed in the editor are left out.
 pub fn render_text(words: &[Word], silences: &[Silence]) -> String {
-    crate::edit::visible(words, silences)
-        .into_iter()
-        .map(|(_, text, _)| text)
-        .collect::<Vec<_>>()
-        .join(" ")
+    crate::edit::text(&crate::sidecar::Sidecar {
+        words: words.to_vec(),
+        silences: silences.to_vec(),
+        ..Default::default()
+    })
 }
 
 #[cfg(test)]

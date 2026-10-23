@@ -13,7 +13,9 @@ use std::time::SystemTime;
 use thiserror::Error;
 
 const TRASH: &str = ".trash";
-const EXTRA_SUFFIXES: [&str; 3] = [".system.wav", ".mix.wav", ".json"];
+/// Files and folders that belong to a clip besides its mic track. `.voice` holds the
+/// voice sample and generated words (see `voice`).
+const EXTRA_SUFFIXES: [&str; 4] = [".system.wav", ".mix.wav", ".json", ".voice"];
 
 #[derive(Debug, Error)]
 pub enum LibraryError {

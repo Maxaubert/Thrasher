@@ -21,8 +21,26 @@ pub struct Sidecar {
     /// Pauses between words, shown as `[silence:7s]` tags in the transcript.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub silences: Vec<Silence>,
+    /// Words typed into the transcript that were never said, spoken by a voice model
+    /// in the speaker's own voice. Always synthetic audio.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub inserts: Vec<Insert>,
     #[serde(default)]
     pub thrasher: Meta,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Insert {
+    pub id: String,
+    pub text: String,
+    /// Where it goes, in the recording's time.
+    pub at: f64,
+    /// The generated audio, a file in the clip's `<clip>.voice` folder, once ready.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
+    /// Why generating it failed, if it did.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

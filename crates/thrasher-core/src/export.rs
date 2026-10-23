@@ -58,7 +58,8 @@ pub fn export_clip(library: &Library, name: &str, options: ExportOptions) -> io:
     };
     let mut buffer = crate::player::load_clip_with(library, name, filter)?;
     if let Ok(sc) = crate::sidecar::Sidecar::load(&library.sidecar_path(name)) {
-        buffer = crate::edit::plan(&sc.words, &sc.silences, &buffer).render(&buffer);
+        let voices = crate::voice::load_voices(library, name, &sc);
+        buffer = crate::edit::plan(&sc, &voices, &buffer).render(&buffer);
     }
     let dir = export_dir(library);
     std::fs::create_dir_all(&dir)?;
@@ -112,8 +113,9 @@ pub fn export_subtitles(library: &Library, name: &str) -> io::Result<Vec<PathBuf
     };
     // Subtitles follow the edited audio: cut words are left out and times shift.
     let audio = crate::player::load_clip(library, name)?;
-    let timeline = crate::edit::plan(&sc.words, &sc.silences, &audio);
-    let words = crate::edit::edited_words(&sc.words, &timeline);
+    let voices = crate::voice::load_voices(library, name, &sc);
+    let timeline = crate::edit::plan(&sc, &voices, &audio);
+    let words = crate::edit::edited_words(&sc, &timeline);
     if words.is_empty() {
         return Ok(Vec::new());
     }

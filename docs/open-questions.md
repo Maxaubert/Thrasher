@@ -34,3 +34,10 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
    before the next word. If cuts still sound off, the proper fix is a forced aligner
    (a wav2vec2 model for Norwegian, run after Whisper) that finds where each word
    really starts and ends. It is a larger job and one more model download. Worth it?
+12. **Voice: does it sound like you? (2026-10-23)** Typing a new word now speaks it in
+   your voice (Chatterbox). Listening files are listed in the chat. If Chatterbox is not
+   convincing, OmniVoice scored about the same on a voice-match test and is faster, but
+   its license forbids commercial use of the output. Keep Chatterbox, or try OmniVoice?
+13. **Voice: uv for other people.** The voice engine is installed with `uv`. On your PC
+   it is there; for a public release the app should download uv itself, or ship a
+   ready Python environment. Decide before the first public release.

@@ -3,6 +3,7 @@
 
 mod settings;
 mod transcription;
+mod voice;
 
 use settings::Settings;
 use slint::{ComponentHandle, LogicalSize, ModelRc, SharedString, Timer, TimerMode, VecModel};
@@ -96,14 +97,16 @@ impl App {
             self.transcript_starts.clear();
             return;
         };
-        ui.set_transcript(thrasher_core::transcribe::render_text(&sc.words, &sc.silences).into());
-        let items = thrasher_core::edit::visible(&sc.words, &sc.silences);
-        self.transcript_starts = items.iter().map(|i| i.0).collect();
+        ui.set_transcript(edit::text(&sc).into());
+        let items = edit::visible(&sc);
+        self.transcript_starts = items.iter().map(|i| i.start).collect();
         let rows: Vec<WordRow> = items
             .into_iter()
-            .map(|(_, text, is_silence)| WordRow {
-                text: text.into(),
-                is_silence,
+            .map(|i| WordRow {
+                text: i.text.into(),
+                is_silence: i.kind == edit::Kind::Pause,
+                spoken: matches!(i.kind, edit::Kind::Spoken { .. }),
+                pending: matches!(i.kind, edit::Kind::Spoken { ready: false, .. }),
             })
             .collect();
         ui.set_words(ModelRc::new(VecModel::from(rows)));
@@ -121,9 +124,13 @@ impl App {
         };
         match load_clip(&self.library, &name) {
             Ok(mut buf) => {
-                // Play the clip as edited: cut words and shortened pauses are skipped.
+                // Play the clip as edited: cut words and shortened pauses are skipped,
+                // and inserted words are spoken.
                 self.timeline = Sidecar::load(&self.library.sidecar_path(&name))
-                    .map(|sc| edit::plan(&sc.words, &sc.silences, &buf))
+                    .map(|sc| {
+                        let voices = thrasher_core::voice::load_voices(&self.library, &name, &sc);
+                        edit::plan(&sc, &voices, &buf)
+                    })
                     .unwrap_or_default();
                 buf = self.timeline.render(&buf);
                 self.player.play(buf, self.timeline.to_edited(from_secs));
@@ -570,20 +577,35 @@ fn main() -> Result<(), slint::PlatformError> {
                 ui.set_status("Transcribe this clip first; older transcripts are read-only".into());
                 return;
             };
-            match edit::apply_text(&text, &mut sc.words, &mut sc.silences) {
-                Ok(changes) => match sc.save(&path) {
-                    Ok(()) => {
-                        // Restart playback so it follows the new edit.
-                        if a.player.is_playing() {
-                            a.player.stop();
-                        }
-                        ui.set_status(changes.summary().into());
-                        ui.set_editing_transcript(false);
-                        a.show_transcript(&ui);
-                    }
-                    Err(e) => ui.set_status(e.to_string().into()),
-                },
-                Err(e) => ui.set_status(e.into()),
+            let changes = match edit::apply_text(&text, &mut sc) {
+                Ok(c) => c,
+                Err(e) => return ui.set_status(e.into()),
+            };
+            // New words need a voice sample from this clip. Without enough speech,
+            // nothing is applied and the editor stays open.
+            if changes.spoken > 0
+                && let Err(e) = thrasher_core::voice::pick_reference(&sc)
+            {
+                return ui.set_status(e.to_string().into());
+            }
+            if let Err(e) = sc.save(&path) {
+                return ui.set_status(e.to_string().into());
+            }
+            // Restart playback so it follows the new edit.
+            if a.player.is_playing() {
+                a.player.stop();
+            }
+            ui.set_status(changes.summary().into());
+            ui.set_editing_transcript(false);
+            a.show_transcript(&ui);
+            if !thrasher_core::voice::jobs(&sc).is_empty() {
+                voice::start(
+                    &ui,
+                    &a.library,
+                    name,
+                    a.settings.model.clone(),
+                    a.settings.language.clone(),
+                );
             }
         }
     });

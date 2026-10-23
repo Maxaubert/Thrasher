@@ -46,6 +46,17 @@ stop a recording. The first CUDA build takes several minutes.
 Models are downloaded from the app (Models, top right) into
 `%LOCALAPPDATA%\Thrasher\models`. They are never committed.
 
+## Speaking new words (voice cloning)
+
+Typing a new word in the transcript editor speaks it in the user's voice with
+Chatterbox Multilingual V3 (Resemble AI, MIT). This needs no build step: the app runs
+`crates/thrasher-app/voice/worker.py` (compiled into the app) in a Python environment
+it creates with `uv` on first use, in `%LOCALAPPDATA%\Thrasheroice` (about 4 GB with
+PyTorch and the model). Versions are pinned in `crates/thrasher-app/src/voice.rs`.
+`uv` must be installed (`winget install astral-sh.uv`). The transcription worker must
+be there too: it finds the new word in the generated speech. Plan and design:
+`docs/voice-plan.md`.
+
 ## Command-line examples
 
 ```

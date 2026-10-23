@@ -46,6 +46,9 @@ export struct ModelRow {
 export struct WordRow {
     text: string,
     is-silence: bool,
+    // A word typed in and spoken in the user's voice; pending while it is generated.
+    spoken: bool,
+    pending: bool,
 }
 
 export struct ClipRow {
@@ -171,6 +174,8 @@ export component AppWindow inherits Window {
     in property <string> hotkey;
     in property <bool> can-transcribe;
     in property <bool> transcribing;
+    in-out property <bool> speaking;
+    in property <float> speak-progress;
     in property <float> transcribe-progress;
     in property <string> transcript;
     in property <[ModelRow]> models;
@@ -493,6 +498,10 @@ export component AppWindow inherits Window {
                 }
             }
 
+            if root.speaking: Text {
+                text: "Speaking new words in your voice… " + round(root.speak-progress * 100) + "%";
+                color: Theme.muted;
+            }
             if root.transcribing: Text {
                 text: "Transcribing… " + round(root.transcribe-progress * 100) + "%";
                 color: Theme.muted;
@@ -521,8 +530,10 @@ export component AppWindow inherits Window {
                                 height: label.preferred-height + 2px;
                                 label := Text {
                                     text: w.text;
-                                    color: w.is-silence ? Theme.muted : Theme.text;
+                                    // Spoken words are generated speech: shown in a different colour.
+                                    color: w.is-silence ? Theme.muted : w.pending ? #64748b : w.spoken ? #7dd3fc : Theme.text;
                                     font-size: w.is-silence ? 11px : 13px;
+                                    font-italic: w.spoken;
                                 }
                                 wt := TouchArea {
                                     mouse-cursor: pointer;
@@ -556,7 +567,7 @@ export component AppWindow inherits Window {
                 HorizontalLayout {
                     spacing: 6px;
                     Text {
-                        text: "Delete words or pauses. Change a [silence:7s] tag, or type one between words to add a pause.";
+                        text: "Delete words or pauses, change or add [silence:2s] tags, or type new words to hear them in your voice.";
                         color: Theme.muted;
                         font-size: 11px;
                         vertical-alignment: center;

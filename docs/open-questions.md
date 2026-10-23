@@ -38,6 +38,11 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
    your voice (Chatterbox). Listening files are listed in the chat. If Chatterbox is not
    convincing, OmniVoice scored about the same on a voice-match test and is faster, but
    its license forbids commercial use of the output. Keep Chatterbox, or try OmniVoice?
+   **Max's answer (2026-10-23):** natural, but not his voice, and a Stavanger accent
+   instead of his Bokmål. Settings and a longer sample do not help (similarity 0.70 to
+   0.72 vs 0.81 for his own recordings). Options and measurements:
+   `research/thrasher/2026-10-23-norwegian-voice-accent.md`. Next choice: Chatterbox V2,
+   MOSS-TTS with a Norwegian LoRA, or fine-tuning on his own recordings.
 13. **Voice: uv for other people.** The voice engine is installed with `uv`. On your PC
    it is there; for a public release the app should download uv itself, or ship a
    ready Python environment. Decide before the first public release.

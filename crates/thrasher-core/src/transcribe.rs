@@ -189,6 +189,7 @@ pub fn number_words(words: Vec<(String, f64, f64)>) -> Vec<Word> {
             text,
             start: round_ms(start),
             end: round_ms(end),
+            cut: false,
         })
         .collect()
 }
@@ -222,14 +223,14 @@ pub fn silences(words: &[Word], duration: f64, min_gap: f64) -> Vec<Silence> {
     out
 }
 
-/// Plain text with silence tags, such as `Hei [silence:7s] der`.
+/// Plain text with silence tags, such as `Hei [silence:7s] der`. Words and pauses
+/// removed in the editor are left out.
 pub fn render_text(words: &[Word], silences: &[Silence]) -> String {
-    let mut parts: Vec<(f64, String)> = words.iter().map(|w| (w.start, w.text.clone())).collect();
-    for s in silences {
-        parts.push((s.start, crate::edit::tag(crate::edit::kept(s))));
-    }
-    parts.sort_by(|a, b| a.0.total_cmp(&b.0));
-    parts.into_iter().map(|p| p.1).collect::<Vec<_>>().join(" ")
+    crate::edit::visible(words, silences)
+        .into_iter()
+        .map(|(_, text, _)| text)
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 #[cfg(test)]

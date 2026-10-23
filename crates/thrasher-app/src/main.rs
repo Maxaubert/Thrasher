@@ -10,6 +10,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 use thrasher_core::capture::{LoopbackMode, LoopbackSource, MicSource, Source};
+use thrasher_core::edit::{self, Timeline};
 use thrasher_core::library::{Clip, Deleted, Library};
 use thrasher_core::meter::meter_position;
 use thrasher_core::naming::Template;
@@ -39,6 +40,8 @@ struct App {
     transcript_starts: Vec<f64>,
     /// The clip the player is playing.
     playing_name: Option<String>,
+    /// Maps the edited audio being played back to times in the recording.
+    timeline: Timeline,
 }
 
 fn fmt_time(secs: f64) -> String {
@@ -94,28 +97,15 @@ impl App {
             return;
         };
         ui.set_transcript(thrasher_core::transcribe::render_text(&sc.words, &sc.silences).into());
-        let mut items: Vec<(f64, WordRow)> = sc
-            .words
-            .iter()
-            .map(|w| {
-                let row = WordRow {
-                    text: w.text.clone().into(),
-                    is_silence: false,
-                };
-                (w.start, row)
-            })
-            .chain(sc.silences.iter().map(|s| {
-                let tag = thrasher_core::edit::tag(thrasher_core::edit::kept(s));
-                let row = WordRow {
-                    text: tag.into(),
-                    is_silence: true,
-                };
-                (s.start, row)
-            }))
-            .collect();
-        items.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let items = thrasher_core::edit::visible(&sc.words, &sc.silences);
         self.transcript_starts = items.iter().map(|i| i.0).collect();
-        let rows: Vec<WordRow> = items.into_iter().map(|i| i.1).collect();
+        let rows: Vec<WordRow> = items
+            .into_iter()
+            .map(|(_, text, is_silence)| WordRow {
+                text: text.into(),
+                is_silence,
+            })
+            .collect();
         ui.set_words(ModelRc::new(VecModel::from(rows)));
         ui.set_current_word(-1);
     }
@@ -130,8 +120,16 @@ impl App {
             return false;
         };
         match load_clip(&self.library, &name) {
-            Ok(buf) => {
-                self.player.play(buf, from_secs);
+            Ok(mut buf) => {
+                // Play the clip as edited: cut words and shortened pauses are skipped.
+                let cuts = Sidecar::load(&self.library.sidecar_path(&name))
+                    .map(|sc| edit::cuts(&sc.words, &sc.silences))
+                    .unwrap_or_default();
+                if !cuts.is_empty() {
+                    buf = edit::render(&buf, &cuts);
+                }
+                self.timeline = Timeline::new(cuts);
+                self.player.play(buf, self.timeline.to_edited(from_secs));
                 self.playing_name = Some(name);
                 ui.set_playing(true);
                 true
@@ -233,7 +231,7 @@ impl App {
             ui.set_play_position(fmt_time(pos).into());
             let shown = self.selected(ui).map(|c| c.name.as_str());
             if shown.is_some() && shown == self.playing_name.as_deref() {
-                ui.set_current_word(self.item_at(pos));
+                ui.set_current_word(self.item_at(self.timeline.to_original(pos)));
             }
         } else if let Some(e) = self.player.error() {
             ui.set_status(format!("Playback failed: {e}").into());
@@ -327,6 +325,7 @@ fn main() -> Result<(), slint::PlatformError> {
         player: Player::new(),
         undo: Vec::new(),
         transcript_starts: Vec::new(),
+        timeline: Timeline::default(),
         playing_name: None,
     }));
 
@@ -574,12 +573,14 @@ fn main() -> Result<(), slint::PlatformError> {
                 ui.set_status("Transcribe this clip first; older transcripts are read-only".into());
                 return;
             };
-            match thrasher_core::edit::apply_tags(&text, &mut sc.silences) {
-                Ok(n) => match sc.save(&path) {
+            match edit::apply_text(&text, &mut sc.words, &mut sc.silences) {
+                Ok(changes) => match sc.save(&path) {
                     Ok(()) => {
-                        ui.set_status(
-                            format!("{n} pause(s) changed. Export to hear the result").into(),
-                        );
+                        // Restart playback so it follows the new edit.
+                        if a.player.is_playing() {
+                            a.player.stop();
+                        }
+                        ui.set_status(changes.summary().into());
                         ui.set_editing_transcript(false);
                         a.show_transcript(&ui);
                     }

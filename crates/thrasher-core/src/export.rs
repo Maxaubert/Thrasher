@@ -48,8 +48,8 @@ pub fn export_dir(library: &Library) -> PathBuf {
     library.dir().join("export")
 }
 
-/// Exports the clip (mic and system audio mixed, as heard in the player), with any
-/// shortened pauses from the sidecar applied.
+/// Exports the clip (mic and system audio mixed, as heard in the player), with the
+/// edits from the sidecar (cut words, shortened pauses) applied.
 pub fn export_clip(library: &Library, name: &str, options: ExportOptions) -> io::Result<PathBuf> {
     let filter: Option<crate::player::MicFilter> = if options.clean_voice {
         Some(&crate::cleanup::clean_voice)
@@ -58,7 +58,7 @@ pub fn export_clip(library: &Library, name: &str, options: ExportOptions) -> io:
     };
     let mut buffer = crate::player::load_clip_with(library, name, filter)?;
     if let Ok(sc) = crate::sidecar::Sidecar::load(&library.sidecar_path(name)) {
-        buffer = crate::edit::render(&buffer, &sc.silences);
+        buffer = crate::edit::render(&buffer, &crate::edit::cuts(&sc.words, &sc.silences));
     }
     let dir = export_dir(library);
     std::fs::create_dir_all(&dir)?;
@@ -110,25 +110,28 @@ pub fn export_subtitles(library: &Library, name: &str) -> io::Result<Vec<PathBuf
     let Ok(sc) = crate::sidecar::Sidecar::load(&library.sidecar_path(name)) else {
         return Ok(Vec::new());
     };
-    if sc.words.is_empty() {
+    // Subtitles follow the edited audio: cut words are left out and times shift.
+    let timeline = crate::edit::Timeline::new(crate::edit::cuts(&sc.words, &sc.silences));
+    let words = crate::edit::edited_words(&sc.words, &timeline);
+    if words.is_empty() {
         return Ok(Vec::new());
     }
     let dir = export_dir(library);
     std::fs::create_dir_all(&dir)?;
     let words_json = serde_json::json!({
         "file": sc.file,
-        "duration": sc.duration,
+        "duration": timeline.to_edited(sc.duration),
         "language": sc.language,
-        "words": sc.words,
+        "words": words,
     });
     let files = [
         (
             dir.join(format!("{name}.srt")),
-            crate::subtitles::srt(&sc.words),
+            crate::subtitles::srt(&words),
         ),
         (
             dir.join(format!("{name}.vtt")),
-            crate::subtitles::vtt(&sc.words),
+            crate::subtitles::vtt(&words),
         ),
         (
             dir.join(format!("{name}.words.json")),

@@ -505,6 +505,11 @@ export component AppWindow inherits Window {
                     border-radius: 8px;
                     height: 130px;
                     ScrollView {
+                        // A new transcript starts at the top; Slint would keep the old offset.
+                        property <string> shown: root.transcript;
+                        init => { self.content-y = 0; }
+                        changed shown => { self.content-y = 0; }
+                        changed content-height => { if (root.current-word < 0) { self.content-y = 0; } }
                         FlexboxLayout {
                             padding: 8px;
                             spacing: 2px;
@@ -536,7 +541,7 @@ export component AppWindow inherits Window {
                         horizontal-stretch: 1;
                     }
                     Button {
-                        text: "Edit pauses";
+                        text: "Edit";
                         clicked => { root.editing-transcript = true; }
                     }
                 }
@@ -551,7 +556,7 @@ export component AppWindow inherits Window {
                 HorizontalLayout {
                     spacing: 6px;
                     Text {
-                        text: "Change a [silence:7s] tag to shorten that pause in exports.";
+                        text: "Delete words or pauses, or change a [silence:7s] tag. Retype a word to bring it back.";
                         color: Theme.muted;
                         font-size: 11px;
                         vertical-alignment: center;

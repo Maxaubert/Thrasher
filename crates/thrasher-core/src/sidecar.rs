@@ -31,6 +31,9 @@ pub struct Word {
     pub text: String,
     pub start: f64,
     pub end: f64,
+    /// Removed in the editor: skipped in playback and exports. The audio is kept.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub cut: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

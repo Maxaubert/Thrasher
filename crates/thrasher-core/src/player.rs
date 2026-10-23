@@ -97,6 +97,16 @@ impl Player {
 
     pub fn play(&mut self, buffer: Buffer, start_secs: f64) {
         self.stop();
+        // Windows plays a mono stream on the left speaker only, so send it as stereo.
+        let buffer = if buffer.channels == 1 {
+            Buffer {
+                channels: 2,
+                samples: buffer.samples.iter().flat_map(|&s| [s, s]).collect(),
+                ..buffer
+            }
+        } else {
+            buffer
+        };
         let stop = Arc::new(AtomicBool::new(false));
         let start = (start_secs.max(0.0) * buffer.sample_rate as f64) as u64;
         self.position.store(start, Ordering::Relaxed);

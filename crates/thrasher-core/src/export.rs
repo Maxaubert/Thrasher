@@ -95,6 +95,46 @@ pub fn export_buffer(buffer: &Buffer, path: &Path, options: ExportOptions) -> io
     std::fs::rename(&tmp, path)
 }
 
+/// Writes `.srt`, `.vtt` and word-level `.words.json` next to the audio exports, when
+/// the clip has been transcribed. Returns the files written. Timings are those of the
+/// original recording, so they match the audio only when no pauses were shortened.
+pub fn export_subtitles(library: &Library, name: &str) -> io::Result<Vec<PathBuf>> {
+    let Ok(sc) = crate::sidecar::Sidecar::load(&library.sidecar_path(name)) else {
+        return Ok(Vec::new());
+    };
+    if sc.words.is_empty() {
+        return Ok(Vec::new());
+    }
+    let dir = export_dir(library);
+    std::fs::create_dir_all(&dir)?;
+    let words_json = serde_json::json!({
+        "file": sc.file,
+        "duration": sc.duration,
+        "language": sc.language,
+        "words": sc.words,
+    });
+    let files = [
+        (
+            dir.join(format!("{name}.srt")),
+            crate::subtitles::srt(&sc.words),
+        ),
+        (
+            dir.join(format!("{name}.vtt")),
+            crate::subtitles::vtt(&sc.words),
+        ),
+        (
+            dir.join(format!("{name}.words.json")),
+            serde_json::to_string_pretty(&words_json).map_err(io::Error::other)?,
+        ),
+    ];
+    let mut out = Vec::new();
+    for (path, text) in files {
+        std::fs::write(&path, text)?;
+        out.push(path);
+    }
+    Ok(out)
+}
+
 /// Converts float samples to integers with triangular dither, which hides the
 /// quantization distortion of quiet passages at 16 bit.
 pub fn quantize(samples: &[f32], bits: u16) -> Vec<i32> {

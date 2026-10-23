@@ -627,7 +627,13 @@ fn main() -> Result<(), slint::PlatformError> {
                 _ => ExportOptions::default(),
             };
             match thrasher_core::export::export_clip(&a.library, &name, options) {
-                Ok(p) => ui.set_status(format!("Exported {}", p.display()).into()),
+                Ok(p) => {
+                    let subs = thrasher_core::export::export_subtitles(&a.library, &name)
+                        .map(|f| f.len())
+                        .unwrap_or(0);
+                    let extra = if subs > 0 { " with subtitles" } else { "" };
+                    ui.set_status(format!("Exported {}{extra}", p.display()).into())
+                }
                 Err(e) => ui.set_status(format!("Export failed: {e}").into()),
             }
         }

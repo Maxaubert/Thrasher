@@ -11,6 +11,7 @@ pub mod naming;
 pub mod player;
 pub mod recorder;
 pub mod sidecar;
+pub mod subtitles;
 pub mod transcribe;
 #[cfg(windows)]
 pub mod wasapi_io;

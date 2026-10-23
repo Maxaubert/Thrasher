@@ -86,6 +86,8 @@ Each phase ends with something runnable.
 
 Tech stack research (2026-10-23), with recommended defaults for each open choice: `C:\Users\Admin\Documents\Claude\research\thrasher\2026-10-23-tech-stack.md`. Short version: Slint (egui fallback, prototype first), whisper.cpp with NbAiLab's own GGML files (ct2rs as plan B), the `wasapi` crate instead of cpal for capture, one WAV per source with a custom RF64-capable writer, flacenc, LAME behind a feature, sonora for noise suppression and auto gain.
 
+Voice cloning research (2026-10-23), for typing new words that are spoken in Max's voice: `C:\Users\Admin\Documents\Claude\research\thrasher\2026-10-23-voice-cloning.md`. Short version: no open model edits Norwegian speech in place, so generate the sentence in Max's voice and splice in only the new word. Candidates with Norwegian: Chatterbox Multilingual (MIT, C++ port exists), VoxCPM2 (Apache-2.0), OmniVoice (most Norwegian data, but weights CC-BY-NC). Not started; needs a listening test first.
+
 - **UI toolkit** choice (see section 4). Decide after phase 1.
 - **Loopback capture** on Windows needs WASAPI-specific handling and may not fit `cpal` cleanly. Prototype early in phase 5 and keep a fallback.
 - **MP3 encoding** licensing and crate choice. FLAC and WAV first.

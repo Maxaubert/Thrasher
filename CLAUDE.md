@@ -2,13 +2,14 @@
 
 A polished, dark, minimalist audio recorder for Windows, written in Rust. Replaces a small Python recorder. Private repo `Maxaubert/Thrasher`.
 
-**If `HANDOFF.md` exists, read it first, then delete it** (`git rm HANDOFF.md` in your next docs commit). It is a one-time briefing from the planning session.
-
 ## Where things are
 
 - `docs/plan.md`: spec, architecture, phases, agreed features. The source of truth for scope.
 - GitHub issues: epic #1, child issues #2 to #12. #13 (markers and tags) was skipped on purpose.
 - `README.md`: the short pitch.
+- `docs/building.md`: how to build. The app and the transcription worker must be built with **two separate cargo commands** (feature unification would put CUDA in the app).
+- `docs/open-questions.md`: questions waiting for Max. Check it at the start of a session.
+- `docs/transcription-benchmark.md`: whisper.cpp vs faster-whisper speed and word timing.
 - Tech stack research (2026-10-23): `C:\Users\Admin\Documents\Claude\research\thrasher\2026-10-23-tech-stack.md`, linked from `docs/plan.md` section 7.
 
 ## Rules for this repo
@@ -25,7 +26,9 @@ A polished, dark, minimalist audio recorder for Windows, written in Rust. Replac
 - Write WAV incrementally on a worker thread. A crash must lose under a second of audio.
 - Clip sidecar JSON next to each clip. Keep the WAV plain and portable.
 - Everything local. The only network use is downloading transcription models on demand.
-- UI toolkit is undecided: Slint, egui or Tauri. Decide after phase 1.
+- UI toolkit: Slint with the software renderer (idle about 32 MB; FemtoVG used 80 MB). The current window is a plain placeholder until the mockups (#3).
+- Transcription: whisper.cpp (whisper-rs) in a separate worker process, `thrasher-transcribe.exe`.
+- Test against a scratch folder with the env var `THRASHER_DIR`, never Max's real `VoiceClips`.
 - Never commit audio clips, models or personal paths.
 
 ## Quality bar

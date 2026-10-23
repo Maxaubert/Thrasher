@@ -11,6 +11,7 @@ use slint::ComponentHandle;
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use thrasher_core::library::Library;
 use thrasher_core::player::Buffer;
 use thrasher_core::sidecar::{Sidecar, TrackKind};
@@ -24,6 +25,12 @@ const PERTH: &str =
     "https://github.com/resemble-ai/Perth/archive/ff1c8ac55a976971245cdd53c18d6131ca00d993.zip";
 /// Written into the environment once it is complete; a change forces a fresh setup.
 const ENGINE: &str = "chatterbox 5de7a54, perth ff1c8ac, torch 2.8.0+cu128, python 3.12";
+
+/// Set by Cancel; every step checks it.
+static CANCEL: AtomicBool = AtomicBool::new(false);
+/// The process running now (setup, voice or transcription worker), so Cancel can stop it.
+static RUNNING: AtomicU32 = AtomicU32::new(0);
+const CANCELLED: &str = "Cancelled";
 
 fn base() -> Option<PathBuf> {
     thrasher_core::models::models_dir().and_then(|m| m.parent().map(|p| p.join("voice")))
@@ -43,7 +50,14 @@ fn hidden(cmd: &mut Command) -> &mut Command {
 /// line it wrote to stderr.
 fn run(cmd: &mut Command, on_progress: &mut dyn FnMut(f32)) -> Result<(), String> {
     hidden(cmd).stdout(Stdio::piped()).stderr(Stdio::piped());
+    if CANCEL.load(Ordering::SeqCst) {
+        return Err(CANCELLED.into());
+    }
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
+    RUNNING.store(child.id(), Ordering::SeqCst);
+    if CANCEL.load(Ordering::SeqCst) {
+        let _ = child.kill();
+    }
     let mut stderr = child.stderr.take().unwrap();
     let err_reader = std::thread::spawn(move || {
         let mut s = String::new();
@@ -60,7 +74,11 @@ fn run(cmd: &mut Command, on_progress: &mut dyn FnMut(f32)) -> Result<(), String
         }
     }
     let status = child.wait().map_err(|e| e.to_string())?;
+    RUNNING.store(0, Ordering::SeqCst);
     let err = err_reader.join().unwrap_or_default();
+    if CANCEL.load(Ordering::SeqCst) {
+        return Err(CANCELLED.into());
+    }
     if status.success() {
         return Ok(());
     }
@@ -167,7 +185,9 @@ fn speak(
     let segments = voice::pick_reference(&sc).map_err(|e| e.to_string())?;
     let python = engine(status)?;
     let count: usize = jobs.iter().map(|j| j.words.len()).sum();
-    status(format!("Speaking {count} new word(s) in your voice…"));
+    status(format!(
+        "Generating {count} new word(s). The voice model takes a moment to load."
+    ));
     let reference = voice::write_reference(library, name, &segments).map_err(|e| e.to_string())?;
     let dir = voice::voice_dir(library, name);
     let base = base().ok_or("no local app data folder")?;
@@ -248,6 +268,9 @@ fn speak(
     }
     let _ = std::fs::remove_file(&jobs_file);
 
+    if CANCEL.load(Ordering::SeqCst) {
+        return Err(CANCELLED.into());
+    }
     // The user may have edited meanwhile: update only the inserts that still exist.
     let mut sc = Sidecar::load(&sc_path).map_err(|e| e.to_string())?;
     let mut failed = None;
@@ -274,31 +297,63 @@ fn speak(
     }
 }
 
+/// Stops speaking new words. The process running now is stopped with everything it
+/// started, and the words that were not spoken yet are removed again.
+pub fn cancel() {
+    CANCEL.store(true, Ordering::SeqCst);
+    let pid = RUNNING.load(Ordering::SeqCst);
+    if pid != 0 {
+        let _ = hidden(Command::new("taskkill").args(["/PID", &pid.to_string(), "/T", "/F"]))
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+}
+
+/// Removes inserts that have no audio yet, after a cancel.
+fn drop_pending(library: &Library, name: &str) {
+    let path = library.sidecar_path(name);
+    if let Ok(mut sc) = Sidecar::load(&path) {
+        sc.inserts.retain(|i| i.file.is_some() || i.error.is_some());
+        let _ = sc.save(&path);
+    }
+}
+
 /// Starts speaking the clip's new words on a background thread.
 pub fn start(ui: &AppWindow, library: &Library, name: String, model_id: String, language: String) {
     if ui.get_speaking() {
         return;
     }
     ui.set_speaking(true);
+    ui.set_speak_progress(0.0);
+    ui.set_speak_stage("Starting…".into());
+    CANCEL.store(false, Ordering::SeqCst);
     let weak = ui.as_weak();
     let dir = library.dir().to_path_buf();
     std::thread::spawn(move || {
         let w = weak.clone();
         let status = move |s: String| {
-            let _ = w.upgrade_in_event_loop(move |ui| ui.set_status(s.into()));
+            let _ = w.upgrade_in_event_loop(move |ui| ui.set_speak_stage(s.into()));
         };
         let w = weak.clone();
         let progress = move |p: f32| {
             let _ = w.upgrade_in_event_loop(move |ui| ui.set_speak_progress(p));
         };
         let started = std::time::Instant::now();
-        let result = Library::open(&dir)
-            .map_err(|e| e.to_string())
-            .and_then(|lib| speak(&lib, &name, &model_id, &language, &status, &progress));
+        let lib = Library::open(&dir).map_err(|e| e.to_string());
+        let result = lib
+            .as_ref()
+            .map_err(Clone::clone)
+            .and_then(|lib| speak(lib, &name, &model_id, &language, &status, &progress));
+        let cancelled = CANCEL.load(Ordering::SeqCst);
+        if cancelled && let Ok(lib) = &lib {
+            drop_pending(lib, &name);
+        }
         let secs = started.elapsed().as_secs_f64();
         let _ = weak.upgrade_in_event_loop(move |ui| {
             ui.set_speaking(false);
             match result {
+                _ if cancelled => ui.set_status("Cancelled. The new words were not added".into()),
                 Ok(0) => {}
                 Ok(n) => ui.set_status(
                     format!("Spoke {n} new word(s) in your voice in {secs:.0} s").into(),

@@ -10,6 +10,7 @@ use slint::{
     ComponentHandle, LogicalSize, Model, ModelRc, SharedString, Timer, TimerMode, VecModel,
 };
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 use thrasher_core::capture::{LoopbackMode, LoopbackSource, MicSource, Source};
@@ -45,6 +46,15 @@ struct App {
     playing_name: Option<String>,
     /// Maps the edited audio being played back to times in the recording.
     timeline: Edl,
+    /// Saved transcript edits per clip, for Ctrl+Z and Ctrl+Y. Lasts while the app runs.
+    history: HashMap<String, History>,
+}
+
+/// Earlier and undone versions of a clip's sidecar.
+#[derive(Default)]
+struct History {
+    undo: Vec<Sidecar>,
+    redo: Vec<Sidecar>,
 }
 
 fn fmt_time(secs: f64) -> String {
@@ -160,6 +170,11 @@ impl App {
     }
 
     fn play(&mut self, ui: &AppWindow, from_secs: f64) -> bool {
+        self.play_edit(ui, from_secs, None)
+    }
+
+    /// Plays the selected clip as edited in `sc`, or as saved when `sc` is `None`.
+    fn play_edit(&mut self, ui: &AppWindow, from_secs: f64, sc: Option<Sidecar>) -> bool {
         let Some(name) = self.selected(ui).map(|c| c.name.clone()) else {
             return false;
         };
@@ -167,7 +182,8 @@ impl App {
             Ok(mut buf) => {
                 // Play the clip as edited: cut words and shortened pauses are skipped,
                 // and inserted words are spoken.
-                self.timeline = Sidecar::load(&self.library.sidecar_path(&name))
+                let sc = sc.map_or_else(|| Sidecar::load(&self.library.sidecar_path(&name)), Ok);
+                self.timeline = sc
                     .map(|sc| {
                         let voices = thrasher_core::voice::load_voices(&self.library, &name, &sc);
                         edit::plan(&sc, &voices, &buf)
@@ -369,6 +385,7 @@ fn main() -> Result<(), slint::PlatformError> {
         recording: None,
         player: Player::new(),
         undo: Vec::new(),
+        history: HashMap::new(),
         transcript_starts: Vec::new(),
         timeline: Edl::default(),
         playing_name: None,
@@ -618,6 +635,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 ui.set_status("Transcribe this clip first; older transcripts are read-only".into());
                 return;
             };
+            let before = sc.clone();
             let changes = match edit::apply_text(&text, &mut sc) {
                 Ok(c) => c,
                 Err(e) => return ui.set_status(e.into()),
@@ -632,6 +650,9 @@ fn main() -> Result<(), slint::PlatformError> {
             if let Err(e) = sc.save(&path) {
                 return ui.set_status(e.to_string().into());
             }
+            let h = a.history.entry(name.clone()).or_default();
+            h.undo.push(before);
+            h.redo.clear();
             // Restart playback so it follows the new edit.
             if a.player.is_playing() {
                 a.player.stop();
@@ -650,6 +671,110 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         }
     });
+
+    ui.on_preview_transcript({
+        let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
+        move |text| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            if a.player.is_playing() {
+                a.player.stop();
+                ui.set_playing(false);
+                return;
+            }
+            let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
+                return;
+            };
+            let Ok(mut sc) = Sidecar::load(&a.library.sidecar_path(&name)) else {
+                return ui.set_status("Transcribe this clip first".into());
+            };
+            let changes = match edit::apply_text(&text, &mut sc) {
+                Ok(c) => c,
+                Err(e) => return ui.set_status(e.into()),
+            };
+            if a.recording.is_none() && a.play_edit(&ui, 0.0, Some(sc)) {
+                ensure();
+                ui.set_status(
+                    if changes.spoken > 0 {
+                        "Playing the edit. New words are spoken after you save"
+                    } else {
+                        "Playing the edit, not saved yet"
+                    }
+                    .into(),
+                );
+            }
+        }
+    });
+
+    // Ctrl+Z and Ctrl+Y: step back and forth through the selected clip's saved edits.
+    let step_edit = Rc::new({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |back: bool| {
+            let ui = weak.unwrap();
+            if ui.get_editing_transcript() {
+                return;
+            }
+            if ui.get_speaking() {
+                return ui.set_status("Wait for the new words, or cancel them first".into());
+            }
+            let mut a = app.borrow_mut();
+            let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
+                return;
+            };
+            let path = a.library.sidecar_path(&name);
+            let h = a.history.entry(name.clone()).or_default();
+            let (from, to) = if back {
+                (&mut h.undo, &mut h.redo)
+            } else {
+                (&mut h.redo, &mut h.undo)
+            };
+            let Some(target) = from.pop() else {
+                let msg = if back {
+                    "Nothing to undo"
+                } else {
+                    "Nothing to redo"
+                };
+                return ui.set_status(msg.into());
+            };
+            let Ok(now) = Sidecar::load(&path) else {
+                from.push(target);
+                return;
+            };
+            if let Err(e) = target.save(&path) {
+                from.push(target);
+                return ui.set_status(e.to_string().into());
+            }
+            let speak = !thrasher_core::voice::jobs(&target).is_empty();
+            to.push(now);
+            if a.player.is_playing() {
+                a.player.stop();
+                ui.set_playing(false);
+            }
+            let msg = if back {
+                "Undid an edit. Ctrl+Y to redo"
+            } else {
+                "Redid an edit"
+            };
+            ui.set_status(msg.into());
+            a.show_transcript(&ui);
+            // Words brought back that were never spoken get spoken now.
+            if speak {
+                voice::start(
+                    &ui,
+                    &a.library,
+                    name,
+                    a.settings.model.clone(),
+                    a.settings.language.clone(),
+                );
+            }
+        }
+    });
+    ui.on_undo_edit({
+        let s = step_edit.clone();
+        move || s(true)
+    });
+    ui.on_redo_edit(move || step_edit(false));
+    ui.on_cancel_speaking(voice::cancel);
 
     const EXPORT_FORMATS: [&str; 3] = ["flac", "wav", "mp3"];
     ui.set_export_format(

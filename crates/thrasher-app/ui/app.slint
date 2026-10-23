@@ -1,7 +1,7 @@
 // Thrasher, first window. Deliberately plain: it will be redesigned after the
 // mockups (issue #3). Two modes: the full window, and a small always-on-top widget.
 
-import { ComboBox, CheckBox, LineEdit, ListView, Button, ScrollView, TextEdit } from "std-widgets.slint";
+import { ComboBox, CheckBox, LineEdit, ListView, Button, ProgressIndicator, ScrollView, TextEdit } from "std-widgets.slint";
 
 // The notification-area icon. Its image is drawn in Rust (red dot while recording).
 export component Tray inherits SystemTrayIcon {
@@ -176,6 +176,7 @@ export component AppWindow inherits Window {
     in property <bool> transcribing;
     in-out property <bool> speaking;
     in property <float> speak-progress;
+    in property <string> speak-stage;
     in property <float> transcribe-progress;
     in property <string> transcript;
     in property <[ModelRow]> models;
@@ -210,6 +211,10 @@ export component AppWindow inherits Window {
     callback transcribe-selected();
     callback selection-changed(int);
     callback apply-transcript(string);
+    callback preview-transcript(string);
+    callback undo-edit();
+    callback redo-edit();
+    callback cancel-speaking();
     callback seek-word(int);
     callback export-format-changed(int);
     callback clean-voice-changed(bool);
@@ -241,7 +246,9 @@ export component AppWindow inherits Window {
             if (event.text == Key.UpArrow) { root.move-selection(-1); return accept; }
             if (event.text == Key.DownArrow) { root.move-selection(1); return accept; }
             if (event.text == Key.F2 && selected >= 0) { root.renaming = true; return accept; }
-            if (event.modifiers.control && event.text == "z") { root.undo-delete(); return accept; }
+            // Undo and redo transcript edits. In the editor, the text box has its own.
+            if (event.modifiers.control && (event.text == "z" || event.text == "Z") && !event.modifiers.shift) { root.undo-edit(); return accept; }
+            if (event.modifiers.control && (event.text == "y" || event.text == "Y" || ((event.text == "z" || event.text == "Z") && event.modifiers.shift))) { root.redo-edit(); return accept; }
             if (event.text == "p" && recording) { root.toggle-pause(); return accept; }
             reject
         }
@@ -498,10 +505,6 @@ export component AppWindow inherits Window {
                 }
             }
 
-            if root.speaking: Text {
-                text: "Speaking new words in your voice… " + round(root.speak-progress * 100) + "%";
-                color: Theme.muted;
-            }
             if root.transcribing: Text {
                 text: "Transcribing… " + round(root.transcribe-progress * 100) + "%";
                 color: Theme.muted;
@@ -574,12 +577,17 @@ export component AppWindow inherits Window {
                         overflow: elide;
                         horizontal-stretch: 1;
                     }
+                    // Plays the edit as typed, without saving it.
                     Button {
-                        text: "Cancel";
-                        clicked => { root.editing-transcript = false; keys.focus(); }
+                        text: root.playing ? "Stop" : "Listen";
+                        clicked => { root.preview-transcript(transcript-edit.text); }
                     }
                     Button {
-                        text: "Apply";
+                        text: "Cancel";
+                        clicked => { root.stop-playback(); root.editing-transcript = false; keys.focus(); }
+                    }
+                    Button {
+                        text: "Save";
                         enabled: transcript-edit.text != root.transcript;
                         clicked => { root.apply-transcript(transcript-edit.text); keys.focus(); }
                     }
@@ -649,6 +657,52 @@ export component AppWindow inherits Window {
                 color: Theme.muted;
                 font-size: 11px;
                 overflow: elide;
+            }
+        }
+
+        // New words take a while to speak: cover the window so that is obvious.
+        if root.speaking: Rectangle {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            background: #000000c0;
+            TouchArea { }
+            Rectangle {
+                width: min(parent.width - 48px, 320px);
+                height: card.preferred-height;
+                background: Theme.surface;
+                border-radius: 12px;
+                card := VerticalLayout {
+                    padding: 20px;
+                    spacing: 12px;
+                    Text {
+                        text: "Speaking new words in your voice";
+                        color: Theme.text;
+                        font-size: 15px;
+                    }
+                    Text {
+                        text: root.speak-stage;
+                        color: Theme.muted;
+                        font-size: 12px;
+                        wrap: word-wrap;
+                    }
+                    ProgressIndicator {
+                        progress: root.speak-progress;
+                    }
+                    HorizontalLayout {
+                        Text {
+                            text: round(root.speak-progress * 100) + "%";
+                            color: Theme.muted;
+                            vertical-alignment: center;
+                            horizontal-stretch: 1;
+                        }
+                        Button {
+                            text: "Cancel";
+                            clicked => { root.cancel-speaking(); }
+                        }
+                    }
+                }
             }
         }
     }

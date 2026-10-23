@@ -1,21 +1,26 @@
-//! Non-destructive edits: removing words and shortening or removing pauses. The
-//! recording is never changed; the sidecar marks cut words and how much of each pause
-//! to keep, and playback and export render the result.
+//! Non-destructive edits: removing words, and shortening, lengthening, removing or
+//! adding pauses. The recording is never changed; the sidecar marks cut words and how
+//! long each pause should be, and playback and export render the result.
 //!
 //! The editor shows the transcript as text, with pauses as `[silence:7s]` tags.
-//! Deleting a word cuts it, changing a tag to `[silence:2s]` shortens that pause, and
-//! deleting a tag removes the pause. Typing a cut word back in its place restores it.
+//! Deleting a word cuts it, changing a tag sets that pause's length, deleting a tag
+//! removes the pause, and typing a new tag between two words adds a pause there.
+//! Typing a cut word back in its place restores it.
+//!
+//! Whisper's word times are only roughly right and words sit back to back, so cut
+//! edges are moved to the quietest point near each word start, found in the audio.
 
 use crate::player::Buffer;
 use crate::sidecar::{Silence, Word};
 
 /// Crossfade length at each cut.
 const FADE_SECS: f64 = 0.015;
+/// How far a cut edge may move from Whisper's word time to find a quiet point.
+const SNAP_SECS: f64 = 0.2;
 
 /// Length a pause will have after editing.
 pub fn kept(s: &Silence) -> f64 {
-    let full = s.end - s.start;
-    s.keep.map_or(full, |k| k.clamp(0.0, full))
+    s.keep.map_or(s.end - s.start, |k| k.max(0.0))
 }
 
 /// Formats a pause tag, for example `[silence:7s]` or `[silence:1.5s]`.
@@ -46,8 +51,19 @@ fn items(words: &[Word], silences: &[Silence]) -> Vec<(f64, Item)> {
                 .map(|(i, s)| (s.start, Item::Silence(i))),
         )
         .collect();
-    v.sort_by(|a, b| a.0.total_cmp(&b.0));
+    // A pause added at a word's start time comes before that word.
+    v.sort_by(|a, b| {
+        a.0.total_cmp(&b.0)
+            .then_with(|| matches!(a.1, Item::Word(_)).cmp(&matches!(b.1, Item::Word(_))))
+    });
     v
+}
+
+fn span(words: &[Word], silences: &[Silence], it: Item) -> (f64, f64) {
+    match it {
+        Item::Word(i) => (words[i].start, words[i].end),
+        Item::Silence(i) => (silences[i].start, silences[i].end),
+    }
 }
 
 fn removed(s: &Silence) -> bool {
@@ -167,7 +183,7 @@ fn similar(a: &str, b: &str) -> bool {
 pub fn apply_text(
     text: &str,
     words: &mut [Word],
-    silences: &mut [Silence],
+    silences: &mut Vec<Silence>,
 ) -> Result<Changes, String> {
     let tokens = tokenize(text)?;
     let order: Vec<Item> = items(words, silences).into_iter().map(|i| i.1).collect();
@@ -234,13 +250,18 @@ pub fn apply_text(
             .parse()
             .unwrap_or(full);
         if removed(s) || (v - shown).abs() > 1e-9 {
-            let new = if v >= full { None } else { Some(v) };
+            let new = if (v - full).abs() < 1e-9 {
+                None
+            } else {
+                Some(v)
+            };
             if new != s.keep {
                 s.keep = new;
                 c.pauses += 1;
             }
         }
     };
+    let mut added: Vec<Silence> = Vec::new();
     // Walk the gaps between matched pairs, and the matched pairs themselves.
     let mut prev = (0usize, 0usize);
     for &(oi, ti) in pairs.iter().chain(std::iter::once(&(n, m))) {
@@ -260,15 +281,11 @@ pub fn apply_text(
                 _ => None,
             })
             .collect();
-        // Pair retyped words with the recorded words they replace.
+        // Pair retyped words with the recorded words they replace. Only a similar
+        // spelling counts, so deleting a word never hands its audio to another word.
         let mut used = vec![false; typed.len()];
-        let equal = typed.len() == gap_words.len();
-        for (k, &wi) in gap_words.iter().enumerate() {
-            let hit = if equal {
-                Some(k)
-            } else {
-                (0..typed.len()).find(|&t| !used[t] && similar(&words[wi].text, typed[t]))
-            };
+        for &wi in &gap_words {
+            let hit = (0..typed.len()).find(|&t| !used[t] && similar(&words[wi].text, typed[t]));
             match hit {
                 Some(t) => {
                     used[t] = true;
@@ -298,6 +315,30 @@ pub fn apply_text(
                 }
             }
         }
+        // Tags left over: add new pauses between the words around the gap.
+        let left = prev
+            .0
+            .checked_sub(1)
+            .map(|p| span(words, silences, order[p]).1);
+        let right = (oi < n).then(|| span(words, silences, order[oi]).0);
+        let at = match (left, right) {
+            (Some(l), Some(r)) => (l + r.max(l)) / 2.0,
+            (Some(l), None) => l,
+            (None, Some(r)) => r,
+            (None, None) => 0.0,
+        };
+        for t in tags {
+            if let Token::Tag(v) = t
+                && *v > 0.0
+            {
+                added.push(Silence {
+                    start: at,
+                    end: at,
+                    keep: Some(*v),
+                });
+                changes.pauses += 1;
+            }
+        }
         if oi < n {
             match (order[oi], &tokens[ti]) {
                 (Item::Word(k), _) => set_cut(words, k, false, &mut changes),
@@ -307,133 +348,382 @@ pub fn apply_text(
         }
         prev = (oi + 1, ti + 1);
     }
+    // Added pauses that were deleted again are dropped.
+    silences.retain(|s| s.end - s.start > 1e-9 || !removed(s));
+    silences.extend(added);
+    silences.sort_by(|a, b| a.start.total_cmp(&b.start));
     Ok(changes)
 }
 
-/// Time ranges of the recording that the edit removes, in order and not overlapping.
-/// A run of cut words and removed pauses goes as one piece, including the short gaps
-/// between them; a shortened pause loses its middle.
-pub fn cuts(words: &[Word], silences: &[Silence]) -> Vec<(f64, f64)> {
-    let mut out: Vec<(f64, f64)> = Vec::new();
-    let mut run: Option<(f64, f64)> = None;
-    for (_, it) in items(words, silences) {
-        let gone = match it {
-            Item::Word(i) => words[i].cut.then(|| (words[i].start, words[i].end)),
-            Item::Silence(i) => removed(&silences[i]).then(|| (silences[i].start, silences[i].end)),
-        };
-        match (gone, &mut run) {
-            (Some((s, e)), Some(r)) => r.1 = r.1.max(e).max(s),
-            (Some(span), None) => run = Some(span),
-            (None, _) => out.extend(run.take()),
-        }
-        if let Item::Silence(i) = it {
-            let s = &silences[i];
-            if !removed(s) && kept(s) < s.end - s.start - 1e-6 {
-                let half = kept(s) / 2.0;
-                out.push((s.start + half, s.end - half));
-            }
-        }
-    }
-    out.extend(run);
-    out.sort_by(|a, b| a.0.total_cmp(&b.0));
-    let mut merged: Vec<(f64, f64)> = Vec::new();
-    for (s, e) in out {
-        match merged.last_mut() {
-            Some(last) if s <= last.1 => last.1 = last.1.max(e),
-            _ if e > s => merged.push((s, e)),
-            _ => {}
-        }
-    }
-    merged
+/// One piece of the edited result: a stretch of the recording, or an added pause.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Piece {
+    Audio(f64, f64),
+    /// Added silence of `len` seconds, placed at `at` in the recording.
+    Gap {
+        at: f64,
+        len: f64,
+    },
 }
 
-/// Maps times between the recording and the edited result.
+/// The edited result as a list of pieces, plus time mapping both ways. Built from the
+/// sidecar's edits and the audio (to place cut edges at quiet points).
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct Timeline {
-    cuts: Vec<(f64, f64)>,
+pub struct Edl {
+    pieces: Vec<Piece>,
 }
 
-impl Timeline {
-    pub fn new(cuts: Vec<(f64, f64)>) -> Self {
-        Self { cuts }
+/// Mono loudness (RMS) of a 10 ms window centred on `t`.
+fn rms_at(buffer: &Buffer, t: f64) -> f64 {
+    let rate = buffer.sample_rate as f64;
+    let ch = buffer.channels.max(1) as usize;
+    let frames = buffer.frames() as usize;
+    let half = (0.005 * rate) as usize;
+    let c = (t * rate) as usize;
+    let (a, b) = (c.saturating_sub(half), (c + half).min(frames));
+    if b <= a {
+        return 0.0;
+    }
+    let sum: f64 = (a..b)
+        .map(|f| {
+            let m: f32 = buffer.samples[f * ch..f * ch + ch].iter().sum::<f32>() / ch as f32;
+            (m as f64) * (m as f64)
+        })
+        .sum();
+    (sum / (b - a) as f64).sqrt()
+}
+
+/// The latest point in `lo..hi` that is about as quiet as the quietest point there
+/// (within 6 dB). Cutting right before a word starts keeps the pause in front of the
+/// cut, so the sentence keeps its rhythm.
+fn quiet_before(buffer: &Buffer, lo: f64, hi: f64, fallback: f64) -> f64 {
+    let hi = hi.min(buffer.duration_secs());
+    if hi - lo < 0.01 {
+        return fallback.clamp(lo.min(hi), hi.max(lo));
+    }
+    let steps = ((hi - lo) / 0.005) as usize;
+    let levels: Vec<(f64, f64)> = (0..=steps)
+        .map(|i| {
+            let t = lo + i as f64 * 0.005;
+            (t, rms_at(buffer, t))
+        })
+        .collect();
+    let min = levels.iter().map(|l| l.1).fold(f64::INFINITY, f64::min);
+    let limit = min * 2.0 + 1e-5;
+    levels
+        .iter()
+        .rev()
+        .find(|l| l.1 <= limit)
+        .map_or(fallback, |l| l.0)
+}
+
+/// A stretch of the quietest audio near `at`, used as room tone for added pauses so
+/// they sound like the room instead of dead silence. Tries 200 ms, then 50 ms for
+/// fast speech with only short gaps; returns nothing (plain silence) when every
+/// stretch has speech in it.
+fn room_tone(buffer: &Buffer, at: f64) -> Vec<f32> {
+    let rate = buffer.sample_rate as f64;
+    let ch = buffer.channels.max(1) as usize;
+    let frames = buffer.frames() as usize;
+    let lo = ((at - 5.0).max(0.0) * rate) as usize;
+    let hi = (((at + 5.0) * rate) as usize).min(frames);
+    let mean_sq = |a: usize, len: usize| -> f64 {
+        buffer.samples[a * ch..(a + len) * ch]
+            .iter()
+            .map(|x| (*x as f64) * (*x as f64))
+            .sum::<f64>()
+            / (len * ch) as f64
+    };
+    let quietest = |len: usize| -> Option<(usize, f64)> {
+        let step = ((0.005 * rate) as usize).max(1);
+        (lo..hi.checked_sub(len)?.max(lo) + 1)
+            .step_by(step)
+            .map(|a| (a, mean_sq(a, len)))
+            .min_by(|x, y| x.1.total_cmp(&y.1))
+    };
+    // The noise floor: the quietest 10 ms.
+    let Some((_, floor)) = quietest(((0.01 * rate) as usize).max(1)) else {
+        return Vec::new();
+    };
+    for secs in [0.2, 0.05] {
+        let len = (secs * rate) as usize;
+        // Within 6 dB of the floor counts as room tone.
+        if let Some((a, e)) = quietest(len)
+            && e <= floor * 4.0 + 1e-10
+        {
+            return buffer.samples[a * ch..(a + len) * ch].to_vec();
+        }
+    }
+    Vec::new()
+}
+
+/// Equal-power gains for step `i` of an `n`-step crossfade: (fading out, fading in).
+fn gains(i: usize, n: usize) -> (f64, f64) {
+    let t = (i as f64 + 0.5) / n as f64 * std::f64::consts::FRAC_PI_2;
+    (t.cos(), t.sin())
+}
+
+/// Crossfades the last `n` frames of `out` into `with` (n frames).
+fn crossfade(out: &mut [f32], with: &[f32], ch: usize) {
+    let n = with.len() / ch;
+    let start = out.len() / ch - n;
+    for i in 0..n {
+        let (g_out, g_in) = gains(i, n);
+        for c in 0..ch {
+            let o = &mut out[(start + i) * ch + c];
+            *o = (*o as f64 * g_out + with[i * ch + c] as f64 * g_in) as f32;
+        }
+    }
+}
+
+/// Plans the edit for a clip: which parts of the recording to play and where to add
+/// pauses.
+pub fn plan(words: &[Word], silences: &[Silence], buffer: &Buffer) -> Edl {
+    let dur = buffer.duration_secs();
+    let its = items(words, silences);
+    let gone = |it: Item| match it {
+        Item::Word(i) => words[i].cut,
+        Item::Silence(i) => removed(&silences[i]),
+    };
+    let sp = |it: Item| span(words, silences, it);
+    let mid = |it: Item| {
+        let (s, e) = sp(it);
+        match it {
+            Item::Word(_) => (s + e) / 2.0,
+            Item::Silence(_) => e,
+        }
+    };
+    let mut cuts: Vec<(f64, f64)> = Vec::new();
+    let mut inserts: Vec<(f64, f64)> = Vec::new();
+    let mut k = 0;
+    while k < its.len() {
+        let it = its[k].1;
+        if !gone(it) {
+            if let Item::Silence(i) = it {
+                let s = &silences[i];
+                let full = s.end - s.start;
+                let keep = kept(s);
+                if keep < full - 1e-6 {
+                    cuts.push((s.start + keep / 2.0, s.end - keep / 2.0));
+                } else if keep > full + 1e-6 {
+                    // A pause between words with no gap goes at the quiet point there.
+                    let at = if full < 0.05 {
+                        let lo = k.checked_sub(1).map_or(0.0, |p| mid(its[p].1));
+                        let hi = its.get(k + 1).map_or(dur, |n| sp(n.1).0 + SNAP_SECS);
+                        let hi = its.get(k + 1).map_or(hi, |n| hi.min(mid(n.1)));
+                        quiet_before(buffer, lo.max(s.start - SNAP_SECS), hi, s.start)
+                    } else {
+                        (s.start + s.end) / 2.0
+                    };
+                    inserts.push((at, keep - full));
+                }
+            }
+            k += 1;
+            continue;
+        }
+        // A run of removed words and pauses goes as one piece. It runs from just
+        // before its first word starts to just before the next kept word starts.
+        let first = k;
+        while k < its.len() && gone(its[k].1) {
+            k += 1;
+        }
+        let (fs, _) = sp(its[first].1);
+        let (ls, le) = sp(its[k - 1].1);
+        let a = if first == 0 {
+            0.0
+        } else {
+            let prev = its[first - 1].1;
+            let lo = (sp(prev).1 - SNAP_SECS).max(mid(prev).min(fs));
+            let hi = (fs + SNAP_SECS).min(match its[first].1 {
+                Item::Word(_) => mid(its[first].1),
+                Item::Silence(_) => sp(its[first].1).1,
+            });
+            quiet_before(buffer, lo.min(fs), hi.max(fs), fs)
+        };
+        let b = match its.get(k) {
+            None => dur,
+            Some(&(ns, next)) => {
+                let lo = (le - SNAP_SECS)
+                    .max(ls.max(mid(its[k - 1].1).min(le)))
+                    .max(a);
+                let hi = (ns + SNAP_SECS).min(mid(next));
+                quiet_before(buffer, lo.min(ns), hi.max(ns), ns)
+            }
+        };
+        if b > a {
+            cuts.push((a, b));
+        }
+    }
+    cuts.sort_by(|x, y| x.0.total_cmp(&y.0));
+    inserts.sort_by(|x, y| x.0.total_cmp(&y.0));
+    let mut pieces = Vec::new();
+    let mut pos = 0.0;
+    let mut ins = inserts.into_iter().peekable();
+    for (a, b) in cuts {
+        while let Some(&(at, len)) = ins.peek().filter(|i| i.0 <= a) {
+            let at = at.max(pos);
+            if at > pos {
+                pieces.push(Piece::Audio(pos, at));
+            }
+            pieces.push(Piece::Gap { at, len });
+            pos = at;
+            ins.next();
+        }
+        if a > pos {
+            pieces.push(Piece::Audio(pos, a));
+        }
+        pos = pos.max(b);
+    }
+    for (at, len) in ins {
+        let at = at.max(pos);
+        if at > pos {
+            pieces.push(Piece::Audio(pos, at));
+        }
+        pieces.push(Piece::Gap { at, len });
+        pos = at;
+    }
+    if dur > pos {
+        pieces.push(Piece::Audio(pos, dur));
+    }
+    Edl { pieces }
+}
+
+impl Edl {
+    /// True when the edit changes nothing.
+    pub fn is_identity(&self) -> bool {
+        match self.pieces.as_slice() {
+            [] => true,
+            [Piece::Audio(a, _)] => *a == 0.0,
+            _ => false,
+        }
     }
 
     /// A time in the recording, in the edited result. Inside a cut it maps to where
     /// the cut was.
     pub fn to_edited(&self, t: f64) -> f64 {
-        let mut removed = 0.0;
-        for &(a, b) in &self.cuts {
-            if t <= a {
-                break;
-            }
-            removed += t.min(b) - a;
+        if self.pieces.is_empty() {
+            return t;
         }
-        t - removed
+        let mut acc = 0.0;
+        for p in &self.pieces {
+            match *p {
+                Piece::Audio(a, b) => {
+                    if t < a {
+                        return acc;
+                    }
+                    if t < b {
+                        return acc + t - a;
+                    }
+                    acc += b - a;
+                }
+                Piece::Gap { at, len } => {
+                    if t < at {
+                        return acc;
+                    }
+                    acc += len;
+                }
+            }
+        }
+        acc
     }
 
     /// A time in the edited result, in the recording.
     pub fn to_original(&self, t: f64) -> f64 {
         let mut t = t;
-        for &(a, b) in &self.cuts {
-            if t < a {
-                break;
+        let mut end = t;
+        for p in &self.pieces {
+            match *p {
+                Piece::Audio(a, b) => {
+                    if t <= b - a {
+                        return a + t;
+                    }
+                    t -= b - a;
+                    end = b;
+                }
+                Piece::Gap { at, len } => {
+                    if t < len {
+                        return at;
+                    }
+                    t -= len;
+                    end = at;
+                }
             }
-            t += b - a;
         }
-        t
+        if self.pieces.is_empty() { t } else { end }
+    }
+
+    /// Renders the edited audio. Each join gets a short equal-power crossfade that
+    /// sits before the join, so every piece keeps exactly its length.
+    pub fn render(&self, buffer: &Buffer) -> Buffer {
+        if self.is_identity() {
+            return buffer.clone();
+        }
+        let rate = buffer.sample_rate as f64;
+        let ch = buffer.channels.max(1) as usize;
+        let frames = buffer.frames() as usize;
+        let fade = (FADE_SECS * rate) as usize;
+        let at_frame = |t: f64| ((t * rate).round() as usize).min(frames);
+        let mut out: Vec<f32> = Vec::with_capacity(buffer.samples.len());
+        let mut last_end: Option<usize> = None;
+        for p in &self.pieces {
+            match *p {
+                Piece::Audio(a, b) => {
+                    let (fa, fb) = (at_frame(a), at_frame(b));
+                    if fb <= fa {
+                        continue;
+                    }
+                    if last_end != Some(fa) {
+                        let n = fade.min(out.len() / ch).min(fa);
+                        crossfade(&mut out, &buffer.samples[(fa - n) * ch..fa * ch], ch);
+                    }
+                    out.extend_from_slice(&buffer.samples[fa * ch..fb * ch]);
+                    last_end = Some(fb);
+                }
+                Piece::Gap { at, len } => {
+                    let want = (len * rate).round() as usize;
+                    let n = fade.min(out.len() / ch);
+                    let fill = tile(&room_tone(buffer, at), want + n, ch, fade);
+                    crossfade(&mut out, &fill[..n * ch], ch);
+                    out.extend_from_slice(&fill[n * ch..]);
+                    last_end = None;
+                }
+            }
+        }
+        Buffer {
+            sample_rate: buffer.sample_rate,
+            channels: buffer.channels,
+            samples: out,
+        }
     }
 }
 
-/// Renders the buffer with the given time ranges removed. Each cut is joined with a
-/// short equal-power crossfade that sits just before both ends of the cut, so the
-/// result is exactly as much shorter as the cuts add up to.
-pub fn render(buffer: &Buffer, cuts: &[(f64, f64)]) -> Buffer {
-    let rate = buffer.sample_rate as f64;
-    let ch = buffer.channels.max(1) as usize;
-    let frames = buffer.frames() as usize;
-    let fade = (FADE_SECS * rate) as usize;
-    let mut out: Vec<f32> = Vec::with_capacity(buffer.samples.len());
-    let mut pos = 0usize;
-    for &(s, e) in cuts {
-        let a = ((s * rate).round() as usize).min(frames);
-        let b = ((e * rate).round() as usize).min(frames);
-        if a < pos || b <= a {
-            continue;
-        }
-        out.extend_from_slice(&buffer.samples[pos * ch..a * ch]);
-        // Crossfade the audio before the cut into the audio leading up to its end.
-        let n = fade.min(a - pos).min(b - a);
-        let start = out.len() / ch - n;
-        for i in 0..n {
-            let t = (i as f64 + 0.5) / n as f64;
-            let (g_out, g_in) = (
-                (t * std::f64::consts::FRAC_PI_2).cos(),
-                (t * std::f64::consts::FRAC_PI_2).sin(),
-            );
-            for c in 0..ch {
-                let o = &mut out[(start + i) * ch + c];
-                let x = buffer.samples[(b - n + i) * ch + c];
-                *o = (*o as f64 * g_out + x as f64 * g_in) as f32;
-            }
-        }
-        pos = b;
+/// Repeats `seg` to `frames` frames, crossfading each repeat into the next.
+fn tile(seg: &[f32], frames: usize, ch: usize, fade: usize) -> Vec<f32> {
+    let seg_frames = seg.len() / ch;
+    if seg_frames <= fade * 2 {
+        return vec![0.0; frames * ch];
     }
-    out.extend_from_slice(&buffer.samples[pos.min(frames) * ch..]);
-    Buffer {
-        sample_rate: buffer.sample_rate,
-        channels: buffer.channels,
-        samples: out,
+    let mut out: Vec<f32> = Vec::with_capacity((frames + seg_frames) * ch);
+    while out.len() / ch < frames {
+        if out.is_empty() {
+            out.extend_from_slice(seg);
+        } else {
+            crossfade(&mut out, &seg[..fade * ch], ch);
+            out.extend_from_slice(&seg[fade * ch..]);
+        }
     }
+    out.truncate(frames * ch);
+    out
 }
 
 /// The words still in the edit, with times moved to the edited result.
-pub fn edited_words(words: &[Word], timeline: &Timeline) -> Vec<Word> {
+pub fn edited_words(words: &[Word], edl: &Edl) -> Vec<Word> {
     words
         .iter()
         .filter(|w| !w.cut)
         .map(|w| Word {
-            start: timeline.to_edited(w.start),
-            end: timeline.to_edited(w.end),
+            start: edl.to_edited(w.start),
+            end: edl.to_edited(w.end),
             ..w.clone()
         })
         .collect()
@@ -491,8 +781,6 @@ mod tests {
         assert!(w[2].cut);
         assert_eq!(s[1].keep, Some(0.0));
         assert_eq!(render_text(&w, &s), "Hei [silence:7s] der nei");
-        // "ja" and the pause after it go as one piece.
-        assert_eq!(cuts(&w, &s), vec![(8.7, 11.5)]);
         // Typing "ja" back restores it.
         let c = apply_text("Hei [silence:7s] der ja nei", &mut w, &mut s).unwrap();
         assert_eq!(c.words_restored, 1);
@@ -517,42 +805,125 @@ mod tests {
         assert_eq!((w[2].text.as_str(), w[2].cut), ("Ja", false));
     }
 
-    #[test]
-    fn timeline_maps_both_ways() {
-        let t = Timeline::new(vec![(2.0, 5.0), (8.0, 9.0)]);
-        assert_eq!(t.to_edited(1.0), 1.0);
-        assert_eq!(t.to_edited(3.0), 2.0);
-        assert_eq!(t.to_edited(6.0), 3.0);
-        assert_eq!(t.to_edited(10.0), 6.0);
-        assert_eq!(t.to_original(1.0), 1.0);
-        assert_eq!(t.to_original(3.0), 6.0);
-        assert_eq!(t.to_original(6.0), 10.0);
+    /// 1 kHz test audio: a loud tone where `spans` say, silence elsewhere.
+    fn audio(spans: &[(f64, f64)], dur: f64) -> Buffer {
+        let rate = 1000;
+        let samples = (0..(dur * rate as f64) as usize)
+            .map(|f| {
+                let t = f as f64 / rate as f64;
+                let on = spans.iter().any(|&(a, b)| t >= a && t < b);
+                if on {
+                    if f % 2 == 0 { 0.5 } else { -0.5 }
+                } else {
+                    0.0
+                }
+            })
+            .collect();
+        Buffer {
+            sample_rate: rate,
+            channels: 1,
+            samples,
+        }
+    }
+
+    fn loud_frames(b: &Buffer) -> usize {
+        b.samples.iter().filter(|x| x.abs() > 0.1).count()
+    }
+
+    /// "da skal jeg se": real word sounds, and Whisper's rougher, back-to-back times.
+    fn speech() -> (Vec<Word>, Buffer) {
+        let words = number_words(vec![
+            ("da".into(), 0.0, 0.55),
+            ("skal".into(), 0.55, 1.05),
+            ("jeg".into(), 1.05, 1.48),
+            ("se".into(), 1.48, 2.0),
+        ]);
+        let buf = audio(&[(0.0, 0.5), (0.6, 1.0), (1.1, 1.4), (1.5, 1.9)], 2.0);
+        (words, buf)
     }
 
     #[test]
-    fn render_removes_exactly_the_cuts() {
-        let rate = 1000;
-        // 1 s of 0.5, 4 s of silence, 1 s of -0.5.
-        let mut samples = vec![0.5f32; rate];
-        samples.extend(vec![0.0; 4 * rate]);
-        samples.extend(vec![-0.5; rate]);
-        let buf = Buffer {
-            sample_rate: rate as u32,
-            channels: 1,
-            samples,
+    fn cut_word_snaps_to_quiet_points() {
+        let (mut w, buf) = speech();
+        let mut s = Vec::new();
+        apply_text("da skal se", &mut w, &mut s).unwrap();
+        let edl = plan(&w, &s, &buf);
+        let out = edl.render(&buf);
+        // All of "jeg" is gone, and nothing of "skal" or "se" is lost.
+        assert_eq!(loud_frames(&out), 500 + 400 + 400);
+        // The pause after "skal" stays, so the words do not run together.
+        let gap = edl.to_edited(1.5) - edl.to_edited(1.0);
+        assert!(gap > 0.08 && gap < 0.12, "gap {gap}");
+    }
+
+    #[test]
+    fn punctuation_alone_is_not_a_respelling() {
+        let mut w = number_words(vec![
+            ("litt".into(), 0.0, 0.3),
+            ("om".into(), 0.3, 0.6),
+            ("meg.".into(), 0.6, 1.0),
+        ]);
+        // Deleting "meg" but leaving its period cuts the word; the lone "." has no
+        // audio of its own, so it is not mistaken for a respelling of "meg.".
+        let c = apply_text("litt om .", &mut w, &mut Vec::new()).unwrap();
+        assert!(w[2].cut);
+        assert_eq!((c.words_cut, c.words_retyped, c.ignored), (1, 0, 1));
+    }
+
+    #[test]
+    fn add_pause_between_words() {
+        let (mut w, buf) = speech();
+        let mut s = Vec::new();
+        let c = apply_text("da skal [silence:1s] jeg se", &mut w, &mut s).unwrap();
+        assert_eq!(c.pauses, 1);
+        assert_eq!(render_text(&w, &s), "da skal [silence:1s] jeg se");
+        let edl = plan(&w, &s, &buf);
+        let out = edl.render(&buf);
+        assert_eq!(out.samples.len(), 3000);
+        assert_eq!(loud_frames(&out), loud_frames(&buf));
+        // "jeg" now starts a second later.
+        assert!((edl.to_edited(1.1) - 2.1).abs() < 0.01);
+        // Deleting the tag again removes the added pause.
+        apply_text("da skal jeg se", &mut w, &mut s).unwrap();
+        assert!(s.is_empty());
+        // Lengthening an existing pause works too.
+        let mut s = vec![sil(0.5, 0.6)];
+        let mut w2 = speech().0;
+        apply_text("da [silence:2s] skal jeg se", &mut w2, &mut s).unwrap();
+        assert_eq!(s[0].keep, Some(2.0));
+        assert_eq!(plan(&w2, &s, &buf).render(&buf).samples.len(), 3900);
+    }
+
+    #[test]
+    fn edl_maps_both_ways() {
+        let edl = Edl {
+            pieces: vec![
+                Piece::Audio(0.0, 2.0),
+                Piece::Audio(5.0, 8.0),
+                Piece::Gap { at: 8.0, len: 1.0 },
+                Piece::Audio(8.0, 10.0),
+            ],
         };
+        assert_eq!(edl.to_edited(1.0), 1.0);
+        assert_eq!(edl.to_edited(3.0), 2.0);
+        assert_eq!(edl.to_edited(6.0), 3.0);
+        assert_eq!(edl.to_edited(8.0), 6.0);
+        assert_eq!(edl.to_edited(10.0), 8.0);
+        assert_eq!(edl.to_original(1.0), 1.0);
+        assert_eq!(edl.to_original(3.0), 6.0);
+        assert_eq!(edl.to_original(5.5), 8.0);
+        assert_eq!(edl.to_original(7.0), 9.0);
+    }
+
+    #[test]
+    fn shortened_pause_removes_exact_length() {
+        let buf = audio(&[(0.0, 1.0), (5.0, 6.0)], 6.0);
         let mut s = sil(1.0, 5.0);
         s.keep = Some(1.0);
-        let c = cuts(&[], &[s]);
-        assert_eq!(c, vec![(1.5, 4.5)]);
-        let out = render(&buf, &c);
-        assert_eq!(out.samples.len(), 3 * rate);
-        assert_eq!(out.samples[0], 0.5);
-        assert_eq!(*out.samples.last().unwrap(), -0.5);
+        let out = plan(&[], &[s], &buf).render(&buf);
+        assert_eq!(out.samples.len(), 3000);
+        assert_eq!(loud_frames(&out), 2000);
         // Unedited pauses leave the audio untouched.
-        assert_eq!(
-            render(&buf, &cuts(&[], &[sil(1.0, 5.0)])).samples,
-            buf.samples
-        );
+        assert_eq!(plan(&[], &[sil(1.0, 5.0)], &buf).render(&buf), buf);
     }
 }

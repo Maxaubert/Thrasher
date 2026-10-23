@@ -10,7 +10,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 use thrasher_core::capture::{LoopbackMode, LoopbackSource, MicSource, Source};
-use thrasher_core::edit::{self, Timeline};
+use thrasher_core::edit::{self, Edl};
 use thrasher_core::library::{Clip, Deleted, Library};
 use thrasher_core::meter::meter_position;
 use thrasher_core::naming::Template;
@@ -41,7 +41,7 @@ struct App {
     /// The clip the player is playing.
     playing_name: Option<String>,
     /// Maps the edited audio being played back to times in the recording.
-    timeline: Timeline,
+    timeline: Edl,
 }
 
 fn fmt_time(secs: f64) -> String {
@@ -122,13 +122,10 @@ impl App {
         match load_clip(&self.library, &name) {
             Ok(mut buf) => {
                 // Play the clip as edited: cut words and shortened pauses are skipped.
-                let cuts = Sidecar::load(&self.library.sidecar_path(&name))
-                    .map(|sc| edit::cuts(&sc.words, &sc.silences))
+                self.timeline = Sidecar::load(&self.library.sidecar_path(&name))
+                    .map(|sc| edit::plan(&sc.words, &sc.silences, &buf))
                     .unwrap_or_default();
-                if !cuts.is_empty() {
-                    buf = edit::render(&buf, &cuts);
-                }
-                self.timeline = Timeline::new(cuts);
+                buf = self.timeline.render(&buf);
                 self.player.play(buf, self.timeline.to_edited(from_secs));
                 self.playing_name = Some(name);
                 ui.set_playing(true);
@@ -325,7 +322,7 @@ fn main() -> Result<(), slint::PlatformError> {
         player: Player::new(),
         undo: Vec::new(),
         transcript_starts: Vec::new(),
-        timeline: Timeline::default(),
+        timeline: Edl::default(),
         playing_name: None,
     }));
 

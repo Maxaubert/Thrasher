@@ -167,6 +167,66 @@ impl Library {
         Ok(())
     }
 
+    /// The name a saved edit of `name` gets: `name (edit)`, then `name (edit_2)` and
+    /// so on, the first that is free. An edit of an edit counts on from the same clip.
+    pub fn edit_name(&self, name: &str) -> String {
+        let base = name
+            .strip_suffix(')')
+            .and_then(|n| n.rsplit_once(" (edit"))
+            .filter(|(_, n)| {
+                n.is_empty()
+                    || n.strip_prefix('_')
+                        .is_some_and(|d| d.parse::<u32>().is_ok())
+            })
+            .map_or(name, |(base, _)| base);
+        (1..)
+            .map(|k| match k {
+                1 => format!("{base} (edit)"),
+                k => format!("{base} (edit_{k})"),
+            })
+            .find(|n| !self.files_of(n).iter().any(|p| p.exists()))
+            .unwrap()
+    }
+
+    /// Makes a new clip `to` from the audio of `from`, with `sidecar` as its sidecar
+    /// (its file names are set to the new clip). Generated words in `from`'s `.voice`
+    /// folder are copied too, since the sidecar may refer to them.
+    pub fn copy_clip(&self, from: &str, to: &str, sidecar: &Sidecar) -> Result<(), LibraryError> {
+        if !valid_name(to) {
+            return Err(LibraryError::BadName(to.into()));
+        }
+        if !self.exists(from) {
+            return Err(LibraryError::Missing(from.into()));
+        }
+        if !self.files_of(to).is_empty() {
+            return Err(LibraryError::Exists(to.into()));
+        }
+        for kind in [TrackKind::Mic, TrackKind::System] {
+            let src = self.track_path(from, kind);
+            if src.exists() {
+                std::fs::copy(&src, self.track_path(to, kind))?;
+            }
+        }
+        let voice_from = self.dir.join(format!("{from}.voice"));
+        if voice_from.is_dir() {
+            let voice_to = self.dir.join(format!("{to}.voice"));
+            std::fs::create_dir_all(&voice_to)?;
+            for entry in std::fs::read_dir(&voice_from)? {
+                let entry = entry?;
+                if entry.file_type()?.is_file() {
+                    std::fs::copy(entry.path(), voice_to.join(entry.file_name()))?;
+                }
+            }
+        }
+        let mut s = sidecar.clone();
+        s.file = format!("{to}.wav");
+        for t in &mut s.thrasher.tracks {
+            t.file = format!("{to}{}.wav", t.kind.file_suffix());
+        }
+        s.save(&self.sidecar_path(to))?;
+        Ok(())
+    }
+
     /// Moves the clip's files into the hidden trash folder.
     pub fn delete(&self, name: &str) -> Result<Deleted, LibraryError> {
         let files = self.files_of(name);

@@ -393,12 +393,27 @@ fn drop_pending(library: &Library, name: &str) {
     }
 }
 
-/// Starts speaking the clip's new words on a background thread.
-pub fn start(ui: &AppWindow, library: &Library, name: String, model_id: String, language: String) {
+/// Starts speaking the clip's new words on a background thread. With `bake`, the
+/// clip is a saved edit: afterwards its edit is written into its audio (see
+/// `thrasher_core::bake`), also when there were no new words.
+pub fn start(
+    ui: &AppWindow,
+    library: &Library,
+    name: String,
+    model_id: String,
+    language: String,
+    bake: bool,
+) {
     if ui.get_speaking() {
         return;
     }
-    ui.set_speaking(true);
+    let has_words =
+        Sidecar::load(&library.sidecar_path(&name)).is_ok_and(|sc| !voice::jobs(&sc).is_empty());
+    if !has_words && !bake {
+        return;
+    }
+    // The overlay is for new words; baking alone takes a second or two.
+    ui.set_speaking(has_words);
     ui.set_speak_progress(0.0);
     ui.set_speak_stage("Starting…".into());
     CANCEL.store(false, Ordering::SeqCst);
@@ -421,27 +436,50 @@ pub fn start(ui: &AppWindow, library: &Library, name: String, model_id: String, 
         };
         let started = std::time::Instant::now();
         let lib = Library::open(&dir).map_err(|e| e.to_string());
-        let result = lib
-            .as_ref()
-            .map_err(Clone::clone)
-            .and_then(|lib| speak(lib, &name, &model_id, &language, &status, &bar));
+        let result = lib.as_ref().map_err(Clone::clone).and_then(|lib| {
+            if has_words {
+                speak(lib, &name, &model_id, &language, &status, &bar)
+            } else {
+                Ok(0)
+            }
+        });
         bar.finish();
         let cancelled = CANCEL.load(Ordering::SeqCst);
         if cancelled && let Ok(lib) = &lib {
             drop_pending(lib, &name);
         }
+        // A saved edit is baked even when its new words failed or were cancelled; it
+        // then holds the rest of the edit.
+        let baked = (bake)
+            .then(|| {
+                lib.as_ref().map_err(Clone::clone).and_then(|lib| {
+                    thrasher_core::bake::bake(lib, &name).map_err(|e| e.to_string())
+                })
+            })
+            .transpose();
         let secs = started.elapsed().as_secs_f64();
         let _ = weak.upgrade_in_event_loop(move |ui| {
             ui.set_speaking(false);
-            match result {
-                _ if cancelled => ui.set_status("Cancelled. The new words were not added".into()),
-                Ok(0) => {}
-                Ok(n) => ui.set_status(
-                    format!("Spoke {n} new word(s) in your voice in {secs:.0} s").into(),
-                ),
-                Err(e) => ui.set_status(e.into()),
+            let spoken = match result {
+                _ if cancelled => "The new words were cancelled".to_string(),
+                Ok(0) => String::new(),
+                Ok(n) => format!("Spoke {n} new word(s) in your voice in {secs:.0} s"),
+                Err(e) => e,
+            };
+            let msg = match (bake, baked) {
+                (true, Ok(_)) if spoken.is_empty() => format!("Saved as {name}"),
+                (true, Ok(_)) => format!("Saved as {name}. {spoken}"),
+                (true, Err(e)) => format!("Could not save {name}: {e}"),
+                (false, _) => spoken,
+            };
+            if !msg.is_empty() {
+                ui.set_status(msg.into());
             }
-            ui.invoke_selection_changed(ui.get_selected());
+            if bake {
+                ui.invoke_library_changed(name.into());
+            } else {
+                ui.invoke_selection_changed(ui.get_selected());
+            }
         });
     });
 }

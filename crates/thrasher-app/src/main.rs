@@ -10,7 +10,6 @@ use slint::{
     ComponentHandle, LogicalSize, Model, ModelRc, SharedString, Timer, TimerMode, VecModel,
 };
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 use thrasher_core::capture::{LoopbackMode, LoopbackSource, MicSource, Source};
@@ -46,15 +45,6 @@ struct App {
     playing_name: Option<String>,
     /// Maps the edited audio being played back to times in the recording.
     timeline: Edl,
-    /// Saved transcript edits per clip, for Ctrl+Z and Ctrl+Y. Lasts while the app runs.
-    history: HashMap<String, History>,
-}
-
-/// Earlier and undone versions of a clip's sidecar.
-#[derive(Default)]
-struct History {
-    undo: Vec<Sidecar>,
-    redo: Vec<Sidecar>,
 }
 
 fn fmt_time(secs: f64) -> String {
@@ -165,6 +155,7 @@ impl App {
                 name,
                 self.settings.model.clone(),
                 self.settings.language.clone(),
+                false,
             );
         }
     }
@@ -407,7 +398,6 @@ fn main() -> Result<(), slint::PlatformError> {
         recording: None,
         player: Player::new(),
         undo: Vec::new(),
-        history: HashMap::new(),
         transcript_starts: Vec::new(),
         timeline: Edl::default(),
         playing_name: None,
@@ -644,158 +634,72 @@ fn main() -> Result<(), slint::PlatformError> {
         move |_| app.borrow_mut().show_transcript(&weak.unwrap())
     });
 
+    // Save never changes the clip: the edit becomes a new clip, "name (edit)", whose
+    // new words are spoken and whose audio is then rewritten as the edited result.
     ui.on_apply_transcript({
         let (app, weak) = (app.clone(), ui.as_weak());
         move |text| {
             let ui = weak.unwrap();
             let mut a = app.borrow_mut();
-            let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
-                return;
-            };
-            let path = a.library.sidecar_path(&name);
-            let Ok(mut sc) = Sidecar::load(&path) else {
-                ui.set_status("Transcribe this clip first; older transcripts are read-only".into());
-                return;
-            };
-            let before = sc.clone();
-            let changes = match edit::apply_text(&text, &mut sc) {
-                Ok(c) => c,
-                Err(e) => return ui.set_status(e.into()),
-            };
-            // New words need a voice sample from this clip. Without enough speech,
-            // nothing is applied and the editor stays open.
-            if changes.spoken > 0
-                && let Err(e) = thrasher_core::voice::pick_reference(&sc)
-            {
-                return ui.set_status(e.to_string().into());
-            }
-            if let Err(e) = sc.save(&path) {
-                return ui.set_status(e.to_string().into());
-            }
-            let h = a.history.entry(name.clone()).or_default();
-            h.undo.push(before);
-            h.redo.clear();
-            // Restart playback so it follows the new edit.
-            if a.player.is_playing() {
-                a.player.stop();
-            }
-            ui.set_status(changes.summary().into());
-            ui.set_editing_transcript(false);
-            a.show_transcript(&ui);
-            if !thrasher_core::voice::jobs(&sc).is_empty() {
-                voice::start(
-                    &ui,
-                    &a.library,
-                    name,
-                    a.settings.model.clone(),
-                    a.settings.language.clone(),
-                );
-            }
-        }
-    });
-
-    ui.on_preview_transcript({
-        let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
-        move |text| {
-            let ui = weak.unwrap();
-            let mut a = app.borrow_mut();
-            if a.player.is_playing() {
-                a.player.stop();
-                ui.set_playing(false);
-                return;
+            if ui.get_speaking() {
+                return ui.set_status("Wait until the new words are spoken, or cancel them".into());
             }
             let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
                 return;
             };
             let Ok(mut sc) = Sidecar::load(&a.library.sidecar_path(&name)) else {
-                return ui.set_status("Transcribe this clip first".into());
+                ui.set_status("Transcribe this clip first; older transcripts are read-only".into());
+                return;
             };
             let changes = match edit::apply_text(&text, &mut sc) {
                 Ok(c) => c,
                 Err(e) => return ui.set_status(e.into()),
             };
-            if a.play_edit(&ui, 0.0, Some(sc)) {
-                ensure();
-                ui.set_status(
-                    if changes.spoken > 0 {
-                        "Playing the edit. New words are spoken after you save"
-                    } else {
-                        "Playing the edit, not saved yet"
-                    }
-                    .into(),
-                );
+            if changes.is_empty() {
+                return ui.set_status("Nothing changed".into());
             }
+            // New words need a voice sample from this clip. Without enough speech,
+            // nothing is saved and the editor stays open.
+            if changes.spoken > 0
+                && let Err(e) = thrasher_core::voice::pick_reference(&sc)
+            {
+                return ui.set_status(e.to_string().into());
+            }
+            let new = a.library.edit_name(&name);
+            if let Err(e) = a.library.copy_clip(&name, &new, &sc) {
+                return ui.set_status(e.to_string().into());
+            }
+            if a.player.is_playing() {
+                a.player.stop();
+            }
+            ui.set_editing_transcript(false);
+            voice::start(
+                &ui,
+                &a.library,
+                new.clone(),
+                a.settings.model.clone(),
+                a.settings.language.clone(),
+                true,
+            );
+            a.refresh_clips(&ui);
+            a.select_name(&ui, &new);
+            a.show_transcript(&ui);
+            ui.set_status(format!("Saving as {new}: {}", changes.summary()).into());
         }
     });
 
-    // Ctrl+Z and Ctrl+Y: step back and forth through the selected clip's saved edits.
-    let step_edit = Rc::new({
+    // A saved edit is finished: show its baked audio and transcript.
+    ui.on_library_changed({
         let (app, weak) = (app.clone(), ui.as_weak());
-        move |back: bool| {
+        move |name| {
             let ui = weak.unwrap();
-            if ui.get_editing_transcript() {
-                return;
-            }
-            if ui.get_speaking() {
-                return ui.set_status("Wait for the new words, or cancel them first".into());
-            }
             let mut a = app.borrow_mut();
-            let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
-                return;
-            };
-            let path = a.library.sidecar_path(&name);
-            let h = a.history.entry(name.clone()).or_default();
-            let (from, to) = if back {
-                (&mut h.undo, &mut h.redo)
-            } else {
-                (&mut h.redo, &mut h.undo)
-            };
-            let Some(target) = from.pop() else {
-                let msg = if back {
-                    "Nothing to undo"
-                } else {
-                    "Nothing to redo"
-                };
-                return ui.set_status(msg.into());
-            };
-            let Ok(now) = Sidecar::load(&path) else {
-                from.push(target);
-                return;
-            };
-            if let Err(e) = target.save(&path) {
-                from.push(target);
-                return ui.set_status(e.to_string().into());
-            }
-            let speak = !thrasher_core::voice::jobs(&target).is_empty();
-            to.push(now);
-            if a.player.is_playing() {
-                a.player.stop();
-                ui.set_playing(false);
-            }
-            let msg = if back {
-                "Undid an edit. Ctrl+Y to redo"
-            } else {
-                "Redid an edit"
-            };
-            ui.set_status(msg.into());
+            let keep = a.selected(&ui).map(|c| c.name.clone());
+            a.refresh_clips(&ui);
+            a.select_name(&ui, keep.as_deref().unwrap_or(&name));
             a.show_transcript(&ui);
-            // Words brought back that were never spoken get spoken now.
-            if speak {
-                voice::start(
-                    &ui,
-                    &a.library,
-                    name,
-                    a.settings.model.clone(),
-                    a.settings.language.clone(),
-                );
-            }
         }
     });
-    ui.on_undo_edit({
-        let s = step_edit.clone();
-        move || s(true)
-    });
-    ui.on_redo_edit(move || step_edit(false));
     ui.on_cancel_speaking(voice::cancel);
 
     const EXPORT_FORMATS: [&str; 3] = ["flac", "wav", "mp3"];

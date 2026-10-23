@@ -14,6 +14,10 @@ voice, fitted into the sentence. Fully local. The recording itself is never chan
   (MIT) was built first, but in Max's listening test (2026-10-23) it gave a Stavanger
   accent instead of his Bokmål, so it was removed. VoxCPM2 was skipped: biggest, and no
   clear quality edge. Thrasher cannot be sold while it uses OmniVoice.
+- **Save makes a new clip** (Max, 2026-10-23). The editor has only Save (and Cancel).
+  Save never changes the clip: the edit becomes `name (edit)`, then `name (edit_2)` and
+  so on (an edit of an edit counts on from the same clip). Its new words are spoken,
+  then the edit is baked into its audio and transcript (`thrasher_core::bake`).
 - **No training.** Both models clone a voice from a few seconds of reference audio
   ("zero-shot"). Thrasher picks that reference automatically from the same clip, so the
   microphone and the room match.

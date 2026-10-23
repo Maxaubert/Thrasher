@@ -2,12 +2,16 @@
 //! No UI code lives here.
 
 pub mod capture;
+pub mod export;
 pub mod library;
 pub mod meter;
 pub mod naming;
 pub mod player;
 pub mod recorder;
 pub mod sidecar;
+pub mod transcribe;
 #[cfg(windows)]
 pub mod wasapi_io;
 pub mod wav;
+#[cfg(feature = "whisper")]
+pub mod whisper;

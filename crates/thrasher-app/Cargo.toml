@@ -13,9 +13,15 @@ path = "src/main.rs"
 thrasher-core = { path = "../thrasher-core" }
 chrono.workspace = true
 directories.workspace = true
+global-hotkey = "0.9"
 serde.workspace = true
 serde_json.workspace = true
 slint.workspace = true
+
+[features]
+# Local transcription. `whisper-cuda` needs the CUDA toolkit at build time.
+whisper = ["thrasher-core/whisper"]
+whisper-cuda = ["whisper", "thrasher-core/whisper-cuda"]
 
 [build-dependencies]
 slint-build.workspace = true

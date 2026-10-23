@@ -12,6 +12,12 @@ pub struct Settings {
     pub mic_device: Option<String>,
     pub record_system: bool,
     pub pinned: bool,
+    /// Starts and stops recording from any app, for example "Ctrl+Alt+R". Empty turns it off.
+    pub hotkey: String,
+    /// Whisper model in GGML format.
+    pub model_path: PathBuf,
+    /// Transcription language code such as "no"; empty means detect.
+    pub language: String,
 }
 
 impl Default for Settings {
@@ -25,6 +31,14 @@ impl Default for Settings {
             mic_device: None,
             record_system: false,
             pinned: false,
+            hotkey: "Ctrl+Alt+R".into(),
+            model_path: directories::BaseDirs::new()
+                .map(|b| b.data_local_dir().join("Thrasher"))
+                .unwrap_or_default()
+                .join("models")
+                .join("nb-whisper-large")
+                .join("ggml-model.bin"),
+            language: "no".into(),
         }
     }
 }

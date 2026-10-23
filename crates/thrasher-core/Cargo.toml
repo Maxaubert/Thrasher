@@ -7,10 +7,18 @@ publish.workspace = true
 
 [dependencies]
 chrono.workspace = true
+flacenc = "0.5"
 rtrb.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+
+whisper-rs = { version = "0.16", optional = true }
+
+[features]
+# Local transcription with whisper.cpp. Needs CMake; `whisper-cuda` also needs the CUDA toolkit.
+whisper = ["dep:whisper-rs"]
+whisper-cuda = ["whisper", "whisper-rs/cuda"]
 
 [target.'cfg(windows)'.dependencies]
 wasapi.workspace = true

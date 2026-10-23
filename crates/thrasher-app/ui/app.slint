@@ -3,6 +3,38 @@
 
 import { ComboBox, CheckBox, LineEdit, ListView, Button, ScrollView } from "std-widgets.slint";
 
+// The notification-area icon. Its image is drawn in Rust (red dot while recording).
+export component Tray inherits SystemTrayIcon {
+    in property <image> image;
+    in property <bool> recording;
+    callback toggle-record();
+    callback show-window();
+    callback show-widget();
+    callback quit();
+    icon: image;
+    tooltip: recording ? "Thrasher: recording" : "Thrasher";
+    clicked => { show-window(); }
+    Menu {
+        MenuItem {
+            title: recording ? "Stop recording" : "Start recording";
+            activated => { toggle-record(); }
+        }
+        MenuItem {
+            title: "Show window";
+            activated => { show-window(); }
+        }
+        MenuItem {
+            title: "Show widget";
+            activated => { show-widget(); }
+        }
+        MenuSeparator { }
+        MenuItem {
+            title: "Quit";
+            activated => { quit(); }
+        }
+    }
+}
+
 export struct ClipRow {
     name: string,
     duration: string,
@@ -123,6 +155,11 @@ export component AppWindow inherits Window {
     in property <string> status;
     in property <bool> can-undo;
     in property <string> folder;
+    in property <string> hotkey;
+    in property <bool> can-transcribe;
+    in property <bool> transcribing;
+    in property <float> transcribe-progress;
+    in property <string> transcript;
     in-out property <bool> pinned;
     in-out property <bool> compact;
     in-out property <bool> renaming;
@@ -142,7 +179,12 @@ export component AppWindow inherits Window {
     callback pinned-changed(bool);
     callback compact-changed(bool);
     callback open-folder();
+    callback export-selected();
+    callback transcribe-selected();
+    callback selection-changed(int);
     callback quit();
+
+    changed selected => { root.selection-changed(root.selected); }
 
     function move-selection(delta: int) {
         if (clips.length == 0) { return; }
@@ -278,7 +320,7 @@ export component AppWindow inherits Window {
                                 font-weight: 600;
                             }
                             Text {
-                                text: root.recording ? (root.paused ? "Paused" : "Recording") : "Space to record";
+                                text: root.recording ? (root.paused ? "Paused" : "Recording") : (root.hotkey != "" ? "Space, or " + root.hotkey + " anywhere" : "Space to record");
                                 color: root.recording && !root.paused ? Theme.rec : Theme.muted;
                                 font-size: 12px;
                             }
@@ -369,6 +411,24 @@ export component AppWindow inherits Window {
                 }
             }
 
+            if root.transcript != "" || root.transcribing: Rectangle {
+                background: Theme.surface;
+                border-radius: 8px;
+                height: 120px;
+                ScrollView {
+                    VerticalLayout {
+                        padding: 10px;
+                        Text {
+                            text: root.transcribing
+                                ? "Transcribing… " + round(root.transcribe-progress * 100) + "%"
+                                : root.transcript;
+                            color: root.transcribing ? Theme.muted : Theme.text;
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+            }
+
             if root.renaming && root.selected >= 0: HorizontalLayout {
                 spacing: 6px;
                 name-edit := LineEdit {
@@ -398,6 +458,16 @@ export component AppWindow inherits Window {
                     text: "Delete";
                     enabled: root.selected >= 0;
                     clicked => { root.delete-selected(); keys.focus(); }
+                }
+                Button {
+                    text: "Export";
+                    enabled: root.selected >= 0;
+                    clicked => { root.export-selected(); keys.focus(); }
+                }
+                if root.can-transcribe: Button {
+                    text: "Transcribe";
+                    enabled: root.selected >= 0 && !root.transcribing && !root.recording;
+                    clicked => { root.transcribe-selected(); keys.focus(); }
                 }
                 Rectangle { }
                 if root.playing: Text {

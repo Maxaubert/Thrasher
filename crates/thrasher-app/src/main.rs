@@ -2,6 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod settings;
+#[cfg(feature = "whisper")]
+mod transcription;
 
 use settings::Settings;
 use slint::{ComponentHandle, LogicalSize, ModelRc, SharedString, Timer, TimerMode, VecModel};
@@ -14,6 +16,7 @@ use thrasher_core::meter::meter_position;
 use thrasher_core::naming::Template;
 use thrasher_core::player::{Player, load_clip};
 use thrasher_core::recorder::{RecorderOptions, Recording};
+use thrasher_core::sidecar::Sidecar;
 use thrasher_core::sidecar::TrackKind;
 use thrasher_core::wasapi_io::{DeviceInfo, input_devices};
 
@@ -62,6 +65,29 @@ impl App {
             ui.set_selected(self.clips.len() as i32 - 1);
         }
         ui.set_can_undo(!self.undo.is_empty());
+    }
+
+    /// Shows the selected clip's transcript, if it has one.
+    fn show_transcript(&self, ui: &AppWindow) {
+        // Also reads the `transkript` folder Max's older tooling writes to.
+        let text = self
+            .selected(ui)
+            .and_then(|c| {
+                [
+                    self.library.sidecar_path(&c.name),
+                    self.library
+                        .dir()
+                        .join("transkript")
+                        .join(format!("{}.json", c.name)),
+                ]
+                .into_iter()
+                .filter_map(|p| Sidecar::load(&p).ok())
+                // Old transcripts can belong to an earlier clip with the same name.
+                .find(|s| !s.words.is_empty() && (s.duration - c.duration).abs() < 0.5)
+            })
+            .map(|s| thrasher_core::transcribe::render_text(&s.words, &s.silences))
+            .unwrap_or_default();
+        ui.set_transcript(text.into());
     }
 
     fn select_name(&self, ui: &AppWindow, name: &str) {
@@ -158,6 +184,61 @@ impl App {
     }
 }
 
+/// A 32x32 round tray icon: red while recording, light grey otherwise.
+fn tray_image(recording: bool) -> slint::Image {
+    let size = 32u32;
+    let mut buf = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::new(size, size);
+    let (r, g, b) = if recording {
+        (0xef, 0x44, 0x44)
+    } else {
+        (0xe8, 0xe8, 0xe8)
+    };
+    let c = (size as f32 - 1.0) / 2.0;
+    for (i, px) in buf.make_mut_slice().iter_mut().enumerate() {
+        let (x, y) = ((i as u32 % size) as f32, (i as u32 / size) as f32);
+        let d = ((x - c).powi(2) + (y - c).powi(2)).sqrt();
+        // Ring with a filled centre, anti-aliased edges.
+        let ring = (1.0 - ((d - 13.0).abs() - 1.5).clamp(0.0, 1.0)) * (d <= 15.5) as u8 as f32;
+        let dot = (8.5 - d).clamp(0.0, 1.0);
+        let a = ring.max(dot);
+        *px = slint::Rgba8Pixel {
+            r,
+            g,
+            b,
+            a: (a * 255.0) as u8,
+        };
+    }
+    slint::Image::from_rgba8(buf)
+}
+
+fn register_hotkey(ui: &AppWindow, spec: &str) -> Option<global_hotkey::GlobalHotKeyManager> {
+    use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState, hotkey::HotKey};
+    if spec.trim().is_empty() {
+        return None;
+    }
+    let hotkey: HotKey = match spec.parse() {
+        Ok(h) => h,
+        Err(e) => {
+            ui.set_status(format!("Hotkey '{spec}' not understood: {e}").into());
+            return None;
+        }
+    };
+    let manager = GlobalHotKeyManager::new().ok()?;
+    if let Err(e) = manager.register(hotkey) {
+        ui.set_status(format!("Hotkey {spec} is taken by another app: {e}").into());
+        return None;
+    }
+    let weak = ui.as_weak();
+    let id = hotkey.id();
+    GlobalHotKeyEvent::set_event_handler(Some(move |e: GlobalHotKeyEvent| {
+        if e.id() == id && e.state() == HotKeyState::Pressed {
+            let _ = weak.upgrade_in_event_loop(|ui| ui.invoke_toggle_record());
+        }
+    }));
+    ui.set_hotkey(spec.into());
+    Some(manager)
+}
+
 fn main() -> Result<(), slint::PlatformError> {
     let settings = Settings::load();
     let library = match Library::open(&settings.output_dir) {
@@ -214,6 +295,7 @@ fn main() -> Result<(), slint::PlatformError> {
     }
     app.borrow_mut().refresh_clips(&ui);
     ui.set_selected(app.borrow().clips.len() as i32 - 1);
+    app.borrow().show_transcript(&ui);
 
     // Polls levels and positions only while recording or playing, so an idle
     // window costs nothing.
@@ -235,6 +317,9 @@ fn main() -> Result<(), slint::PlatformError> {
             });
         })
     };
+
+    // Global hotkey. The manager must stay alive for the hotkey to stay registered.
+    let _hotkeys = register_hotkey(&ui, &app.borrow().settings.hotkey);
 
     ui.on_toggle_record({
         let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
@@ -403,6 +488,50 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
+    ui.on_selection_changed({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |_| app.borrow().show_transcript(&weak.unwrap())
+    });
+
+    ui.on_export_selected({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move || {
+            let ui = weak.unwrap();
+            let a = app.borrow();
+            let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
+                return;
+            };
+            let options = thrasher_core::export::ExportOptions::default();
+            match thrasher_core::export::export_clip(&a.library, &name, options) {
+                Ok(p) => ui.set_status(format!("Exported {}", p.display()).into()),
+                Err(e) => ui.set_status(format!("Export failed: {e}").into()),
+            }
+        }
+    });
+
+    #[cfg(feature = "whisper")]
+    {
+        ui.set_can_transcribe(true);
+        let engine = transcription::Engine::default();
+        ui.on_transcribe_selected({
+            let (app, weak) = (app.clone(), ui.as_weak());
+            move || {
+                let ui = weak.unwrap();
+                let a = app.borrow();
+                let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
+                    return;
+                };
+                engine.start(
+                    &ui,
+                    a.library.clone(),
+                    name,
+                    a.settings.model_path.clone(),
+                    a.settings.language.clone(),
+                );
+            }
+        });
+    }
+
     ui.on_open_folder({
         let app = app.clone();
         move || {
@@ -411,14 +540,74 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
+    // Tray icon. With it, closing the window hides it instead of quitting.
+    let tray = Tray::new().ok();
+    if let Some(tray) = &tray {
+        tray.set_image(tray_image(false));
+        tray.on_toggle_record({
+            let weak = ui.as_weak();
+            move || weak.unwrap().invoke_toggle_record()
+        });
+        tray.on_show_window({
+            let weak = ui.as_weak();
+            move || {
+                let ui = weak.unwrap();
+                ui.invoke_compact_changed(false);
+                let _ = ui.show();
+            }
+        });
+        tray.on_show_widget({
+            let weak = ui.as_weak();
+            move || {
+                let ui = weak.unwrap();
+                ui.invoke_compact_changed(true);
+                let _ = ui.show();
+            }
+        });
+        tray.on_quit(|| {
+            let _ = slint::quit_event_loop();
+        });
+        // Keep the tray's recording state in step with the window.
+        let (tray_weak, ui_weak) = (tray.as_weak(), ui.as_weak());
+        let sync = Timer::default();
+        let mut last = None;
+        sync.start(TimerMode::Repeated, Duration::from_millis(250), move || {
+            let (Some(tray), Some(ui)) = (tray_weak.upgrade(), ui_weak.upgrade()) else {
+                return;
+            };
+            let rec = ui.get_recording();
+            if last != Some(rec) {
+                last = Some(rec);
+                tray.set_recording(rec);
+                tray.set_image(tray_image(rec));
+            }
+        });
+        std::mem::forget(sync);
+    }
     ui.on_quit({
         let weak = ui.as_weak();
+        let has_tray = tray.is_some();
         move || {
-            let _ = weak.unwrap().hide();
+            if has_tray {
+                let _ = weak.unwrap().hide();
+            } else {
+                let _ = slint::quit_event_loop();
+            }
+        }
+    });
+    ui.window().on_close_requested({
+        let has_tray = tray.is_some();
+        move || {
+            if !has_tray {
+                let _ = slint::quit_event_loop();
+            }
+            slint::CloseRequestResponse::HideWindow
         }
     });
 
-    ui.run()?;
+    ui.show()?;
+    slint::run_event_loop_until_quit()?;
+    drop(tray);
 
     // Close files properly if the window is closed mid-recording.
     let mut a = app.borrow_mut();

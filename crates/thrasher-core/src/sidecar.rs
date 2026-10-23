@@ -18,6 +18,9 @@ pub struct Sidecar {
     pub language: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub words: Vec<Word>,
+    /// Pauses between words, shown as `[silence:7s]` tags in the transcript.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub silences: Vec<Silence>,
     #[serde(default)]
     pub thrasher: Meta,
 }
@@ -26,6 +29,12 @@ pub struct Sidecar {
 pub struct Word {
     pub id: String,
     pub text: String,
+    pub start: f64,
+    pub end: f64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Silence {
     pub start: f64,
     pub end: f64,
 }

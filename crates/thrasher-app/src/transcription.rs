@@ -24,19 +24,14 @@ impl Engine {
         ui: &AppWindow,
         library: Library,
         name: String,
-        model: PathBuf,
+        model_id: &str,
         language: String,
     ) {
-        if !model.exists() {
-            ui.set_status(
-                format!(
-                    "No transcription model at {}. Model downloads come in a later version.",
-                    model.display()
-                )
-                .into(),
-            );
+        let Some(model) = models::find(model_id).filter(|m| m.is_downloaded()) else {
+            ui.set_status("Download a transcription model first (Models, top right)".into());
+            ui.set_show_models(true);
             return;
-        }
+        };
         ui.set_transcribing(true);
         ui.set_transcribe_progress(0.0);
         let weak = ui.as_weak();
@@ -48,9 +43,10 @@ impl Engine {
                 let _ = weak.upgrade_in_event_loop(move |ui| {
                     ui.set_transcribing(false);
                     match result {
-                        Ok((text, secs)) => {
-                            ui.set_transcript(text.into());
+                        Ok(secs) => {
                             ui.set_status(format!("Transcribed {name} in {secs:.0} s").into());
+                            // Reloads the transcript and the synced word list.
+                            ui.invoke_selection_changed(ui.get_selected());
                         }
                         Err(e) => ui.set_status(format!("Transcription failed: {e}").into()),
                     }
@@ -67,7 +63,7 @@ fn run(
     model: &ModelInfo,
     language: &str,
     weak: &slint::Weak<AppWindow>,
-) -> Result<(String, f64), String> {
+) -> Result<f64, String> {
     let started = std::time::Instant::now();
     let buffer = load_clip(library, name).map_err(|e| e.to_string())?;
     let mono = transcribe::to_mono(&buffer.samples, buffer.channels);
@@ -77,7 +73,7 @@ fn run(
     let mut guard = loaded
         .lock()
         .map_err(|_| "model lock poisoned".to_string())?;
-    let path = model.path();
+    let path = model.path().ok_or("no local app data folder")?;
     if guard.as_ref().is_none_or(|(p, _)| p != &path) {
         *guard = None;
         *guard = Some((
@@ -101,7 +97,6 @@ fn run(
     )?;
 
     let silences = transcribe::silences(&result.words, duration, transcribe::DEFAULT_MIN_SILENCE);
-    let text = transcribe::render_text(&result.words, &silences);
     let path = library.sidecar_path(name);
     let mut sc = Sidecar::load(&path).unwrap_or_else(|_| Sidecar {
         file: format!("{name}.wav"),
@@ -112,7 +107,7 @@ fn run(
     sc.words = result.words;
     sc.silences = silences;
     sc.save(&path).map_err(|e| e.to_string())?;
-    Ok((text, started.elapsed().as_secs_f64()))
+    Ok(started.elapsed().as_secs_f64())
 }
 
 /// Fills the model list in the window.

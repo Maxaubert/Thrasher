@@ -9,6 +9,7 @@ A polished, dark, minimalist audio recorder for Windows, written in Rust. Replac
 - `docs/plan.md`: spec, architecture, phases, agreed features. The source of truth for scope.
 - GitHub issues: epic #1, child issues #2 to #12. #13 (markers and tags) was skipped on purpose.
 - `README.md`: the short pitch.
+- Tech stack research (2026-10-23): `C:\Users\Admin\Documents\Claude\research\thrasher\2026-10-23-tech-stack.md`, linked from `docs/plan.md` section 7.
 
 ## Rules for this repo
 

@@ -84,6 +84,8 @@ Each phase ends with something runnable.
 
 ## 7. Risks and open questions
 
+Tech stack research (2026-10-23), with recommended defaults for each open choice: `C:\Users\Admin\Documents\Claude\research\thrasher\2026-10-23-tech-stack.md`. Short version: Slint (egui fallback, prototype first), whisper.cpp with NbAiLab's own GGML files (ct2rs as plan B), the `wasapi` crate instead of cpal for capture, one WAV per source with a custom RF64-capable writer, flacenc, LAME behind a feature, sonora for noise suppression and auto gain.
+
 - **UI toolkit** choice (see section 4). Decide after phase 1.
 - **Loopback capture** on Windows needs WASAPI-specific handling and may not fit `cpal` cleanly. Prototype early in phase 5 and keep a fallback.
 - **MP3 encoding** licensing and crate choice. FLAC and WAV first.

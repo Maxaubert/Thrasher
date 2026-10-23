@@ -28,6 +28,18 @@ const RUN_GAP_SECS: f64 = 0.6;
 const CONTEXT_BEFORE: usize = 3;
 const CONTEXT_AFTER: usize = 2;
 
+/// Insert ids are made by `apply_text` as `v<number>`. Ids are used in file names, so
+/// anything else (from a hand-edited or foreign sidecar) is ignored.
+pub fn valid_id(id: &str) -> bool {
+    id.strip_prefix('v')
+        .is_some_and(|n| !n.is_empty() && n.len() <= 9 && n.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// The audio file of an insert, inside the clip's `.voice` folder.
+pub fn insert_file(id: &str) -> String {
+    format!("{id}.wav")
+}
+
 /// The clip has too little speech to copy the voice from.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TooShort {
@@ -154,7 +166,9 @@ pub fn jobs(sc: &Sidecar) -> Vec<Job> {
                 ready: false,
                 failed: false
             }
-        )
+        ) && insert_at
+            .get(&(s.start.to_bits(), s.text.as_str()))
+            .is_some_and(|id| valid_id(id))
     };
     let words_only = |range: &[crate::edit::Shown]| -> Vec<String> {
         range
@@ -301,7 +315,12 @@ pub fn load_voices(library: &Library, name: &str, sc: &Sidecar) -> HashMap<Strin
     sc.inserts
         .iter()
         .filter_map(|i| {
-            let (spec, s) = wav::read_f32(&dir.join(i.file.as_ref()?)).ok()?;
+            // Only `<id>.wav` in the clip's own folder; never a path from the sidecar.
+            let file = insert_file(&i.id);
+            if !valid_id(&i.id) || i.file.as_deref() != Some(file.as_str()) {
+                return None;
+            }
+            let (spec, s) = wav::read_f32(&dir.join(file)).ok()?;
             Some((i.id.clone(), to_mono(&s, spec.channels)))
         })
         .collect()
@@ -315,6 +334,23 @@ mod tests {
 
     fn words(spec: &[(&str, f64, f64)]) -> Vec<Word> {
         number_words(spec.iter().map(|&(t, a, b)| (t.into(), a, b)).collect())
+    }
+
+    #[test]
+    fn ids_must_be_plain() {
+        assert!(valid_id("v0") && valid_id("v123"));
+        for bad in [
+            "v",
+            "x1",
+            "v1/..",
+            "../v1",
+            "v1.wav",
+            "v-1",
+            "C:v1",
+            "v1234567890",
+        ] {
+            assert!(!valid_id(bad), "{bad}");
+        }
     }
 
     #[test]

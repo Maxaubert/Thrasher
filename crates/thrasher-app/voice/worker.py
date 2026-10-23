@@ -32,9 +32,12 @@ def main() -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = ChatterboxMultilingualTTS.from_pretrained(device=device, t3_model="v3")
     for i, job in enumerate(jobs):
+        name = job["name"]
+        if os.path.basename(name) != name or name in ("", ".", ".."):
+            raise ValueError(f"bad output name: {name!r}")
         wav = model.generate(job["text"], language_id=language, audio_prompt_path=reference)
         samples = wav.squeeze(0).detach().cpu().numpy()
-        path = os.path.join(out_dir, job["name"] + ".wav")
+        path = os.path.join(out_dir, name + ".wav")
         soundfile.write(path, samples, model.sr, subtype="PCM_16")
         print(f"progress {(i + 1) / len(jobs)}", flush=True)
     print("done", flush=True)

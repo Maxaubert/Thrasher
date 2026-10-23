@@ -227,7 +227,9 @@ fn speak(
                         .map_or(0.0, |i| i.at);
                     let around = voice::speech_around(&sc, &mic, spec.sample_rate, at, 4.0);
                     let fitted = voice::fit(&audio, rate, &around, spec.sample_rate);
-                    let file = format!("{id}.wav");
+                    // Ids were checked by `voice::jobs` (`v<number>`), so this stays in
+                    // the clip's .voice folder.
+                    let file = voice::insert_file(id);
                     let saved = wav::WavWriter::create(&dir.join(&file), spec.sample_rate, 1)
                         .and_then(|mut w| {
                             w.write(&fitted)?;

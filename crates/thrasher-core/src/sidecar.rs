@@ -41,6 +41,10 @@ pub struct Insert {
     /// Why generating it failed, if it did.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// Typed words next to each other are spoken as one phrase, stored in the first
+    /// word's file. The others name that first insert here instead of having a file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub with: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

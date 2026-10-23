@@ -115,7 +115,7 @@ pub fn visible(sc: &Sidecar) -> Vec<Shown> {
                 Item::Insert(i) => {
                     let ins = &sc.inserts[i];
                     let kind = Kind::Spoken {
-                        ready: ins.file.is_some(),
+                        ready: has_audio(sc, ins),
                         failed: ins.error.is_some(),
                     };
                     (ins.text.clone(), kind)
@@ -125,6 +125,65 @@ pub fn visible(sc: &Sidecar) -> Vec<Shown> {
             Some(Shown { start, text, kind })
         })
         .collect()
+}
+
+/// True when an insert's audio exists: its own file, or the phrase it is part of.
+fn has_audio(sc: &Sidecar, ins: &Insert) -> bool {
+    ins.file.is_some()
+        || ins
+            .with
+            .as_ref()
+            .is_some_and(|w| sc.inserts.iter().any(|j| &j.id == w && j.file.is_some()))
+}
+
+/// Runs of inserts with no kept word or pause between them, in time order.
+fn insert_runs(sc: &Sidecar) -> Vec<Vec<usize>> {
+    let mut runs: Vec<Vec<usize>> = Vec::new();
+    let mut open = false;
+    for (_, it) in items(sc) {
+        match it {
+            Item::Insert(i) if open => runs.last_mut().unwrap().push(i),
+            Item::Insert(i) => {
+                runs.push(vec![i]);
+                open = true;
+            }
+            Item::Word(i) if sc.words[i].cut => {}
+            Item::Silence(i) if removed(&sc.silences[i]) => {}
+            _ => open = false,
+        }
+    }
+    runs
+}
+
+/// Typed words next to each other are spoken as one phrase, stored in the first word's
+/// file (the others point to it with `with`), because word by word they sound jumbled.
+/// After an edit, a run that no longer matches how it was spoken (a word added, removed
+/// or moved) is reset, so the whole run is spoken again as one phrase.
+fn regroup(sc: &mut Sidecar, broken: &[String]) {
+    for run in insert_runs(sc) {
+        let lead = &sc.inserts[run[0]];
+        let lost_word = broken.contains(&lead.id);
+        let followers = sc
+            .inserts
+            .iter()
+            .filter(|x| x.with.as_deref() == Some(lead.id.as_str()))
+            .count();
+        let intact = !lost_word
+            && lead.with.is_none()
+            && lead.file.is_some()
+            && followers == run.len() - 1
+            && run[1..]
+                .iter()
+                .all(|&j| sc.inserts[j].with.as_deref() == Some(lead.id.as_str()));
+        if !intact {
+            for &j in &run {
+                let x = &mut sc.inserts[j];
+                x.file = None;
+                x.with = None;
+                x.error = None;
+            }
+        }
+    }
 }
 
 /// The transcript as editable text, such as `Hei [silence:7s] der`.
@@ -404,18 +463,20 @@ pub fn apply_text(text: &str, sc: &mut Sidecar) -> Result<Changes, String> {
         };
         let left = prev.0.checked_sub(1).map(|p| span_of(order[p]).1);
         let right = (oi < n).then(|| span_of(order[oi]).0);
-        let at = match (left, right) {
-            (Some(l), Some(r)) => (l + r.max(l)) / 2.0,
-            (Some(l), None) => l,
-            (None, Some(r)) => r,
-            (None, None) => 0.0,
-        };
         let (mut tag_no, mut word_no) = (0, 0);
         let count = gap_tokens.len();
         for (k, t) in gap_tokens.iter().enumerate() {
-            // A tiny step per token keeps the typed order when sorting by time. It
-            // steps back from `at`, since the next word may start exactly there.
-            let at = at - (count - k) as f64 * 1e-6;
+            // Each token gets its own time strictly between the items around the gap,
+            // so sorting by time keeps the typed order, also next to earlier inserts
+            // that sit only a microsecond apart.
+            let at = match (left, right) {
+                (Some(l), Some(r)) if r > l => l + (r - l) * (k + 1) as f64 / (count + 1) as f64,
+                // No room (the next word starts where the last one ends): step back
+                // from the next item.
+                (_, Some(r)) => r - (count - k) as f64 * 1e-6,
+                (Some(l), None) => l + (k + 1) as f64 * 1e-6,
+                (None, None) => (k + 1) as f64 * 1e-6,
+            };
             match t {
                 Token::Tag(v) => {
                     tag_no += 1;
@@ -443,6 +504,7 @@ pub fn apply_text(text: &str, sc: &mut Sidecar) -> Result<Changes, String> {
                         at,
                         file: None,
                         error: None,
+                        with: None,
                     });
                     next_id += 1;
                     changes.spoken += 1;
@@ -462,6 +524,12 @@ pub fn apply_text(text: &str, sc: &mut Sidecar) -> Result<Changes, String> {
     silences.retain(|s| s.end - s.start > 1e-9 || !removed(s));
     silences.extend(added);
     silences.sort_by(|a, b| a.start.total_cmp(&b.start));
+    // Phrases that lose a word are spoken again.
+    let broken: Vec<String> = dropped
+        .iter()
+        .filter_map(|&k| inserts.get(k))
+        .map(|i| i.with.clone().unwrap_or_else(|| i.id.clone()))
+        .collect();
     let mut k = 0;
     inserts.retain(|_| {
         k += 1;
@@ -469,6 +537,7 @@ pub fn apply_text(text: &str, sc: &mut Sidecar) -> Result<Changes, String> {
     });
     inserts.extend(new_inserts);
     inserts.sort_by(|a, b| a.at.total_cmp(&b.at));
+    regroup(sc, &broken);
     Ok(changes)
 }
 
@@ -997,11 +1066,37 @@ impl Edl {
 /// not cut, and inserted words that have audio. They keep transcript order; a word
 /// whose rough Whisper time falls inside an inserted word starts after it.
 pub fn edited_words(sc: &Sidecar, edl: &Edl) -> Vec<Word> {
-    let spoken: HashMap<String, (f64, f64)> = edl
+    let mut spoken: HashMap<String, (f64, f64)> = edl
         .spoken()
         .into_iter()
         .map(|(id, s, e)| (id, (s, e)))
         .collect();
+    // A phrase is one piece of audio: share its time out over its words by length.
+    for run in insert_runs(sc) {
+        let lead = &sc.inserts[run[0]].id;
+        let Some(&(s, e)) = spoken.get(lead) else {
+            continue;
+        };
+        let members: Vec<&Insert> = run
+            .iter()
+            .map(|&j| &sc.inserts[j])
+            .filter(|x| &x.id == lead || x.with.as_ref() == Some(lead))
+            .collect();
+        let letters = |x: &Insert| {
+            x.text
+                .chars()
+                .filter(|c| c.is_alphanumeric())
+                .count()
+                .max(1)
+        };
+        let total: usize = members.iter().map(|x| letters(x)).sum();
+        let mut t = s;
+        for x in members {
+            let len = (e - s) * letters(x) as f64 / total as f64;
+            spoken.insert(x.id.clone(), (t, t + len));
+            t += len;
+        }
+    }
     let mut out: Vec<Word> = Vec::new();
     for (_, it) in items(sc) {
         let mut w = match it {
@@ -1248,6 +1343,67 @@ mod tests {
         assert_eq!(plan_ws(&w2, &s, &buf).render(&buf).samples.len(), 3900);
     }
 
+    /// The transcript's words, without pauses.
+    fn shown_words(sc: &Sidecar) -> String {
+        visible(sc)
+            .into_iter()
+            .filter(|i| i.kind != Kind::Pause)
+            .map(|i| i.text)
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    #[test]
+    fn words_typed_between_new_words_keep_their_order() {
+        let (w, _) = speech();
+        let mut sc = Sidecar {
+            words: w,
+            ..Default::default()
+        };
+        apply_text("da skal hei alle sammen jeg se", &mut sc).unwrap();
+        assert_eq!(shown_words(&sc), "da skal hei alle sammen jeg se");
+        // New words between the earlier ones, which sit close together.
+        let t = "da skal hei halla alle godt sammen folkens jeg se";
+        apply_text(t, &mut sc).unwrap();
+        assert_eq!(shown_words(&sc), t);
+        let t = "da skal hei halla alle godt sammen x y z folkens jeg se";
+        apply_text(t, &mut sc).unwrap();
+        assert_eq!(shown_words(&sc), t);
+    }
+
+    #[test]
+    fn a_changed_phrase_is_spoken_again_whole() {
+        let (w, _) = speech();
+        let mut sc = Sidecar {
+            words: w,
+            ..Default::default()
+        };
+        apply_text("da skal hei alle sammen jeg se", &mut sc).unwrap();
+        // Spoken as one phrase: the first word holds the audio.
+        let lead = sc.inserts[0].id.clone();
+        for (k, ins) in sc.inserts.iter_mut().enumerate() {
+            if k == 0 {
+                ins.file = Some(format!("{lead}.wav"));
+            } else {
+                ins.with = Some(lead.clone());
+            }
+        }
+        let ready = |sc: &Sidecar| {
+            visible(sc)
+                .iter()
+                .filter(|i| matches!(i.kind, Kind::Spoken { ready: true, .. }))
+                .count()
+        };
+        assert_eq!(ready(&sc), 3);
+        // An unrelated edit keeps it.
+        apply_text("da skal hei alle sammen jeg", &mut sc).unwrap();
+        assert_eq!(ready(&sc), 3);
+        // Removing a word of the phrase means speaking the rest again, as one phrase.
+        apply_text("da skal hei sammen jeg", &mut sc).unwrap();
+        assert_eq!(ready(&sc), 0);
+        assert!(sc.inserts.iter().all(|i| i.file.is_none() && i.with.is_none()));
+    }
+
     #[test]
     fn inserted_word_plays_between_its_neighbours() {
         let (w, buf) = speech();
@@ -1332,6 +1488,7 @@ mod tests {
             at: 0.5,
             file: Some("v1.wav".into()),
             error: None,
+            with: None,
         });
         let voices = HashMap::from([("v1".to_string(), 1.0)]);
         let want = 6.3 + 1.0 - FADE_SECS;

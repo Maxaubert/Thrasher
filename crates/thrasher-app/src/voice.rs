@@ -295,6 +295,12 @@ impl Bar {
     }
 }
 
+/// Where an insert's generated audio went.
+enum Saved {
+    File(String),
+    With(String),
+}
+
 /// Generates audio for every insert of the clip that still needs it, and records the
 /// result (a file or an error) in the sidecar.
 fn speak(
@@ -367,7 +373,9 @@ fn speak(
     let (spec, mic) =
         wav::read_f32(&library.track_path(name, TrackKind::Mic)).map_err(|e| e.to_string())?;
     let mic = to_mono(&mic, spec.channels);
-    let mut results: Vec<(String, Result<String, String>)> = Vec::new();
+    // Per insert: its own file, or (for the later words of a phrase) the phrase's
+    // first insert, whose file holds them.
+    let mut results: Vec<(String, Result<Saved, String>)> = Vec::new();
     for (job, gen_name) in jobs.iter().zip(&gen_names) {
         let outcome = (|| {
             let generated = read_mono(&dir.join(format!("{gen_name}.wav")))?;
@@ -375,30 +383,36 @@ fn speak(
                 Sidecar::load(&dir.join(format!("{gen_name}.json"))).map_err(|e| e.to_string())?;
             voice::extract(job, &generated, &gen_sc.words).map(|w| (generated.sample_rate, w))
         })();
-        match outcome {
-            Ok((rate, words)) => {
-                for (id, audio) in job.ids.iter().zip(words) {
-                    let at = sc
-                        .inserts
-                        .iter()
-                        .find(|i| &i.id == id)
-                        .map_or(0.0, |i| i.at);
-                    let around = voice::speech_around(&sc, &mic, spec.sample_rate, at, 4.0);
-                    let fitted = voice::fit(&audio, rate, &around, spec.sample_rate);
-                    // Ids were checked by `voice::jobs` (`v<number>`), so this stays in
-                    // the clip's .voice folder.
-                    let file = voice::insert_file(id);
-                    let saved = wav::WavWriter::create(&dir.join(&file), spec.sample_rate, 1)
-                        .and_then(|mut w| {
-                            w.write(&fitted)?;
-                            w.finalize()
-                        })
-                        .map(|_| file)
-                        .map_err(|e| e.to_string());
-                    results.push((id.clone(), saved));
-                }
-            }
-            Err(e) => results.extend(job.ids.iter().map(|id| (id.clone(), Err(e.clone())))),
+        let lead = &job.ids[0];
+        let saved = outcome.and_then(|(rate, words)| {
+            // The words follow each other in the generated speech, so together they
+            // are one stretch: keep it whole, as spoken.
+            let audio = words.concat();
+            let at = sc
+                .inserts
+                .iter()
+                .find(|i| &i.id == lead)
+                .map_or(0.0, |i| i.at);
+            let around = voice::speech_around(&sc, &mic, spec.sample_rate, at, 4.0);
+            let fitted = voice::fit(&audio, rate, &around, spec.sample_rate);
+            // Ids were checked by `voice::jobs` (`v<number>`), so this stays in the
+            // clip's .voice folder.
+            let file = voice::insert_file(lead);
+            wav::WavWriter::create(&dir.join(&file), spec.sample_rate, 1)
+                .and_then(|mut w| {
+                    w.write(&fitted)?;
+                    w.finalize()
+                })
+                .map(|_| file)
+                .map_err(|e| e.to_string())
+        });
+        for (k, id) in job.ids.iter().enumerate() {
+            let r = match &saved {
+                Ok(file) if k == 0 => Ok(Saved::File(file.clone())),
+                Ok(_) => Ok(Saved::With(lead.clone())),
+                Err(e) => Err(e.clone()),
+            };
+            results.push((id.clone(), r));
         }
         for ext in ["wav", "json"] {
             let _ = std::fs::remove_file(dir.join(format!("{gen_name}.{ext}")));
@@ -415,8 +429,14 @@ fn speak(
     for (id, r) in results {
         if let Some(ins) = sc.inserts.iter_mut().find(|i| i.id == id) {
             match r {
-                Ok(file) => {
+                Ok(Saved::File(file)) => {
                     ins.file = Some(file);
+                    ins.with = None;
+                    ins.error = None;
+                }
+                Ok(Saved::With(lead)) => {
+                    ins.file = None;
+                    ins.with = Some(lead);
                     ins.error = None;
                 }
                 Err(e) => {

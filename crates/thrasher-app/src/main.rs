@@ -480,7 +480,7 @@ fn main() -> Result<(), slint::PlatformError> {
         move || {
             let ui = weak.unwrap();
             let mut a = app.borrow_mut();
-            if a.recording.is_none() && a.play(&ui, 0.0) {
+            if a.play(&ui, 0.0) {
                 ensure();
             }
         }
@@ -494,7 +494,7 @@ fn main() -> Result<(), slint::PlatformError> {
             let Some(&start) = a.transcript_starts.get(i as usize) else {
                 return;
             };
-            if a.recording.is_none() && a.play(&ui, start) {
+            if a.play(&ui, start) {
                 ui.set_current_word(i);
                 ensure();
             }
@@ -693,7 +693,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 Ok(c) => c,
                 Err(e) => return ui.set_status(e.into()),
             };
-            if a.recording.is_none() && a.play_edit(&ui, 0.0, Some(sc)) {
+            if a.play_edit(&ui, 0.0, Some(sc)) {
                 ensure();
                 ui.set_status(
                     if changes.spoken > 0 {

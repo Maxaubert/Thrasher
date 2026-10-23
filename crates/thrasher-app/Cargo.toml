@@ -9,8 +9,14 @@ publish.workspace = true
 name = "thrasher"
 path = "src/main.rs"
 
+# Separate process for transcription, built only with a whisper feature.
+[[bin]]
+name = "thrasher-transcribe"
+path = "src/bin/thrasher-transcribe.rs"
+required-features = ["whisper"]
+
 [dependencies]
-thrasher-core = { path = "../thrasher-core" }
+thrasher-core = { path = "../thrasher-core", features = ["download"] }
 chrono.workspace = true
 directories.workspace = true
 global-hotkey = "0.9"
@@ -22,7 +28,7 @@ slint.workspace = true
 default = ["mp3"]
 mp3 = ["thrasher-core/mp3"]
 # Local transcription. `whisper-cuda` needs the CUDA toolkit at build time.
-whisper = ["thrasher-core/whisper", "thrasher-core/download"]
+whisper = ["thrasher-core/whisper"]
 whisper-cuda = ["whisper", "thrasher-core/whisper-cuda"]
 
 [build-dependencies]

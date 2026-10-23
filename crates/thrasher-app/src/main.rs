@@ -2,7 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod settings;
-#[cfg(feature = "whisper")]
 mod transcription;
 
 use settings::Settings;
@@ -634,10 +633,8 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    #[cfg(feature = "whisper")]
-    {
+    if transcription::worker_path().is_some() {
         ui.set_can_transcribe(true);
-        let engine = transcription::Engine::default();
         ui.on_transcribe_selected({
             let (app, weak) = (app.clone(), ui.as_weak());
             move || {
@@ -646,9 +643,9 @@ fn main() -> Result<(), slint::PlatformError> {
                 let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
                     return;
                 };
-                engine.start(
+                transcription::start(
                     &ui,
-                    a.library.clone(),
+                    &a.library,
                     name,
                     &a.settings.model,
                     a.settings.language.clone(),

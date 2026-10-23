@@ -14,6 +14,12 @@ use whisper_rs::{
     WhisperContextParameters,
 };
 
+/// whisper.cpp's DTW times come out late. Measured on a 17-minute Norwegian clip
+/// against faster-whisper (which Max's video tooling uses and whose timing he is happy
+/// with): words started 0.2 s later in the median, and moving them 0.15 s earlier cut
+/// the median difference from 0.21 s to 0.08 s. See docs/transcription-benchmark.md.
+const DTW_LEAD_SECS: f64 = 0.15;
+
 pub struct WhisperTranscriber {
     ctx: WhisperContext,
 }
@@ -93,9 +99,10 @@ impl Transcriber for WhisperTranscriber {
                     }
                     let data = tok.token_data();
                     let cs = if data.t_dtw >= 0 { data.t_dtw } else { data.t0 };
+                    let lead = if data.t_dtw >= 0 { DTW_LEAD_SECS } else { 0.0 };
                     tokens.push(Token {
                         bytes: tok.to_bytes().map(<[u8]>::to_vec).unwrap_or_default(),
-                        time: cs as f64 / 100.0,
+                        time: (cs as f64 / 100.0 - lead).max(0.0),
                     });
                 }
                 words.extend(transcribe::words_from_tokens(&tokens, offset, seg_end));

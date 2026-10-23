@@ -1,113 +1,109 @@
-//! Runs Whisper on a background thread and reports back to the window.
+//! Transcription runs in the `thrasher-transcribe` worker process; this module starts
+//! it and reports its progress to the window. It also lists and downloads models.
 
 use crate::AppWindow;
 use slint::ComponentHandle;
-use std::path::PathBuf;
+use std::io::{BufRead, BufReader, Read};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex};
 use thrasher_core::library::Library;
-use thrasher_core::models::{self, CATALOG, ModelInfo};
-use thrasher_core::player::load_clip;
-use thrasher_core::sidecar::Sidecar;
-use thrasher_core::transcribe::{self, Options, Transcriber};
-use thrasher_core::whisper::WhisperTranscriber;
+use thrasher_core::models::{self, CATALOG};
 
-/// Keeps the loaded model between runs; loading a large model takes seconds.
-#[derive(Clone, Default)]
-pub struct Engine {
-    loaded: Arc<Mutex<Option<(PathBuf, WhisperTranscriber)>>>,
+/// The worker sits next to the app, and only exists in builds with transcription.
+pub fn worker_path() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let worker = exe.with_file_name("thrasher-transcribe.exe");
+    worker.exists().then_some(worker)
 }
 
-impl Engine {
-    pub fn start(
-        &self,
-        ui: &AppWindow,
-        library: Library,
-        name: String,
-        model_id: &str,
-        language: String,
-    ) {
-        let Some(model) = models::find(model_id).filter(|m| m.is_downloaded()) else {
-            ui.set_status("Download a transcription model first (Models, top right)".into());
-            ui.set_show_models(true);
-            return;
-        };
-        ui.set_transcribing(true);
-        ui.set_transcribe_progress(0.0);
-        let weak = ui.as_weak();
-        let loaded = self.loaded.clone();
-        std::thread::Builder::new()
-            .name("thrasher-transcribe".into())
-            .spawn(move || {
-                let result = run(&loaded, &library, &name, model, &language, &weak);
-                let _ = weak.upgrade_in_event_loop(move |ui| {
-                    ui.set_transcribing(false);
-                    match result {
-                        Ok(secs) => {
-                            ui.set_status(format!("Transcribed {name} in {secs:.0} s").into());
-                            // Reloads the transcript and the synced word list.
-                            ui.invoke_selection_changed(ui.get_selected());
-                        }
-                        Err(e) => ui.set_status(format!("Transcription failed: {e}").into()),
-                    }
-                });
-            })
-            .expect("spawn transcription thread");
+pub fn start(ui: &AppWindow, library: &Library, name: String, model_id: &str, language: String) {
+    let Some(worker) = worker_path() else {
+        ui.set_status("Transcription is not part of this build".into());
+        return;
+    };
+    if !models::find(model_id).is_some_and(|m| m.is_downloaded()) {
+        ui.set_status("Download a transcription model first (Models, top right)".into());
+        ui.set_show_models(true);
+        return;
     }
+    ui.set_transcribing(true);
+    ui.set_transcribe_progress(0.0);
+    let weak = ui.as_weak();
+    let dir = library.dir().to_path_buf();
+    let model_id = model_id.to_string();
+    std::thread::spawn(move || {
+        let started = std::time::Instant::now();
+        let result = run_worker(&worker, &dir, &name, &model_id, &language, &weak);
+        let secs = started.elapsed().as_secs_f64();
+        let _ = weak.upgrade_in_event_loop(move |ui| {
+            ui.set_transcribing(false);
+            match result {
+                Ok(()) => {
+                    ui.set_status(format!("Transcribed {name} in {secs:.0} s").into());
+                    // Reloads the transcript and the synced word list.
+                    ui.invoke_selection_changed(ui.get_selected());
+                }
+                Err(e) => ui.set_status(format!("Transcription failed: {e}").into()),
+            }
+        });
+    });
 }
 
-fn run(
-    loaded: &Mutex<Option<(PathBuf, WhisperTranscriber)>>,
-    library: &Library,
+fn run_worker(
+    worker: &Path,
+    dir: &Path,
     name: &str,
-    model: &ModelInfo,
+    model_id: &str,
     language: &str,
     weak: &slint::Weak<AppWindow>,
-) -> Result<f64, String> {
-    let started = std::time::Instant::now();
-    let buffer = load_clip(library, name).map_err(|e| e.to_string())?;
-    let mono = transcribe::to_mono(&buffer.samples, buffer.channels);
-    let audio = transcribe::resample(&mono, buffer.sample_rate, transcribe::RATE);
-    let duration = buffer.duration_secs();
-
-    let mut guard = loaded
-        .lock()
-        .map_err(|_| "model lock poisoned".to_string())?;
-    let path = model.path().ok_or("no local app data folder")?;
-    if guard.as_ref().is_none_or(|(p, _)| p != &path) {
-        *guard = None;
-        *guard = Some((
-            path.clone(),
-            WhisperTranscriber::load(&path, model.heads, true)?,
-        ));
+) -> Result<(), String> {
+    let mut cmd = Command::new(worker);
+    cmd.arg(dir)
+        .arg(name)
+        .arg(model_id)
+        .arg(language)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // CREATE_NO_WINDOW: no console window flashes up.
+        cmd.creation_flags(0x0800_0000);
     }
-    let engine = &mut guard.as_mut().unwrap().1;
-    let options = Options {
-        language: (!language.is_empty()).then(|| language.to_string()),
-        ..Default::default()
-    };
-    let w = weak.clone();
-    let result = engine.transcribe(
-        &audio,
-        &options,
-        &mut |p| {
-            let _ = w.upgrade_in_event_loop(move |ui| ui.set_transcribe_progress(p));
-        },
-        &AtomicBool::new(false),
-    )?;
-
-    let silences = transcribe::silences(&result.words, duration, transcribe::DEFAULT_MIN_SILENCE);
-    let path = library.sidecar_path(name);
-    let mut sc = Sidecar::load(&path).unwrap_or_else(|_| Sidecar {
-        file: format!("{name}.wav"),
-        duration,
-        ..Default::default()
+    let mut child = cmd.spawn().map_err(|e| e.to_string())?;
+    let mut stderr = child.stderr.take().unwrap();
+    let err_reader = std::thread::spawn(move || {
+        let mut s = String::new();
+        let _ = stderr.read_to_string(&mut s);
+        s
     });
-    sc.language = result.language;
-    sc.words = result.words;
-    sc.silences = silences;
-    sc.save(&path).map_err(|e| e.to_string())?;
-    Ok(started.elapsed().as_secs_f64())
+    let mut done = false;
+    for line in BufReader::new(child.stdout.take().unwrap()).lines() {
+        let line = line.map_err(|e| e.to_string())?;
+        if let Some(p) = line
+            .strip_prefix("progress ")
+            .and_then(|p| p.parse::<f32>().ok())
+        {
+            let _ = weak.upgrade_in_event_loop(move |ui| ui.set_transcribe_progress(p));
+        } else if line == "done" {
+            done = true;
+        }
+    }
+    let status = child.wait().map_err(|e| e.to_string())?;
+    let err = err_reader.join().unwrap_or_default();
+    if status.success() && done {
+        Ok(())
+    } else {
+        // whisper.cpp logs a lot to stderr; the last line is the useful one.
+        let last = err
+            .lines()
+            .rev()
+            .find(|l| !l.trim().is_empty())
+            .unwrap_or("the worker stopped");
+        Err(last.to_string())
+    }
 }
 
 /// Fills the model list in the window.

@@ -29,11 +29,19 @@ From Git Bash:
 export PATH="/c/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin:$PATH"
 export LIBCLANG_PATH="C:/Users/Admin/AppData/Roaming/Python/Python314/site-packages/clang/native"
 export CMAKE_CUDA_ARCHITECTURES=120   # RTX 5090 (Blackwell); keeps the CUDA build short
-cargo build --release -p thrasher-app --features whisper-cuda
+cargo build --release -p thrasher-app                                          # the app
+cargo build --release -p thrasher-app --features whisper-cuda --bin thrasher-transcribe  # the worker
 ```
 
-The first CUDA build takes several minutes. The resulting `thrasher.exe` links CUDA
-statically, apart from the CUDA runtime DLLs that come with the NVIDIA driver and toolkit.
+Build them with **two commands**, in this order. Cargo merges features across the
+binaries of one build, so building both with `--features whisper-cuda` puts CUDA into
+`thrasher.exe` too (18 MB becomes 71 MB, and idle memory goes from about 32 MB to 200 MB).
+
+Transcription runs in `thrasher-transcribe.exe`, which the app starts for each job and
+finds next to itself. The app shows the Transcribe button only when the worker is there.
+Running it as its own process means the model and the CUDA runtime (about 600 MB of RAM
+and 3 GB of video memory) are released when the job ends, and a whisper.cpp crash cannot
+stop a recording. The first CUDA build takes several minutes.
 
 Models are downloaded from the app (Models, top right) into
 `%LOCALAPPDATA%\Thrasher\models`. They are never committed.

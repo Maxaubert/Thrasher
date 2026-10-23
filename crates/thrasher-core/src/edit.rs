@@ -784,6 +784,50 @@ pub fn plan(sc: &Sidecar, voices: &HashMap<String, Vec<f32>>, buffer: &Buffer) -
     }
 }
 
+/// Length of the clip as edited, from the sidecar alone, for showing in the clip
+/// list. Cut edges are not moved to quiet points here, so it can differ from `plan`
+/// by a fraction of a second. `voices` holds the length in seconds of each inserted
+/// word's audio, by insert id.
+pub fn edited_length(sc: &Sidecar, voices: &HashMap<String, f64>) -> f64 {
+    let its: Vec<(f64, Item)> = items(sc)
+        .into_iter()
+        .filter(|(_, it)| !matches!(it, Item::Insert(_)))
+        .collect();
+    let gone = |it: Item| match it {
+        Item::Word(i) => sc.words[i].cut,
+        Item::Silence(i) => removed(&sc.silences[i]),
+        Item::Insert(_) => false,
+    };
+    let mut len = sc.duration;
+    let mut k = 0;
+    while k < its.len() {
+        let it = its[k].1;
+        if !gone(it) {
+            if let Item::Silence(i) = it {
+                let s = &sc.silences[i];
+                len += kept(s) - (s.end - s.start);
+            }
+            k += 1;
+            continue;
+        }
+        // Like `plan`: a run of removed items goes from its first start to the start
+        // of the next kept item.
+        let a = if k == 0 { 0.0 } else { span(sc, it).0 };
+        while k < its.len() && gone(its[k].1) {
+            k += 1;
+        }
+        let b = its.get(k).map_or(sc.duration, |n| span(sc, n.1).0);
+        len -= (b - a).max(0.0);
+    }
+    let spoken: f64 = sc
+        .inserts
+        .iter()
+        .filter_map(|i| voices.get(&i.id))
+        .map(|s| (s - FADE_SECS).max(0.0))
+        .sum();
+    (len + spoken).max(0.0)
+}
+
 impl Edl {
     /// True when the edit changes nothing.
     pub fn is_identity(&self) -> bool {
@@ -1268,5 +1312,29 @@ mod tests {
         assert_eq!(loud_frames(&out), 2000);
         // Unedited pauses leave the audio untouched.
         assert_eq!(plan_ws(&[], &[sil(1.0, 5.0)], &buf).render(&buf), buf);
+    }
+
+    #[test]
+    fn edited_length_follows_the_edit() {
+        let (mut words, mut silences) = sample();
+        words[1].cut = true; // "der" (8.0) goes until "ja" starts (8.7)
+        silences[0].keep = Some(2.0); // 7 s pause becomes 2 s
+        let mut sc = Sidecar {
+            duration: 12.0,
+            words,
+            silences,
+            ..Default::default()
+        };
+        assert!((edited_length(&sc, &HashMap::new()) - 6.3).abs() < 1e-9);
+        sc.inserts.push(Insert {
+            id: "v1".into(),
+            text: "faktisk".into(),
+            at: 0.5,
+            file: Some("v1.wav".into()),
+            error: None,
+        });
+        let voices = HashMap::from([("v1".to_string(), 1.0)]);
+        let want = 6.3 + 1.0 - FADE_SECS;
+        assert!((edited_length(&sc, &voices) - want).abs() < 1e-9);
     }
 }

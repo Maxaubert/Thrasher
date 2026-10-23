@@ -6,7 +6,9 @@ mod transcription;
 mod voice;
 
 use settings::Settings;
-use slint::{ComponentHandle, LogicalSize, ModelRc, SharedString, Timer, TimerMode, VecModel};
+use slint::{
+    ComponentHandle, LogicalSize, Model, ModelRc, SharedString, Timer, TimerMode, VecModel,
+};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -54,16 +56,37 @@ fn fmt_time(secs: f64) -> String {
     }
 }
 
+/// A clip's length as edited: cut words and pauses, changed pauses and spoken words
+/// count, so the list shows what playback and export give.
+fn edited_secs(library: &Library, c: &Clip, sc: &Sidecar) -> f64 {
+    let edited = sc.words.iter().any(|w| w.cut)
+        || sc.silences.iter().any(|s| s.keep.is_some())
+        || !sc.inserts.is_empty();
+    if !edited || (sc.duration - c.duration).abs() >= 0.5 {
+        return c.duration;
+    }
+    let rate = sc.thrasher.tracks.first().map_or(48_000, |t| t.sample_rate) as f64;
+    let voices = thrasher_core::voice::load_voices(library, &c.name, sc)
+        .into_iter()
+        .map(|(id, v)| (id, v.len() as f64 / rate))
+        .collect();
+    edit::edited_length(sc, &voices)
+}
+
 impl App {
     fn refresh_clips(&mut self, ui: &AppWindow) {
         self.clips = self.library.list().unwrap_or_default();
         let rows: Vec<ClipRow> = self
             .clips
             .iter()
-            .map(|c| ClipRow {
-                name: c.name.clone().into(),
-                duration: fmt_time(c.duration).into(),
-                has_system: c.has_system,
+            .map(|c| {
+                let secs = Sidecar::load(&self.library.sidecar_path(&c.name))
+                    .map_or(c.duration, |sc| edited_secs(&self.library, c, &sc));
+                ClipRow {
+                    name: c.name.clone().into(),
+                    duration: fmt_time(secs).into(),
+                    has_system: c.has_system,
+                }
             })
             .collect();
         ui.set_clips(ModelRc::new(VecModel::from(rows)));
@@ -77,6 +100,7 @@ impl App {
     /// Shows the selected clip's transcript, if it has one: as text for editing and
     /// as a row of words for the synced player.
     fn show_transcript(&mut self, ui: &AppWindow) {
+        self.update_length(ui);
         // Also reads the `transkript` folder Max's older tooling writes to.
         let sidecar = self.selected(ui).and_then(|c| {
             [
@@ -111,6 +135,23 @@ impl App {
             .collect();
         ui.set_words(ModelRc::new(VecModel::from(rows)));
         ui.set_current_word(-1);
+    }
+
+    /// Shows the selected clip's edited length in the list, after an edit.
+    fn update_length(&self, ui: &AppWindow) {
+        let Some(c) = self.selected(ui) else { return };
+        let Ok(sc) = Sidecar::load(&self.library.sidecar_path(&c.name)) else {
+            return;
+        };
+        let i = ui.get_selected() as usize;
+        let clips = ui.get_clips();
+        if let Some(mut row) = clips.row_data(i) {
+            let shown: SharedString = fmt_time(edited_secs(&self.library, c, &sc)).into();
+            if row.duration != shown {
+                row.duration = shown;
+                clips.set_row_data(i, row);
+            }
+        }
     }
 
     /// Index of the transcript item being heard at `secs`.

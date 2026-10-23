@@ -29,3 +29,8 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
 10. **Old transcripts.** `VoiceClips\transkript\clip_001.json` is from 14 October, but
    `clip_001.wav` is the 17-minute recording from 22 October, so they do not match.
    The app only shows an old transcript when its length matches the clip.
+11. **Word timing for cuts (2026-10-23).** Whisper's word times are rough (off by up to
+   about 0.15 s, and words sit back to back), so cut edges now snap to the quiet point
+   before the next word. If cuts still sound off, the proper fix is a forced aligner
+   (a wav2vec2 model for Norwegian, run after Whisper) that finds where each word
+   really starts and ends. It is a larger job and one more model download. Worth it?

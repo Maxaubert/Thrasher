@@ -1,0 +1,420 @@
+// Thrasher, first window. Deliberately plain: it will be redesigned after the
+// mockups (issue #3). Two modes: the full window, and a small always-on-top widget.
+
+import { ComboBox, CheckBox, LineEdit, ListView, Button, ScrollView } from "std-widgets.slint";
+
+export struct ClipRow {
+    name: string,
+    duration: string,
+    has-system: bool,
+}
+
+global Theme {
+    out property <color> bg: #121212;
+    out property <color> surface: #1c1c1c;
+    out property <color> surface-hi: #262626;
+    out property <color> text: #e8e8e8;
+    out property <color> muted: #8a8a8a;
+    out property <color> accent: #3b82f6;
+    out property <color> rec: #ef4444;
+}
+
+component Meter inherits Rectangle {
+    in property <float> level;
+    in property <string> label;
+    height: 18px;
+    HorizontalLayout {
+        spacing: 8px;
+        Text {
+            text: label;
+            color: Theme.muted;
+            width: 52px;
+            font-size: 11px;
+            vertical-alignment: center;
+        }
+        Rectangle {
+            background: Theme.surface-hi;
+            border-radius: 3px;
+            Rectangle {
+                x: 0;
+                width: parent.width * clamp(level, 0, 1);
+                height: parent.height;
+                border-radius: 3px;
+                background: level > 0.95 ? Theme.rec : Theme.accent;
+                animate width { duration: 60ms; }
+            }
+        }
+    }
+}
+
+component RecordButton inherits Rectangle {
+    in property <bool> recording;
+    in property <bool> paused;
+    in property <length> size: 72px;
+    callback clicked;
+    width: size;
+    height: size;
+    border-radius: size / 2;
+    border-width: 2px;
+    border-color: recording ? Theme.rec : #3a3a3a;
+    background: touch.has-hover ? Theme.surface-hi : Theme.surface;
+    Rectangle {
+        width: recording ? size * 0.34 : size * 0.44;
+        height: self.width;
+        border-radius: recording ? 4px : self.width / 2;
+        background: paused ? #a35a5a : Theme.rec;
+        animate width, border-radius { duration: 120ms; }
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+// Icons are drawn as paths so they never depend on which fonts are installed.
+component IconButton inherits Rectangle {
+    // "close", "widget", "expand" or "pin"
+    in property <string> icon;
+    in property <bool> active;
+    callback clicked;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: active ? Theme.accent : (t.has-hover ? Theme.surface-hi : transparent);
+    Path {
+        width: 12px;
+        height: 12px;
+        stroke: Theme.text;
+        stroke-width: 1.5px;
+        viewbox-width: 12;
+        viewbox-height: 12;
+        commands: icon == "close" ? "M 1 1 L 11 11 M 11 1 L 1 11"
+            : icon == "widget" ? "M 1 4 L 11 4 L 11 9 L 1 9 Z"
+            : icon == "expand" ? "M 1 1 L 11 1 L 11 11 L 1 11 Z M 1 4 L 11 4"
+            : "M 4 1 L 8 1 L 8 6 L 10 8 L 2 8 L 4 6 Z M 6 8 L 6 11";
+    }
+    t := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+export component AppWindow inherits Window {
+    title: "Thrasher";
+    background: compact ? transparent : Theme.bg;
+    default-font-size: 13px;
+    preferred-width: 440px;
+    preferred-height: 640px;
+    min-width: compact ? 240px : 360px;
+    min-height: compact ? 64px : 420px;
+    always-on-top: pinned || compact;
+    no-frame: compact;
+
+    in-out property <bool> recording;
+    in-out property <bool> paused;
+    in property <string> elapsed: "0:00";
+    in property <float> mic-level;
+    in property <float> system-level;
+    in property <[string]> mic-devices;
+    in-out property <int> mic-index;
+    in-out property <bool> record-system;
+    in property <[ClipRow]> clips;
+    in-out property <int> selected: -1;
+    in property <bool> playing;
+    in property <string> play-position;
+    in property <string> status;
+    in property <bool> can-undo;
+    in property <string> folder;
+    in-out property <bool> pinned;
+    in-out property <bool> compact;
+    in-out property <bool> renaming;
+    in-out property <length> list-y;
+    in-out property <length> list-height: 300px;
+
+    callback toggle-record();
+    callback toggle-pause();
+    callback play-selected();
+    callback stop-playback();
+    callback delete-selected();
+    callback delete-last();
+    callback undo-delete();
+    callback rename-selected(string);
+    callback mic-changed(int);
+    callback system-changed(bool);
+    callback pinned-changed(bool);
+    callback compact-changed(bool);
+    callback open-folder();
+    callback quit();
+
+    function move-selection(delta: int) {
+        if (clips.length == 0) { return; }
+        selected = clamp(selected < 0 ? clips.length - 1 : selected + delta, 0, clips.length - 1);
+        if (selected * 34px < -list-y) {
+            list-y = -(selected * 34px);
+        } else if ((selected + 1) * 34px > -list-y + list-height) {
+            list-y = -((selected + 1) * 34px - list-height);
+        }
+    }
+
+    keys := FocusScope {
+        key-pressed(event) => {
+            if (renaming) { return reject; }
+            if (event.text == " ") { root.toggle-record(); return accept; }
+            if (event.text == Key.Return) { root.play-selected(); return accept; }
+            if (event.text == Key.Escape) { root.stop-playback(); return accept; }
+            if (event.text == Key.Delete) { root.delete-selected(); return accept; }
+            if (event.text == Key.Backspace) { root.delete-last(); return accept; }
+            if (event.text == Key.UpArrow) { root.move-selection(-1); return accept; }
+            if (event.text == Key.DownArrow) { root.move-selection(1); return accept; }
+            if (event.text == Key.F2 && selected >= 0) { root.renaming = true; return accept; }
+            if (event.modifiers.control && event.text == "z") { root.undo-delete(); return accept; }
+            if (event.text == "p" && recording) { root.toggle-pause(); return accept; }
+            reject
+        }
+
+        // ---------- Widget mode ----------
+        if compact: Rectangle {
+            background: Theme.surface;
+            border-radius: 12px;
+            border-width: 1px;
+            border-color: recording ? Theme.rec : #2e2e2e;
+            WindowMoveArea {
+                HorizontalLayout {
+                    padding: 8px;
+                    spacing: 10px;
+                    alignment: start;
+                    RecordButton {
+                        size: 44px;
+                        recording: root.recording;
+                        paused: root.paused;
+                        clicked => { root.toggle-record(); }
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 4px;
+                        width: 90px;
+                        Text {
+                            text: root.elapsed;
+                            color: recording ? Theme.text : Theme.muted;
+                            font-size: 16px;
+                            font-weight: 600;
+                        }
+                        Rectangle {
+                            height: 4px;
+                            background: Theme.surface-hi;
+                            border-radius: 2px;
+                            Rectangle {
+                                x: 0;
+                                height: parent.height;
+                                width: parent.width * clamp(max(root.mic-level, root.system-level), 0, 1);
+                                background: Theme.accent;
+                                border-radius: 2px;
+                            }
+                        }
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        HorizontalLayout {
+                            spacing: 2px;
+                            IconButton {
+                                icon: "expand";
+                                clicked => { root.compact-changed(false); }
+                            }
+                            IconButton {
+                                icon: "close";
+                                clicked => { root.quit(); }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---------- Full window ----------
+        if !compact: VerticalLayout {
+            padding: 16px;
+            spacing: 12px;
+
+            HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: "Thrasher";
+                    color: Theme.text;
+                    font-size: 18px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                }
+                Rectangle { }
+                IconButton {
+                    icon: "pin";
+                    active: root.pinned;
+                    clicked => { root.pinned = !root.pinned; root.pinned-changed(root.pinned); }
+                }
+                IconButton {
+                    icon: "widget";
+                    clicked => { root.compact-changed(true); }
+                }
+            }
+
+            // Recorder
+            Rectangle {
+                background: Theme.surface;
+                border-radius: 12px;
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 12px;
+                    HorizontalLayout {
+                        spacing: 16px;
+                        RecordButton {
+                            recording: root.recording;
+                            paused: root.paused;
+                            clicked => { root.toggle-record(); }
+                        }
+                        VerticalLayout {
+                            alignment: center;
+                            spacing: 6px;
+                            Text {
+                                text: root.elapsed;
+                                color: root.recording ? Theme.text : Theme.muted;
+                                font-size: 28px;
+                                font-weight: 600;
+                            }
+                            Text {
+                                text: root.recording ? (root.paused ? "Paused" : "Recording") : "Space to record";
+                                color: root.recording && !root.paused ? Theme.rec : Theme.muted;
+                                font-size: 12px;
+                            }
+                        }
+                        Rectangle { }
+                        if root.recording: VerticalLayout {
+                            alignment: center;
+                            Button {
+                                text: root.paused ? "Resume" : "Pause";
+                                clicked => { root.toggle-pause(); }
+                            }
+                        }
+                    }
+                    Meter { label: "Mic"; level: root.mic-level; }
+                    if root.record-system: Meter { label: "System"; level: root.system-level; }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        ComboBox {
+                            model: root.mic-devices;
+                            current-index <=> root.mic-index;
+                            enabled: !root.recording;
+                            selected => { root.mic-changed(self.current-index); }
+                        }
+                        CheckBox {
+                            text: "System audio";
+                            checked <=> root.record-system;
+                            enabled: !root.recording;
+                            toggled => { root.system-changed(self.checked); }
+                        }
+                    }
+                }
+            }
+
+            // Clips
+            HorizontalLayout {
+                spacing: 6px;
+                Text {
+                    text: "Clips";
+                    color: Theme.muted;
+                    vertical-alignment: center;
+                }
+                Rectangle { }
+                if root.can-undo: Button {
+                    text: "Undo delete";
+                    clicked => { root.undo-delete(); }
+                }
+                Button {
+                    text: "Folder";
+                    clicked => { root.open-folder(); }
+                }
+            }
+            ListView {
+                vertical-stretch: 1;
+                content-y <=> root.list-y;
+                init => { root.list-height = self.visible-height; }
+                changed visible-height => { root.list-height = self.visible-height; }
+                for clip[i] in root.clips: Rectangle {
+                    height: 34px;
+                    border-radius: 6px;
+                    background: i == root.selected ? #1e3a5f : (row-touch.has-hover ? Theme.surface : transparent);
+                    row-touch := TouchArea {
+                        clicked => { root.selected = i; keys.focus(); }
+                        double-clicked => { root.selected = i; root.play-selected(); }
+                    }
+                    HorizontalLayout {
+                        padding-left: 10px;
+                        padding-right: 10px;
+                        spacing: 8px;
+                        Text {
+                            text: clip.name;
+                            color: Theme.text;
+                            vertical-alignment: center;
+                            overflow: elide;
+                            horizontal-stretch: 1;
+                        }
+                        if clip.has-system: Text {
+                            text: "+ system";
+                            color: Theme.muted;
+                            font-size: 11px;
+                            vertical-alignment: center;
+                        }
+                        Text {
+                            text: clip.duration;
+                            color: Theme.muted;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+
+            if root.renaming && root.selected >= 0: HorizontalLayout {
+                spacing: 6px;
+                name-edit := LineEdit {
+                    text: root.clips[root.selected].name;
+                    accepted(t) => { root.renaming = false; root.rename-selected(t); keys.focus(); }
+                    init => { self.focus(); self.select-all(); }
+                }
+                Button {
+                    text: "Cancel";
+                    clicked => { root.renaming = false; keys.focus(); }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 6px;
+                Button {
+                    text: root.playing ? "Stop" : "Play";
+                    enabled: root.selected >= 0;
+                    clicked => { if (root.playing) { root.stop-playback(); } else { root.play-selected(); } keys.focus(); }
+                }
+                Button {
+                    text: "Rename";
+                    enabled: root.selected >= 0 && !root.recording;
+                    clicked => { root.renaming = true; }
+                }
+                Button {
+                    text: "Delete";
+                    enabled: root.selected >= 0;
+                    clicked => { root.delete-selected(); keys.focus(); }
+                }
+                Rectangle { }
+                if root.playing: Text {
+                    text: root.play-position;
+                    color: Theme.muted;
+                    vertical-alignment: center;
+                }
+            }
+
+            Text {
+                text: root.status != "" ? root.status : root.folder;
+                color: Theme.muted;
+                font-size: 11px;
+                overflow: elide;
+            }
+        }
+    }
+
+    init => { keys.focus(); }
+}

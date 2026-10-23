@@ -1,0 +1,7 @@
+/target
+*.wav
+*.flac
+*.mp3
+*.bin
+*.gguf
+/models

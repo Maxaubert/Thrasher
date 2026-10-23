@@ -44,8 +44,9 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
    `research/thrasher/2026-10-23-norwegian-voice-accent.md`. Next choice: Chatterbox V2,
    MOSS-TTS with a Norwegian LoRA, or fine-tuning on his own recordings.
    **Listening test (2026-10-23):** OmniVoice best by ear, then Chatterbox with a 20 s
-   sample; the 10 s sample had the wrong dialect. The app now uses 20 s. **Decision:**
-   keep Chatterbox (MIT), not OmniVoice (non-commercial).
+   sample; the 10 s sample had the wrong dialect. The app now uses 20 s. In the app,
+   Chatterbox still had the wrong dialect. **Decision:** an engine setting in Models,
+   OmniVoice by default, Chatterbox (MIT) for a build that may be sold.
 13. **Voice: uv for other people.** The voice engine is installed with `uv`. On your PC
    it is there; for a public release the app should download uv itself, or ship a
    ready Python environment. Decide before the first public release.

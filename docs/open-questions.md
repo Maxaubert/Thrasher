@@ -21,9 +21,9 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
    system audio mixed together, so both sides of a meeting are in one transcript.
    Alternative: mic only, or two transcripts.
 7. **Silence tags** appear for pauses of 1 s or more. Keep 1 s?
-8. **Memory target.** The plan says under 40 MB idle. The window now uses about 31 MB
-   without the tray and 42 MB with it (Slint's software renderer; the GPU renderer
-   used 80 MB). Is 42 MB fine, or should the tray be optional?
+8. **Memory target.** The plan says under 40 MB idle. The window uses about 32 MB at idle
+   (one measurement with the tray showed 42 MB), with Slint's software renderer; the GPU
+   renderer used 80 MB. Fine as is?
 9. **License.** The crates say `UNLICENSED` (private, all rights reserved) as a
    placeholder. Keep private, or pick a license?
 10. **Old transcripts.** `VoiceClips\transkript\clip_001.json` is from 14 October, but

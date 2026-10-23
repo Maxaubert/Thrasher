@@ -665,6 +665,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     &ui,
                     &a.library,
                     name,
+                    voice::Engine::from_setting(&a.settings.voice_engine),
                     a.settings.model.clone(),
                     a.settings.language.clone(),
                 );
@@ -763,6 +764,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     &ui,
                     &a.library,
                     name,
+                    voice::Engine::from_setting(&a.settings.voice_engine),
                     a.settings.model.clone(),
                     a.settings.language.clone(),
                 );
@@ -775,6 +777,22 @@ fn main() -> Result<(), slint::PlatformError> {
     });
     ui.on_redo_edit(move || step_edit(false));
     ui.on_cancel_speaking(voice::cancel);
+
+    ui.set_voice_engine(
+        voice::Engine::ALL
+            .iter()
+            .position(|e| *e == voice::Engine::from_setting(&app.borrow().settings.voice_engine))
+            .unwrap_or(0) as i32,
+    );
+    ui.on_voice_engine_changed({
+        let app = app.clone();
+        move |i| {
+            let mut a = app.borrow_mut();
+            let e = voice::Engine::ALL[i.clamp(0, voice::Engine::ALL.len() as i32 - 1) as usize];
+            a.settings.voice_engine = e.id().into();
+            a.settings.save();
+        }
+    });
 
     const EXPORT_FORMATS: [&str; 3] = ["flac", "wav", "mp3"];
     ui.set_export_format(

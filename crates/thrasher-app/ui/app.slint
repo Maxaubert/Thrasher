@@ -187,6 +187,8 @@ export component AppWindow inherits Window {
     in property <int> current-word: -1;
     in-out property <bool> editing-transcript;
     in-out property <int> export-format;
+    // 0 = OmniVoice, 1 = Chatterbox (order of voice::Engine::ALL).
+    in-out property <int> voice-engine;
     in-out property <bool> clean-voice;
     in-out property <bool> pinned;
     in-out property <bool> compact;
@@ -217,6 +219,7 @@ export component AppWindow inherits Window {
     callback cancel-speaking();
     callback seek-word(int);
     callback export-format-changed(int);
+    callback voice-engine-changed(int);
     callback clean-voice-changed(bool);
     callback download-model(int);
     callback cancel-download();
@@ -444,6 +447,19 @@ export component AppWindow inherits Window {
                             }
                         }
                     }
+                }
+                Text {
+                    text: "Voice for typed-in words. Set up on first use, then it runs on this PC.";
+                    color: Theme.muted;
+                    wrap: word-wrap;
+                }
+                ComboBox {
+                    model: [
+                        "OmniVoice: best Norwegian accent. Non-commercial use only",
+                        "Chatterbox: MIT license, can be used commercially",
+                    ];
+                    current-index <=> root.voice-engine;
+                    selected => { root.voice-engine-changed(self.current-index); }
                 }
                 Rectangle { vertical-stretch: 1; }
             }

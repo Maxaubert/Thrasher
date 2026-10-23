@@ -43,3 +43,14 @@ docs/
 ## License
 
 Not decided yet. The repository is private.
+
+### Voice models
+
+Typed-in words are spoken by a voice model that Thrasher downloads on first use. Pick
+it in Models:
+
+- **OmniVoice** (default) by k2-fsa: code Apache-2.0, model weights
+  [CC-BY-NC 4.0](https://huggingface.co/k2-fsa/OmniVoice). Speech made with it may
+  **not be used commercially**.
+- **Chatterbox Multilingual** by Resemble AI: [MIT](https://github.com/resemble-ai/chatterbox).
+  Can be used commercially. Every generated word carries an inaudible watermark.

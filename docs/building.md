@@ -48,11 +48,14 @@ Models are downloaded from the app (Models, top right) into
 
 ## Speaking new words (voice cloning)
 
-Typing a new word in the transcript editor speaks it in the user's voice with
-Chatterbox Multilingual V3 (Resemble AI, MIT). This needs no build step: the app runs
-`crates/thrasher-app/voice/worker.py` (compiled into the app) in a Python environment
-it creates with `uv` on first use, in `%LOCALAPPDATA%\Thrasher\voice` (about 4 GB with
-PyTorch and the model). Versions are pinned in `crates/thrasher-app/src/voice.rs`.
+Typing a new word in the transcript editor speaks it in the user's voice, with the
+engine picked in Models: OmniVoice (default, best Norwegian accent in Max's listening
+test, weights CC-BY-NC) or Chatterbox Multilingual V3 (MIT). This needs no build step:
+the app runs `crates/thrasher-app/voice/worker.py` (compiled into the app) in a Python
+environment per engine that it creates with `uv` on first use, in
+`%LOCALAPPDATA%\Thrasher\voice\env-omnivoice` or `env` (several GB each with PyTorch;
+models go to `voice\models`). Versions are pinned in `crates/thrasher-app/src/voice.rs`.
+A build that will be sold must ship with Chatterbox only.
 `uv` must be installed (`winget install astral-sh.uv`). The transcription worker must
 be there too: it finds the new word in the generated speech. Plan and design:
 `docs/voice-plan.md`.

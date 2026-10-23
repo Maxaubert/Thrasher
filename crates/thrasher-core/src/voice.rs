@@ -101,6 +101,21 @@ pub fn pick_reference(sc: &Sidecar) -> Result<Vec<(f64, f64)>, TooShort> {
     Ok(picked)
 }
 
+/// What is said in the voice sample: the words inside the picked stretches. Some
+/// voice models need it next to the audio.
+pub fn reference_text(sc: &Sidecar, segments: &[(f64, f64)]) -> String {
+    sc.words
+        .iter()
+        .filter(|w| {
+            segments
+                .iter()
+                .any(|&(s, e)| w.start >= s - 1e-6 && w.end <= e + 1e-6)
+        })
+        .map(|w| w.text.trim())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// Folder that holds a clip's voice sample and generated words: `<clip>.voice`.
 pub fn voice_dir(library: &Library, name: &str) -> PathBuf {
     library.dir().join(format!("{name}.voice"))
@@ -244,18 +259,40 @@ pub fn extract(job: &Job, generated: &Buffer, gen_words: &[Word]) -> Result<Vec<
         let hi = (w.start + 0.06).min(mid(w)).max(lo);
         quietest(generated, lo, hi).unwrap_or(w.start)
     };
+    let mut edges: Vec<f64> = (p..=p + k).map(edge).collect();
+    // Whisper sometimes gives a short word only a few milliseconds ("fin" came out as
+    // 0.04 s), so the next word's start lies inside it. Then move the cut towards the
+    // next word, to a quiet point that leaves this word a plausible length.
+    for j in 0..k {
+        let i = p + j;
+        let want = min_word_secs(&gen_words[i].text);
+        if i + 1 < n && edges[j + 1] - edges[j] < want {
+            let lo = edges[j] + want;
+            // The next word still needs its own plausible length.
+            let next = &gen_words[i + 1];
+            let hi = (next.end - min_word_secs(&next.text)).max(mid(next));
+            if hi > lo {
+                edges[j + 1] = quietest(generated, lo, hi).unwrap_or(lo);
+            }
+        }
+    }
     let mono = to_mono(&generated.samples, generated.channels);
     let rate = generated.sample_rate as f64;
     let at = |t: f64| ((t * rate) as usize).min(mono.len());
     let mut out = Vec::new();
     for j in 0..k {
-        let (a, b) = (at(edge(p + j)), at(edge(p + j + 1)));
+        let (a, b) = (at(edges[j]), at(edges[j + 1]));
         if b <= a {
             return Err(lost());
         }
         out.push(mono[a..b].to_vec());
     }
     Ok(out)
+}
+
+/// The shortest a spoken word can plausibly be: about 60 ms per letter.
+fn min_word_secs(text: &str) -> f64 {
+    0.06 * text.chars().filter(|c| c.is_alphanumeric()).count().max(1) as f64
 }
 
 /// The quietest point in `lo..hi`, in 5 ms steps.
@@ -387,6 +424,16 @@ mod tests {
     }
 
     #[test]
+    fn reference_text_is_the_words_in_the_sample() {
+        let sc = Sidecar {
+            words: words(&[("Hei", 0.0, 1.0), ("der", 1.0, 2.0), ("ute", 5.0, 6.0)]),
+            ..Default::default()
+        };
+        assert_eq!(reference_text(&sc, &[(0.0, 2.0)]), "Hei der");
+        assert_eq!(reference_text(&sc, &[(0.0, 1.0), (5.0, 6.0)]), "Hei ute");
+    }
+
+    #[test]
     fn jobs_carry_context() {
         let mut sc = Sidecar {
             words: words(&[
@@ -455,6 +502,14 @@ mod tests {
         assert_eq!(out.len(), 1);
         let loud = out[0].iter().filter(|x| x.abs() > 0.1).count();
         assert_eq!(loud, 500);
+        // Whisper gives "virkelig" only 0.05 s; the cut still takes the whole word.
+        let short = words(&[
+            ("jeg", 0.0, 0.35),
+            ("virkelig", 0.35, 0.4),
+            ("se", 0.4, 1.3),
+        ]);
+        let out = extract(&job, &generated, &short).unwrap();
+        assert_eq!(out[0].iter().filter(|x| x.abs() > 0.1).count(), 500);
         // A word the model did not say is an error, not a wrong splice.
         let job = Job {
             words: vec!["kanskje".into()],

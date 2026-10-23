@@ -1,10 +1,15 @@
 //! Speaks inserted words in the user's own voice. Runs the Python voice worker
-//! (`voice/worker.py`, Chatterbox Multilingual V3) in its own environment, then the
-//! transcription worker to find the new words in what it generated, and splices them
-//! in through the clip's sidecar. See `docs/voice-plan.md`.
+//! (`voice/worker.py`) in its own environment, then the transcription worker to find
+//! the new words in what it generated, and splices them in through the clip's sidecar.
+//! See `docs/voice-plan.md`.
 //!
-//! The environment (Python 3.12, PyTorch with CUDA 12.8, Chatterbox) is created with
-//! `uv` on first use in `%LOCALAPPDATA%\Thrasher\voice`, so the installer stays small.
+//! Two engines, chosen in the Models panel:
+//! - OmniVoice (default): best Norwegian accent in Max's listening test (2026-10-23).
+//!   Its weights are CC-BY-NC, so the output may not be used commercially.
+//! - Chatterbox Multilingual V3: MIT, so it can be used commercially.
+//!
+//! Each engine gets its own environment (Python 3.12, PyTorch with CUDA 12.8), created
+//! with `uv` on first use in `%LOCALAPPDATA%\Thrasher\voice`, so the installer stays small.
 
 use crate::AppWindow;
 use slint::ComponentHandle;
@@ -12,6 +17,8 @@ use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use thrasher_core::library::Library;
 use thrasher_core::player::Buffer;
 use thrasher_core::sidecar::{Sidecar, TrackKind};
@@ -23,8 +30,85 @@ const WORKER: &str = include_str!("../voice/worker.py");
 const CHATTERBOX: &str = "https://github.com/resemble-ai/chatterbox/archive/5de7a54aa4e5e2baadb0182dde554908b48b85c2.zip";
 const PERTH: &str =
     "https://github.com/resemble-ai/Perth/archive/ff1c8ac55a976971245cdd53c18d6131ca00d993.zip";
-/// Written into the environment once it is complete; a change forces a fresh setup.
-const ENGINE: &str = "chatterbox 5de7a54, perth ff1c8ac, torch 2.8.0+cu128, python 3.12";
+const TORCH: &str = "torch==2.8.0+cu128\ntorchaudio==2.8.0+cu128\n";
+
+/// The voice model that speaks new words.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Engine {
+    OmniVoice,
+    Chatterbox,
+}
+
+impl Engine {
+    /// Order of the choices in the Models panel.
+    pub const ALL: [Engine; 2] = [Engine::OmniVoice, Engine::Chatterbox];
+
+    /// From the `voice_engine` setting; anything unknown means the default.
+    pub fn from_setting(s: &str) -> Self {
+        Self::ALL
+            .into_iter()
+            .find(|e| e.id() == s)
+            .unwrap_or(Engine::OmniVoice)
+    }
+
+    pub fn id(self) -> &'static str {
+        match self {
+            Engine::OmniVoice => "omnivoice",
+            Engine::Chatterbox => "chatterbox",
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Engine::OmniVoice => "OmniVoice",
+            Engine::Chatterbox => "Chatterbox",
+        }
+    }
+
+    fn env_dir(self) -> &'static str {
+        match self {
+            Engine::OmniVoice => "env-omnivoice",
+            // Kept from before there was a choice, so existing setups are reused.
+            Engine::Chatterbox => "env",
+        }
+    }
+
+    /// Written into the environment once it is complete; a change forces a fresh setup.
+    fn marker(self) -> &'static str {
+        match self {
+            Engine::OmniVoice => {
+                "omnivoice 0.2.1, transformers 5.20.2, torch 2.8.0+cu128, python 3.12"
+            }
+            Engine::Chatterbox => {
+                "chatterbox 5de7a54, perth ff1c8ac, torch 2.8.0+cu128, python 3.12"
+            }
+        }
+    }
+
+    /// Version overrides and packages to install.
+    fn packages(self) -> (String, Vec<String>) {
+        match self {
+            Engine::OmniVoice => (
+                TORCH.to_string(),
+                vec![
+                    "omnivoice==0.2.1".into(),
+                    "transformers==5.20.2".into(),
+                    "accelerate==1.15.0".into(),
+                    "soundfile".into(),
+                ],
+            ),
+            Engine::Chatterbox => (
+                format!("{TORCH}resemble-perth @ {PERTH}\n"),
+                vec![
+                    // Perth imports pkg_resources, which newer setuptools removed.
+                    "setuptools<81".into(),
+                    "soundfile".into(),
+                    format!("chatterbox-tts @ {CHATTERBOX}"),
+                ],
+            ),
+        }
+    }
+}
 
 /// Set by Cancel; every step checks it.
 static CANCEL: AtomicBool = AtomicBool::new(false);
@@ -46,9 +130,9 @@ fn hidden(cmd: &mut Command) -> &mut Command {
     cmd
 }
 
-/// Runs a process, passing `progress <x>` lines on. On failure, the error is the last
-/// line it wrote to stderr.
-fn run(cmd: &mut Command, on_progress: &mut dyn FnMut(f32)) -> Result<(), String> {
+/// Runs a process, passing `progress <done> [<next>]` lines on. On failure, the error
+/// is the last line it wrote to stderr.
+fn run(cmd: &mut Command, on_progress: &mut dyn FnMut(f32, f32)) -> Result<(), String> {
     hidden(cmd).stdout(Stdio::piped()).stderr(Stdio::piped());
     if CANCEL.load(Ordering::SeqCst) {
         return Err(CANCELLED.into());
@@ -66,11 +150,13 @@ fn run(cmd: &mut Command, on_progress: &mut dyn FnMut(f32)) -> Result<(), String
     });
     for line in BufReader::new(child.stdout.take().unwrap()).lines() {
         let line = line.map_err(|e| e.to_string())?;
-        if let Some(p) = line
-            .strip_prefix("progress ")
-            .and_then(|p| p.trim().parse::<f32>().ok())
-        {
-            on_progress(p);
+        let Some(rest) = line.strip_prefix("progress ") else {
+            continue;
+        };
+        let mut nums = rest.split_whitespace().map(|n| n.parse::<f32>().ok());
+        if let Some(Some(done)) = nums.next() {
+            let next = nums.next().flatten().unwrap_or(done);
+            on_progress(done, next);
         }
     }
     let status = child.wait().map_err(|e| e.to_string())?;
@@ -108,51 +194,50 @@ fn find_uv() -> Option<PathBuf> {
     ok(&home).then_some(home)
 }
 
-/// The Python of the voice environment, setting it up first if needed.
-fn engine(status: &dyn Fn(String)) -> Result<PathBuf, String> {
+/// The Python of the engine's environment, setting it up first if needed.
+fn setup(engine: Engine, status: &dyn Fn(String), progress: &Bar) -> Result<PathBuf, String> {
     let base = base().ok_or("no local app data folder")?;
-    let env = base.join("env");
+    let env = base.join(engine.env_dir());
     let python = env.join("Scripts").join("python.exe");
     let marker = env.join("thrasher-engine.txt");
-    if python.exists() && std::fs::read_to_string(&marker).is_ok_and(|m| m == ENGINE) {
+    if python.exists() && std::fs::read_to_string(&marker).is_ok_and(|m| m == engine.marker()) {
         return Ok(python);
     }
     let uv = find_uv().ok_or(
         "Speaking new words needs uv, a small Python installer. Install it with \
          \"winget install astral-sh.uv\", then try again.",
     )?;
-    status("Setting up the voice engine. First time only, about 4 GB to download…".into());
+    status(format!(
+        "Setting up {}. First time only, several GB to download…",
+        engine.name()
+    ));
+    progress.set(0.0, 0.3);
     std::fs::create_dir_all(&base).map_err(|e| e.to_string())?;
     run(
         Command::new(&uv)
             .args(["venv", "--clear", "--python", "3.12"])
             .arg(&env),
-        &mut |_| {},
+        &mut |_, _| {},
     )?;
-    let overrides = base.join("overrides.txt");
-    std::fs::write(
-        &overrides,
-        format!("torch==2.8.0+cu128\ntorchaudio==2.8.0+cu128\nresemble-perth @ {PERTH}\n"),
-    )
-    .map_err(|e| e.to_string())?;
+    let (overrides, packages) = engine.packages();
+    let overrides_file = base.join(format!("overrides-{}.txt", engine.id()));
+    std::fs::write(&overrides_file, overrides).map_err(|e| e.to_string())?;
     run(
         Command::new(&uv)
             .args(["pip", "install", "--python"])
             .arg(&python)
             .arg("--override")
-            .arg(&overrides)
+            .arg(&overrides_file)
             .args([
                 "--extra-index-url",
                 "https://download.pytorch.org/whl/cu128",
                 "--index-strategy",
                 "unsafe-best-match",
-                "setuptools<81",
-                "soundfile",
             ])
-            .arg(format!("chatterbox-tts @ {CHATTERBOX}")),
-        &mut |_| {},
+            .args(&packages),
+        &mut |_, _| {},
     )?;
-    std::fs::write(&marker, ENGINE).map_err(|e| e.to_string())?;
+    std::fs::write(&marker, engine.marker()).map_err(|e| e.to_string())?;
     Ok(python)
 }
 
@@ -166,15 +251,60 @@ fn read_mono(path: &Path) -> Result<Buffer, String> {
     })
 }
 
+/// The progress bar of the overlay. Steps such as loading the model give no progress
+/// of their own, so the bar creeps towards the end of the running step instead of
+/// standing still.
+#[derive(Clone)]
+struct Bar(Arc<Mutex<BarState>>);
+
+#[derive(Default)]
+struct BarState {
+    shown: f32,
+    /// Where the running step started and where it will end.
+    done: f32,
+    next: f32,
+    finished: bool,
+}
+
+impl Bar {
+    fn new() -> Self {
+        Bar(Arc::new(Mutex::new(BarState::default())))
+    }
+
+    fn set(&self, done: f32, next: f32) {
+        let mut s = self.0.lock().unwrap();
+        s.done = s.done.max(done);
+        s.next = next.max(s.done);
+    }
+
+    /// Moves the shown value a little towards the end of the running step: about 95%
+    /// of the way after a minute.
+    fn tick(&self) -> Option<f32> {
+        let mut s = self.0.lock().unwrap();
+        if s.finished {
+            return None;
+        }
+        s.shown = s.shown.max(s.done);
+        // Never backwards, even when a step's end is below what is shown.
+        s.shown += (s.next - s.shown).max(0.0) * 0.01;
+        Some(s.shown)
+    }
+
+    fn finish(&self) {
+        self.0.lock().unwrap().finished = true;
+    }
+}
+
 /// Generates audio for every insert of the clip that still needs it, and records the
 /// result (a file or an error) in the sidecar.
 fn speak(
     library: &Library,
     name: &str,
+    engine: Engine,
     model_id: &str,
     language: &str,
     status: &dyn Fn(String),
-    progress: &dyn Fn(f32),
+    progress: &Bar,
 ) -> Result<usize, String> {
     let sc_path = library.sidecar_path(name);
     let sc = Sidecar::load(&sc_path).map_err(|e| e.to_string())?;
@@ -183,13 +313,17 @@ fn speak(
         return Ok(0);
     }
     let segments = voice::pick_reference(&sc).map_err(|e| e.to_string())?;
-    let python = engine(status)?;
+    let python = setup(engine, status, progress)?;
     let count: usize = jobs.iter().map(|j| j.words.len()).sum();
     status(format!(
-        "Generating {count} new word(s). The voice model takes a moment to load."
+        "{} is generating {count} new word(s). Loading the voice model takes about a minute.",
+        engine.name()
     ));
     let reference = voice::write_reference(library, name, &segments).map_err(|e| e.to_string())?;
     let dir = voice::voice_dir(library, name);
+    let reference_txt = dir.join("reference.txt");
+    std::fs::write(&reference_txt, voice::reference_text(&sc, &segments))
+        .map_err(|e| e.to_string())?;
     let base = base().ok_or("no local app data folder")?;
     let worker = base.join("worker.py");
     std::fs::write(&worker, WORKER).map_err(|e| e.to_string())?;
@@ -206,15 +340,19 @@ fn speak(
     run(
         Command::new(&python)
             .arg(&worker)
+            .arg(engine.id())
             .arg(&reference)
+            .arg(&reference_txt)
             .arg(if language.is_empty() { "no" } else { language })
             .arg(&jobs_file)
             .arg(&dir)
             .env("HF_HOME", base.join("models"))
             .env("PYTHONIOENCODING", "utf-8"),
-        &mut |p| progress(p * 0.8),
+        &mut |d, n| progress.set(d * 0.8, n * 0.8),
     )?;
     // 2. Find the new words in them.
+    status("Finding the new words in the generated speech…".into());
+    progress.set(0.8, 0.97);
     let transcriber = crate::transcription::worker_path()
         .ok_or("Transcription is not part of this build, so new words cannot be placed")?;
     let mut cmd = Command::new(transcriber);
@@ -223,7 +361,7 @@ fn speak(
         .arg(model_id)
         .arg(language)
         .args(&gen_names[1..]);
-    run(&mut cmd, &mut |p| progress(0.8 + p * 0.2))?;
+    run(&mut cmd, &mut |d, _| progress.set(0.8 + d * 0.18, 0.99))?;
 
     // 3. Cut them out, match loudness, save.
     let (spec, mic) =
@@ -320,7 +458,14 @@ fn drop_pending(library: &Library, name: &str) {
 }
 
 /// Starts speaking the clip's new words on a background thread.
-pub fn start(ui: &AppWindow, library: &Library, name: String, model_id: String, language: String) {
+pub fn start(
+    ui: &AppWindow,
+    library: &Library,
+    name: String,
+    engine: Engine,
+    model_id: String,
+    language: String,
+) {
     if ui.get_speaking() {
         return;
     }
@@ -330,21 +475,28 @@ pub fn start(ui: &AppWindow, library: &Library, name: String, model_id: String, 
     CANCEL.store(false, Ordering::SeqCst);
     let weak = ui.as_weak();
     let dir = library.dir().to_path_buf();
+    let bar = Bar::new();
+    {
+        let (bar, weak) = (bar.clone(), weak.clone());
+        std::thread::spawn(move || {
+            while let Some(p) = bar.tick() {
+                let _ = weak.upgrade_in_event_loop(move |ui| ui.set_speak_progress(p));
+                std::thread::sleep(Duration::from_millis(200));
+            }
+        });
+    }
     std::thread::spawn(move || {
         let w = weak.clone();
         let status = move |s: String| {
             let _ = w.upgrade_in_event_loop(move |ui| ui.set_speak_stage(s.into()));
-        };
-        let w = weak.clone();
-        let progress = move |p: f32| {
-            let _ = w.upgrade_in_event_loop(move |ui| ui.set_speak_progress(p));
         };
         let started = std::time::Instant::now();
         let lib = Library::open(&dir).map_err(|e| e.to_string());
         let result = lib
             .as_ref()
             .map_err(Clone::clone)
-            .and_then(|lib| speak(lib, &name, &model_id, &language, &status, &progress));
+            .and_then(|lib| speak(lib, &name, engine, &model_id, &language, &status, &bar));
+        bar.finish();
         let cancelled = CANCEL.load(Ordering::SeqCst);
         if cancelled && let Ok(lib) = &lib {
             drop_pending(lib, &name);

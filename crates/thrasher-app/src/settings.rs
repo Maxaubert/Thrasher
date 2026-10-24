@@ -12,7 +12,8 @@ pub struct Settings {
     pub mic_device: Option<String>,
     pub record_system: bool,
     pub pinned: bool,
-    /// Starts and stops recording from any app, for example "Ctrl+Alt+R". Empty turns it off.
+    /// Starts and stops recording from any app, for example "Ctrl+Alt+R". Empty (the
+    /// default) turns it off.
     pub hotkey: String,
     /// Id of the transcription model, from `thrasher_core::models::CATALOG`.
     pub model: String,
@@ -40,7 +41,7 @@ impl Default for Settings {
             mic_device: None,
             record_system: false,
             pinned: false,
-            hotkey: "Ctrl+Alt+R".into(),
+            hotkey: String::new(),
             model: "nb-whisper-large".into(),
             language: "no".into(),
             export_format: "flac".into(),

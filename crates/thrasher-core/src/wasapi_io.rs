@@ -217,15 +217,15 @@ impl Source for LoopbackSource {
     }
 }
 
-/// Plays interleaved f32 audio on the default output device. Blocks until done or
-/// until `stop` is set. `position` is updated with the frame index being played.
+/// Plays interleaved f32 audio on the default output device, asking `fill` for up to
+/// the given number of frames at a time (it returns how many it added, 0 at the end).
+/// Blocks until done or until `stop` is set. `played` counts the frames heard so far.
 pub fn play_blocking(
-    samples: &[f32],
+    fill: &mut dyn FnMut(usize, &mut Vec<f32>) -> usize,
     sample_rate: u32,
     channels: u16,
-    start_frame: u64,
     stop: &std::sync::atomic::AtomicBool,
-    position: &std::sync::atomic::AtomicU64,
+    played: &std::sync::atomic::AtomicU64,
 ) -> Result<(), String> {
     use std::sync::atomic::Ordering;
     let _ = initialize_mta();
@@ -249,10 +249,11 @@ pub fn play_blocking(
     let event = client.set_get_eventhandle().map_err(err)?;
     let render = client.get_audiorenderclient().map_err(err)?;
     let ch = channels as usize;
-    let total = samples.len() / ch;
-    let mut next = (start_frame as usize).min(total);
-    let mut bytes: Vec<u8> =
-        Vec::with_capacity(client.get_buffer_size().map_err(err)? as usize * ch * 4);
+    let size = client.get_buffer_size().map_err(err)? as usize;
+    let mut sent = 0u64;
+    let mut ended = false;
+    let mut chunk: Vec<f32> = Vec::with_capacity(size * ch);
+    let mut bytes: Vec<u8> = Vec::with_capacity(size * ch * 4);
     client.start_stream().map_err(err)?;
     let result = (|| -> Result<(), String> {
         loop {
@@ -261,19 +262,24 @@ pub fn play_blocking(
             }
             let space = client.get_available_space_in_frames().map_err(err)? as usize;
             let padding = client.get_current_padding().map_err(err)? as u64;
-            position.store((next as u64).saturating_sub(padding), Ordering::Relaxed);
-            if next >= total {
+            played.store(sent.saturating_sub(padding), Ordering::Relaxed);
+            if ended {
                 if padding == 0 {
                     return Ok(());
                 }
             } else if space > 0 {
-                let n = space.min(total - next);
-                bytes.clear();
-                for s in &samples[next * ch..(next + n) * ch] {
-                    bytes.extend_from_slice(&s.to_le_bytes());
+                chunk.clear();
+                let n = fill(space, &mut chunk);
+                if n == 0 {
+                    ended = true;
+                } else {
+                    bytes.clear();
+                    for s in &chunk[..n * ch] {
+                        bytes.extend_from_slice(&s.to_le_bytes());
+                    }
+                    render.write_to_device(n, &bytes, None).map_err(err)?;
+                    sent += n as u64;
                 }
-                render.write_to_device(n, &bytes, None).map_err(err)?;
-                next += n;
             }
             let _ = event.wait_for_event(WAIT_MS);
         }

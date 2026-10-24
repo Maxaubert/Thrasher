@@ -57,7 +57,8 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
 14. **An old Thrasher is still recording.** A test build from 23 October
     (`targetoicetest5`) has been recording `clip_006` in your real VoiceClips since
     18:14 that day; the file was 7.5 GB at 05:48 the next morning and still growing.
-    It was left alone. Stop it from its tray icon, then keep or delete the clip.
+    **Done 2026-10-24:** Max had it deleted (12.3 h, 7.9 GB). Recordings now stop by
+    themselves after a limit set in Settings, 2 hours by default (PR #16).
 15. **The DJI mic recorded silence again** in the UI test on 24 October (level stays at
     the floor). Same as question 2.
 16. **Edit screen look.** The mockup shows cut words crossed out and typed words in

@@ -76,6 +76,8 @@ cargo run --release -p thrasher-core --features whisper-cuda --example transcrib
   start and stop, transcription and waveform times, and a line whenever the window
   freezes for more than about a quarter of a second. It starts over past 1 MB.
 - **`THRASHER_DIR=<folder>`:** use a scratch clip folder instead of the real one.
+- **`THRASHER_SETTINGS=<file>`:** read and save settings there instead of the real
+  settings file. Always set it for automated checks.
 - **`THRASHER_TEST_WINDOW=1`:** the window opens without taking focus, for checks run
   while someone works at the PC. Drive it without focus or the mouse: press buttons
   through UI Automation (every button has an accessible name) and send keys with

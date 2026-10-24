@@ -1,8 +1,9 @@
 // Thrasher's window in the "Ember" look (mockups, issue #3): orange on warm black.
-// Pages: the clip list (main), one clip (manage), editing its transcript, and
-// settings. The small always-on-top widget is a separate mode of the same window.
+// Pages: the clip list (main), one clip (manage), editing its transcript, settings
+// and the model library. The window draws its own frame and title bar. The small
+// always-on-top widget is a separate mode of the same window.
 
-import { ComboBox, LineEdit, ScrollView, TextEdit, ListView } from "std-widgets.slint";
+import { LineEdit, ScrollView, TextEdit, ListView } from "std-widgets.slint";
 import "./fonts/InterTight-400.ttf";
 import "./fonts/InterTight-500.ttf";
 import "./fonts/InterTight-600.ttf";
@@ -41,12 +42,20 @@ export component Tray inherits SystemTrayIcon {
     }
 }
 
+// One line of the model library: a group heading, or a model in that group's card.
 export struct ModelRow {
-    name: string,
-    description: string,
+    header: bool,
+    title: string,
+    by: string,
+    // Position in the catalog, for download and use.
+    index: int,
     size: string,
+    quality: int,
+    speed: int,
     downloaded: bool,
     active: bool,
+    first: bool,
+    last: bool,
 }
 
 export struct WordRow {
@@ -119,6 +128,11 @@ component Icon inherits Path {
         : name == "play" ? "M 8 5 L 19 12 L 8 19 Z"
         : name == "pause" ? "M 6 5 L 10 5 L 10 19 L 6 19 Z M 14 5 L 18 5 L 18 19 L 14 19 Z"
         : name == "stop" ? "M 6 6 L 18 6 L 18 18 L 6 18 Z"
+        : name == "minimize" ? "M 5 12 L 19 12"
+        : name == "check" ? "M 5 12 L 10 17 L 19 7"
+        : name == "updown" ? "M 8 10 L 12 6 L 16 10 M 8 14 L 12 18 L 16 14"
+        : name == "folder" ? "M 3 7 L 9 7 L 11 9 L 21 9 L 21 19 L 3 19 Z"
+        : name == "search" ? "M 18 11 A 7 7 0 1 1 4 11 A 7 7 0 1 1 18 11 Z M 20 20 L 16 16"
         : "";
 }
 
@@ -202,8 +216,10 @@ component Toggle inherits Rectangle {
     border-radius: 11px;
     background: checked ? Theme.accent : Theme.track;
     accessible-role: checkbox;
+    accessible-checkable: true;
     accessible-checked: checked;
     accessible-label: label;
+    accessible-action-default => { root.checked = !root.checked; root.toggled(root.checked); }
     Rectangle {
         x: root.checked ? root.width - self.width - 3px : 3px;
         y: 3px;
@@ -347,21 +363,364 @@ component BackLink inherits Rectangle {
     }
 }
 
-// One line of the settings list.
-component SettingRow inherits VerticalLayout {
+// A window button in the title bar. The close button turns red on hover, like Windows.
+component WinBtn inherits Rectangle {
+    in property <string> icon;
     in property <string> label;
+    in property <bool> danger;
+    callback clicked;
+    width: 44px;
+    height: 32px;
+    background: t.has-hover ? (danger ? #c42b1c : Theme.raised) : transparent;
+    accessible-role: button;
+    accessible-label: label;
+    accessible-action-default => { root.clicked(); }
+    Icon {
+        name: root.icon;
+        tint: t.has-hover ? (root.danger ? #ffffff : Theme.text) : Theme.dim;
+        width: 12px;
+        height: 12px;
+    }
+    t := TouchArea { clicked => { root.clicked(); } }
+}
+
+// The window's own title bar: drag it to move the window. Whatever is put inside goes
+// on the left; minimise and close are always on the right.
+component TitleBar inherits Rectangle {
+    in property <length> left-padding: 8px;
+    callback minimize();
+    callback close();
+    height: 32px;
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
     HorizontalLayout {
-        min-height: 46px;
-        padding-top: 6px;
-        padding-bottom: 6px;
-        spacing: 12px;
+        padding-left: root.left-padding;
+        spacing: 2px;
+        HorizontalLayout {
+            horizontal-stretch: 1;
+            spacing: 2px;
+            @children
+            Rectangle { horizontal-stretch: 1; }
+        }
+        WinBtn { icon: "minimize"; label: "Minimize"; clicked => { root.minimize(); } }
+        WinBtn { icon: "close"; label: "Close"; danger: true; clicked => { root.close(); } }
+    }
+}
+
+// A round back button and a large page title.
+component PageHeader inherits HorizontalLayout {
+    in property <string> title;
+    in property <string> note;
+    callback back();
+    padding-left: 20px;
+    padding-right: 22px;
+    padding-bottom: 6px;
+    spacing: 10px;
+    Rectangle {
+        width: 32px;
+        height: 32px;
+        border-radius: 16px;
+        background: bt.has-hover ? Theme.raised : Theme.card;
+        accessible-role: button;
+        accessible-label: "Back";
+        accessible-action-default => { root.back(); }
+        Icon { name: "back"; tint: Theme.muted; width: 15px; height: 15px; }
+        bt := TouchArea { mouse-cursor: pointer; clicked => { root.back(); } }
+    }
+    Text {
+        text: root.title;
+        color: Theme.text;
+        font-size: 24px;
+        font-weight: 800;
+        vertical-alignment: center;
+        horizontal-stretch: 1;
+    }
+    Text {
+        text: root.note;
+        color: Theme.dim;
+        font-size: 12px;
+        vertical-alignment: center;
+    }
+}
+
+// A dropdown in the Ember look; the list opens below it.
+component Select inherits Rectangle {
+    in property <[string]> model;
+    in-out property <int> current-index;
+    in property <bool> enabled: true;
+    in property <string> label;
+    callback selected(int);
+    width: 200px;
+    height: 32px;
+    border-radius: 8px;
+    background: t.has-hover && enabled ? #261b13 : Theme.raised;
+    opacity: enabled ? 1 : 0.45;
+    accessible-role: combobox;
+    accessible-label: label;
+    accessible-value: current-index >= 0 && current-index < model.length ? model[current-index] : "";
+    accessible-expandable: true;
+    accessible-action-default => { if (enabled) { popup.show(); } }
+    accessible-action-expand => { if (enabled) { popup.show(); } }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 9px;
+        spacing: 8px;
         Text {
-            text: root.label;
+            text: root.current-index >= 0 && root.current-index < root.model.length ? root.model[root.current-index] : "";
             color: Theme.text;
-            font-size: 14px;
+            font-size: 13px;
             vertical-alignment: center;
             horizontal-stretch: 1;
             overflow: elide;
+        }
+        Icon {
+            name: "updown";
+            tint: Theme.muted;
+            width: 12px;
+            height: 12px;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { popup.show(); }
+    }
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: max(root.width, 180px);
+        height: min(root.model.length * 32px + 10px, 298px);
+        close-policy: close-on-click-outside;
+        Rectangle {
+            background: Theme.raised;
+            border-radius: 10px;
+            border-width: 1px;
+            border-color: Theme.edge;
+            drop-shadow-blur: 20px;
+            drop-shadow-offset-y: 8px;
+            drop-shadow-color: #00000099;
+            Flickable {
+                x: 5px;
+                y: 5px;
+                width: parent.width - 10px;
+                height: parent.height - 10px;
+                content-height: root.model.length * 32px;
+                for item[i] in root.model: Rectangle {
+                    y: i * 32px;
+                    height: 32px;
+                    border-radius: 6px;
+                    background: i == root.current-index ? #2a1d14 : it.has-hover ? #261b13 : transparent;
+                    HorizontalLayout {
+                        padding-left: 10px;
+                        padding-right: 10px;
+                        spacing: 8px;
+                        Text {
+                            text: item;
+                            color: i == root.current-index ? Theme.text : Theme.text2;
+                            font-size: 13px;
+                            vertical-alignment: center;
+                            horizontal-stretch: 1;
+                            overflow: elide;
+                        }
+                        if i == root.current-index: Icon {
+                            name: "check";
+                            tint: Theme.accent;
+                            width: 13px;
+                            height: 13px;
+                            y: (parent.height - self.height) / 2;
+                        }
+                    }
+                    it := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.current-index = i;
+                            root.selected(i);
+                            popup.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// A single-line text field in the Ember look, with an optional icon on the left.
+component TextField inherits Rectangle {
+    in-out property <string> text;
+    in property <string> placeholder;
+    in property <string> icon;
+    in property <bool> mono;
+    in property <bool> invalid;
+    in property <string> label;
+    in property <bool> enabled: true;
+    callback edited(string);
+    callback accepted(string);
+    height: 36px;
+    border-radius: 8px;
+    background: Theme.bg;
+    border-width: 1px;
+    border-color: invalid ? Theme.danger : input.has-focus ? Theme.accent : Theme.edge;
+    opacity: enabled ? 1 : 0.45;
+    Rectangle {
+        visible: input.has-focus && !root.invalid;
+        x: -3px;
+        y: -3px;
+        width: parent.width + 6px;
+        height: parent.height + 6px;
+        border-radius: 11px;
+        border-width: 3px;
+        border-color: #ff6a1a2a;
+    }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 8px;
+        if root.icon != "": Icon {
+            name: root.icon;
+            tint: Theme.dim;
+            width: 14px;
+            height: 14px;
+            y: (parent.height - self.height) / 2;
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            if root.text == "": Text {
+                width: 100%;
+                height: 100%;
+                text: root.placeholder;
+                color: Theme.dim;
+                font-size: 13px;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            input := TextInput {
+                width: 100%;
+                height: 100%;
+                text <=> root.text;
+                enabled: root.enabled;
+                single-line: true;
+                vertical-alignment: center;
+                color: Theme.text;
+                font-size: 13px;
+                font-family: root.mono ? Theme.mono : "Inter Tight";
+                selection-background-color: #ff6a1a66;
+                selection-foreground-color: Theme.text;
+                accessible-label: root.label;
+                edited => { root.edited(self.text); }
+                accepted => { root.accepted(self.text); }
+            }
+        }
+    }
+}
+
+// Click it, then press the keys you want. Shows them as key caps.
+component ShortcutBox inherits Rectangle {
+    in property <[string]> keys;
+    in property <string> label;
+    // The pressed key and modifiers; returns true when it made a usable shortcut.
+    callback captured(string, bool, bool, bool, bool) -> bool;
+    callback cleared();
+    callback done();
+    property <bool> listening: fs.has-focus;
+    width: 200px;
+    height: 32px;
+    border-radius: 8px;
+    background: listening ? #ff6a1a14 : t.has-hover ? #261b13 : Theme.raised;
+    border-width: 1px;
+    border-color: listening ? Theme.accent : transparent;
+    accessible-role: button;
+    accessible-label: label;
+    accessible-action-default => { fs.focus(); }
+    t := TouchArea { mouse-cursor: pointer; clicked => { fs.focus(); } }
+    fs := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Escape) { root.done(); return accept; }
+            if ((event.text == Key.Backspace || event.text == Key.Delete) && !event.modifiers.control && !event.modifiers.alt) {
+                root.cleared();
+                root.done();
+                return accept;
+            }
+            if (root.captured(event.text, event.modifiers.control, event.modifiers.alt, event.modifiers.shift, event.modifiers.meta)) {
+                root.done();
+            }
+            accept
+        }
+    }
+    if root.listening: HorizontalLayout {
+        alignment: center;
+        spacing: 8px;
+        Rectangle {
+            width: 7px;
+            height: 7px;
+            border-radius: 3.5px;
+            background: Theme.accent;
+            y: (parent.height - self.height) / 2;
+        }
+        Text { text: "Press the keys"; color: Theme.accent; font-size: 13px; font-weight: 600; vertical-alignment: center; }
+    }
+    if !root.listening && root.keys.length == 0: Text {
+        text: "Not set";
+        color: Theme.dim;
+        font-size: 13px;
+    }
+    if !root.listening && root.keys.length > 0: HorizontalLayout {
+        alignment: center;
+        spacing: 4px;
+        for k in root.keys: Rectangle {
+            width: cap.preferred-width + 14px;
+            height: 22px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 5px;
+            background: Theme.card;
+            border-width: 1px;
+            border-color: Theme.edge;
+            cap := Text { text: k; color: Theme.text; font-family: Theme.mono; font-size: 11px; }
+        }
+    }
+}
+
+// Settings are grouped in rounded cards with a title above.
+component Card inherits VerticalLayout {
+    in property <string> title;
+    spacing: 8px;
+    Text {
+        text: root.title;
+        color: Theme.muted;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        x: 8px;
+    }
+    Rectangle {
+        background: Theme.card;
+        border-radius: 14px;
+        VerticalLayout {
+            @children
+        }
+    }
+}
+
+// One line in a card: a label (and an optional note under it) and its control.
+component CardRow inherits VerticalLayout {
+    in property <string> label;
+    in property <string> note;
+    in property <bool> last;
+    HorizontalLayout {
+        min-height: 52px;
+        padding-left: 16px;
+        padding-right: 12px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text { text: root.label; color: Theme.text; font-size: 14px; overflow: elide; }
+            if root.note != "": Text { text: root.note; color: Theme.dim; font-size: 12px; overflow: elide; }
         }
         HorizontalLayout {
             alignment: end;
@@ -369,17 +728,45 @@ component SettingRow inherits VerticalLayout {
             @children
         }
     }
-    Rectangle {
-        height: 1px;
-        background: Theme.line-soft;
-    }
+    if !root.last: Rectangle { height: 1px; background: #221912; }
 }
 
-component SectionTitle inherits Text {
-    color: Theme.accent;
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 1px;
+// A filter chip on the model page.
+component Chip inherits Rectangle {
+    in property <string> text;
+    in property <bool> on;
+    callback clicked;
+    width: label.preferred-width + 24px;
+    height: 28px;
+    border-radius: 14px;
+    background: on ? Theme.text : t.has-hover ? Theme.raised : transparent;
+    border-width: on ? 0 : 1px;
+    border-color: #2a2019;
+    accessible-role: button;
+    accessible-label: text;
+    accessible-action-default => { root.clicked(); }
+    label := Text {
+        text: root.text;
+        color: root.on ? Theme.bg : Theme.muted;
+        font-size: 12px;
+        font-weight: root.on ? 800 : 500;
+    }
+    t := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+}
+
+// A short bar showing 1 to 5.
+component Meter inherits Rectangle {
+    in property <int> value;
+    width: 30px;
+    height: 5px;
+    border-radius: 2.5px;
+    background: Theme.track;
+    Rectangle {
+        x: 0;
+        width: parent.width * clamp(root.value, 0, 5) / 5;
+        border-radius: 2.5px;
+        background: Theme.text2;
+    }
 }
 
 export component AppWindow inherits Window {
@@ -394,9 +781,9 @@ export component AppWindow inherits Window {
     min-width: compact ? 300px : 420px;
     min-height: compact ? 64px : 480px;
     always-on-top: pinned || compact;
-    no-frame: compact;
+    no-frame: true;
 
-    // 0 clips, 1 one clip, 2 editing its transcript, 3 settings
+    // 0 clips, 1 one clip, 2 editing its transcript, 3 settings, 4 models
     in-out property <int> page;
 
     in-out property <bool> recording;
@@ -449,6 +836,14 @@ export component AppWindow inherits Window {
     in property <[string]> languages;
     in-out property <int> language-index;
     in property <[ModelRow]> models;
+    in property <string> model-summary;
+    in property <string> models-used;
+    in property <int> model-count;
+    in-out property <string> model-query;
+    in-out property <int> model-filter;
+    in-out property <bool> model-compressed;
+    in property <bool> name-invalid;
+    in property <[string]> hotkey-parts;
     in property <int> downloading: -1;
     in property <float> download-progress;
     in-out property <string> hotkey;
@@ -502,6 +897,13 @@ export component AppWindow inherits Window {
     callback recording-limit-changed(int);
     callback start-with-windows-changed(bool);
     callback download-model(int);
+    // The model page's search, chips or compressed toggle changed.
+    callback models-filter-changed();
+    // A key pressed in the shortcut box, with Ctrl, Alt, Shift and Win. True when it
+    // made a shortcut.
+    callback hotkey-captured(string, bool, bool, bool, bool) -> bool;
+    callback minimize-window();
+    callback close-window();
     callback cancel-download();
     callback use-model(int);
     // Clip waveforms finished drawing in the background.
@@ -543,10 +945,10 @@ export component AppWindow inherits Window {
         key-pressed(event) => {
             if (renaming || page == 2) { return reject; }
             if (event.text == Key.Escape) {
-                if (page != 0) { root.go(page == 2 ? 1 : 0); } else { root.stop-playback(); }
+                if (page != 0) { root.go(page == 2 ? 1 : page == 4 ? 3 : 0); } else { root.stop-playback(); }
                 return accept;
             }
-            if (page == 3) { return reject; }
+            if (page >= 3) { return reject; }
             if (event.text == " ") { root.toggle-record(); return accept; }
             if (event.text == "p" && recording) { root.toggle-pause(); return accept; }
             if (page == 1) {
@@ -628,11 +1030,11 @@ export component AppWindow inherits Window {
 
         // ---------- Clips (main) ----------
         if !compact && page == 0: VerticalLayout {
-            HorizontalLayout {
+            TitleBar {
                 height: 38px;
-                padding-left: 18px;
-                padding-right: 8px;
-                spacing: 2px;
+                left-padding: 18px;
+                minimize => { root.minimize-window(); }
+                close => { root.close-window(); }
                 Text {
                     text: "Thrasher";
                     color: Theme.muted;
@@ -658,6 +1060,7 @@ export component AppWindow inherits Window {
                     alignment: center;
                     IconBtn { icon: "widget"; label: "Small widget"; clicked => { root.compact-changed(true); } }
                 }
+                Rectangle { width: 6px; }
             }
 
             // Recorder
@@ -822,9 +1225,10 @@ export component AppWindow inherits Window {
 
         // ---------- One clip ----------
         if !compact && page == 1 && root.selected >= 0: VerticalLayout {
-            HorizontalLayout {
+            TitleBar {
                 height: 38px;
-                padding-left: 8px;
+                minimize => { root.minimize-window(); }
+                close => { root.close-window(); }
                 BackLink {
                     text: "Clips";
                     y: (parent.height - self.height) / 2;
@@ -1181,9 +1585,10 @@ export component AppWindow inherits Window {
 
         // ---------- Edit transcript ----------
         if !compact && page == 2 && root.selected >= 0: VerticalLayout {
-            HorizontalLayout {
+            TitleBar {
                 height: 38px;
-                padding-left: 8px;
+                minimize => { root.minimize-window(); }
+                close => { root.close-window(); }
                 BackLink {
                     text: root.clips[root.selected].name;
                     y: (parent.height - self.height) / 2;
@@ -1308,277 +1713,419 @@ export component AppWindow inherits Window {
 
         // ---------- Settings ----------
         if !compact && page == 3: VerticalLayout {
-            HorizontalLayout {
-                height: 48px;
-                padding-left: 8px;
-                padding-right: 8px;
-                spacing: 6px;
-                VerticalLayout {
-                    alignment: center;
-                    IconBtn {
-                        size: 34px;
-                        icon: "back";
-                        icon-size: 16px;
-                        tint: Theme.muted;
-                        label: "Back to clips";
-                        clicked => { root.go(0); }
-                    }
-                }
-                Text {
-                    text: "Settings";
-                    color: Theme.text;
-                    font-size: 15px;
-                    font-weight: 800;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
+            TitleBar {
+                minimize => { root.minimize-window(); }
+                close => { root.close-window(); }
             }
-            Rectangle { height: 1px; background: Theme.line-soft; }
+            PageHeader { title: "Settings"; back => { root.go(0); } }
             ScrollView {
                 vertical-stretch: 1;
                 VerticalLayout {
-                    padding-left: 22px;
-                    padding-right: 22px;
-                    padding-bottom: 24px;
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 12px;
+                    padding-bottom: 20px;
+                    spacing: 18px;
+                    alignment: start;
 
-                    SectionTitle { text: "RECORDING"; height: 52px; vertical-alignment: bottom; }
-                    SettingRow {
-                        label: "Microphone";
-                        ComboBox {
-                            width: 220px;
-                            model: root.mic-devices;
-                            current-index <=> root.mic-index;
-                            enabled: !root.recording;
-                            selected => { root.mic-changed(self.current-index); }
-                        }
-                    }
-                    SettingRow {
-                        label: "System audio";
-                        VerticalLayout {
-                            alignment: center;
-                            Toggle {
-                                label: "System audio";
-                                checked <=> root.record-system;
-                                toggled(on) => { root.system-changed(on); }
-                            }
-                        }
-                    }
-                    SettingRow {
-                        label: "Stop recording after";
-                        ComboBox {
-                            width: 220px;
-                            model: root.recording-limits;
-                            current-index <=> root.recording-limit-index;
-                            selected => { root.recording-limit-changed(self.current-index); }
-                        }
-                    }
-                    SettingRow {
-                        label: "Clean voice on export";
-                        VerticalLayout {
-                            alignment: center;
-                            Toggle {
-                                label: "Clean voice on export";
-                                checked <=> root.clean-voice;
-                                toggled(on) => { root.clean-voice-changed(on); }
-                            }
-                        }
-                    }
-
-                    SectionTitle { text: "OUTPUT"; height: 52px; vertical-alignment: bottom; }
-                    SettingRow {
-                        label: "Folder";
-                        Text {
-                            text: root.folder;
-                            color: Theme.muted;
-                            font-size: 12px;
-                            overflow: elide;
-                            max-width: 170px;
-                            vertical-alignment: center;
-                        }
-                        VerticalLayout {
-                            alignment: center;
-                            Btn { text: "Open"; height: 28px; font-size: 12px; clicked => { root.open-folder(); } }
-                        }
-                        VerticalLayout {
-                            alignment: center;
-                            Btn { text: "Change"; height: 28px; font-size: 12px; enabled: !root.recording; clicked => { root.change-folder(); } }
-                        }
-                    }
-                    VerticalLayout {
-                        HorizontalLayout {
-                            min-height: 46px;
-                            padding-top: 6px;
-                            spacing: 12px;
-                            Text {
-                                text: "File name";
-                                color: Theme.text;
-                                font-size: 14px;
-                                vertical-alignment: center;
-                                horizontal-stretch: 1;
-                            }
+                    Card {
+                        title: "RECORDING";
+                        CardRow {
+                            label: "Microphone";
                             VerticalLayout {
                                 alignment: center;
-                                LineEdit {
-                                    width: 220px;
-                                    text: root.name-template;
-                                    font-size: 13px;
-                                    edited(t) => { root.template-edited(t); }
-                                    accepted(t) => { root.template-accepted(t); keys.focus(); }
+                                Select {
+                                    label: "Microphone";
+                                    model: root.mic-devices;
+                                    current-index <=> root.mic-index;
+                                    enabled: !root.recording;
+                                    selected(i) => { root.mic-changed(i); }
                                 }
                             }
                         }
-                        Text {
-                            text: root.name-preview;
-                            color: Theme.dim;
-                            font-size: 11px;
-                            font-family: Theme.mono;
-                            horizontal-alignment: right;
-                            overflow: elide;
-                            height: 22px;
-                            vertical-alignment: center;
+                        CardRow {
+                            label: "System audio";
+                            note: "Also record what the PC plays";
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "System audio";
+                                    checked <=> root.record-system;
+                                    toggled(on) => { root.system-changed(on); }
+                                }
+                            }
                         }
-                        Rectangle { height: 1px; background: Theme.line-soft; }
-                    }
-                    SettingRow {
-                        label: "Export format";
-                        Rectangle {
-                            width: seg.preferred-width + 8px;
-                            height: 34px;
-                            y: (parent.height - self.height) / 2;
-                            border-radius: 9px;
-                            border-width: 1px;
-                            border-color: #2a2019;
-                            seg := HorizontalLayout {
-                                x: 3px;
-                                y: 3px;
-                                height: 26px;
-                                for f[i] in ["FLAC", "WAV", "MP3"]: Rectangle {
-                                    width: 52px;
-                                    border-radius: 6px;
-                                    background: root.export-format == i ? Theme.accent : transparent;
-                                    accessible-role: button;
-                                    accessible-label: f;
-                                    Text {
-                                        text: f;
-                                        color: root.export-format == i ? Theme.on-accent : Theme.muted;
-                                        font-size: 12px;
-                                        font-weight: root.export-format == i ? 800 : 500;
-                                    }
-                                    TouchArea {
-                                        mouse-cursor: pointer;
-                                        clicked => { root.export-format = i; root.export-format-changed(i); }
-                                    }
+                        CardRow {
+                            label: "Stop recording after";
+                            VerticalLayout {
+                                alignment: center;
+                                Select {
+                                    label: "Stop recording after";
+                                    model: root.recording-limits;
+                                    current-index <=> root.recording-limit-index;
+                                    selected(i) => { root.recording-limit-changed(i); }
+                                }
+                            }
+                        }
+                        CardRow {
+                            label: "Clean voice on export";
+                            last: true;
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Clean voice on export";
+                                    checked <=> root.clean-voice;
+                                    toggled(on) => { root.clean-voice-changed(on); }
                                 }
                             }
                         }
                     }
 
-                    SectionTitle { text: "TRANSCRIPTION"; height: 52px; vertical-alignment: bottom; }
-                    if !root.can-transcribe: SettingRow {
-                        label: "Not part of this build";
-                    }
-                    if root.can-transcribe: SettingRow {
-                        label: "Language";
-                        ComboBox {
-                            width: 220px;
-                            model: root.languages;
-                            current-index <=> root.language-index;
-                            selected => { root.language-changed(self.current-index); }
-                        }
-                    }
-                    if root.can-transcribe: VerticalLayout {
-                        for m[i] in root.models: SettingRow {
-                            label: m.name + " · " + m.size;
-                            if m.active: Text {
-                                text: "In use";
-                                color: Theme.accent;
-                                font-size: 12px;
-                                font-weight: 800;
-                                vertical-alignment: center;
-                            }
-                            if m.downloaded && !m.active: VerticalLayout {
-                                alignment: center;
-                                Btn { text: "Use"; height: 30px; font-size: 12px; clicked => { root.use-model(i); } }
-                            }
-                            if root.downloading == i: Text {
-                                text: round(root.download-progress * 100) + "%";
+                    Card {
+                        title: "OUTPUT";
+                        CardRow {
+                            label: "Folder";
+                            Text {
+                                text: root.folder;
                                 color: Theme.muted;
                                 font-family: Theme.mono;
                                 font-size: 12px;
+                                overflow: elide;
+                                max-width: 190px;
                                 vertical-alignment: center;
                             }
-                            if root.downloading == i: VerticalLayout {
+                            VerticalLayout {
                                 alignment: center;
-                                Btn { text: "Cancel"; height: 30px; font-size: 12px; clicked => { root.cancel-download(); } }
+                                IconBtn {
+                                    size: 32px;
+                                    icon: "folder";
+                                    label: "Open the folder";
+                                    tint: Theme.text2;
+                                    clicked => { root.open-folder(); }
+                                }
                             }
-                            if !m.downloaded && root.downloading != i: VerticalLayout {
+                            VerticalLayout {
                                 alignment: center;
-                                Rectangle {
-                                    width: dl.preferred-width + 24px;
-                                    height: 30px;
-                                    border-radius: 8px;
-                                    background: dl-touch.has-hover && root.downloading < 0 ? #3a2618 : #2a1d14;
-                                    opacity: root.downloading < 0 ? 1 : 0.4;
-                                    accessible-role: button;
-                                    accessible-label: "Download " + m.name;
-                                    dl := Text { text: "Download"; color: Theme.text; font-size: 12px; }
-                                    dl-touch := TouchArea {
-                                        enabled: root.downloading < 0;
-                                        mouse-cursor: pointer;
-                                        clicked => { root.download-model(i); }
-                                    }
+                                Btn { text: "Change"; height: 32px; font-size: 12px; enabled: !root.recording; clicked => { root.change-folder(); } }
+                            }
+                        }
+                        VerticalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            padding-top: 12px;
+                            padding-bottom: 12px;
+                            spacing: 6px;
+                            Text { text: "File name"; color: Theme.text; font-size: 14px; }
+                            TextField {
+                                label: "File name";
+                                mono: true;
+                                text: root.name-template;
+                                invalid: root.name-invalid;
+                                edited(t) => { root.template-edited(t); }
+                                accepted(t) => { root.template-accepted(t); keys.focus(); }
+                            }
+                            Text {
+                                text: root.name-preview;
+                                color: root.name-invalid ? Theme.danger : Theme.dim;
+                                font-size: 12px;
+                                font-family: root.name-invalid ? "Inter Tight" : Theme.mono;
+                                overflow: elide;
+                            }
+                        }
+                        Rectangle { height: 1px; background: #221912; }
+                        CardRow {
+                            label: "Export format";
+                            last: true;
+                            VerticalLayout {
+                                alignment: center;
+                                Select {
+                                    label: "Export format";
+                                    model: ["FLAC", "WAV", "MP3"];
+                                    current-index <=> root.export-format;
+                                    selected(i) => { root.export-format-changed(i); }
                                 }
                             }
                         }
                     }
 
-                    SectionTitle { text: "YOUR VOICE"; height: 52px; vertical-alignment: bottom; }
-                    SettingRow {
-                        label: "Voice engine";
-                        Text { text: "OmniVoice"; color: Theme.muted; font-size: 13px; vertical-alignment: center; }
-                    }
-                    SettingRow {
-                        label: "Voice sample";
-                        Text { text: "20 s from the clip"; color: Theme.muted; font-size: 13px; vertical-alignment: center; }
+                    Card {
+                        title: "TRANSCRIPTION";
+                        if !root.can-transcribe: CardRow { label: "Not part of this build"; last: true; }
+                        if root.can-transcribe: CardRow {
+                            label: "Language";
+                            VerticalLayout {
+                                alignment: center;
+                                Select {
+                                    label: "Language";
+                                    model: root.languages;
+                                    current-index <=> root.language-index;
+                                    selected(i) => { root.language-changed(i); }
+                                }
+                            }
+                        }
+                        if root.can-transcribe: Rectangle {
+                            height: model-row.preferred-height;
+                            accessible-role: button;
+                            accessible-label: "Browse models";
+                            accessible-action-default => { root.go(4); }
+                            model-touch := TouchArea { mouse-cursor: pointer; clicked => { root.go(4); } }
+                            model-row := CardRow {
+                                width: 100%;
+                                label: "Model";
+                                note: root.model-summary;
+                                last: true;
+                                Text { text: "Browse"; color: model-touch.has-hover ? Theme.accent-hover : Theme.accent; font-size: 13px; font-weight: 600; vertical-alignment: center; }
+                                Icon { name: "chevron"; tint: Theme.muted; y: (parent.height - self.height) / 2; }
+                            }
+                        }
                     }
 
-                    SectionTitle { text: "SHORTCUTS AND WINDOW"; height: 52px; vertical-alignment: bottom; }
-                    SettingRow {
-                        label: "Record from any app";
-                        VerticalLayout {
-                            alignment: center;
-                            LineEdit {
-                                width: 140px;
-                                placeholder-text: "Not set";
-                                text: root.hotkey;
-                                font-size: 13px;
-                                accepted(t) => { root.hotkey-accepted(t); keys.focus(); }
-                            }
+                    Card {
+                        title: "YOUR VOICE";
+                        CardRow {
+                            label: "Voice engine";
+                            Text { text: "OmniVoice"; color: Theme.text2; font-size: 13px; vertical-alignment: center; }
+                        }
+                        CardRow {
+                            label: "Voice sample";
+                            last: true;
+                            Text { text: "20 s from the clip"; color: Theme.text2; font-size: 13px; vertical-alignment: center; }
                         }
                     }
-                    SettingRow {
-                        label: "Close button hides to tray";
-                        VerticalLayout {
-                            alignment: center;
-                            Toggle {
-                                label: "Close button hides to tray";
-                                checked <=> root.close-to-tray;
-                                toggled(on) => { root.close-to-tray-changed(on); }
+
+                    Card {
+                        title: "SHORTCUTS AND WINDOW";
+                        CardRow {
+                            label: "Record from any app";
+                            VerticalLayout {
+                                alignment: center;
+                                ShortcutBox {
+                                    label: "Record from any app";
+                                    keys: root.hotkey-parts;
+                                    captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
+                                    cleared => { root.hotkey-accepted(""); }
+                                    done => { keys.focus(); }
+                                }
+                            }
+                            if root.hotkey-parts.length > 0: VerticalLayout {
+                                alignment: center;
+                                IconBtn {
+                                    size: 28px;
+                                    icon: "close";
+                                    icon-size: 11px;
+                                    label: "Clear the shortcut";
+                                    clicked => { root.hotkey-accepted(""); }
+                                }
                             }
                         }
-                    }
-                    SettingRow {
-                        label: "Start with Windows";
-                        VerticalLayout {
-                            alignment: center;
-                            Toggle {
-                                label: "Start with Windows";
-                                checked <=> root.start-with-windows;
-                                toggled(on) => { root.start-with-windows-changed(on); }
+                        CardRow {
+                            label: "Close button hides to tray";
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Close button hides to tray";
+                                    checked <=> root.close-to-tray;
+                                    toggled(on) => { root.close-to-tray-changed(on); }
+                                }
+                            }
+                        }
+                        CardRow {
+                            label: "Start with Windows";
+                            last: true;
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Start with Windows";
+                                    checked <=> root.start-with-windows;
+                                    toggled(on) => { root.start-with-windows-changed(on); }
+                                }
                             }
                         }
                     }
                 }
+            }
+            if root.status != "": Text {
+                text: root.status;
+                color: Theme.dim;
+                font-size: 11px;
+                overflow: elide;
+                x: 22px;
+                width: parent.width - 44px;
+                height: 28px;
+                vertical-alignment: center;
+            }
+        }
+
+        // ---------- Models ----------
+        if !compact && page == 4: VerticalLayout {
+            TitleBar {
+                minimize => { root.minimize-window(); }
+                close => { root.close-window(); }
+            }
+            PageHeader { title: "Models"; note: root.models-used; back => { root.go(3); } }
+            VerticalLayout {
+                vertical-stretch: 0;
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 12px;
+                spacing: 12px;
+                TextField {
+                    icon: "search";
+                    label: "Search models";
+                    placeholder: "Search " + root.model-count + " models";
+                    text <=> root.model-query;
+                    edited => { root.models-filter-changed(); }
+                }
+                HorizontalLayout {
+                    spacing: 6px;
+                    alignment: start;
+                    for f[i] in ["All", "Norwegian", "Swedish", "English", "Downloaded"]: Chip {
+                        text: f;
+                        on: root.model-filter == i;
+                        clicked => { root.model-filter = i; root.models-filter-changed(); }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 10px;
+                    VerticalLayout {
+                        alignment: center;
+                        Toggle {
+                            label: "Show compressed versions too";
+                            checked <=> root.model-compressed;
+                            toggled => { root.models-filter-changed(); }
+                        }
+                    }
+                    Text {
+                        text: "Show compressed versions too";
+                        color: Theme.muted;
+                        font-size: 12px;
+                        vertical-alignment: center;
+                        horizontal-stretch: 1;
+                    }
+                }
+            }
+            ListView {
+                vertical-stretch: 1;
+                for m in root.models: VerticalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    if m.header: HorizontalLayout {
+                        padding-top: 18px;
+                        padding-bottom: 6px;
+                        padding-left: 4px;
+                        padding-right: 4px;
+                        Text {
+                            text: m.title;
+                            color: Theme.muted;
+                            font-size: 11px;
+                            font-weight: 800;
+                            letter-spacing: 1px;
+                            horizontal-stretch: 1;
+                        }
+                        Text { text: m.by; color: Theme.dim; font-size: 11px; }
+                    }
+                    if !m.header: Rectangle {
+                        background: Theme.card;
+                        border-top-left-radius: m.first ? 14px : 0;
+                        border-top-right-radius: m.first ? 14px : 0;
+                        border-bottom-left-radius: m.last ? 14px : 0;
+                        border-bottom-right-radius: m.last ? 14px : 0;
+                        VerticalLayout {
+                            padding-left: 14px;
+                            padding-right: 12px;
+                            padding-top: 12px;
+                            padding-bottom: 12px;
+                            spacing: 8px;
+                            HorizontalLayout {
+                                spacing: 12px;
+                                VerticalLayout {
+                                    horizontal-stretch: 1;
+                                    alignment: center;
+                                    spacing: 5px;
+                                    Text { text: m.title; color: Theme.text; font-size: 14px; font-weight: 500; overflow: elide; }
+                                    HorizontalLayout {
+                                        spacing: 6px;
+                                        alignment: start;
+                                        Text { text: "Quality"; color: Theme.dim; font-size: 11px; vertical-alignment: center; }
+                                        Meter { value: m.quality; y: (parent.height - self.height) / 2; }
+                                        Rectangle { width: 6px; }
+                                        Text { text: "Speed"; color: Theme.dim; font-size: 11px; vertical-alignment: center; }
+                                        Meter { value: m.speed; y: (parent.height - self.height) / 2; }
+                                        Rectangle { width: 6px; }
+                                        Text { text: m.size; color: Theme.dim; font-family: Theme.mono; font-size: 11px; vertical-alignment: center; }
+                                    }
+                                }
+                                if m.active: VerticalLayout {
+                                    alignment: center;
+                                    Rectangle {
+                                        width: use-label.preferred-width + 20px;
+                                        height: 26px;
+                                        border-radius: 13px;
+                                        background: #ff6a1a24;
+                                        use-label := Text { text: "In use"; color: Theme.accent; font-size: 12px; font-weight: 800; }
+                                    }
+                                }
+                                if m.downloaded && !m.active: VerticalLayout {
+                                    alignment: center;
+                                    Btn { text: "Use"; height: 30px; font-size: 12px; clicked => { root.use-model(m.index); } }
+                                }
+                                if root.downloading == m.index: VerticalLayout {
+                                    alignment: center;
+                                    Btn { text: "Cancel"; height: 30px; font-size: 12px; clicked => { root.cancel-download(); } }
+                                }
+                                if !m.downloaded && root.downloading != m.index: VerticalLayout {
+                                    alignment: center;
+                                    Rectangle {
+                                        width: dl.preferred-width + 24px;
+                                        height: 30px;
+                                        border-radius: 8px;
+                                        background: dl-touch.has-hover && root.downloading < 0 ? #3a2618 : #2a1d14;
+                                        opacity: root.downloading < 0 ? 1 : 0.4;
+                                        accessible-role: button;
+                                        accessible-label: "Download " + m.title;
+                                        accessible-action-default => { if (root.downloading < 0) { root.download-model(m.index); } }
+                                        dl := Text { text: "Download"; color: Theme.text; font-size: 12px; }
+                                        dl-touch := TouchArea {
+                                            enabled: root.downloading < 0;
+                                            mouse-cursor: pointer;
+                                            clicked => { root.download-model(m.index); }
+                                        }
+                                    }
+                                }
+                            }
+                            if root.downloading == m.index: HorizontalLayout {
+                                spacing: 10px;
+                                Rectangle {
+                                    height: 4px;
+                                    y: (parent.height - self.height) / 2;
+                                    horizontal-stretch: 1;
+                                    border-radius: 2px;
+                                    background: Theme.track;
+                                    Rectangle {
+                                        x: 0;
+                                        width: parent.width * clamp(root.download-progress, 0, 1);
+                                        border-radius: 2px;
+                                        background: Theme.accent;
+                                    }
+                                }
+                                Text {
+                                    text: round(root.download-progress * 100) + "%";
+                                    color: Theme.text2;
+                                    font-family: Theme.mono;
+                                    font-size: 11px;
+                                }
+                            }
+                        }
+                        if !m.last: Rectangle { y: parent.height - 1px; height: 1px; background: #221912; }
+                    }
+                }
+            }
+            if root.models.length == 0: Text {
+                text: "No models match";
+                color: Theme.dim;
+                font-size: 13px;
+                horizontal-alignment: center;
+                height: 60px;
             }
             if root.status != "": Text {
                 text: root.status;
@@ -1651,6 +2198,13 @@ export component AppWindow inherits Window {
                 }
             }
         }
+    }
+
+    if !compact: Rectangle {
+        width: 100%;
+        height: 100%;
+        border-width: 1px;
+        border-color: #2a2019;
     }
 
     init => { keys.focus(); }

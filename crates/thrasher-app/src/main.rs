@@ -41,9 +41,27 @@ const ROW_COLUMNS: usize = 30;
 const SPEEDS: [f64; 5] = [0.75, 1.0, 1.25, 1.5, 2.0];
 const NORMAL_SPEED: usize = 1;
 /// Transcription languages offered in settings: code and name.
-const LANGUAGES: [(&str, &str); 3] = [
+const LANGUAGES: [(&str, &str); 21] = [
     ("no", "Norwegian"),
     ("en", "English"),
+    ("sv", "Swedish"),
+    ("da", "Danish"),
+    ("fi", "Finnish"),
+    ("de", "German"),
+    ("nl", "Dutch"),
+    ("fr", "French"),
+    ("es", "Spanish"),
+    ("it", "Italian"),
+    ("pt", "Portuguese"),
+    ("pl", "Polish"),
+    ("uk", "Ukrainian"),
+    ("ru", "Russian"),
+    ("tr", "Turkish"),
+    ("ar", "Arabic"),
+    ("hi", "Hindi"),
+    ("zh", "Chinese"),
+    ("ja", "Japanese"),
+    ("ko", "Korean"),
     ("", "Detect the language"),
 ];
 const EXPORT_FORMATS: [&str; 3] = ["flac", "wav", "mp3"];
@@ -1025,7 +1043,7 @@ fn main() -> Result<(), slint::PlatformError> {
     {
         let spec = app.borrow().settings.hotkey.clone();
         if hotkey.borrow_mut().set(&ui, &spec) {
-            ui.set_hotkey(spec.into());
+            show_hotkey(&ui, &spec);
         }
     }
     ui.on_hotkey_accepted({
@@ -1037,12 +1055,30 @@ fn main() -> Result<(), slint::PlatformError> {
                 let mut a = app.borrow_mut();
                 a.settings.hotkey = spec.clone();
                 a.settings.save();
-                ui.set_hotkey(spec.clone().into());
+                show_hotkey(&ui, &spec);
                 ui.set_status(if spec.is_empty() {
                     "Hotkey turned off".into()
                 } else {
                     format!("{spec} now records from any app").into()
                 });
+            }
+        }
+    });
+
+    ui.on_hotkey_captured({
+        let weak = ui.as_weak();
+        move |text, ctrl, alt, shift, meta| {
+            let ui = weak.unwrap();
+            match hotkey_spec(&text, ctrl, alt, shift, meta) {
+                Spec::Wait => false,
+                Spec::NeedsModifier => {
+                    ui.set_status("Hold Ctrl, Alt or Win with the key".into());
+                    false
+                }
+                Spec::Done(spec) => {
+                    ui.invoke_hotkey_accepted(spec.into());
+                    true
+                }
             }
         }
     });
@@ -1491,6 +1527,7 @@ fn main() -> Result<(), slint::PlatformError> {
         move |text| {
             let ui = weak.unwrap();
             let a = app.borrow();
+            ui.set_name_invalid(Template::parse(&text).is_err());
             let preview = match Template::parse(&text) {
                 Ok(t) => {
                     let names = a.library.names().unwrap_or_default();
@@ -1585,6 +1622,10 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         });
         ui.on_cancel_download(move || cancel.store(true, std::sync::atomic::Ordering::Relaxed));
+        ui.on_models_filter_changed({
+            let (app, weak) = (app.clone(), ui.as_weak());
+            move || transcription::show_models(&weak.unwrap(), &app.borrow().settings.model)
+        });
         ui.on_use_model({
             let (app, weak) = (app.clone(), ui.as_weak());
             move |i| {
@@ -1699,6 +1740,22 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         }
     });
+    ui.on_minimize_window({
+        let weak = ui.as_weak();
+        move || weak.unwrap().window().set_minimized(true)
+    });
+    ui.on_close_window({
+        let has_tray = tray.is_some();
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move || {
+            if !has_tray || !app.borrow().settings.close_to_tray {
+                let _ = slint::quit_event_loop();
+            } else {
+                let _ = weak.unwrap().hide();
+            }
+        }
+    });
+
     ui.window().on_close_requested({
         let has_tray = tray.is_some();
         let app = app.clone();
@@ -1755,5 +1812,151 @@ fn test_window() {
         .select();
     if let Err(e) = selected {
         crate::log!("test window: {e}");
+    }
+}
+
+/// Shows the record shortcut as key caps: "Ctrl+Alt+R" becomes Ctrl, Alt, R.
+fn show_hotkey(ui: &AppWindow, spec: &str) {
+    ui.set_hotkey(spec.into());
+    let parts: Vec<SharedString> = spec
+        .split('+')
+        .filter(|p| !p.is_empty())
+        .map(|p| if p == "Super" { "Win".into() } else { p.into() })
+        .collect();
+    ui.set_hotkey_parts(ModelRc::new(VecModel::from(parts)));
+}
+
+enum Spec {
+    /// Only a modifier so far: keep listening.
+    Wait,
+    NeedsModifier,
+    Done(String),
+}
+
+/// Turns a key pressed in the shortcut box into a shortcut such as "Ctrl+Alt+R".
+fn hotkey_spec(text: &str, ctrl: bool, alt: bool, shift: bool, meta: bool) -> Spec {
+    use slint::platform::Key;
+    let mut chars = text.chars();
+    let (Some(c), None) = (chars.next(), chars.next()) else {
+        return Spec::Wait;
+    };
+    let f_key = (1..=24).find(|n| {
+        let k = match n {
+            1 => Key::F1,
+            2 => Key::F2,
+            3 => Key::F3,
+            4 => Key::F4,
+            5 => Key::F5,
+            6 => Key::F6,
+            7 => Key::F7,
+            8 => Key::F8,
+            9 => Key::F9,
+            10 => Key::F10,
+            11 => Key::F11,
+            12 => Key::F12,
+            13 => Key::F13,
+            14 => Key::F14,
+            15 => Key::F15,
+            16 => Key::F16,
+            17 => Key::F17,
+            18 => Key::F18,
+            19 => Key::F19,
+            20 => Key::F20,
+            21 => Key::F21,
+            22 => Key::F22,
+            23 => Key::F23,
+            _ => Key::F24,
+        };
+        char::from(k) == c
+    });
+    let key = if let Some(n) = f_key {
+        format!("F{n}")
+    } else if c == ' ' {
+        "Space".into()
+    } else if c.is_ascii_alphanumeric() {
+        c.to_ascii_uppercase().to_string()
+    } else {
+        // A modifier key on its own (Slint sends those as control characters), or a
+        // key a shortcut cannot use.
+        return Spec::Wait;
+    };
+    if !(ctrl || alt || meta) && f_key.is_none() {
+        return Spec::NeedsModifier;
+    }
+    let mut spec = String::new();
+    for (on, name) in [
+        (ctrl, "Ctrl"),
+        (alt, "Alt"),
+        (shift, "Shift"),
+        (meta, "Super"),
+    ] {
+        if on {
+            spec.push_str(name);
+            spec.push('+');
+        }
+    }
+    spec.push_str(&key);
+    Spec::Done(spec)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn done(s: Spec) -> Option<String> {
+        match s {
+            Spec::Done(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn shortcuts_from_key_presses() {
+        assert_eq!(
+            done(hotkey_spec("r", true, true, false, false)).as_deref(),
+            Some("Ctrl+Alt+R")
+        );
+        assert_eq!(
+            done(hotkey_spec("R", true, false, true, false)).as_deref(),
+            Some("Ctrl+Shift+R")
+        );
+        let f9: String = char::from(slint::platform::Key::F9).into();
+        assert_eq!(
+            done(hotkey_spec(&f9, false, false, false, false)).as_deref(),
+            Some("F9")
+        );
+        assert!(matches!(
+            hotkey_spec("r", false, false, true, false),
+            Spec::NeedsModifier
+        ));
+        use slint::platform::Key;
+        for k in [
+            Key::Control,
+            Key::Shift,
+            Key::Alt,
+            Key::Meta,
+            Key::Tab,
+            Key::Return,
+        ] {
+            let k: String = char::from(k).into();
+            assert!(matches!(
+                hotkey_spec(&k, true, false, false, false),
+                Spec::Wait
+            ));
+        }
+        assert_eq!(
+            done(hotkey_spec("5", false, false, false, true)).as_deref(),
+            Some("Super+5")
+        );
+    }
+
+    #[test]
+    fn every_shortcut_made_here_parses() {
+        for spec in ["Ctrl+Alt+R", "Ctrl+Shift+R", "F9", "Super+5", "Alt+Space"] {
+            assert!(
+                spec.parse::<global_hotkey::hotkey::HotKey>().is_ok(),
+                "{spec}"
+            );
+        }
     }
 }

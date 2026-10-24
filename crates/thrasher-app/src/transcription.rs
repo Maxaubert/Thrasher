@@ -112,18 +112,80 @@ fn run_worker(
 }
 
 /// Fills the model list in the window.
+/// Which models the library shows: search text, chip (0 all, 1 Norwegian, 2 Swedish,
+/// 3 English, 4 downloaded) and whether compressed copies are listed.
+pub fn matches(m: &models::ModelInfo, query: &str, chip: i32, compressed: bool) -> bool {
+    let downloaded = m.is_downloaded();
+    let chip_ok = match chip {
+        1 => m.language == "no",
+        2 => m.language == "sv",
+        3 => m.language == "en" || m.language.is_empty(),
+        4 => downloaded,
+        _ => true,
+    };
+    let words_ok = query
+        .split_whitespace()
+        .all(|w| m.name.to_lowercase().contains(&w.to_lowercase()));
+    // A compressed copy you already have always shows.
+    chip_ok && words_ok && (compressed || !m.compressed || downloaded)
+}
+
+fn fmt_size(bytes: u64) -> String {
+    if bytes >= 1_000_000_000 {
+        format!("{:.1} GB", bytes as f64 / 1e9)
+    } else {
+        format!("{} MB", bytes / 1_000_000)
+    }
+}
+
+/// Fills the model library from the catalog and the filters set in the window.
 pub fn show_models(ui: &AppWindow, active: &str) {
-    let rows: Vec<crate::ModelRow> = CATALOG
-        .iter()
-        .map(|m| crate::ModelRow {
-            name: m.name.into(),
-            description: m.description.into(),
-            size: format!("{:.1} GB", m.bytes as f64 / 1e9).into(),
-            downloaded: m.is_downloaded(),
-            active: m.id == active,
-        })
-        .collect();
+    let (query, chip, compressed) = (
+        ui.get_model_query().to_string(),
+        ui.get_model_filter(),
+        ui.get_model_compressed(),
+    );
+    let mut rows = Vec::new();
+    for group in models::Group::ALL {
+        let shown: Vec<(usize, &models::ModelInfo)> = CATALOG
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| m.group == group && matches(m, &query, chip, compressed))
+            .collect();
+        if shown.is_empty() {
+            continue;
+        }
+        rows.push(crate::ModelRow {
+            header: true,
+            title: group.title().into(),
+            by: group.by().into(),
+            index: -1,
+            ..Default::default()
+        });
+        let n = shown.len();
+        for (k, (i, m)) in shown.into_iter().enumerate() {
+            rows.push(crate::ModelRow {
+                header: false,
+                title: m.name.into(),
+                by: "".into(),
+                index: i as i32,
+                size: fmt_size(m.bytes).into(),
+                quality: m.quality as i32,
+                speed: m.speed as i32,
+                downloaded: m.is_downloaded(),
+                active: m.id == active,
+                first: k == 0,
+                last: k + 1 == n,
+            });
+        }
+    }
     ui.set_models(slint::ModelRc::new(slint::VecModel::from(rows)));
+    let have: Vec<&models::ModelInfo> = CATALOG.iter().filter(|m| m.is_downloaded()).collect();
+    let used: u64 = have.iter().map(|m| m.bytes).sum();
+    let name = models::find(active).map_or("None chosen", |m| m.name);
+    ui.set_model_summary(format!("{name} · {} of {} downloaded", have.len(), CATALOG.len()).into());
+    ui.set_models_used(format!("{} used", fmt_size(used)).into());
+    ui.set_model_count(CATALOG.len() as i32);
 }
 
 /// Downloads one model on a background thread.

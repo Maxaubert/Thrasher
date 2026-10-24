@@ -528,6 +528,11 @@ export component AppWindow inherits Window {
         }
     }
 
+    // Keeps the list from staying scrolled past its end after it shrinks (a delete).
+    function clamp-list() {
+        list-y = clamp(list-y, min(0px, list-height - clips.length * 54px), 0px);
+    }
+
     function go(p: int) {
         root.renaming = false;
         root.page = p;
@@ -783,8 +788,10 @@ export component AppWindow inherits Window {
             ListView {
                 vertical-stretch: 1;
                 content-y <=> root.list-y;
-                init => { root.list-height = self.visible-height; }
-                changed visible-height => { root.list-height = self.visible-height; }
+                property <int> count: root.clips.length;
+                init => { root.list-height = self.visible-height; root.clamp-list(); }
+                changed visible-height => { root.list-height = self.visible-height; root.clamp-list(); }
+                changed count => { root.clamp-list(); }
                 for clip[i] in root.clips: HorizontalLayout {
                     padding-left: 12px;
                     padding-right: 12px;

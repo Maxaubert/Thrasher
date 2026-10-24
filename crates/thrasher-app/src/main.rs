@@ -755,7 +755,8 @@ impl App {
                 }
                 ui.set_status(msg.into());
                 self.refresh_clips(ui);
-                self.select_name(ui, &done.name);
+                // Nothing highlighted, so Space records again.
+                ui.set_selected(-1);
             }
             Err(e) => ui.set_status(format!("Recording failed: {e}").into()),
         }
@@ -1010,7 +1011,8 @@ fn main() -> Result<(), slint::PlatformError> {
     }
     let t = std::time::Instant::now();
     app.borrow_mut().refresh_clips(&ui);
-    ui.set_selected(app.borrow().clips.len() as i32 - 1);
+    // Nothing highlighted at start: Space records until a clip is clicked.
+    ui.set_selected(-1);
     app.borrow_mut().show_transcript(&ui);
     crate::log!(
         "listed {} clips in {} ms",
@@ -1677,7 +1679,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     a.settings.save();
                     ui.set_folder(short_path(&dir).into());
                     a.refresh_clips(&ui);
-                    ui.set_selected(a.clips.len() as i32 - 1);
+                    ui.set_selected(-1);
                     a.show_transcript(&ui);
                 }
                 Err(e) => ui.set_status(format!("Cannot use {}: {e}", dir.display()).into()),

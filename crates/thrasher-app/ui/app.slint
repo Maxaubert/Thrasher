@@ -332,12 +332,23 @@ component ClipItem inherits Rectangle {
             font-size: 12px;
             vertical-alignment: center;
         }
-        Icon {
-            name: "chevron";
-            tint: Theme.dim;
-            width: 16px;
-            height: 16px;
+        // The arrow opens the clip at once, highlighted or not.
+        Rectangle {
+            width: 28px;
+            height: 28px;
             y: (parent.height - self.height) / 2;
+            border-radius: 7px;
+            background: arrow.has-hover ? Theme.raised : transparent;
+            accessible-role: button;
+            accessible-label: "Open " + root.item.name;
+            accessible-action-default => { root.open(); }
+            Icon {
+                name: "chevron";
+                tint: arrow.has-hover ? Theme.text : Theme.dim;
+                width: 16px;
+                height: 16px;
+            }
+            arrow := TouchArea { mouse-cursor: pointer; clicked => { root.open(); } }
         }
     }
 }

@@ -1526,7 +1526,7 @@ export component AppWindow inherits Window {
                                 spacing: 8px;
                                 padding-right: 10px;
                                 Text {
-                                    text: "Pauses and marks";
+                                    text: "Show marks";
                                     color: Theme.muted;
                                     font-size: 12px;
                                     vertical-alignment: center;
@@ -1534,7 +1534,7 @@ export component AppWindow inherits Window {
                                 VerticalLayout {
                                     alignment: center;
                                     Toggle {
-                                        label: "Show pauses and marks";
+                                        label: "Show marks";
                                         checked <=> root.show-marks;
                                     }
                                 }

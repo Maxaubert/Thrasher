@@ -66,6 +66,86 @@ const LANGUAGES: [(&str, &str); 21] = [
 ];
 const EXPORT_FORMATS: [&str; 3] = ["flac", "wav", "mp3"];
 
+/// What the export menu offers, in its order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Export {
+    Audio(thrasher_core::export::Format),
+    Subtitles(thrasher_core::export::Subtitles),
+}
+
+impl Export {
+    const ALL: [Export; 6] = {
+        use thrasher_core::export::{Format, Subtitles};
+        [
+            Export::Audio(Format::Flac),
+            Export::Audio(Format::Wav),
+            Export::Audio(Format::Mp3),
+            Export::Subtitles(Subtitles::Srt),
+            Export::Subtitles(Subtitles::Vtt),
+            Export::Subtitles(Subtitles::Words),
+        ]
+    };
+
+    /// The audio format chosen in settings ("flac", "wav" or "mp3").
+    fn from_format(format: &str) -> Export {
+        let i = EXPORT_FORMATS
+            .iter()
+            .position(|f| *f == format)
+            .unwrap_or(0);
+        Export::ALL[i]
+    }
+
+    fn title(self) -> &'static str {
+        use thrasher_core::export::{Format, Subtitles};
+        match self {
+            Export::Audio(Format::Flac) => "FLAC audio",
+            Export::Audio(Format::Wav) => "WAV audio",
+            Export::Audio(Format::Mp3) => "MP3 audio",
+            Export::Subtitles(Subtitles::Srt) => "SRT subtitles",
+            Export::Subtitles(Subtitles::Vtt) => "VTT subtitles",
+            Export::Subtitles(Subtitles::Words) => "word timings",
+        }
+    }
+
+    fn extension(self) -> &'static str {
+        match self {
+            Export::Audio(f) => f.extension(),
+            Export::Subtitles(s) => s.extension(),
+        }
+    }
+
+    /// The last part of the extension, which is what the save dialog filters on.
+    fn filter(self) -> &'static str {
+        self.extension().rsplit('.').next().unwrap_or("")
+    }
+
+    /// Writes the export. False means a subtitle export of a clip with no transcript.
+    fn write(
+        self,
+        library: &Library,
+        name: &str,
+        clean_voice: bool,
+        path: &std::path::Path,
+    ) -> std::io::Result<bool> {
+        use thrasher_core::export::{ExportOptions, Format};
+        match self {
+            Export::Audio(format) => {
+                let options = ExportOptions {
+                    format,
+                    // MP3 is always 16 bit; WAV and FLAC keep 24.
+                    bits: if format == Format::Mp3 { 16 } else { 24 },
+                    clean_voice,
+                };
+                thrasher_core::export::export_clip_to(library, name, options, path)?;
+                Ok(true)
+            }
+            Export::Subtitles(kind) => {
+                thrasher_core::export::export_subtitles_to(library, name, kind, path)
+            }
+        }
+    }
+}
+
 struct App {
     settings: Settings,
     library: Library,
@@ -1451,55 +1531,73 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_export_selected({
+    ui.on_export_as({
         let (app, weak) = (app.clone(), ui.as_weak());
-        move || {
+        move |kind| {
             let ui = weak.unwrap();
-            let a = app.borrow();
-            let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
+            let (library, name, clean_voice, default_format, folder) = {
+                let a = app.borrow();
+                let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
+                    return;
+                };
+                (
+                    a.library.clone(),
+                    name,
+                    a.settings.clean_voice,
+                    a.settings.export_format.clone(),
+                    a.settings.export_dir.clone(),
+                )
+            };
+            let kind = if kind < 0 {
+                Export::from_format(&default_format)
+            } else {
+                Export::ALL[(kind as usize).min(Export::ALL.len() - 1)]
+            };
+            let start = folder
+                .filter(|d| d.is_dir())
+                .unwrap_or_else(|| library.dir().to_path_buf());
+            let file = format!("{name}.{}", kind.extension());
+            // The test window must never take focus, so it saves without asking.
+            let chosen = if std::env::var_os("THRASHER_TEST_WINDOW").is_some() {
+                Some(start.join(&file))
+            } else {
+                rfd::FileDialog::new()
+                    .set_title(format!("Export {}", kind.title()))
+                    .set_directory(&start)
+                    .set_file_name(&file)
+                    .add_filter(kind.title(), &[kind.filter()])
+                    .save_file()
+            };
+            let Some(mut path) = chosen else {
                 return;
             };
-            use thrasher_core::export::{ExportOptions, Format};
-            let mut options = match a.settings.export_format.as_str() {
-                "wav" => ExportOptions {
-                    format: Format::Wav,
-                    bits: 24,
-                    ..Default::default()
-                },
-                "mp3" => ExportOptions {
-                    format: Format::Mp3,
-                    bits: 16,
-                    ..Default::default()
-                },
-                _ => ExportOptions::default(),
-            };
-            options.clean_voice = a.settings.clean_voice;
-            match thrasher_core::export::export_clip(&a.library, &name, options) {
-                Ok(p) => ui.set_status(format!("Exported {}", p.display()).into()),
-                Err(e) => ui.set_status(format!("Export failed: {e}").into()),
+            if path.extension().is_none() {
+                path.set_extension(kind.filter());
             }
-        }
-    });
-
-    ui.on_export_subtitles({
-        let (app, weak) = (app.clone(), ui.as_weak());
-        move || {
-            let ui = weak.unwrap();
-            let a = app.borrow();
-            let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
-                return;
-            };
-            match thrasher_core::export::export_subtitles(&a.library, &name) {
-                Ok(files) if files.is_empty() => ui.set_status("Transcribe this clip first".into()),
-                Ok(_) => ui.set_status(
-                    format!(
-                        "Wrote SRT, VTT and word timings to {}",
-                        thrasher_core::export::export_dir(&a.library).display()
-                    )
-                    .into(),
-                ),
-                Err(e) => ui.set_status(format!("Subtitles failed: {e}").into()),
+            if let Some(dir) = path.parent() {
+                let mut a = app.borrow_mut();
+                a.settings.export_dir = Some(dir.to_path_buf());
+                a.settings.save();
             }
+            ui.set_status(format!("Exporting {}...", short_path(&path)).into());
+            let weak = ui.as_weak();
+            std::thread::spawn(move || {
+                let started = std::time::Instant::now();
+                let result = kind.write(&library, &name, clean_voice, &path);
+                crate::log!(
+                    "export {} as {} took {} ms: {:?}",
+                    name,
+                    kind.title(),
+                    crate::log::ms(started),
+                    result.as_ref().err()
+                );
+                let status = match result {
+                    Ok(true) => format!("Exported {}", short_path(&path)),
+                    Ok(false) => "Transcribe this clip first".to_string(),
+                    Err(e) => format!("Export failed: {e}"),
+                };
+                let _ = weak.upgrade_in_event_loop(move |ui| ui.set_status(status.into()));
+            });
         }
     });
 
@@ -1900,6 +1998,16 @@ mod tests {
             Spec::Done(x) => Some(x),
             _ => None,
         }
+    }
+
+    #[test]
+    fn export_menu_order_matches_the_settings_formats() {
+        for (i, f) in EXPORT_FORMATS.iter().enumerate() {
+            assert_eq!(Export::ALL[i].extension(), *f);
+            assert_eq!(Export::from_format(f), Export::ALL[i]);
+        }
+        assert_eq!(Export::ALL[5].extension(), "words.json");
+        assert_eq!(Export::ALL[5].filter(), "json");
     }
 
     #[test]

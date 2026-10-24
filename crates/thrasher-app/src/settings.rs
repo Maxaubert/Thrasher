@@ -24,6 +24,9 @@ pub struct Settings {
     pub clean_voice: bool,
     /// The window's close button hides Thrasher to the tray instead of quitting.
     pub close_to_tray: bool,
+    /// A recording stops by itself after this many minutes, so one left running by
+    /// mistake cannot fill the disk. 0 means no limit.
+    pub max_recording_minutes: u32,
 }
 
 impl Default for Settings {
@@ -43,12 +46,28 @@ impl Default for Settings {
             export_format: "flac".into(),
             clean_voice: false,
             close_to_tray: true,
+            max_recording_minutes: 120,
         }
     }
 }
 
 fn path() -> Option<PathBuf> {
     directories::ProjectDirs::from("", "", "Thrasher").map(|d| d.config_dir().join("settings.json"))
+}
+
+/// Choices for the recording limit in settings: minutes and label. 0 is no limit.
+pub const RECORDING_LIMITS: [(u32, &str); 6] = [
+    (30, "30 minutes"),
+    (60, "1 hour"),
+    (120, "2 hours"),
+    (240, "4 hours"),
+    (480, "8 hours"),
+    (0, "No limit"),
+];
+
+/// True when a recording of `elapsed` seconds has reached the limit.
+pub fn over_limit(elapsed: f64, max_minutes: u32) -> bool {
+    max_minutes > 0 && elapsed >= max_minutes as f64 * 60.0
 }
 
 impl Settings {
@@ -67,5 +86,25 @@ impl Settings {
         if let Ok(text) = serde_json::to_string_pretty(self) {
             let _ = std::fs::write(p, text);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recording_limit() {
+        assert!(!over_limit(7199.9, 120));
+        assert!(over_limit(7200.0, 120));
+        assert!(!over_limit(1e9, 0));
+        assert_eq!(Settings::default().max_recording_minutes, 120);
+    }
+
+    #[test]
+    fn old_settings_files_get_the_default_limit() {
+        let s: Settings = serde_json::from_str(r#"{"pinned": true}"#).unwrap();
+        assert!(s.pinned);
+        assert_eq!(s.max_recording_minutes, 120);
     }
 }

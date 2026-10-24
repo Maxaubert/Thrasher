@@ -3,7 +3,7 @@
 // and the model library. The window draws its own frame and title bar. The small
 // always-on-top widget is a separate mode of the same window.
 
-import { LineEdit, ScrollView, TextEdit, ListView } from "std-widgets.slint";
+import { LineEdit, TextEdit } from "std-widgets.slint";
 import "./fonts/InterTight-400.ttf";
 import "./fonts/InterTight-500.ttf";
 import "./fonts/InterTight-600.ttf";
@@ -363,6 +363,7 @@ component BackLink inherits Rectangle {
     background: t.has-hover ? Theme.raised : transparent;
     accessible-role: button;
     accessible-label: "Back to " + text;
+    accessible-action-default => { root.clicked(); }
     row := HorizontalLayout {
         x: 8px;
         spacing: 4px;
@@ -378,6 +379,45 @@ component BackLink inherits Rectangle {
     t := TouchArea {
         mouse-cursor: pointer;
         clicked => { root.clicked(); }
+    }
+}
+
+// A scrolling area with a thin bar that only shows when there is more to see. It
+// widens under the mouse and can be dragged.
+component Scroller inherits Rectangle {
+    out property <length> visible-width <=> fl.width;
+    out property <length> visible-height <=> fl.height;
+    in-out property <length> content-height <=> fl.content-height;
+    in-out property <length> content-y <=> fl.content-y;
+    callback scrolled <=> fl.flicked;
+    property <length> range: fl.content-height - fl.height;
+    property <length> thumb-h: max(28px, fl.height * fl.height / max(fl.content-height, 1px));
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+    min-height: 50px;
+    fl := Flickable {
+        width: parent.width;
+        height: parent.height;
+        mouse-drag-pan-enabled: false;
+        @children
+    }
+    if root.range > 1px: Rectangle {
+        x: parent.width - self.width - 2px;
+        y: (-fl.content-y / root.range) * (fl.height - root.thumb-h);
+        width: drag.has-hover || drag.pressed ? 6px : 3px;
+        height: root.thumb-h;
+        border-radius: self.width / 2;
+        background: drag.pressed ? #f1ece855 : drag.has-hover ? #f1ece833 : #f1ece81c;
+        animate width, background { duration: 120ms; }
+        drag := TouchArea {
+            x: -6px;
+            width: parent.width + 8px;
+            moved => {
+                if (self.pressed) {
+                    fl.content-y = clamp(-(parent.y + self.mouse-y - self.pressed-y) / (fl.height - root.thumb-h) * root.range, -root.range, 0);
+                }
+            }
+        }
     }
 }
 
@@ -511,7 +551,7 @@ component Select inherits Rectangle {
     popup := PopupWindow {
         x: 0;
         y: root.height + 4px;
-        width: max(root.width, 180px);
+        width: max(root.width, 120px);
         height: min(root.model.length * 32px + 10px, 298px);
         close-policy: close-on-click-outside;
         Rectangle {
@@ -824,7 +864,9 @@ export component AppWindow inherits Window {
     in property <float> play-fraction;
     in property <string> play-position: "0:00";
     in property <string> play-length: "0:00";
-    in property <string> speed-label: "1.0×";
+    in-out property <int> speed-index: 1;
+    // The transcript shows pauses and the marks for edited and spoken words.
+    in-out property <bool> show-marks: true;
     in-out property <bool> looping;
     in property <[float]> detail-wave;
     in property <string> detail-meta;
@@ -885,7 +927,7 @@ export component AppWindow inherits Window {
     callback toggle-play();
     callback seek-fraction(float);
     callback skip(float);
-    callback cycle-speed();
+    callback speed-changed(int);
     callback stop-playback();
     callback delete-selected();
     callback delete-last();
@@ -1216,13 +1258,15 @@ export component AppWindow inherits Window {
                 }
             }
 
-            ListView {
+            Scroller {
                 vertical-stretch: 1;
                 content-y <=> root.list-y;
                 property <int> count: root.clips.length;
                 init => { root.list-height = self.visible-height; root.clamp-list(); }
                 changed visible-height => { root.list-height = self.visible-height; root.clamp-list(); }
                 changed count => { root.clamp-list(); }
+                VerticalLayout {
+                alignment: start;
                 for clip[i] in root.clips: HorizontalLayout {
                     padding-left: 12px;
                     padding-right: 12px;
@@ -1237,6 +1281,7 @@ export component AppWindow inherits Window {
                         select => { root.selected = i; keys.focus(); }
                         open => { root.open-clip(i); root.go(1); }
                     }
+                }
                 }
             }
 
@@ -1265,6 +1310,11 @@ export component AppWindow inherits Window {
                 }
                 Rectangle { horizontal-stretch: 1; }
             }
+            Scroller {
+            vertical-stretch: 1;
+            VerticalLayout {
+            alignment: start;
+            padding-bottom: 8px;
             VerticalLayout {
                 vertical-stretch: 0;
                 padding-left: 22px;
@@ -1421,12 +1471,13 @@ export component AppWindow inherits Window {
                             Rectangle { horizontal-stretch: 1; }
                             VerticalLayout {
                                 alignment: center;
-                                Btn {
-                                    text: root.speed-label;
+                                Select {
+                                    width: 86px;
                                     height: 30px;
-                                    font-size: 12px;
-                                    on: root.speed-label != "1.0×";
-                                    clicked => { root.cycle-speed(); keys.focus(); }
+                                    label: "Speed";
+                                    model: ["0.75×", "1.0×", "1.25×", "1.5×", "2.0×"];
+                                    current-index <=> root.speed-index;
+                                    selected(i) => { root.speed-changed(i); keys.focus(); }
                                 }
                             }
                             VerticalLayout {
@@ -1449,8 +1500,8 @@ export component AppWindow inherits Window {
                 padding-left: 16px;
                 padding-right: 16px;
                 padding-top: 12px;
-                vertical-stretch: 1;
                 Rectangle {
+                    height: root.transcript != "" && !root.transcribing ? 320px : self.preferred-height;
                     border-radius: 14px;
                     border-width: 1px;
                     border-color: #241b15;
@@ -1469,6 +1520,24 @@ export component AppWindow inherits Window {
                                 letter-spacing: 0.7px;
                                 vertical-alignment: center;
                                 horizontal-stretch: 1;
+                            }
+                            if root.transcript != "" && !root.transcribing: HorizontalLayout {
+                                horizontal-stretch: 0;
+                                spacing: 8px;
+                                padding-right: 10px;
+                                Text {
+                                    text: "Pauses and marks";
+                                    color: Theme.muted;
+                                    font-size: 12px;
+                                    vertical-alignment: center;
+                                }
+                                VerticalLayout {
+                                    alignment: center;
+                                    Toggle {
+                                        label: "Show pauses and marks";
+                                        checked <=> root.show-marks;
+                                    }
+                                }
                             }
                             if root.transcript != "" && !root.transcribing: Rectangle {
                                 width: edit-row.preferred-width + 20px;
@@ -1527,7 +1596,7 @@ export component AppWindow inherits Window {
                                 }
                             }
                         }
-                        if root.transcript != "" && !root.transcribing: ScrollView {
+                        if root.transcript != "" && !root.transcribing: Scroller {
                             vertical-stretch: 1;
                             // A new transcript starts at the top; Slint would keep the old offset.
                             property <string> shown: root.transcript;
@@ -1538,11 +1607,15 @@ export component AppWindow inherits Window {
                                 flex-wrap: wrap;
                                 alignment: start;
                                 for w[i] in root.words: Rectangle {
+                                    // Plain view: pauses take no room at all.
+                                    property <bool> hidden: w.is-silence && !root.show-marks;
+                                    property <bool> marks: root.show-marks;
+                                    visible: !hidden;
                                     horizontal-stretch: 0;
                                     border-radius: 3px;
                                     background: i == root.current-word ? Theme.accent : wt.has-hover ? Theme.raised : transparent;
-                                    width: label.preferred-width + (w.is-silence ? 14px : 6px);
-                                    height: label.preferred-height + 4px;
+                                    width: hidden ? 0 : label.preferred-width + (w.is-silence ? 14px : 6px);
+                                    height: hidden ? 0 : label.preferred-height + 4px;
                                     border-width: w.is-silence ? 1px : 0;
                                     border-color: Theme.edge;
                                     label := Text {
@@ -1550,13 +1623,14 @@ export component AppWindow inherits Window {
                                         // Spoken words are generated speech: shown in a different colour.
                                         color: i == root.current-word ? Theme.on-accent
                                             : w.is-silence ? Theme.muted
+                                            : !marks ? Theme.text2
                                             : w.failed ? Theme.danger
                                             : w.pending ? #6d625a
                                             : w.spoken ? Theme.accent
                                             : Theme.text2;
                                         font-family: w.is-silence ? Theme.mono : "Inter Tight";
                                         font-size: w.is-silence ? 11px : 15px;
-                                        font-italic: w.spoken;
+                                        font-italic: w.spoken && marks;
                                     }
                                     wt := TouchArea {
                                         mouse-cursor: pointer;
@@ -1569,6 +1643,44 @@ export component AppWindow inherits Window {
                 }
             }
 
+            VerticalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 18px;
+                Card {
+                    title: "OPTIONS";
+                    CardRow {
+                        label: "Clean voice on export";
+                        note: "Less background noise, even loudness";
+                        VerticalLayout {
+                            alignment: center;
+                            Toggle {
+                                label: "Clean voice on export";
+                                checked <=> root.clean-voice;
+                                toggled(on) => { root.clean-voice-changed(on); }
+                            }
+                        }
+                    }
+                    CardRow {
+                        label: "Delete this clip";
+                        note: "You can undo it from the clip list";
+                        last: true;
+                        VerticalLayout {
+                            alignment: center;
+                            Btn {
+                                text: "Delete";
+                                danger: true;
+                                height: 32px;
+                                font-size: 12px;
+                                clicked => { root.delete-selected(); root.go(0); }
+                            }
+                        }
+                    }
+                }
+            }
+            }
+            }
+
             HorizontalLayout {
                 vertical-stretch: 0;
                 padding: 16px;
@@ -1577,28 +1689,14 @@ export component AppWindow inherits Window {
                 spacing: 6px;
                 Btn {
                     primary: true;
-                    text: "Export  " + (root.export-format == 1 ? "WAV" : root.export-format == 2 ? "MP3" : "FLAC");
+                    text: "Export audio (" + (root.export-format == 1 ? "WAV" : root.export-format == 2 ? "MP3" : "FLAC") + ")";
                     clicked => { root.export-selected(); keys.focus(); }
                 }
-                Btn {
-                    text: "Clean voice";
-                    on: root.clean-voice;
-                    clicked => { root.clean-voice = !root.clean-voice; root.clean-voice-changed(root.clean-voice); keys.focus(); }
-                }
                 if root.transcript != "": Btn {
-                    text: "Subtitles";
+                    text: "Export subtitles (SRT, VTT)";
                     clicked => { root.export-subtitles(); keys.focus(); }
                 }
                 Rectangle { horizontal-stretch: 1; }
-                IconBtn {
-                    size: 36px;
-                    outlined: true;
-                    icon: "trash";
-                    icon-size: 14px;
-                    tint: Theme.danger;
-                    label: "Delete clip";
-                    clicked => { root.delete-selected(); root.go(0); }
-                }
             }
             if root.status != "": Text {
                 text: root.status;
@@ -1747,7 +1845,7 @@ export component AppWindow inherits Window {
                 close => { root.close-window(); }
             }
             PageHeader { title: "Settings"; back => { root.go(0); } }
-            ScrollView {
+            Scroller {
                 vertical-stretch: 1;
                 VerticalLayout {
                     padding-left: 16px;
@@ -2033,8 +2131,11 @@ export component AppWindow inherits Window {
                     }
                 }
             }
-            ListView {
+            Scroller {
                 vertical-stretch: 1;
+                VerticalLayout {
+                alignment: start;
+                padding-bottom: 12px;
                 for m in root.models: VerticalLayout {
                     padding-left: 16px;
                     padding-right: 16px;
@@ -2147,6 +2248,7 @@ export component AppWindow inherits Window {
                         }
                         if !m.last: Rectangle { y: parent.height - 1px; height: 1px; background: #221912; }
                     }
+                }
                 }
             }
             if root.models.length == 0: Text {

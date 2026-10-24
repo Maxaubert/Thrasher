@@ -32,7 +32,15 @@ impl WhisperTranscriber {
         params.use_gpu(use_gpu);
         // The NB-Whisper models are fine-tunes and share the original models' heads.
         let model_preset = match heads {
+            Heads::Tiny => DtwModelPreset::Tiny,
+            Heads::TinyEn => DtwModelPreset::TinyEn,
+            Heads::Base => DtwModelPreset::Base,
+            Heads::BaseEn => DtwModelPreset::BaseEn,
+            Heads::Small => DtwModelPreset::Small,
+            Heads::SmallEn => DtwModelPreset::SmallEn,
             Heads::Medium => DtwModelPreset::Medium,
+            Heads::MediumEn => DtwModelPreset::MediumEn,
+            Heads::LargeV2 => DtwModelPreset::LargeV2,
             Heads::LargeV3 => DtwModelPreset::LargeV3,
             Heads::LargeV3Turbo => DtwModelPreset::LargeV3Turbo,
         };

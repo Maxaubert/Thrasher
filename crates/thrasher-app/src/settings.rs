@@ -52,7 +52,12 @@ impl Default for Settings {
     }
 }
 
+/// `THRASHER_SETTINGS` points tests at their own settings file, so they never change
+/// the user's.
 fn path() -> Option<PathBuf> {
+    if let Some(p) = std::env::var_os("THRASHER_SETTINGS") {
+        return Some(PathBuf::from(p));
+    }
     directories::ProjectDirs::from("", "", "Thrasher").map(|d| d.config_dir().join("settings.json"))
 }
 

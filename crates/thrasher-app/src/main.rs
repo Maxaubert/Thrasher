@@ -646,6 +646,18 @@ impl App {
             if let Some(e) = rec.error() {
                 ui.set_status(e.into());
             }
+            let limit = self.settings.max_recording_minutes;
+            if settings::over_limit(rec.elapsed(), limit) {
+                self.stop_recording(ui);
+                let label = settings::RECORDING_LIMITS
+                    .iter()
+                    .find(|(m, _)| *m == limit)
+                    .map_or_else(|| format!("{limit} minutes"), |(_, l)| l.to_string());
+                ui.set_status(
+                    format!("Stopped and saved at the {label} limit. Change it in Settings.")
+                        .into(),
+                );
+            }
         }
         if self.running {
             active = true;
@@ -811,6 +823,17 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.set_folder(short_path(a.library.dir()).into());
         ui.set_name_template(a.settings.name_template.clone().into());
         ui.set_close_to_tray(a.settings.close_to_tray);
+        let limits: Vec<SharedString> = settings::RECORDING_LIMITS
+            .iter()
+            .map(|(_, l)| (*l).into())
+            .collect();
+        ui.set_recording_limits(ModelRc::new(VecModel::from(limits)));
+        ui.set_recording_limit_index(
+            settings::RECORDING_LIMITS
+                .iter()
+                .position(|(m, _)| *m == a.settings.max_recording_minutes)
+                .unwrap_or(2) as i32,
+        );
         ui.set_start_with_windows(startup::enabled());
         ui.set_speed_label(speed_label(NORMAL_SPEED).into());
         let langs: Vec<SharedString> = LANGUAGES.iter().map(|(_, n)| (*n).into()).collect();
@@ -1354,6 +1377,17 @@ fn main() -> Result<(), slint::PlatformError> {
                     ui.set_status("File name pattern saved".into());
                 }
                 Err(e) => ui.set_status(e.to_string().into()),
+            }
+        }
+    });
+
+    ui.on_recording_limit_changed({
+        let app = app.clone();
+        move |i| {
+            if let Some((minutes, _)) = settings::RECORDING_LIMITS.get(i as usize) {
+                let mut a = app.borrow_mut();
+                a.settings.max_recording_minutes = *minutes;
+                a.settings.save();
             }
         }
     });

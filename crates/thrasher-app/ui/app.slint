@@ -453,6 +453,8 @@ export component AppWindow inherits Window {
     in property <float> download-progress;
     in-out property <string> hotkey;
     in-out property <bool> close-to-tray: true;
+    in property <[string]> recording-limits;
+    in-out property <int> recording-limit-index: 2;
     in-out property <bool> start-with-windows;
     in-out property <bool> pinned;
     in-out property <bool> compact;
@@ -497,6 +499,7 @@ export component AppWindow inherits Window {
     callback template-accepted(string);
     callback hotkey-accepted(string);
     callback close-to-tray-changed(bool);
+    callback recording-limit-changed(int);
     callback start-with-windows-changed(bool);
     callback download-model(int);
     callback cancel-download();
@@ -1351,6 +1354,15 @@ export component AppWindow inherits Window {
                                 checked <=> root.record-system;
                                 toggled(on) => { root.system-changed(on); }
                             }
+                        }
+                    }
+                    SettingRow {
+                        label: "Stop recording after";
+                        ComboBox {
+                            width: 220px;
+                            model: root.recording-limits;
+                            current-index <=> root.recording-limit-index;
+                            selected => { root.recording-limit-changed(self.current-index); }
                         }
                     }
                     SettingRow {

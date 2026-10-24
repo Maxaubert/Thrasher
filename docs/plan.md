@@ -139,3 +139,12 @@ Max accepted the research defaults (see section 7 for the report link):
 - **DSP:** sonora (noise suppression, auto gain) applied at export or as an extra track, raw mic always kept.
 - **Widget:** Max wants a small draggable widget (mic button, close to hide) and an always-on-top pin. Exact look decided in the mockups.
 - **Build order:** build as much as possible now; keep UI minimal.
+
+## 12. Mockups (2026-10-24, issue #3)
+
+20 main-screen directions on a Claude Design canvas (private link): https://claude.ai/artifact/SU1FDLC9SZgMi9sXMe6wbB
+
+- **Max picked 02 Ember:** orange (#ff6a1a) on warm black, Inter Tight with JetBrains Mono for times, 520×600 window.
+- Each clip row has a play button (plays from the main view) and a `>` that opens a **manage screen** for that clip: player with seek, speed and loop, transcript view, and transcript editing (cut words, shorten silences, type new words in your voice).
+- **Models are not a tab.** They live on the **settings page** (opened from a gear in the title bar) with recording, output, voice and shortcut settings.
+- Ember screens on the canvas: main while a clip plays, manage clip, edit transcript, settings.

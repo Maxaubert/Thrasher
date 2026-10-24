@@ -13,6 +13,7 @@ pub mod naming;
 pub mod player;
 pub mod recorder;
 pub mod sidecar;
+pub mod stretch;
 pub mod subtitles;
 pub mod transcribe;
 pub mod voice;

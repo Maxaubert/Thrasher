@@ -301,7 +301,41 @@ pub fn read_f32(path: &Path) -> io::Result<(WavSpec, Vec<f32>)> {
     f.seek(SeekFrom::Start(info.data_offset))?;
     let mut raw = vec![0u8; info.data_bytes as usize];
     f.read_exact(&mut raw)?;
-    let samples = match info.spec.format {
+    Ok((info.spec, decode(info.spec.format, &raw)))
+}
+
+/// The loudest sample (0..=1) in each of `buckets` equal slices of the file, for
+/// drawing its waveform. Reads the file in pieces, so long clips need little memory.
+pub fn peaks(path: &Path, buckets: usize) -> io::Result<Vec<f32>> {
+    let info = read_info(path)?;
+    let mut out = vec![0f32; buckets];
+    let frames = info.frames();
+    if frames == 0 || buckets == 0 {
+        return Ok(out);
+    }
+    let ch = info.spec.channels.max(1) as u64;
+    let align = info.spec.block_align() as u64;
+    let mut f = File::open(path)?;
+    f.seek(SeekFrom::Start(info.data_offset))?;
+    let chunk = (1 << 20) / align * align;
+    let (mut left, mut frame) = (info.data_bytes, 0u64);
+    let mut raw = vec![0u8; chunk as usize];
+    while left > 0 {
+        let n = left.min(chunk) as usize;
+        f.read_exact(&mut raw[..n])?;
+        left -= n as u64;
+        for (i, s) in decode(info.spec.format, &raw[..n]).into_iter().enumerate() {
+            let fr = frame + i as u64 / ch;
+            let b = (fr * buckets as u64 / frames) as usize;
+            out[b.min(buckets - 1)] = out[b.min(buckets - 1)].max(s.abs().min(1.0));
+        }
+        frame += n as u64 / align;
+    }
+    Ok(out)
+}
+
+fn decode(format: SampleFormat, raw: &[u8]) -> Vec<f32> {
+    match format {
         SampleFormat::F32 => raw
             .as_chunks::<4>()
             .0
@@ -327,8 +361,7 @@ pub fn read_f32(path: &Path) -> io::Result<(WavSpec, Vec<f32>)> {
             .iter()
             .map(|b| i32::from_le_bytes(*b) as f32 / 2_147_483_648.0)
             .collect(),
-    };
-    Ok((info.spec, samples))
+    }
 }
 
 /// Fixes the size fields of a file written by [`WavWriter`] that was never finalized,
@@ -387,6 +420,21 @@ mod tests {
         let (s, ours) = read_f32(&path).unwrap();
         assert_eq!(s, WavSpec::f32(48_000, 2));
         assert_eq!(ours, read);
+    }
+
+    #[test]
+    fn peaks_find_the_loud_part() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("p.wav");
+        let mut w = WavWriter::create(&path, 48_000, 2).unwrap();
+        // One quiet second, then one loud second.
+        w.write(&vec![0.1; 96_000]).unwrap();
+        w.write(&vec![-0.8; 96_000]).unwrap();
+        w.finalize().unwrap();
+        let p = peaks(&path, 4).unwrap();
+        assert_eq!(p.len(), 4);
+        assert!((p[0] - 0.1).abs() < 1e-6 && (p[1] - 0.1).abs() < 1e-6);
+        assert!((p[2] - 0.8).abs() < 1e-6 && (p[3] - 0.8).abs() < 1e-6);
     }
 
     #[test]

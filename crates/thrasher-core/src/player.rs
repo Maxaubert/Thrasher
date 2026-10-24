@@ -80,13 +80,17 @@ struct Playing {
     handle: JoinHandle<()>,
 }
 
-/// Plays one clip at a time.
+/// Plays one clip at a time, straight from a shared buffer: nothing is copied, so a
+/// long clip starts, seeks and changes speed at once.
 #[derive(Default)]
 pub struct Player {
     current: Option<Playing>,
-    position: Arc<AtomicU64>,
+    /// Output frames heard since the start.
+    played: Arc<AtomicU64>,
     done: Arc<AtomicBool>,
     rate: u32,
+    start_secs: f64,
+    speed: f64,
     error: Arc<Mutex<Option<String>>>,
 }
 
@@ -95,35 +99,41 @@ impl Player {
         Self::default()
     }
 
-    pub fn play(&mut self, buffer: Buffer, start_secs: f64) {
+    /// Plays `buffer` from `start_secs` at `speed`, with the pitch kept.
+    pub fn play(&mut self, buffer: Arc<Buffer>, start_secs: f64, speed: f64) {
         self.stop();
-        // Windows plays a mono stream on the left speaker only, so send it as stereo.
-        let buffer = if buffer.channels == 1 {
-            Buffer {
-                channels: 2,
-                samples: buffer.samples.iter().flat_map(|&s| [s, s]).collect(),
-                ..buffer
-            }
-        } else {
-            buffer
-        };
         let stop = Arc::new(AtomicBool::new(false));
-        let start = (start_secs.max(0.0) * buffer.sample_rate as f64) as u64;
-        self.position.store(start, Ordering::Relaxed);
+        let ch = buffer.channels.max(1) as usize;
+        let frames = buffer.samples.len() / ch;
+        let start = ((start_secs.max(0.0) * buffer.sample_rate as f64) as usize).min(frames);
+        let stretcher =
+            crate::stretch::Stretcher::new(&buffer.samples, ch, buffer.sample_rate, start, speed);
+        self.start_secs = start as f64 / buffer.sample_rate.max(1) as f64;
+        self.speed = if stretcher.is_some() {
+            speed.clamp(0.5, 2.0)
+        } else {
+            1.0
+        };
+        self.played.store(0, Ordering::Relaxed);
         self.done.store(false, Ordering::Relaxed);
         self.rate = buffer.sample_rate;
         *self.error.lock().unwrap() = None;
-        let (st, pos, done, error) = (
+        let (st, played, done, error) = (
             stop.clone(),
-            self.position.clone(),
+            self.played.clone(),
             self.done.clone(),
             self.error.clone(),
         );
         let handle = std::thread::Builder::new()
             .name("thrasher-playback".into())
             .spawn(move || {
-                let r = output(&buffer, start, &st, &pos);
-                if let Err(e) = r {
+                let mut feed = Feed {
+                    buffer,
+                    next: start,
+                    stretcher,
+                    scratch: Vec::new(),
+                };
+                if let Err(e) = output(&mut feed, &st, &played) {
                     *error.lock().unwrap() = Some(e);
                 }
                 done.store(true, Ordering::Relaxed);
@@ -143,11 +153,12 @@ impl Player {
         self.current.is_some() && !self.done.load(Ordering::Relaxed)
     }
 
+    /// Where playback is in the buffer, in seconds.
     pub fn position_secs(&self) -> f64 {
         if self.rate == 0 {
             return 0.0;
         }
-        self.position.load(Ordering::Relaxed) as f64 / self.rate as f64
+        self.start_secs + self.played.load(Ordering::Relaxed) as f64 / self.rate as f64 * self.speed
     }
 
     pub fn error(&self) -> Option<String> {
@@ -161,13 +172,45 @@ impl Drop for Player {
     }
 }
 
+/// Hands the audio to the output a piece at a time.
+struct Feed {
+    buffer: Arc<Buffer>,
+    next: usize,
+    stretcher: Option<crate::stretch::Stretcher>,
+    scratch: Vec<f32>,
+}
+
+impl Feed {
+    /// Always stereo out: Windows plays a mono stream on the left speaker only.
+    fn fill(&mut self, frames: usize, out: &mut Vec<f32>) -> usize {
+        let ch = self.buffer.channels.max(1) as usize;
+        let samples = &self.buffer.samples;
+        self.scratch.clear();
+        let n = match &mut self.stretcher {
+            Some(s) => s.read(samples, frames, &mut self.scratch),
+            None => {
+                let n = frames.min(samples.len() / ch - self.next);
+                self.scratch
+                    .extend_from_slice(&samples[self.next * ch..(self.next + n) * ch]);
+                self.next += n;
+                n
+            }
+        };
+        for f in self.scratch.chunks_exact(ch).take(n) {
+            out.extend_from_slice(&[f[0], f[(ch > 1) as usize]]);
+        }
+        n
+    }
+}
+
 #[cfg(windows)]
-fn output(b: &Buffer, start: u64, stop: &AtomicBool, pos: &AtomicU64) -> Result<(), String> {
-    crate::wasapi_io::play_blocking(&b.samples, b.sample_rate, b.channels, start, stop, pos)
+fn output(feed: &mut Feed, stop: &AtomicBool, played: &AtomicU64) -> Result<(), String> {
+    let rate = feed.buffer.sample_rate;
+    crate::wasapi_io::play_blocking(&mut |n, out| feed.fill(n, out), rate, 2, stop, played)
 }
 
 #[cfg(not(windows))]
-fn output(_: &Buffer, _: u64, _: &AtomicBool, _: &AtomicU64) -> Result<(), String> {
+fn output(_: &mut Feed, _: &AtomicBool, _: &AtomicU64) -> Result<(), String> {
     Err("playback is only implemented on Windows".into())
 }
 
@@ -190,6 +233,26 @@ mod tests {
         assert_eq!(b.channels, 2);
         assert_eq!(b.frames(), 3);
         assert_eq!(b.samples, vec![0.6, 0.7, 1.0, 1.0, 0.1, 0.1]);
+    }
+
+    #[test]
+    fn feed_sends_stereo_in_pieces() {
+        let buffer = Arc::new(Buffer {
+            sample_rate: 100,
+            channels: 1,
+            samples: vec![0.1, 0.2, 0.3],
+        });
+        let mut feed = Feed {
+            buffer,
+            next: 1,
+            stretcher: None,
+            scratch: Vec::new(),
+        };
+        let mut out = Vec::new();
+        assert_eq!(feed.fill(1, &mut out), 1);
+        assert_eq!(feed.fill(5, &mut out), 1);
+        assert_eq!(feed.fill(5, &mut out), 0);
+        assert_eq!(out, vec![0.2, 0.2, 0.3, 0.3]);
     }
 
     #[test]

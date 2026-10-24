@@ -68,3 +68,16 @@ cargo run -p thrasher-core --example record -- <folder> 5
 # Transcribe a clip and write words and pauses into its sidecar JSON
 cargo run --release -p thrasher-core --features whisper-cuda --example transcribe -- <model.bin> <clip.wav> no
 ```
+
+## Debugging and automated checks
+
+- **Log:** `%LOCALAPPDATA%\Thrasher\thrasher.log` (also printed to stderr). It has
+  startup times, how long each clip takes to read and to start playing, recording
+  start and stop, transcription and waveform times, and a line whenever the window
+  freezes for more than about a quarter of a second. It starts over past 1 MB.
+- **`THRASHER_DIR=<folder>`:** use a scratch clip folder instead of the real one.
+- **`THRASHER_TEST_WINDOW=1`:** the window opens without taking focus, for checks run
+  while someone works at the PC. Drive it without focus or the mouse: press buttons
+  through UI Automation (every button has an accessible name) and send keys with
+  `PostMessage`. Never call `SetForegroundWindow` or move the cursor. Run tests from a
+  renamed copy of the exe so the user's own Thrasher is never stopped.

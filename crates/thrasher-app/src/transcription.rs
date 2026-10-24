@@ -33,10 +33,15 @@ pub fn start(ui: &AppWindow, library: &Library, name: String, model_id: &str, la
     let weak = ui.as_weak();
     let dir = library.dir().to_path_buf();
     let model_id = model_id.to_string();
+    crate::log!("transcribing {name} with {model_id}");
     std::thread::spawn(move || {
         let started = std::time::Instant::now();
         let result = run_worker(&worker, &dir, &name, &model_id, &language, &weak);
         let secs = started.elapsed().as_secs_f64();
+        match &result {
+            Ok(()) => crate::log!("transcribed {name} with {model_id} in {secs:.1} s"),
+            Err(e) => crate::log!("transcribing {name} with {model_id} failed: {e}"),
+        }
         let _ = weak.upgrade_in_event_loop(move |ui| {
             ui.set_transcribing(false);
             match result {

@@ -1,6 +1,7 @@
 // Hide the console window in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod log;
 mod settings;
 mod startup;
 mod transcription;
@@ -14,6 +15,7 @@ use slint::{
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use thrasher_core::capture::{LoopbackMode, LoopbackSource, MicSource, Source};
 use thrasher_core::edit::{self, Edl};
@@ -63,16 +65,75 @@ struct App {
     running: bool,
     /// Where the active clip stands while paused, in recording time.
     paused_at: f64,
-    /// Edited time at the start of the buffer in the player, and how many edited
-    /// seconds pass per second played (the speed).
-    play_offset: f64,
-    play_rate: f64,
+    /// The clip last read for playback, kept so replaying, seeking and changing
+    /// speed start at once; and the one being read now.
+    loaded: Option<Loaded>,
+    loading: Option<Loading>,
     speed: usize,
     /// Maps the edited audio being played back to times in the recording.
     timeline: Edl,
     waves: waves::Waves,
     live: VecDeque<f32>,
     live_model: Rc<VecModel<f32>>,
+}
+
+/// A clip as edited, ready to play.
+struct Loaded {
+    name: String,
+    stamp: Stamp,
+    buffer: Arc<Buffer>,
+    timeline: Edl,
+}
+
+struct Loading {
+    name: String,
+    from: f64,
+    rx: std::sync::mpsc::Receiver<Result<Loaded, String>>,
+    asked: std::time::Instant,
+}
+
+/// Changes when a clip's audio or edits change, so a stale copy is read again.
+type Stamp = Vec<Option<(u64, SystemTime)>>;
+
+fn clip_stamp(library: &Library, name: &str) -> Stamp {
+    [
+        library.track_path(name, TrackKind::Mic),
+        library.track_path(name, TrackKind::System),
+        library.sidecar_path(name),
+    ]
+    .iter()
+    .map(|p| {
+        let m = std::fs::metadata(p).ok()?;
+        Some((m.len(), m.modified().ok()?))
+    })
+    .collect()
+}
+
+/// Reads a clip and applies its edits: cut words and shortened pauses are left out,
+/// and inserted words are spoken.
+fn load_for_playback(library: &Library, name: &str) -> Result<(Buffer, Edl), String> {
+    let t = std::time::Instant::now();
+    let buffer = load_clip(library, name).map_err(|e| e.to_string())?;
+    crate::log!(
+        "read {name}: {} of audio, {} MB in memory, {} ms",
+        fmt_time(buffer.duration_secs()),
+        buffer.samples.len() * 4 / 1_000_000,
+        log::ms(t)
+    );
+    let t = std::time::Instant::now();
+    let timeline = Sidecar::load(&library.sidecar_path(name))
+        .map(|sc| {
+            let voices = thrasher_core::voice::load_voices(library, name, &sc);
+            edit::plan(&sc, &voices, &buffer)
+        })
+        .unwrap_or_default();
+    let buffer = if timeline.is_identity() {
+        buffer
+    } else {
+        timeline.render(&buffer)
+    };
+    crate::log!("applied the edits of {name} in {} ms", log::ms(t));
+    Ok((buffer, timeline))
 }
 
 fn fmt_time(secs: f64) -> String {
@@ -406,56 +467,105 @@ impl App {
     }
 
     /// Plays clip `name` as edited, from `from` seconds of the recording, at the
-    /// chosen speed.
+    /// chosen speed. A clip not in memory yet is read on a background thread first,
+    /// so the window never waits on a long one.
     fn play_clip(&mut self, ui: &AppWindow, name: &str, from: f64) -> bool {
-        let buf = match load_clip(&self.library, name) {
-            Ok(b) => b,
-            Err(e) => {
-                ui.set_status(format!("Cannot open {name}: {e}").into());
-                return false;
-            }
-        };
-        // Play the clip as edited: cut words and shortened pauses are skipped, and
-        // inserted words are spoken.
-        self.timeline = Sidecar::load(&self.library.sidecar_path(name))
-            .map(|sc| {
-                let voices = thrasher_core::voice::load_voices(&self.library, name, &sc);
-                edit::plan(&sc, &voices, &buf)
-            })
-            .unwrap_or_default();
-        let buf = self.timeline.render(&buf);
-        let start = self
-            .timeline
-            .to_edited(from)
-            .clamp(0.0, buf.duration_secs());
-        let speed = SPEEDS[self.speed];
-        if self.speed == NORMAL_SPEED {
-            self.play_offset = 0.0;
-            self.play_rate = 1.0;
-            self.player.play(buf, start);
-        } else {
-            let first = (start * buf.sample_rate as f64) as usize * buf.channels.max(1) as usize;
-            let rest = Buffer {
-                sample_rate: buf.sample_rate,
-                channels: buf.channels,
-                samples: buf.samples[first.min(buf.samples.len())..].to_vec(),
-            };
-            self.player
-                .play(thrasher_core::stretch::stretch(&rest, speed), 0.0);
-            self.play_offset = start;
-            self.play_rate = speed;
-        }
+        self.player.stop();
+        self.running = false;
         self.active = Some(name.to_string());
-        self.running = true;
         self.paused_at = from;
         ui.set_playing(true);
         self.sync_active(ui);
+        let stamp = clip_stamp(&self.library, name);
+        if let Some(l) = self
+            .loaded
+            .as_ref()
+            .filter(|l| l.name == name && l.stamp == stamp)
+        {
+            let buffer = l.buffer.clone();
+            self.timeline = l.timeline.clone();
+            self.start(buffer, from);
+            crate::log!(
+                "play {name} from {} at {}x (already in memory)",
+                fmt_time(from),
+                SPEEDS[self.speed]
+            );
+        } else if let Some(l) = self.loading.as_mut().filter(|l| l.name == name) {
+            l.from = from;
+        } else {
+            crate::log!("play {name} from {}: reading it", fmt_time(from));
+            self.loaded = None;
+            self.timeline = Edl::default();
+            let (tx, rx) = std::sync::mpsc::channel();
+            let (library, n) = (self.library.clone(), name.to_string());
+            let _ = std::thread::Builder::new()
+                .name("thrasher-load".into())
+                .spawn(move || {
+                    let loaded = load_for_playback(&library, &n).map(|(buffer, timeline)| Loaded {
+                        name: n,
+                        stamp,
+                        buffer: Arc::new(buffer),
+                        timeline,
+                    });
+                    let _ = tx.send(loaded);
+                });
+            self.loading = Some(Loading {
+                name: name.to_string(),
+                from,
+                rx,
+                asked: std::time::Instant::now(),
+            });
+        }
         self.show_position(ui);
         true
     }
 
+    fn start(&mut self, buffer: Arc<Buffer>, from: f64) {
+        let start = self
+            .timeline
+            .to_edited(from)
+            .clamp(0.0, buffer.duration_secs());
+        self.player.play(buffer, start, SPEEDS[self.speed]);
+        self.running = true;
+    }
+
+    /// Picks up a clip the background thread has finished reading.
+    fn poll_loading(&mut self, ui: &AppWindow) {
+        let Some(l) = &self.loading else { return };
+        let result = match l.rx.try_recv() {
+            Ok(r) => r,
+            Err(std::sync::mpsc::TryRecvError::Empty) => return,
+            Err(_) => Err("the clip could not be read".into()),
+        };
+        let Some(Loading {
+            name, from, asked, ..
+        }) = self.loading.take()
+        else {
+            return;
+        };
+        match result {
+            Ok(loaded) => {
+                let buffer = loaded.buffer.clone();
+                self.timeline = loaded.timeline.clone();
+                self.loaded = Some(loaded);
+                if self.active.as_deref() == Some(name.as_str()) {
+                    self.start(buffer, from);
+                    crate::log!(
+                        "play {name}: sound started {} ms after the click",
+                        log::ms(asked)
+                    );
+                }
+            }
+            Err(e) => {
+                crate::log!("play {name} failed: {e}");
+                ui.set_status(format!("Cannot open {name}: {e}").into());
+                self.stop(ui);
+            }
+        }
+    }
+
     fn edited_pos(&self) -> f64 {
-        self.play_offset + self.player.position_secs() * self.play_rate
+        self.player.position_secs()
     }
 
     /// Where the active clip stands, in recording time.
@@ -468,6 +578,10 @@ impl App {
     }
 
     fn pause(&mut self, ui: &AppWindow) {
+        if self.loading.take().is_some() {
+            ui.set_playing(false);
+            return;
+        }
         if !self.running {
             return;
         }
@@ -480,6 +594,7 @@ impl App {
     /// Stops playback and unloads the clip.
     fn stop(&mut self, ui: &AppWindow) {
         self.player.stop();
+        self.loading = None;
         self.running = false;
         self.active = None;
         self.paused_at = 0.0;
@@ -494,7 +609,7 @@ impl App {
         if self.active.as_deref() != Some(name) {
             return self.play_clip(ui, name, 0.0);
         }
-        if self.running {
+        if self.running || self.loading.is_some() {
             self.pause(ui);
             return false;
         }
@@ -520,7 +635,7 @@ impl App {
             .timeline
             .to_original(edited.max(0.0))
             .clamp(0.0, c.duration);
-        if self.running {
+        if self.running || self.loading.is_some() {
             return self.play_clip(ui, &c.name, to);
         }
         self.paused_at = to;
@@ -578,13 +693,24 @@ impl App {
         }
         match Recording::start(&self.library, &name, sources, RecorderOptions::default()) {
             Ok(rec) => {
+                crate::log!(
+                    "recording {name} (system audio {})",
+                    if self.settings.record_system {
+                        "on"
+                    } else {
+                        "off"
+                    }
+                );
                 self.recording = Some(rec);
                 self.live.clear();
                 ui.set_recording(true);
                 ui.set_paused(false);
                 ui.set_status(format!("Recording {name}").into());
             }
-            Err(e) => ui.set_status(format!("Could not start: {e}").into()),
+            Err(e) => {
+                crate::log!("recording {name} could not start: {e}");
+                ui.set_status(format!("Could not start: {e}").into());
+            }
         }
     }
 
@@ -603,6 +729,7 @@ impl App {
         self.live_model.set_vec(vec![0.06; LIVE_BARS]);
         match rec.stop() {
             Ok(done) => {
+                crate::log!("saved {} ({})", done.name, fmt_time(done.duration));
                 let mut msg = format!("Saved {} ({})", done.name, fmt_time(done.duration));
                 for w in &done.warnings {
                     msg.push_str(". ");
@@ -658,6 +785,10 @@ impl App {
                         .into(),
                 );
             }
+        }
+        if self.loading.is_some() {
+            active = true;
+            self.poll_loading(ui);
         }
         if self.running {
             active = true;
@@ -757,6 +888,9 @@ impl Hotkey {
 }
 
 fn main() -> Result<(), slint::PlatformError> {
+    log::init();
+    crate::log!("starting Thrasher {}", env!("CARGO_PKG_VERSION"));
+    test_window();
     let settings = Settings::load();
     // For testing against a scratch folder without touching the real clips. Not saved.
     let dir = std::env::var_os("THRASHER_DIR")
@@ -771,9 +905,13 @@ fn main() -> Result<(), slint::PlatformError> {
     };
     let template = Template::parse(&settings.name_template)
         .unwrap_or_else(|_| Template::parse(thrasher_core::naming::DEFAULT_TEMPLATE).unwrap());
+    let t = std::time::Instant::now();
     let devices = input_devices().unwrap_or_default();
+    crate::log!("found {} microphones in {} ms", devices.len(), log::ms(t));
 
+    let t = std::time::Instant::now();
     let ui = AppWindow::new()?;
+    crate::log!("window built in {} ms", log::ms(t));
     let recovered = library.recover().unwrap_or_default();
     let live_model = Rc::new(VecModel::from(vec![0.06; LIVE_BARS]));
     ui.set_live(ModelRc::from(live_model.clone()));
@@ -792,8 +930,8 @@ fn main() -> Result<(), slint::PlatformError> {
         active: None,
         running: false,
         paused_at: 0.0,
-        play_offset: 0.0,
-        play_rate: 1.0,
+        loaded: None,
+        loading: None,
         speed: NORMAL_SPEED,
         timeline: Edl::default(),
         waves: waves::Waves::default(),
@@ -852,9 +990,15 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.set_compact(true);
         ui.window().set_size(WIDGET_SIZE);
     }
+    let t = std::time::Instant::now();
     app.borrow_mut().refresh_clips(&ui);
     ui.set_selected(app.borrow().clips.len() as i32 - 1);
     app.borrow_mut().show_transcript(&ui);
+    crate::log!(
+        "listed {} clips in {} ms",
+        app.borrow().clips.len(),
+        log::ms(t)
+    );
 
     // Polls levels and positions only while recording or playing, so an idle
     // window costs nothing.
@@ -1567,7 +1711,13 @@ fn main() -> Result<(), slint::PlatformError> {
     });
 
     ui.show()?;
+    // Runs once the event loop has drawn the window.
+    Timer::single_shot(Duration::ZERO, || {
+        crate::log!("ready: window shown {} ms after start", log::uptime_ms())
+    });
+    let _watchdog = freeze_watchdog();
     slint::run_event_loop_until_quit()?;
+    crate::log!("quit");
     drop(tray);
 
     // Close files properly if the window is closed mid-recording.
@@ -1577,4 +1727,33 @@ fn main() -> Result<(), slint::PlatformError> {
         let _ = rec.stop();
     }
     Ok(())
+}
+
+/// Logs when the window stops responding for a noticeable time. Checks four times a
+/// second, so an idle window stays nearly free.
+fn freeze_watchdog() -> Timer {
+    let timer = Timer::default();
+    let last = std::cell::Cell::new(std::time::Instant::now());
+    timer.start(TimerMode::Repeated, Duration::from_millis(250), move || {
+        let gap = last.get().elapsed().as_millis();
+        if gap > 500 {
+            crate::log!("the window froze for about {} ms", gap - 250);
+        }
+        last.set(std::time::Instant::now());
+    });
+    timer
+}
+
+/// With `THRASHER_TEST_WINDOW` set, the window opens without taking focus, so
+/// automated checks do not get in the way of whoever is at the desk.
+fn test_window() {
+    if std::env::var_os("THRASHER_TEST_WINDOW").is_none() {
+        return;
+    }
+    let selected = slint::BackendSelector::new()
+        .with_winit_window_attributes_hook(|a| a.with_active(false))
+        .select();
+    if let Err(e) = selected {
+        crate::log!("test window: {e}");
+    }
 }

@@ -1549,6 +1549,7 @@ export component AppWindow inherits Window {
                             alignment: center;
                             LineEdit {
                                 width: 140px;
+                                placeholder-text: "Not set";
                                 text: root.hotkey;
                                 font-size: 13px;
                                 accepted(t) => { root.hotkey-accepted(t); keys.focus(); }

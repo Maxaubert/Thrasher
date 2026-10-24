@@ -62,6 +62,7 @@ impl Waves {
             .name("thrasher-waves".into())
             // Newest clips are at the end of the list and the most likely to be seen.
             .spawn(move || {
+                let (t, count) = (std::time::Instant::now(), todo.len());
                 for (name, duration, tracks) in todo.into_iter().rev() {
                     let mut peaks = vec![0f32; COLUMNS];
                     for path in tracks {
@@ -74,6 +75,7 @@ impl Waves {
                     done.lock().unwrap().insert(name, (duration, shape(peaks)));
                     let _ = weak.upgrade_in_event_loop(|ui| ui.invoke_waves_ready());
                 }
+                crate::log!("drew {count} waveforms in {} ms", crate::log::ms(t));
             });
     }
 }

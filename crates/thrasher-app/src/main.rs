@@ -206,15 +206,6 @@ fn short_path(p: &std::path::Path) -> String {
     )
 }
 
-fn speed_label(i: usize) -> String {
-    let s = SPEEDS[i];
-    if s.fract() == 0.0 || (s * 10.0).fract() == 0.0 {
-        format!("{s:.1}×")
-    } else {
-        format!("{s}×")
-    }
-}
-
 /// Length in seconds of each inserted word's audio, by insert id.
 fn voice_lengths(library: &Library, name: &str, sc: &Sidecar) -> HashMap<String, f64> {
     let rate = sc.thrasher.tracks.first().map_or(48_000, |t| t.sample_rate) as f64;
@@ -992,7 +983,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 .unwrap_or(2) as i32,
         );
         ui.set_start_with_windows(startup::enabled());
-        ui.set_speed_label(speed_label(NORMAL_SPEED).into());
+        ui.set_speed_index(NORMAL_SPEED as i32);
         let langs: Vec<SharedString> = LANGUAGES.iter().map(|(_, n)| (*n).into()).collect();
         ui.set_languages(ModelRc::new(VecModel::from(langs)));
         ui.set_language_index(
@@ -1182,13 +1173,12 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_cycle_speed({
+    ui.on_speed_changed({
         let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
-        move || {
+        move |i| {
             let ui = weak.unwrap();
             let mut a = app.borrow_mut();
-            a.speed = (a.speed + 1) % SPEEDS.len();
-            ui.set_speed_label(speed_label(a.speed).into());
+            a.speed = (i.max(0) as usize).min(SPEEDS.len() - 1);
             if a.running
                 && let Some(name) = a.active.clone()
             {

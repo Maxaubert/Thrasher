@@ -22,6 +22,8 @@ pub struct Settings {
     pub export_format: String,
     /// Clean up the voice (noise suppression, automatic gain) when exporting.
     pub clean_voice: bool,
+    /// The window's close button hides Thrasher to the tray instead of quitting.
+    pub close_to_tray: bool,
 }
 
 impl Default for Settings {
@@ -40,6 +42,7 @@ impl Default for Settings {
             language: "no".into(),
             export_format: "flac".into(),
             clean_voice: false,
+            close_to_tray: true,
         }
     }
 }

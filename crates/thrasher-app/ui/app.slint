@@ -1,9 +1,15 @@
-// Thrasher, first window. Deliberately plain: it will be redesigned after the
-// mockups (issue #3). Two modes: the full window, and a small always-on-top widget.
+// Thrasher's window in the "Ember" look (mockups, issue #3): orange on warm black.
+// Pages: the clip list (main), one clip (manage), editing its transcript, and
+// settings. The small always-on-top widget is a separate mode of the same window.
 
-import { ComboBox, CheckBox, LineEdit, ListView, Button, ProgressIndicator, ScrollView, TextEdit } from "std-widgets.slint";
+import { ComboBox, LineEdit, ScrollView, TextEdit, ListView } from "std-widgets.slint";
+import "./fonts/InterTight-400.ttf";
+import "./fonts/InterTight-500.ttf";
+import "./fonts/InterTight-600.ttf";
+import "./fonts/InterTight-800.ttf";
+import "./fonts/JetBrainsMono-500.ttf";
 
-// The notification-area icon. Its image is drawn in Rust (red dot while recording).
+// The notification-area icon. Its image is drawn in Rust (orange dot while recording).
 export component Tray inherits SystemTrayIcon {
     in property <image> image;
     in property <bool> recording;
@@ -56,149 +62,413 @@ export struct WordRow {
 export struct ClipRow {
     name: string,
     duration: string,
+    // "Today 09:14 · transcribed" and the like.
+    meta: string,
     has-system: bool,
+    // Peak per column, 0..1, for the small waveform.
+    wave: [float],
 }
 
 global Theme {
-    out property <color> bg: #121212;
-    out property <color> surface: #1c1c1c;
-    out property <color> surface-hi: #262626;
-    out property <color> text: #e8e8e8;
-    out property <color> muted: #8a8a8a;
-    out property <color> accent: #3b82f6;
-    out property <color> rec: #ef4444;
+    out property <color> bg: #0b0908;
+    out property <color> card: #150f0b;
+    out property <color> row: #1a120c;
+    out property <color> raised: #1f1610;
+    out property <color> line: #221a15;
+    out property <color> line-soft: #1c1510;
+    out property <color> edge: #3a2b20;
+    out property <color> text: #f1ece8;
+    out property <color> text2: #d8cfc8;
+    out property <color> muted: #a39a93;
+    out property <color> dim: #8a817a;
+    out property <color> accent: #ff6a1a;
+    out property <color> accent-hover: #ff8040;
+    out property <color> on-accent: #160a03;
+    out property <color> wave: #5a4436;
+    out property <color> wave-dim: #4a3a2f;
+    out property <color> track: #2b211a;
+    out property <color> danger: #ff8f7a;
+    out property <string> mono: "JetBrains Mono";
 }
 
-component Meter inherits Rectangle {
-    in property <float> level;
+// Line icons on a 24 unit grid, drawn as paths so they never depend on fonts.
+component Icon inherits Path {
+    in property <string> name;
+    in property <color> tint: Theme.text;
+    in property <bool> solid: name == "play" || name == "pause" || name == "stop";
+    width: 14px;
+    height: 14px;
+    viewbox-width: 24;
+    viewbox-height: 24;
+    stroke: solid ? transparent : tint;
+    stroke-width: 2px;
+    fill: solid ? tint : transparent;
+    commands: name == "gear" ? "M 15 12 A 3 3 0 1 1 9 12 A 3 3 0 1 1 15 12 Z M 12 2 L 12 5 M 12 19 L 12 22 M 2 12 L 5 12 M 19 12 L 22 12 M 5 5 L 7 7 M 17 17 L 19 19 M 5 19 L 7 17 M 17 7 L 19 5"
+        : name == "pin" ? "M 12 17 L 12 22 M 9 3 L 15 3 L 14 10 L 18 14 L 6 14 L 10 10 Z"
+        : name == "widget" ? "M 3 8 L 21 8 L 21 16 L 3 16 Z"
+        : name == "expand" ? "M 4 4 L 20 4 L 20 20 L 4 20 Z M 4 9 L 20 9"
+        : name == "close" ? "M 6 6 L 18 18 M 18 6 L 6 18"
+        : name == "back" ? "M 15 6 L 9 12 L 15 18"
+        : name == "chevron" ? "M 9 6 L 15 12 L 9 18"
+        : name == "down" ? "M 6 9 L 12 15 L 18 9"
+        : name == "pencil" ? "M 4 20 L 8 20 L 19 9 L 15 5 L 4 16 Z"
+        : name == "trash" ? "M 4 7 L 20 7 M 10 11 L 10 17 M 14 11 L 14 17 M 6 7 L 7 20 L 17 20 L 18 7 M 9 7 L 9 4 L 15 4 L 15 7"
+        : name == "rewind" ? "M 3 12 A 9 9 0 1 0 12 3 A 9.75 9.75 0 0 0 5.26 5.74 L 3 8 M 3 3 L 3 8 L 8 8"
+        : name == "forward" ? "M 21 12 A 9 9 0 1 1 12 3 C 14.52 3 16.93 4 18.74 5.74 L 21 8 M 21 3 L 21 8 L 16 8"
+        : name == "mic" ? "M 9 6 A 3 3 0 0 1 15 6 L 15 12 A 3 3 0 0 1 9 12 Z M 5 11 A 7 7 0 0 0 19 11 M 12 18 L 12 21"
+        : name == "play" ? "M 8 5 L 19 12 L 8 19 Z"
+        : name == "pause" ? "M 6 5 L 10 5 L 10 19 L 6 19 Z M 14 5 L 18 5 L 18 19 L 14 19 Z"
+        : name == "stop" ? "M 6 6 L 18 6 L 18 18 L 6 18 Z"
+        : "";
+}
+
+// A text button. Primary is the orange one; the rest are outlined.
+component Btn inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary;
+    in property <bool> danger;
+    in property <bool> on;
+    in property <bool> enabled: true;
+    in property <length> font-size: 13px;
+    callback clicked;
+    height: 36px;
+    min-width: label.preferred-width + 26px;
+    border-radius: 9px;
+    background: primary ? (t.has-hover && enabled ? Theme.accent-hover : Theme.accent) : (t.has-hover && enabled ? Theme.raised : transparent);
+    border-width: primary ? 0 : 1px;
+    border-color: on ? Theme.accent : Theme.edge;
+    opacity: enabled ? 1 : 0.4;
+    accessible-role: button;
+    accessible-label: text;
+    accessible-action-default => { if (enabled) { root.clicked(); } }
+    label := Text {
+        text: root.text;
+        color: primary ? Theme.on-accent : danger ? Theme.danger : on ? Theme.accent : Theme.text;
+        font-size: root.font-size;
+        font-weight: primary ? 800 : 500;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// A round or square button holding one icon.
+component IconBtn inherits Rectangle {
+    in property <string> icon;
     in property <string> label;
-    height: 18px;
+    in property <length> size: 30px;
+    in property <length> icon-size: 13px;
+    in property <bool> round;
+    in property <bool> filled;
+    in property <bool> outlined;
+    in property <bool> active;
+    in property <color> tint: filled ? Theme.on-accent : active ? Theme.accent : Theme.dim;
+    in property <bool> enabled: true;
+    callback clicked;
+    width: size;
+    height: size;
+    border-radius: round ? size / 2 : 7px;
+    background: filled ? (t.has-hover ? Theme.accent-hover : Theme.accent) : t.has-hover && enabled ? Theme.raised : transparent;
+    border-width: outlined ? 1px : 0;
+    border-color: Theme.edge;
+    opacity: enabled ? 1 : 0.4;
+    accessible-role: button;
+    accessible-label: label;
+    accessible-action-default => { if (enabled) { root.clicked(); } }
+    Icon {
+        name: root.icon;
+        tint: t.has-hover && !root.filled && !root.active ? Theme.text : root.tint;
+        width: root.icon-size;
+        height: root.icon-size;
+    }
+    @children
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+component Toggle inherits Rectangle {
+    in-out property <bool> checked;
+    in property <string> label;
+    callback toggled(bool);
+    width: 38px;
+    height: 22px;
+    border-radius: 11px;
+    background: checked ? Theme.accent : Theme.track;
+    accessible-role: checkbox;
+    accessible-checked: checked;
+    accessible-label: label;
+    Rectangle {
+        x: root.checked ? root.width - self.width - 3px : 3px;
+        y: 3px;
+        width: 16px;
+        height: 16px;
+        border-radius: 8px;
+        background: root.checked ? Theme.on-accent : #7d7168;
+        animate x { duration: 120ms; easing: ease-out; }
+    }
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.checked = !root.checked; root.toggled(root.checked); }
+    }
+}
+
+// Vertical bars, one per value. Bars left of `progress` (a fraction) are orange.
+component Wave inherits Rectangle {
+    in property <[float]> values;
+    in property <float> progress: -1;
+    in property <color> played: Theme.accent;
+    in property <color> rest: Theme.wave;
+    in property <length> gap: 2px;
+    in property <length> min-bar: 2px;
     HorizontalLayout {
-        spacing: 8px;
-        Text {
-            text: label;
-            color: Theme.muted;
-            width: 52px;
-            font-size: 11px;
-            vertical-alignment: center;
-        }
-        Rectangle {
-            background: Theme.surface-hi;
-            border-radius: 3px;
+        spacing: root.gap;
+        for v[i] in root.values: Rectangle {
             Rectangle {
-                x: 0;
-                width: parent.width * clamp(level, 0, 1);
-                height: parent.height;
-                border-radius: 3px;
-                background: level > 0.95 ? Theme.rec : Theme.accent;
-                animate width { duration: 60ms; }
+                width: parent.width;
+                height: max(root.min-bar, v * root.height);
+                y: (parent.height - self.height) / 2;
+                border-radius: 1.5px;
+                background: (i + 0.5) / root.values.length <= root.progress ? root.played : root.rest;
             }
         }
     }
 }
 
-component RecordButton inherits Rectangle {
-    in property <bool> recording;
-    in property <bool> paused;
-    in property <length> size: 72px;
-    callback clicked;
-    width: size;
-    height: size;
-    border-radius: size / 2;
-    border-width: 2px;
-    border-color: recording ? Theme.rec : #3a3a3a;
-    background: touch.has-hover ? Theme.surface-hi : Theme.surface;
-    Rectangle {
-        width: recording ? size * 0.34 : size * 0.44;
-        height: self.width;
-        border-radius: recording ? 4px : self.width / 2;
-        background: paused ? #a35a5a : Theme.rec;
-        animate width, border-radius { duration: 120ms; }
+component ClipItem inherits Rectangle {
+    in property <ClipRow> item;
+    in property <bool> selected;
+    in property <bool> active;
+    in property <bool> playing;
+    in property <float> progress;
+    callback play();
+    callback open();
+    height: 52px;
+    border-radius: 10px;
+    background: root.active ? Theme.row : root.selected ? #140e0a : row-touch.has-hover ? #120d0a : transparent;
+    accessible-role: list-item;
+    accessible-label: root.item.name + ", " + root.item.duration;
+    row-touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.open(); }
     }
-    touch := TouchArea {
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            IconBtn {
+                size: 32px;
+                round: true;
+                icon-size: 11px;
+                icon: root.active && root.playing ? "pause" : "play";
+                label: (root.active && root.playing ? "Pause " : "Play ") + root.item.name;
+                filled: root.active;
+                outlined: !root.active;
+                tint: root.active ? Theme.on-accent : Theme.text;
+                clicked => { root.play(); }
+            }
+        }
+        Wave {
+            width: 84px;
+            height: 22px;
+            y: (parent.height - self.height) / 2;
+            gap: 1px;
+            values: root.item.wave;
+            progress: root.active ? root.progress : -1;
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text {
+                text: root.item.name;
+                color: Theme.text;
+                font-size: 14px;
+                font-weight: 500;
+                overflow: elide;
+            }
+            Text {
+                text: root.item.meta;
+                color: root.active ? Theme.accent : Theme.dim;
+                font-size: 11px;
+                overflow: elide;
+            }
+        }
+        Text {
+            text: root.item.duration;
+            color: Theme.muted;
+            font-family: Theme.mono;
+            font-size: 12px;
+            vertical-alignment: center;
+        }
+        Icon {
+            name: "chevron";
+            tint: Theme.dim;
+            width: 16px;
+            height: 16px;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+}
+
+// A back link at the top of a page.
+component BackLink inherits Rectangle {
+    in property <string> text;
+    callback clicked;
+    width: row.preferred-width + 16px;
+    height: 28px;
+    border-radius: 6px;
+    background: t.has-hover ? Theme.raised : transparent;
+    accessible-role: button;
+    accessible-label: "Back to " + text;
+    row := HorizontalLayout {
+        x: 8px;
+        spacing: 4px;
+        Icon { name: "back"; tint: Theme.muted; y: (parent.height - self.height) / 2; }
+        Text {
+            text: root.text;
+            color: Theme.muted;
+            font-size: 12px;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
         clicked => { root.clicked(); }
     }
 }
 
-// Icons are drawn as paths so they never depend on which fonts are installed.
-component IconButton inherits Rectangle {
-    // "close", "widget", "expand" or "pin"
-    in property <string> icon;
-    in property <bool> active;
-    callback clicked;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    background: active ? Theme.accent : (t.has-hover ? Theme.surface-hi : transparent);
-    Path {
-        width: 12px;
-        height: 12px;
-        stroke: Theme.text;
-        stroke-width: 1.5px;
-        viewbox-width: 12;
-        viewbox-height: 12;
-        commands: icon == "close" ? "M 1 1 L 11 11 M 11 1 L 1 11"
-            : icon == "widget" ? "M 1 4 L 11 4 L 11 9 L 1 9 Z"
-            : icon == "expand" ? "M 1 1 L 11 1 L 11 11 L 1 11 Z M 1 4 L 11 4"
-            : "M 4 1 L 8 1 L 8 6 L 10 8 L 2 8 L 4 6 Z M 6 8 L 6 11";
+// One line of the settings list.
+component SettingRow inherits VerticalLayout {
+    in property <string> label;
+    HorizontalLayout {
+        min-height: 46px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+        spacing: 12px;
+        Text {
+            text: root.label;
+            color: Theme.text;
+            font-size: 14px;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+        HorizontalLayout {
+            alignment: end;
+            spacing: 8px;
+            @children
+        }
     }
-    t := TouchArea {
-        clicked => { root.clicked(); }
+    Rectangle {
+        height: 1px;
+        background: Theme.line-soft;
     }
+}
+
+component SectionTitle inherits Text {
+    color: Theme.accent;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1px;
 }
 
 export component AppWindow inherits Window {
     title: "Thrasher";
+    in property <image> window-icon;
+    icon: window-icon;
     background: compact ? transparent : Theme.bg;
+    default-font-family: "Inter Tight";
     default-font-size: 13px;
-    preferred-width: 440px;
-    preferred-height: 640px;
-    min-width: compact ? 240px : 360px;
-    min-height: compact ? 64px : 420px;
+    preferred-width: 520px;
+    preferred-height: 600px;
+    min-width: compact ? 300px : 420px;
+    min-height: compact ? 64px : 480px;
     always-on-top: pinned || compact;
     no-frame: compact;
 
+    // 0 clips, 1 one clip, 2 editing its transcript, 3 settings
+    in-out property <int> page;
+
     in-out property <bool> recording;
     in-out property <bool> paused;
-    in property <string> elapsed: "0:00";
+    in property <string> elapsed: "00:00";
+    in property <string> elapsed-tenth: ".0";
+    in property <[float]> live;
+    in property <string> device-label;
     in property <float> mic-level;
     in property <float> system-level;
-    in property <[string]> mic-devices;
-    in-out property <int> mic-index;
-    in-out property <bool> record-system;
+
     in property <[ClipRow]> clips;
+    in property <string> clips-summary;
     in-out property <int> selected: -1;
+    // Clip loaded in the player (playing or paused), or -1.
+    in property <int> active-clip: -1;
     in property <bool> playing;
-    in property <string> play-position;
-    in property <string> status;
+    in property <float> play-fraction;
+    in property <string> play-position: "0:00";
+    in property <string> play-length: "0:00";
+    in property <string> speed-label: "1.0×";
+    in-out property <bool> looping;
+    in property <[float]> detail-wave;
+    in property <string> detail-meta;
+
+    in-out property <string> status;
     in property <bool> can-undo;
-    in property <string> folder;
-    in property <string> hotkey;
     in property <bool> can-transcribe;
     in property <bool> transcribing;
+    in property <float> transcribe-progress;
     in-out property <bool> speaking;
     in property <float> speak-progress;
     in property <string> speak-stage;
-    in property <float> transcribe-progress;
     in property <string> transcript;
+    in property <[WordRow]> words;
+    in property <int> current-word: -1;
+    in property <string> edit-badge;
+    in property <string> edit-length;
+    in property <string> edit-was;
+    in-out property <bool> renaming;
+
+    in property <[string]> mic-devices;
+    in-out property <int> mic-index;
+    in-out property <bool> record-system;
+    in property <string> folder;
+    in property <string> name-template;
+    in property <string> name-preview;
+    in-out property <int> export-format;
+    in-out property <bool> clean-voice;
+    in property <[string]> languages;
+    in-out property <int> language-index;
     in property <[ModelRow]> models;
     in property <int> downloading: -1;
     in property <float> download-progress;
-    in-out property <bool> show-models;
-    in property <[WordRow]> words;
-    in property <int> current-word: -1;
-    in-out property <bool> editing-transcript;
-    in-out property <int> export-format;
-    in-out property <bool> clean-voice;
+    in-out property <string> hotkey;
+    in-out property <bool> close-to-tray: true;
+    in-out property <bool> start-with-windows;
     in-out property <bool> pinned;
     in-out property <bool> compact;
-    in-out property <bool> renaming;
     in-out property <length> list-y;
     in-out property <length> list-height: 300px;
 
     callback toggle-record();
     callback toggle-pause();
-    callback play-selected();
+    // Play or pause clip `i` from the list.
+    callback play-clip(int);
+    callback open-clip(int);
+    // Play or pause the selected clip.
+    callback toggle-play();
+    callback seek-fraction(float);
+    callback skip(float);
+    callback cycle-speed();
     callback stop-playback();
     callback delete-selected();
     callback delete-last();
@@ -209,9 +479,12 @@ export component AppWindow inherits Window {
     callback pinned-changed(bool);
     callback compact-changed(bool);
     callback open-folder();
+    callback change-folder();
     callback export-selected();
+    callback export-subtitles();
     callback transcribe-selected();
     callback selection-changed(int);
+    callback edit-changed(string);
     callback apply-transcript(string);
     // A saved edit was baked: refresh the clip list. The argument is its name.
     callback library-changed(string);
@@ -219,88 +492,124 @@ export component AppWindow inherits Window {
     callback seek-word(int);
     callback export-format-changed(int);
     callback clean-voice-changed(bool);
+    callback language-changed(int);
+    callback template-edited(string);
+    callback template-accepted(string);
+    callback hotkey-accepted(string);
+    callback close-to-tray-changed(bool);
+    callback start-with-windows-changed(bool);
     callback download-model(int);
     callback cancel-download();
     callback use-model(int);
+    // Clip waveforms finished drawing in the background.
+    callback waves-ready();
     callback quit();
 
     changed selected => { root.selection-changed(root.selected); }
 
+    // Status messages fade out after a while.
+    status-timer := Timer {
+        interval: 8s;
+        running: false;
+        triggered => { self.running = false; root.status = ""; }
+    }
+    changed status => { status-timer.running = false; status-timer.running = root.status != ""; }
+
     function move-selection(delta: int) {
         if (clips.length == 0) { return; }
         selected = clamp(selected < 0 ? clips.length - 1 : selected + delta, 0, clips.length - 1);
-        if (selected * 34px < -list-y) {
-            list-y = -(selected * 34px);
-        } else if ((selected + 1) * 34px > -list-y + list-height) {
-            list-y = -((selected + 1) * 34px - list-height);
+        if (selected * 54px < -list-y) {
+            list-y = -(selected * 54px);
+        } else if ((selected + 1) * 54px > -list-y + list-height) {
+            list-y = -((selected + 1) * 54px - list-height);
         }
+    }
+
+    function go(p: int) {
+        root.renaming = false;
+        root.page = p;
+        keys.focus();
     }
 
     keys := FocusScope {
         key-pressed(event) => {
-            if (renaming) { return reject; }
+            if (renaming || page == 2) { return reject; }
+            if (event.text == Key.Escape) {
+                if (page != 0) { root.go(page == 2 ? 1 : 0); } else { root.stop-playback(); }
+                return accept;
+            }
+            if (page == 3) { return reject; }
             if (event.text == " ") { root.toggle-record(); return accept; }
-            if (event.text == Key.Return) { root.play-selected(); return accept; }
-            if (event.text == Key.Escape) { root.stop-playback(); return accept; }
+            if (event.text == "p" && recording) { root.toggle-pause(); return accept; }
+            if (page == 1) {
+                if (event.text == Key.Return) { root.toggle-play(); return accept; }
+                if (event.text == Key.LeftArrow) { root.skip(-5); return accept; }
+                if (event.text == Key.RightArrow) { root.skip(5); return accept; }
+                if (event.text == Key.F2) { root.renaming = true; return accept; }
+                return reject;
+            }
+            if (event.text == Key.Return) { if (selected >= 0) { root.play-clip(selected); } return accept; }
+            if (event.text == Key.RightArrow && selected >= 0) { root.open-clip(selected); root.go(1); return accept; }
             if (event.text == Key.Delete) { root.delete-selected(); return accept; }
             if (event.text == Key.Backspace) { root.delete-last(); return accept; }
             if (event.text == Key.UpArrow) { root.move-selection(-1); return accept; }
             if (event.text == Key.DownArrow) { root.move-selection(1); return accept; }
-            if (event.text == Key.F2 && selected >= 0) { root.renaming = true; return accept; }
-            if (event.text == "p" && recording) { root.toggle-pause(); return accept; }
+            if (event.modifiers.control && (event.text == "z" || event.text == "Z")) { root.undo-delete(); return accept; }
             reject
         }
 
-        // ---------- Widget mode ----------
+        // ---------- Widget ----------
         if compact: Rectangle {
-            background: Theme.surface;
-            border-radius: 12px;
+            background: Theme.card;
+            border-radius: 32px;
             border-width: 1px;
-            border-color: recording ? Theme.rec : #2e2e2e;
+            border-color: root.recording ? Theme.accent : #2a2019;
             WindowMoveArea {
                 HorizontalLayout {
                     padding: 8px;
+                    padding-right: 12px;
                     spacing: 10px;
-                    alignment: start;
-                    RecordButton {
-                        size: 44px;
-                        recording: root.recording;
-                        paused: root.paused;
+                    IconBtn {
+                        size: 48px;
+                        round: true;
+                        filled: true;
+                        icon: root.recording ? "stop" : "mic";
+                        icon-size: 18px;
+                        label: root.recording ? "Stop recording" : "Record";
                         clicked => { root.toggle-record(); }
                     }
                     VerticalLayout {
                         alignment: center;
-                        spacing: 4px;
-                        width: 90px;
-                        Text {
-                            text: root.elapsed;
-                            color: recording ? Theme.text : Theme.muted;
-                            font-size: 16px;
-                            font-weight: 600;
+                        horizontal-stretch: 1;
+                        Wave {
+                            height: 24px;
+                            gap: 1px;
+                            values: root.live;
+                            progress: root.recording ? 2 : -1;
+                            rest: Theme.track;
                         }
-                        Rectangle {
-                            height: 4px;
-                            background: Theme.surface-hi;
-                            border-radius: 2px;
-                            Rectangle {
-                                x: 0;
-                                height: parent.height;
-                                width: parent.width * clamp(max(root.mic-level, root.system-level), 0, 1);
-                                background: Theme.accent;
-                                border-radius: 2px;
-                            }
-                        }
+                    }
+                    Text {
+                        text: root.elapsed;
+                        color: root.recording ? Theme.text : Theme.dim;
+                        font-family: Theme.mono;
+                        font-size: 13px;
+                        vertical-alignment: center;
                     }
                     VerticalLayout {
                         alignment: center;
                         HorizontalLayout {
-                            spacing: 2px;
-                            IconButton {
+                            spacing: 4px;
+                            IconBtn {
+                                round: true;
                                 icon: "expand";
+                                label: "Open the window";
                                 clicked => { root.compact-changed(false); }
                             }
-                            IconButton {
+                            IconBtn {
+                                round: true;
                                 icon: "close";
+                                label: "Hide";
                                 clicked => { root.quit(); }
                             }
                         }
@@ -309,370 +618,984 @@ export component AppWindow inherits Window {
             }
         }
 
-        // ---------- Full window ----------
-        if !compact: VerticalLayout {
-            padding: 16px;
-            spacing: 12px;
-
+        // ---------- Clips (main) ----------
+        if !compact && page == 0: VerticalLayout {
             HorizontalLayout {
-                spacing: 6px;
+                height: 38px;
+                padding-left: 18px;
+                padding-right: 8px;
+                spacing: 2px;
                 Text {
                     text: "Thrasher";
-                    color: Theme.text;
-                    font-size: 18px;
-                    font-weight: 700;
+                    color: Theme.muted;
+                    font-size: 12px;
+                    font-weight: 600;
                     vertical-alignment: center;
+                    horizontal-stretch: 1;
                 }
-                Rectangle { }
-                if root.can-transcribe: Button {
-                    text: root.show-models ? "Clips" : "Models";
-                    clicked => { root.show-models = !root.show-models; }
+                VerticalLayout {
+                    alignment: center;
+                    IconBtn { icon: "gear"; label: "Settings"; clicked => { root.go(3); } }
                 }
-                IconButton {
-                    icon: "pin";
-                    active: root.pinned;
-                    clicked => { root.pinned = !root.pinned; root.pinned-changed(root.pinned); }
+                VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        icon: "pin";
+                        label: "Keep on top";
+                        active: root.pinned;
+                        clicked => { root.pinned = !root.pinned; root.pinned-changed(root.pinned); }
+                    }
                 }
-                IconButton {
-                    icon: "widget";
-                    clicked => { root.compact-changed(true); }
+                VerticalLayout {
+                    alignment: center;
+                    IconBtn { icon: "widget"; label: "Small widget"; clicked => { root.compact-changed(true); } }
                 }
             }
 
             // Recorder
-            Rectangle {
-                background: Theme.surface;
-                border-radius: 12px;
-                VerticalLayout {
-                    padding: 16px;
-                    spacing: 12px;
-                    HorizontalLayout {
+            HorizontalLayout {
+                vertical-stretch: 0;
+                padding-left: 16px;
+                padding-right: 16px;
+                Rectangle {
+                    background: Theme.card;
+                    border-radius: 14px;
+                    VerticalLayout {
+                        padding: 22px;
+                        padding-top: 20px;
+                        padding-bottom: 18px;
                         spacing: 16px;
-                        RecordButton {
-                            recording: root.recording;
-                            paused: root.paused;
-                            clicked => { root.toggle-record(); }
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Rectangle {
+                                width: 8px;
+                                height: 8px;
+                                y: (parent.height - self.height) / 2;
+                                border-radius: 4px;
+                                background: root.recording ? Theme.accent : #4a3a2f;
+                            }
+                            Text {
+                                text: root.recording ? (root.paused ? "PAUSED" : "RECORDING") : "READY";
+                                color: root.recording ? Theme.accent : Theme.muted;
+                                font-size: 12px;
+                                font-weight: 600;
+                                letter-spacing: 0.7px;
+                                vertical-alignment: center;
+                                horizontal-stretch: 1;
+                            }
+                            Text {
+                                text: root.device-label;
+                                color: Theme.muted;
+                                font-size: 12px;
+                                overflow: elide;
+                                vertical-alignment: center;
+                            }
                         }
-                        VerticalLayout {
-                            alignment: center;
-                            spacing: 6px;
+                        HorizontalLayout {
+                            alignment: start;
                             Text {
                                 text: root.elapsed;
-                                color: root.recording ? Theme.text : Theme.muted;
-                                font-size: 28px;
-                                font-weight: 600;
+                                color: root.recording ? Theme.text : #7d7168;
+                                font-family: Theme.mono;
+                                font-size: 56px;
+                                letter-spacing: -2px;
                             }
                             Text {
-                                text: root.recording ? (root.paused ? "Paused" : "Recording") : (root.hotkey != "" ? "Space, or " + root.hotkey + " anywhere" : "Space to record");
-                                color: root.recording && !root.paused ? Theme.rec : Theme.muted;
-                                font-size: 12px;
+                                text: root.elapsed-tenth;
+                                color: root.recording ? #6d625a : #4a3f37;
+                                font-family: Theme.mono;
+                                font-size: 56px;
+                                letter-spacing: -2px;
                             }
                         }
-                        Rectangle { }
-                        if root.recording: VerticalLayout {
-                            alignment: center;
-                            Button {
+                        Wave {
+                            height: 52px;
+                            values: root.live;
+                            progress: root.recording && !root.paused ? 2 : -1;
+                            rest: root.recording ? #6d4a33 : Theme.track;
+                        }
+                        if root.recording: HorizontalLayout {
+                            spacing: 10px;
+                            Btn {
+                                primary: true;
+                                text: "Stop and save";
+                                font-size: 15px;
+                                height: 46px;
+                                horizontal-stretch: 1;
+                                clicked => { root.toggle-record(); keys.focus(); }
+                            }
+                            Btn {
                                 text: root.paused ? "Resume" : "Pause";
-                                clicked => { root.toggle-pause(); }
+                                font-size: 14px;
+                                height: 46px;
+                                width: 120px;
+                                clicked => { root.toggle-pause(); keys.focus(); }
+                            }
+                        }
+                        if !root.recording: Btn {
+                            primary: true;
+                            text: "Record";
+                            font-size: 15px;
+                            height: 46px;
+                            clicked => { root.toggle-record(); keys.focus(); }
+                        }
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                padding-left: 22px;
+                padding-right: 22px;
+                padding-top: 18px;
+                padding-bottom: 8px;
+                spacing: 14px;
+                Text {
+                    text: "Clips";
+                    color: Theme.text;
+                    font-size: 13px;
+                    font-weight: 800;
+                    vertical-alignment: center;
+                }
+                Rectangle { horizontal-stretch: 1; }
+                if root.can-undo: Text {
+                    text: "Undo delete";
+                    color: Theme.accent;
+                    font-size: 13px;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                    accessible-role: button;
+                    TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.undo-delete(); keys.focus(); }
+                    }
+                }
+                Text {
+                    text: root.clips-summary;
+                    color: Theme.dim;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                }
+            }
+
+            ListView {
+                vertical-stretch: 1;
+                content-y <=> root.list-y;
+                init => { root.list-height = self.visible-height; }
+                changed visible-height => { root.list-height = self.visible-height; }
+                for clip[i] in root.clips: HorizontalLayout {
+                    padding-left: 12px;
+                    padding-right: 12px;
+                    padding-bottom: 2px;
+                    ClipItem {
+                        item: clip;
+                        selected: i == root.selected;
+                        active: i == root.active-clip;
+                        playing: root.playing;
+                        progress: root.play-fraction;
+                        play => { root.play-clip(i); keys.focus(); }
+                        open => { root.open-clip(i); root.go(1); }
+                    }
+                }
+            }
+
+            if root.status != "": Text {
+                text: root.status;
+                color: Theme.dim;
+                font-size: 11px;
+                overflow: elide;
+                x: 22px;
+                width: parent.width - 44px;
+                height: 28px;
+                vertical-alignment: center;
+            }
+        }
+
+        // ---------- One clip ----------
+        if !compact && page == 1 && root.selected >= 0: VerticalLayout {
+            HorizontalLayout {
+                height: 38px;
+                padding-left: 8px;
+                BackLink {
+                    text: "Clips";
+                    y: (parent.height - self.height) / 2;
+                    clicked => { root.go(0); }
+                }
+                Rectangle { horizontal-stretch: 1; }
+            }
+            VerticalLayout {
+                vertical-stretch: 0;
+                padding-left: 22px;
+                padding-right: 22px;
+                padding-top: 4px;
+                spacing: 4px;
+                if !root.renaming: HorizontalLayout {
+                    spacing: 6px;
+                    Text {
+                        text: root.clips[root.selected].name;
+                        color: Theme.text;
+                        font-size: 24px;
+                        font-weight: 800;
+                        letter-spacing: -0.4px;
+                        overflow: elide;
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        IconBtn {
+                            icon: "pencil";
+                            label: "Rename clip";
+                            enabled: !root.recording;
+                            clicked => { root.renaming = true; }
+                        }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                }
+                if root.renaming: HorizontalLayout {
+                    spacing: 6px;
+                    name-edit := LineEdit {
+                        text: root.clips[root.selected].name;
+                        font-size: 15px;
+                        accepted(t) => { root.renaming = false; root.rename-selected(t); keys.focus(); }
+                        init => { self.focus(); self.select-all(); }
+                    }
+                    Btn {
+                        text: "Rename";
+                        primary: true;
+                        clicked => { root.renaming = false; root.rename-selected(name-edit.text); keys.focus(); }
+                    }
+                    Btn {
+                        text: "Cancel";
+                        clicked => { root.renaming = false; keys.focus(); }
+                    }
+                }
+                Text {
+                    text: root.detail-meta;
+                    color: Theme.muted;
+                    font-size: 12px;
+                    overflow: elide;
+                }
+            }
+
+            // Player
+            HorizontalLayout {
+                vertical-stretch: 0;
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 16px;
+                Rectangle {
+                    background: Theme.card;
+                    border-radius: 14px;
+                    VerticalLayout {
+                        padding: 18px;
+                        padding-top: 16px;
+                        padding-bottom: 16px;
+                        spacing: 12px;
+                        wave-box := Rectangle {
+                            height: 64px;
+                            Wave {
+                                values: root.detail-wave;
+                                progress: root.active-clip == root.selected ? root.play-fraction : 0;
+                                rest: Theme.wave-dim;
+                            }
+                            if root.active-clip == root.selected: Rectangle {
+                                x: clamp(root.play-fraction, 0, 1) * (parent.width - 2px);
+                                y: -4px;
+                                width: 2px;
+                                height: parent.height + 8px;
+                                border-radius: 1px;
+                                background: Theme.text;
+                            }
+                            TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => { root.seek-fraction(self.mouse-x / self.width); keys.focus(); }
+                            }
+                        }
+                        HorizontalLayout {
+                            Text {
+                                text: root.active-clip == root.selected ? root.play-position : "0:00";
+                                color: Theme.muted;
+                                font-family: Theme.mono;
+                                font-size: 11px;
+                                horizontal-stretch: 1;
+                            }
+                            Text {
+                                text: root.clips[root.selected].duration;
+                                color: Theme.muted;
+                                font-family: Theme.mono;
+                                font-size: 11px;
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: 8px;
+                            VerticalLayout {
+                                alignment: center;
+                                IconBtn {
+                                    size: 36px;
+                                    round: true;
+                                    outlined: true;
+                                    icon: "rewind";
+                                    icon-size: 22px;
+                                    tint: Theme.text;
+                                    label: "Back 5 seconds";
+                                    clicked => { root.skip(-5); keys.focus(); }
+                                    Text {
+                                        text: "5";
+                                        color: Theme.text;
+                                        font-size: 8px;
+                                        font-weight: 800;
+                                        y: 13.5px;
+                                    }
+                                }
+                            }
+                            IconBtn {
+                                size: 44px;
+                                round: true;
+                                filled: true;
+                                icon: root.active-clip == root.selected && root.playing ? "pause" : "play";
+                                icon-size: 14px;
+                                label: root.active-clip == root.selected && root.playing ? "Pause" : "Play";
+                                clicked => { root.toggle-play(); keys.focus(); }
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                IconBtn {
+                                    size: 36px;
+                                    round: true;
+                                    outlined: true;
+                                    icon: "forward";
+                                    icon-size: 22px;
+                                    tint: Theme.text;
+                                    label: "Forward 5 seconds";
+                                    clicked => { root.skip(5); keys.focus(); }
+                                    Text {
+                                        text: "5";
+                                        color: Theme.text;
+                                        font-size: 8px;
+                                        font-weight: 800;
+                                        y: 13.5px;
+                                    }
+                                }
+                            }
+                            Rectangle { horizontal-stretch: 1; }
+                            VerticalLayout {
+                                alignment: center;
+                                Btn {
+                                    text: root.speed-label;
+                                    height: 30px;
+                                    font-size: 12px;
+                                    on: root.speed-label != "1.0×";
+                                    clicked => { root.cycle-speed(); keys.focus(); }
+                                }
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                Btn {
+                                    text: "Loop";
+                                    height: 30px;
+                                    font-size: 12px;
+                                    on: root.looping;
+                                    clicked => { root.looping = !root.looping; keys.focus(); }
+                                }
                             }
                         }
                     }
-                    Meter { label: "Mic"; level: root.mic-level; }
-                    if root.record-system: Meter { label: "System"; level: root.system-level; }
-                    HorizontalLayout {
+                }
+            }
+
+            // Transcript
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 12px;
+                vertical-stretch: 1;
+                Rectangle {
+                    border-radius: 14px;
+                    border-width: 1px;
+                    border-color: #241b15;
+                    VerticalLayout {
+                        padding: 18px;
+                        padding-top: 12px;
+                        padding-bottom: 12px;
                         spacing: 8px;
+                        HorizontalLayout {
+                            height: 28px;
+                            Text {
+                                text: "TRANSCRIPT";
+                                color: Theme.muted;
+                                font-size: 12px;
+                                font-weight: 800;
+                                letter-spacing: 0.7px;
+                                vertical-alignment: center;
+                                horizontal-stretch: 1;
+                            }
+                            if root.transcript != "" && !root.transcribing: Rectangle {
+                                width: edit-row.preferred-width + 20px;
+                                height: 26px;
+                                y: 1px;
+                                border-radius: 7px;
+                                background: edit-touch.has-hover ? #2a1d14 : Theme.raised;
+                                accessible-role: button;
+                                accessible-label: "Edit transcript";
+                                edit-row := HorizontalLayout {
+                                    x: 10px;
+                                    spacing: 6px;
+                                    Icon { name: "pencil"; width: 12px; height: 12px; y: (parent.height - self.height) / 2; }
+                                    Text { text: "Edit"; color: Theme.text; font-size: 12px; font-weight: 600; vertical-alignment: center; }
+                                }
+                                edit-touch := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => { root.stop-playback(); root.edit-changed(root.transcript); root.go(2); }
+                                }
+                            }
+                        }
+                        if root.transcribing: VerticalLayout {
+                            spacing: 10px;
+                            alignment: start;
+                            Text {
+                                text: "Transcribing " + round(root.transcribe-progress * 100) + "%";
+                                color: Theme.text2;
+                                font-size: 14px;
+                            }
+                            Rectangle {
+                                height: 4px;
+                                border-radius: 2px;
+                                background: Theme.track;
+                                Rectangle {
+                                    x: 0;
+                                    width: parent.width * clamp(root.transcribe-progress, 0, 1);
+                                    border-radius: 2px;
+                                    background: Theme.accent;
+                                }
+                            }
+                        }
+                        if root.transcript == "" && !root.transcribing: VerticalLayout {
+                            alignment: start;
+                            spacing: 12px;
+                            Text {
+                                text: "No transcript yet";
+                                color: Theme.dim;
+                                font-size: 14px;
+                            }
+                            if root.can-transcribe: HorizontalLayout {
+                                alignment: start;
+                                Btn {
+                                    text: "Transcribe";
+                                    enabled: !root.recording;
+                                    clicked => { root.transcribe-selected(); keys.focus(); }
+                                }
+                            }
+                        }
+                        if root.transcript != "" && !root.transcribing: ScrollView {
+                            vertical-stretch: 1;
+                            // A new transcript starts at the top; Slint would keep the old offset.
+                            property <string> shown: root.transcript;
+                            init => { self.content-y = 0; }
+                            changed shown => { self.content-y = 0; }
+                            FlexboxLayout {
+                                spacing: 1px;
+                                flex-wrap: wrap;
+                                alignment: start;
+                                for w[i] in root.words: Rectangle {
+                                    horizontal-stretch: 0;
+                                    border-radius: 3px;
+                                    background: i == root.current-word ? Theme.accent : wt.has-hover ? Theme.raised : transparent;
+                                    width: label.preferred-width + (w.is-silence ? 14px : 6px);
+                                    height: label.preferred-height + 4px;
+                                    border-width: w.is-silence ? 1px : 0;
+                                    border-color: Theme.edge;
+                                    label := Text {
+                                        text: w.text;
+                                        // Spoken words are generated speech: shown in a different colour.
+                                        color: i == root.current-word ? Theme.on-accent
+                                            : w.is-silence ? Theme.muted
+                                            : w.failed ? Theme.danger
+                                            : w.pending ? #6d625a
+                                            : w.spoken ? Theme.accent
+                                            : Theme.text2;
+                                        font-family: w.is-silence ? Theme.mono : "Inter Tight";
+                                        font-size: w.is-silence ? 11px : 15px;
+                                        font-italic: w.spoken;
+                                    }
+                                    wt := TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => { root.seek-word(i); keys.focus(); }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                vertical-stretch: 0;
+                padding: 16px;
+                padding-top: 12px;
+                padding-bottom: 14px;
+                spacing: 6px;
+                Btn {
+                    primary: true;
+                    text: "Export  " + (root.export-format == 1 ? "WAV" : root.export-format == 2 ? "MP3" : "FLAC");
+                    clicked => { root.export-selected(); keys.focus(); }
+                }
+                Btn {
+                    text: "Clean voice";
+                    on: root.clean-voice;
+                    clicked => { root.clean-voice = !root.clean-voice; root.clean-voice-changed(root.clean-voice); keys.focus(); }
+                }
+                if root.transcript != "": Btn {
+                    text: "Subtitles";
+                    clicked => { root.export-subtitles(); keys.focus(); }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                IconBtn {
+                    size: 36px;
+                    outlined: true;
+                    icon: "trash";
+                    icon-size: 14px;
+                    tint: Theme.danger;
+                    label: "Delete clip";
+                    clicked => { root.delete-selected(); root.go(0); }
+                }
+            }
+            if root.status != "": Text {
+                text: root.status;
+                color: Theme.dim;
+                font-size: 11px;
+                overflow: elide;
+                x: 22px;
+                width: parent.width - 44px;
+                height: 24px;
+                vertical-alignment: center;
+            }
+        }
+
+        // ---------- Edit transcript ----------
+        if !compact && page == 2 && root.selected >= 0: VerticalLayout {
+            HorizontalLayout {
+                height: 38px;
+                padding-left: 8px;
+                BackLink {
+                    text: root.clips[root.selected].name;
+                    y: (parent.height - self.height) / 2;
+                    clicked => { root.go(1); }
+                }
+                Rectangle { horizontal-stretch: 1; }
+            }
+            HorizontalLayout {
+                vertical-stretch: 0;
+                padding-left: 22px;
+                padding-right: 22px;
+                padding-top: 4px;
+                spacing: 10px;
+                Text {
+                    text: "Edit transcript";
+                    color: Theme.text;
+                    font-size: 24px;
+                    font-weight: 800;
+                    letter-spacing: -0.4px;
+                }
+                if root.edit-badge != "": Rectangle {
+                    width: badge.preferred-width + 16px;
+                    height: 20px;
+                    y: (parent.height - self.height) / 2;
+                    border-radius: 10px;
+                    background: Theme.accent;
+                    badge := Text {
+                        text: root.edit-badge;
+                        color: Theme.on-accent;
+                        font-size: 11px;
+                        font-weight: 800;
+                    }
+                }
+                Rectangle { horizontal-stretch: 1; }
+            }
+            HorizontalLayout {
+                vertical-stretch: 0;
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 14px;
+                Rectangle {
+                    background: Theme.card;
+                    border-radius: 14px;
+                    VerticalLayout {
+                        padding: 18px;
+                        padding-top: 12px;
+                        padding-bottom: 12px;
+                        spacing: 6px;
+                        Wave {
+                            height: 40px;
+                            values: root.detail-wave;
+                            rest: #6a5546;
+                        }
+                        HorizontalLayout {
+                            Text {
+                                text: "New length " + root.edit-length;
+                                color: Theme.muted;
+                                font-size: 11px;
+                                horizontal-stretch: 1;
+                            }
+                            Text {
+                                text: "was " + root.edit-was;
+                                color: Theme.muted;
+                                font-size: 11px;
+                            }
+                        }
+                    }
+                }
+            }
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 12px;
+                vertical-stretch: 1;
+                Rectangle {
+                    border-radius: 14px;
+                    border-width: 1px;
+                    border-color: Theme.accent;
+                    background: #0f0b09;
+                    clip: true;
+                    editor := TextEdit {
+                        x: 6px;
+                        y: 6px;
+                        width: parent.width - 12px;
+                        height: parent.height - 12px;
+                        text: root.transcript;
+                        font-size: 16px;
+                        wrap: word-wrap;
+                        edited(t) => { root.edit-changed(t); }
+                    }
+                }
+            }
+            HorizontalLayout {
+                vertical-stretch: 0;
+                padding: 16px;
+                padding-top: 12px;
+                padding-bottom: 14px;
+                spacing: 6px;
+                Rectangle { horizontal-stretch: 1; }
+                Btn {
+                    text: "Cancel";
+                    clicked => { root.go(1); }
+                }
+                Btn {
+                    primary: true;
+                    text: "Save as new clip";
+                    enabled: editor.text != root.transcript && !root.speaking;
+                    clicked => { root.apply-transcript(editor.text); }
+                }
+            }
+            if root.status != "": Text {
+                text: root.status;
+                color: Theme.dim;
+                font-size: 11px;
+                overflow: elide;
+                x: 22px;
+                width: parent.width - 44px;
+                height: 24px;
+                vertical-alignment: center;
+            }
+        }
+
+        // ---------- Settings ----------
+        if !compact && page == 3: VerticalLayout {
+            HorizontalLayout {
+                height: 48px;
+                padding-left: 8px;
+                padding-right: 8px;
+                spacing: 6px;
+                VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        size: 34px;
+                        icon: "back";
+                        icon-size: 16px;
+                        tint: Theme.muted;
+                        label: "Back to clips";
+                        clicked => { root.go(0); }
+                    }
+                }
+                Text {
+                    text: "Settings";
+                    color: Theme.text;
+                    font-size: 15px;
+                    font-weight: 800;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                }
+            }
+            Rectangle { height: 1px; background: Theme.line-soft; }
+            ScrollView {
+                vertical-stretch: 1;
+                VerticalLayout {
+                    padding-left: 22px;
+                    padding-right: 22px;
+                    padding-bottom: 24px;
+
+                    SectionTitle { text: "RECORDING"; height: 52px; vertical-alignment: bottom; }
+                    SettingRow {
+                        label: "Microphone";
                         ComboBox {
+                            width: 220px;
                             model: root.mic-devices;
                             current-index <=> root.mic-index;
                             enabled: !root.recording;
                             selected => { root.mic-changed(self.current-index); }
                         }
-                        CheckBox {
-                            text: "System audio";
-                            checked <=> root.record-system;
-                            enabled: !root.recording;
-                            toggled => { root.system-changed(self.checked); }
+                    }
+                    SettingRow {
+                        label: "System audio";
+                        VerticalLayout {
+                            alignment: center;
+                            Toggle {
+                                label: "System audio";
+                                checked <=> root.record-system;
+                                toggled(on) => { root.system-changed(on); }
+                            }
                         }
                     }
-                }
-            }
-
-            if root.show-models: VerticalLayout {
-                spacing: 8px;
-                vertical-stretch: 1;
-                Text {
-                    text: "Transcription models. Downloaded once, then everything runs on this PC.";
-                    color: Theme.muted;
-                    wrap: word-wrap;
-                }
-                for m[i] in root.models: Rectangle {
-                    background: m.active ? #1e3a5f : Theme.surface;
-                    border-radius: 8px;
-                    HorizontalLayout {
-                        padding: 10px;
-                        spacing: 8px;
+                    SettingRow {
+                        label: "Clean voice on export";
                         VerticalLayout {
-                            horizontal-stretch: 1;
-                            spacing: 2px;
-                            Text { text: m.name; color: Theme.text; font-weight: 600; overflow: elide; }
-                            Text {
-                                text: root.downloading == i
-                                    ? "Downloading " + round(root.download-progress * 100) + "%"
-                                    : m.description;
-                                color: Theme.muted;
-                                font-size: 11px;
-                                wrap: word-wrap;
+                            alignment: center;
+                            Toggle {
+                                label: "Clean voice on export";
+                                checked <=> root.clean-voice;
+                                toggled(on) => { root.clean-voice-changed(on); }
                             }
+                        }
+                    }
+
+                    SectionTitle { text: "OUTPUT"; height: 52px; vertical-alignment: bottom; }
+                    SettingRow {
+                        label: "Folder";
+                        Text {
+                            text: root.folder;
+                            color: Theme.muted;
+                            font-size: 12px;
+                            overflow: elide;
+                            max-width: 170px;
+                            vertical-alignment: center;
                         }
                         VerticalLayout {
                             alignment: center;
-                            if m.downloaded && !m.active: Button {
-                                text: "Use";
-                                clicked => { root.use-model(i); }
-                            }
-                            if m.downloaded && m.active: Text { text: "In use"; color: Theme.accent; }
-                            if !m.downloaded && root.downloading != i: Button {
-                                text: "Download " + m.size;
-                                enabled: root.downloading < 0;
-                                clicked => { root.download-model(i); }
-                            }
-                            if root.downloading == i: Button {
-                                text: "Cancel";
-                                clicked => { root.cancel-download(); }
-                            }
+                            Btn { text: "Open"; height: 28px; font-size: 12px; clicked => { root.open-folder(); } }
+                        }
+                        VerticalLayout {
+                            alignment: center;
+                            Btn { text: "Change"; height: 28px; font-size: 12px; enabled: !root.recording; clicked => { root.change-folder(); } }
                         }
                     }
-                }
-                Rectangle { vertical-stretch: 1; }
-            }
-
-            // Clips
-            if !root.show-models: HorizontalLayout {
-                spacing: 6px;
-                Text {
-                    text: "Clips";
-                    color: Theme.muted;
-                    vertical-alignment: center;
-                }
-                Rectangle { }
-                if root.can-undo: Button {
-                    text: "Undo delete";
-                    clicked => { root.undo-delete(); }
-                }
-                Button {
-                    text: "Folder";
-                    clicked => { root.open-folder(); }
-                }
-            }
-            if !root.show-models: ListView {
-                vertical-stretch: 1;
-                content-y <=> root.list-y;
-                init => { root.list-height = self.visible-height; }
-                changed visible-height => { root.list-height = self.visible-height; }
-                for clip[i] in root.clips: Rectangle {
-                    height: 34px;
-                    border-radius: 6px;
-                    background: i == root.selected ? #1e3a5f : (row-touch.has-hover ? Theme.surface : transparent);
-                    row-touch := TouchArea {
-                        clicked => { root.selected = i; keys.focus(); }
-                        double-clicked => { root.selected = i; root.play-selected(); }
-                    }
-                    HorizontalLayout {
-                        padding-left: 10px;
-                        padding-right: 10px;
-                        spacing: 8px;
+                    VerticalLayout {
+                        HorizontalLayout {
+                            min-height: 46px;
+                            padding-top: 6px;
+                            spacing: 12px;
+                            Text {
+                                text: "File name";
+                                color: Theme.text;
+                                font-size: 14px;
+                                vertical-alignment: center;
+                                horizontal-stretch: 1;
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                LineEdit {
+                                    width: 220px;
+                                    text: root.name-template;
+                                    font-size: 13px;
+                                    edited(t) => { root.template-edited(t); }
+                                    accepted(t) => { root.template-accepted(t); keys.focus(); }
+                                }
+                            }
+                        }
                         Text {
-                            text: clip.name;
-                            color: Theme.text;
-                            vertical-alignment: center;
-                            overflow: elide;
-                            horizontal-stretch: 1;
-                        }
-                        if clip.has-system: Text {
-                            text: "+ system";
-                            color: Theme.muted;
+                            text: root.name-preview;
+                            color: Theme.dim;
                             font-size: 11px;
+                            font-family: Theme.mono;
+                            horizontal-alignment: right;
+                            overflow: elide;
+                            height: 22px;
                             vertical-alignment: center;
                         }
-                        Text {
-                            text: clip.duration;
-                            color: Theme.muted;
-                            vertical-alignment: center;
-                        }
+                        Rectangle { height: 1px; background: Theme.line-soft; }
                     }
-                }
-            }
-
-            if root.transcribing: Text {
-                text: "Transcribing… " + round(root.transcribe-progress * 100) + "%";
-                color: Theme.muted;
-            }
-            // Synced transcript: the word being heard is highlighted; click a word to jump.
-            if root.transcript != "" && !root.transcribing && !root.editing-transcript: VerticalLayout {
-                spacing: 4px;
-                Rectangle {
-                    background: Theme.surface;
-                    border-radius: 8px;
-                    height: 130px;
-                    ScrollView {
-                        // A new transcript starts at the top; Slint would keep the old offset.
-                        property <string> shown: root.transcript;
-                        init => { self.content-y = 0; }
-                        changed shown => { self.content-y = 0; }
-                        changed content-height => { if (root.current-word < 0) { self.content-y = 0; } }
-                        FlexboxLayout {
-                            padding: 8px;
-                            spacing: 2px;
-                            flex-wrap: wrap;
-                            for w[i] in root.words: Rectangle {
-                                border-radius: 4px;
-                                background: i == root.current-word ? Theme.accent : (wt.has-hover ? Theme.surface-hi : transparent);
-                                width: label.preferred-width + 6px;
-                                height: label.preferred-height + 2px;
-                                label := Text {
-                                    text: w.text;
-                                    // Spoken words are generated speech: shown in a different colour.
-                                    color: w.is-silence ? Theme.muted : w.failed ? #f87171 : w.pending ? #64748b : w.spoken ? #7dd3fc : Theme.text;
-                                    font-size: w.is-silence ? 11px : 13px;
-                                    font-italic: w.spoken;
-                                }
-                                wt := TouchArea {
-                                    mouse-cursor: pointer;
-                                    clicked => { root.seek-word(i); keys.focus(); }
+                    SettingRow {
+                        label: "Export format";
+                        Rectangle {
+                            width: seg.preferred-width + 8px;
+                            height: 34px;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: 9px;
+                            border-width: 1px;
+                            border-color: #2a2019;
+                            seg := HorizontalLayout {
+                                x: 3px;
+                                y: 3px;
+                                height: 26px;
+                                for f[i] in ["FLAC", "WAV", "MP3"]: Rectangle {
+                                    width: 52px;
+                                    border-radius: 6px;
+                                    background: root.export-format == i ? Theme.accent : transparent;
+                                    accessible-role: button;
+                                    accessible-label: f;
+                                    Text {
+                                        text: f;
+                                        color: root.export-format == i ? Theme.on-accent : Theme.muted;
+                                        font-size: 12px;
+                                        font-weight: root.export-format == i ? 800 : 500;
+                                    }
+                                    TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => { root.export-format = i; root.export-format-changed(i); }
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                HorizontalLayout {
-                    Text {
-                        text: "Click a word to play from there.";
-                        color: Theme.muted;
-                        font-size: 11px;
-                        vertical-alignment: center;
-                        horizontal-stretch: 1;
-                    }
-                    Button {
-                        text: "Edit";
-                        clicked => { root.editing-transcript = true; }
-                    }
-                }
-            }
-            if root.transcript != "" && !root.transcribing && root.editing-transcript: VerticalLayout {
-                spacing: 4px;
-                transcript-edit := TextEdit {
-                    height: 130px;
-                    text: root.transcript;
-                    wrap: word-wrap;
-                }
-                HorizontalLayout {
-                    spacing: 6px;
-                    Text {
-                        text: "Delete words or pauses, change or add [silence:2s] tags, or type new words to hear them in your voice.";
-                        color: Theme.muted;
-                        font-size: 11px;
-                        vertical-alignment: center;
-                        overflow: elide;
-                        horizontal-stretch: 1;
-                    }
-                    Button {
-                        text: "Cancel";
-                        clicked => { root.stop-playback(); root.editing-transcript = false; keys.focus(); }
-                    }
-                    Button {
-                        text: "Save";
-                        enabled: transcript-edit.text != root.transcript;
-                        clicked => { root.apply-transcript(transcript-edit.text); keys.focus(); }
-                    }
-                }
-            }
 
-            if root.renaming && root.selected >= 0: HorizontalLayout {
-                spacing: 6px;
-                name-edit := LineEdit {
-                    text: root.clips[root.selected].name;
-                    accepted(t) => { root.renaming = false; root.rename-selected(t); keys.focus(); }
-                    init => { self.focus(); self.select-all(); }
-                }
-                Button {
-                    text: "Cancel";
-                    clicked => { root.renaming = false; keys.focus(); }
+                    SectionTitle { text: "TRANSCRIPTION"; height: 52px; vertical-alignment: bottom; }
+                    if !root.can-transcribe: SettingRow {
+                        label: "Not part of this build";
+                    }
+                    if root.can-transcribe: SettingRow {
+                        label: "Language";
+                        ComboBox {
+                            width: 220px;
+                            model: root.languages;
+                            current-index <=> root.language-index;
+                            selected => { root.language-changed(self.current-index); }
+                        }
+                    }
+                    if root.can-transcribe: VerticalLayout {
+                        for m[i] in root.models: SettingRow {
+                            label: m.name + " · " + m.size;
+                            if m.active: Text {
+                                text: "In use";
+                                color: Theme.accent;
+                                font-size: 12px;
+                                font-weight: 800;
+                                vertical-alignment: center;
+                            }
+                            if m.downloaded && !m.active: VerticalLayout {
+                                alignment: center;
+                                Btn { text: "Use"; height: 30px; font-size: 12px; clicked => { root.use-model(i); } }
+                            }
+                            if root.downloading == i: Text {
+                                text: round(root.download-progress * 100) + "%";
+                                color: Theme.muted;
+                                font-family: Theme.mono;
+                                font-size: 12px;
+                                vertical-alignment: center;
+                            }
+                            if root.downloading == i: VerticalLayout {
+                                alignment: center;
+                                Btn { text: "Cancel"; height: 30px; font-size: 12px; clicked => { root.cancel-download(); } }
+                            }
+                            if !m.downloaded && root.downloading != i: VerticalLayout {
+                                alignment: center;
+                                Rectangle {
+                                    width: dl.preferred-width + 24px;
+                                    height: 30px;
+                                    border-radius: 8px;
+                                    background: dl-touch.has-hover && root.downloading < 0 ? #3a2618 : #2a1d14;
+                                    opacity: root.downloading < 0 ? 1 : 0.4;
+                                    accessible-role: button;
+                                    accessible-label: "Download " + m.name;
+                                    dl := Text { text: "Download"; color: Theme.text; font-size: 12px; }
+                                    dl-touch := TouchArea {
+                                        enabled: root.downloading < 0;
+                                        mouse-cursor: pointer;
+                                        clicked => { root.download-model(i); }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    SectionTitle { text: "YOUR VOICE"; height: 52px; vertical-alignment: bottom; }
+                    SettingRow {
+                        label: "Voice engine";
+                        Text { text: "OmniVoice"; color: Theme.muted; font-size: 13px; vertical-alignment: center; }
+                    }
+                    SettingRow {
+                        label: "Voice sample";
+                        Text { text: "20 s from the clip"; color: Theme.muted; font-size: 13px; vertical-alignment: center; }
+                    }
+
+                    SectionTitle { text: "SHORTCUTS AND WINDOW"; height: 52px; vertical-alignment: bottom; }
+                    SettingRow {
+                        label: "Record from any app";
+                        VerticalLayout {
+                            alignment: center;
+                            LineEdit {
+                                width: 140px;
+                                text: root.hotkey;
+                                font-size: 13px;
+                                accepted(t) => { root.hotkey-accepted(t); keys.focus(); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        label: "Close button hides to tray";
+                        VerticalLayout {
+                            alignment: center;
+                            Toggle {
+                                label: "Close button hides to tray";
+                                checked <=> root.close-to-tray;
+                                toggled(on) => { root.close-to-tray-changed(on); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        label: "Start with Windows";
+                        VerticalLayout {
+                            alignment: center;
+                            Toggle {
+                                label: "Start with Windows";
+                                checked <=> root.start-with-windows;
+                                toggled(on) => { root.start-with-windows-changed(on); }
+                            }
+                        }
+                    }
                 }
             }
-
-            HorizontalLayout {
-                spacing: 6px;
-                Button {
-                    text: root.playing ? "Stop" : "Play";
-                    enabled: root.selected >= 0;
-                    clicked => { if (root.playing) { root.stop-playback(); } else { root.play-selected(); } keys.focus(); }
-                }
-                Button {
-                    text: "Rename";
-                    enabled: root.selected >= 0 && !root.recording;
-                    clicked => { root.renaming = true; }
-                }
-                Button {
-                    text: "Delete";
-                    enabled: root.selected >= 0;
-                    clicked => { root.delete-selected(); keys.focus(); }
-                }
-                Button {
-                    text: "Export";
-                    enabled: root.selected >= 0;
-                    clicked => { root.export-selected(); keys.focus(); }
-                }
-                CheckBox {
-                    text: "Clean voice";
-                    checked <=> root.clean-voice;
-                    toggled => { root.clean-voice-changed(self.checked); keys.focus(); }
-                }
-                ComboBox {
-                    model: ["FLAC", "WAV", "MP3"];
-                    current-index <=> root.export-format;
-                    selected => { root.export-format-changed(self.current-index); keys.focus(); }
-                }
-                if root.can-transcribe: Button {
-                    text: "Transcribe";
-                    enabled: root.selected >= 0 && !root.transcribing && !root.recording;
-                    clicked => { root.transcribe-selected(); keys.focus(); }
-                }
-                Rectangle { }
-                if root.playing: Text {
-                    text: root.play-position;
-                    color: Theme.muted;
-                    vertical-alignment: center;
-                }
-            }
-
-            Text {
-                text: root.status != "" ? root.status : root.folder;
-                color: Theme.muted;
+            if root.status != "": Text {
+                text: root.status;
+                color: Theme.dim;
                 font-size: 11px;
                 overflow: elide;
+                x: 22px;
+                width: parent.width - 44px;
+                height: 28px;
+                vertical-alignment: center;
             }
         }
 
         // New words take a while to speak: cover the window so that is obvious.
-        if root.speaking: Rectangle {
+        if root.speaking && !root.compact: Rectangle {
             x: 0;
             y: 0;
             width: parent.width;
             height: parent.height;
-            background: #000000c0;
+            background: #000000c8;
             TouchArea { }
             Rectangle {
-                width: min(parent.width - 48px, 320px);
+                width: min(parent.width - 48px, 340px);
                 height: card.preferred-height;
-                background: Theme.surface;
-                border-radius: 12px;
+                background: Theme.card;
+                border-radius: 14px;
+                border-width: 1px;
+                border-color: Theme.edge;
                 card := VerticalLayout {
-                    padding: 20px;
+                    padding: 22px;
                     spacing: 12px;
                     Text {
                         text: "Speaking new words in your voice";
                         color: Theme.text;
-                        font-size: 15px;
+                        font-size: 16px;
+                        font-weight: 800;
+                        wrap: word-wrap;
                     }
                     Text {
                         text: root.speak-stage;
@@ -680,17 +1603,27 @@ export component AppWindow inherits Window {
                         font-size: 12px;
                         wrap: word-wrap;
                     }
-                    ProgressIndicator {
-                        progress: root.speak-progress;
+                    Rectangle {
+                        height: 4px;
+                        border-radius: 2px;
+                        background: Theme.track;
+                        Rectangle {
+                            x: 0;
+                            width: parent.width * clamp(root.speak-progress, 0, 1);
+                            border-radius: 2px;
+                            background: Theme.accent;
+                        }
                     }
                     HorizontalLayout {
                         Text {
                             text: round(root.speak-progress * 100) + "%";
                             color: Theme.muted;
+                            font-family: Theme.mono;
+                            font-size: 12px;
                             vertical-alignment: center;
                             horizontal-stretch: 1;
                         }
-                        Button {
+                        Btn {
                             text: "Cancel";
                             clicked => { root.cancel-speaking(); }
                         }

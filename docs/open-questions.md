@@ -51,3 +51,20 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
 13. **Voice: uv for other people.** The voice engine is installed with `uv`. On your PC
    it is there; for a public release the app should download uv itself, or ship a
    ready Python environment. Decide before the first public release.
+
+## Added 2026-10-24 (Ember UI build)
+
+14. **An old Thrasher is still recording.** A test build from 23 October
+    (`targetoicetest5`) has been recording `clip_006` in your real VoiceClips since
+    18:14 that day; the file was 7.5 GB at 05:48 the next morning and still growing.
+    It was left alone. Stop it from its tray icon, then keep or delete the clip.
+15. **The DJI mic recorded silence again** in the UI test on 24 October (level stays at
+    the floor). Same as question 2.
+16. **Edit screen look.** The mockup shows cut words crossed out and typed words in
+    orange inside the editor. Slint's text editor cannot colour parts of its text, so
+    the editor is a plain text box in an orange frame, with the change count and new
+    length above it. A custom editor that draws the marks is possible later. Worth it?
+17. **Speed** keeps the pitch (a small time-stretch in `thrasher-core/src/stretch.rs`).
+    Steps are 0.75, 1.0, 1.25, 1.5 and 2.0. Other steps wanted?
+18. **The widget** got the same Ember style as a pill: record button, live level bars,
+    timer, open-window and hide buttons. Not designed in the mockups yet.

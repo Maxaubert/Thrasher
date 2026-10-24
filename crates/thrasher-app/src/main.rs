@@ -2,22 +2,25 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod settings;
+mod startup;
 mod transcription;
 mod voice;
+mod waves;
 
 use settings::Settings;
 use slint::{
     ComponentHandle, LogicalSize, Model, ModelRc, SharedString, Timer, TimerMode, VecModel,
 };
 use std::cell::RefCell;
+use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use thrasher_core::capture::{LoopbackMode, LoopbackSource, MicSource, Source};
 use thrasher_core::edit::{self, Edl};
 use thrasher_core::library::{Clip, Deleted, Library};
 use thrasher_core::meter::meter_position;
 use thrasher_core::naming::Template;
-use thrasher_core::player::{Player, load_clip};
+use thrasher_core::player::{Buffer, Player, load_clip};
 use thrasher_core::recorder::{RecorderOptions, Recording};
 use thrasher_core::sidecar::Sidecar;
 use thrasher_core::sidecar::TrackKind;
@@ -25,10 +28,23 @@ use thrasher_core::wasapi_io::{DeviceInfo, input_devices};
 
 slint::include_modules!();
 
-const FULL_SIZE: LogicalSize = LogicalSize::new(440.0, 640.0);
-const WIDGET_SIZE: LogicalSize = LogicalSize::new(240.0, 64.0);
+const FULL_SIZE: LogicalSize = LogicalSize::new(520.0, 600.0);
+const WIDGET_SIZE: LogicalSize = LogicalSize::new(320.0, 64.0);
 /// Meter range in dBFS.
 const METER_FLOOR_DB: f32 = -60.0;
+/// Bars in the live recording waveform: about 2.6 s at the 33 ms tick.
+const LIVE_BARS: usize = 80;
+/// Columns of the small waveform in the clip list.
+const ROW_COLUMNS: usize = 30;
+const SPEEDS: [f64; 5] = [0.75, 1.0, 1.25, 1.5, 2.0];
+const NORMAL_SPEED: usize = 1;
+/// Transcription languages offered in settings: code and name.
+const LANGUAGES: [(&str, &str); 3] = [
+    ("no", "Norwegian"),
+    ("en", "English"),
+    ("", "Detect the language"),
+];
+const EXPORT_FORMATS: [&str; 3] = ["flac", "wav", "mp3"];
 
 struct App {
     settings: Settings,
@@ -41,10 +57,22 @@ struct App {
     undo: Vec<Deleted>,
     /// Start time of each item (word or pause) in the shown transcript.
     transcript_starts: Vec<f64>,
-    /// The clip the player is playing.
-    playing_name: Option<String>,
+    /// The clip in the player, playing or paused.
+    active: Option<String>,
+    /// The player is running (not paused, not finished).
+    running: bool,
+    /// Where the active clip stands while paused, in recording time.
+    paused_at: f64,
+    /// Edited time at the start of the buffer in the player, and how many edited
+    /// seconds pass per second played (the speed).
+    play_offset: f64,
+    play_rate: f64,
+    speed: usize,
     /// Maps the edited audio being played back to times in the recording.
     timeline: Edl,
+    waves: waves::Waves,
+    live: VecDeque<f32>,
+    live_model: Rc<VecModel<f32>>,
 }
 
 fn fmt_time(secs: f64) -> String {
@@ -56,6 +84,67 @@ fn fmt_time(secs: f64) -> String {
     }
 }
 
+/// The recording timer as "02:47" and ".3".
+fn fmt_elapsed(secs: f64) -> (String, String) {
+    let tenths = (secs.max(0.0) * 10.0) as u64;
+    let s = tenths / 10;
+    let big = if s >= 3600 {
+        format!("{}:{:02}:{:02}", s / 3600, s / 60 % 60, s % 60)
+    } else {
+        format!("{:02}:{:02}", s / 60, s % 60)
+    };
+    (big, format!(".{}", tenths % 10))
+}
+
+/// "Today 09:14", "Yesterday 15:30", "Tue 11:02", or "12 Oct" for older clips.
+fn when(t: SystemTime) -> String {
+    let dt: chrono::DateTime<chrono::Local> = t.into();
+    let days = (chrono::Local::now().date_naive() - dt.date_naive()).num_days();
+    let hm = dt.format("%H:%M");
+    match days {
+        0 => format!("Today {hm}"),
+        1 => format!("Yesterday {hm}"),
+        2..=6 => format!("{} {hm}", dt.format("%a")),
+        _ => dt.format("%-d %b %Y").to_string(),
+    }
+}
+
+/// A folder as "…\Music\VoiceClips" when the full path is long.
+fn short_path(p: &std::path::Path) -> String {
+    let full = p.display().to_string();
+    if full.chars().count() <= 28 {
+        return full;
+    }
+    let tail: Vec<String> = p
+        .components()
+        .rev()
+        .take(2)
+        .map(|c| c.as_os_str().to_string_lossy().into_owned())
+        .collect();
+    format!(
+        "…\\{}",
+        tail.into_iter().rev().collect::<Vec<_>>().join("\\")
+    )
+}
+
+fn speed_label(i: usize) -> String {
+    let s = SPEEDS[i];
+    if s.fract() == 0.0 || (s * 10.0).fract() == 0.0 {
+        format!("{s:.1}×")
+    } else {
+        format!("{s}×")
+    }
+}
+
+/// Length in seconds of each inserted word's audio, by insert id.
+fn voice_lengths(library: &Library, name: &str, sc: &Sidecar) -> HashMap<String, f64> {
+    let rate = sc.thrasher.tracks.first().map_or(48_000, |t| t.sample_rate) as f64;
+    thrasher_core::voice::load_voices(library, name, sc)
+        .into_iter()
+        .map(|(id, v)| (id, v.len() as f64 / rate))
+        .collect()
+}
+
 /// A clip's length as edited: cut words and pauses, changed pauses and spoken words
 /// count, so the list shows what playback and export give.
 fn edited_secs(library: &Library, c: &Clip, sc: &Sidecar) -> f64 {
@@ -65,42 +154,127 @@ fn edited_secs(library: &Library, c: &Clip, sc: &Sidecar) -> f64 {
     if !edited || (sc.duration - c.duration).abs() >= 0.5 {
         return c.duration;
     }
-    let rate = sc.thrasher.tracks.first().map_or(48_000, |t| t.sample_rate) as f64;
-    let voices = thrasher_core::voice::load_voices(library, &c.name, sc)
-        .into_iter()
-        .map(|(id, v)| (id, v.len() as f64 / rate))
-        .collect();
-    edit::edited_length(sc, &voices)
+    edit::edited_length(sc, &voice_lengths(library, &c.name, sc))
 }
 
 impl App {
     fn refresh_clips(&mut self, ui: &AppWindow) {
         self.clips = self.library.list().unwrap_or_default();
+        let mut total = 0.0;
         let rows: Vec<ClipRow> = self
             .clips
             .iter()
             .map(|c| {
-                let secs = Sidecar::load(&self.library.sidecar_path(&c.name))
-                    .map_or(c.duration, |sc| edited_secs(&self.library, c, &sc));
+                let sc = Sidecar::load(&self.library.sidecar_path(&c.name)).ok();
+                let secs = sc
+                    .as_ref()
+                    .map_or(c.duration, |sc| edited_secs(&self.library, c, sc));
+                total += secs;
+                let mut meta = when(c.created);
+                if sc.as_ref().is_some_and(|s| !s.words.is_empty()) {
+                    meta.push_str(" · transcribed");
+                }
+                if c.has_system {
+                    meta.push_str(" · + system");
+                }
                 ClipRow {
                     name: c.name.clone().into(),
                     duration: fmt_time(secs).into(),
+                    meta: meta.into(),
                     has_system: c.has_system,
+                    wave: self.row_wave(c),
                 }
             })
             .collect();
         ui.set_clips(ModelRc::new(VecModel::from(rows)));
+        let n = self.clips.len();
+        ui.set_clips_summary(
+            match n {
+                0 => "No clips yet".to_string(),
+                _ if total < 60.0 => {
+                    format!("{n} clip{} · {total:.0} s", if n == 1 { "" } else { "s" })
+                }
+                _ => format!(
+                    "{n} clip{} · {:.0} min",
+                    if n == 1 { "" } else { "s" },
+                    total / 60.0
+                ),
+            }
+            .into(),
+        );
         let sel = ui.get_selected();
-        if sel >= self.clips.len() as i32 {
-            ui.set_selected(self.clips.len() as i32 - 1);
+        if sel >= n as i32 {
+            ui.set_selected(n as i32 - 1);
         }
         ui.set_can_undo(!self.undo.is_empty());
+        self.sync_active(ui);
+        let (library, clips) = (self.library.clone(), self.clips.clone());
+        self.waves.request(ui, &library, &clips);
     }
 
-    /// Shows the selected clip's transcript, if it has one: as text for editing and
-    /// as a row of words for the synced player.
+    fn row_wave(&self, c: &Clip) -> ModelRc<f32> {
+        let w = self.waves.get(c).map_or_else(
+            || vec![0.06; ROW_COLUMNS],
+            |w| waves::columns(&w, ROW_COLUMNS),
+        );
+        ModelRc::new(VecModel::from(w))
+    }
+
+    /// Puts newly drawn waveforms into the list and the clip page.
+    fn apply_waves(&self, ui: &AppWindow) {
+        let rows = ui.get_clips();
+        for (i, c) in self.clips.iter().enumerate() {
+            if let (Some(mut row), Some(w)) = (rows.row_data(i), self.waves.get(c))
+                && row.wave.row_count() > 0
+                && row.wave.row_data(0) == Some(0.06)
+            {
+                row.wave = ModelRc::new(VecModel::from(waves::columns(&w, ROW_COLUMNS)));
+                rows.set_row_data(i, row);
+            }
+        }
+        self.show_detail_wave(ui);
+    }
+
+    fn show_detail_wave(&self, ui: &AppWindow) {
+        let w = self
+            .selected(ui)
+            .and_then(|c| self.waves.get(c))
+            .unwrap_or_else(|| vec![0.06; waves::COLUMNS]);
+        ui.set_detail_wave(ModelRc::new(VecModel::from(w)));
+    }
+
+    fn device_label(&self) -> String {
+        let mic = self
+            .settings
+            .mic_device
+            .as_ref()
+            .and_then(|id| self.devices.iter().find(|d| &d.id == id))
+            .map_or("Default microphone", |d| d.name.as_str());
+        if self.settings.record_system {
+            format!("{mic} + system audio")
+        } else {
+            mic.to_string()
+        }
+    }
+
+    /// Shows the selected clip on the clip page: details, waveform and transcript.
     fn show_transcript(&mut self, ui: &AppWindow) {
         self.update_length(ui);
+        if let Some(c) = self.selected(ui) {
+            // The same length as the list shows.
+            let shown = ui
+                .get_clips()
+                .row_data(ui.get_selected() as usize)
+                .map_or_else(|| fmt_time(c.duration), |r| r.duration.to_string());
+            let tracks = if c.has_system { "mic + system" } else { "mic" };
+            let file = c
+                .path
+                .file_name()
+                .map(|f| f.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            ui.set_detail_meta(format!("{} · {shown} · {tracks} · {file}", when(c.created)).into());
+        }
+        self.show_detail_wave(ui);
         // Also reads the `transkript` folder Max's older tooling writes to.
         let sidecar = self.selected(ui).and_then(|c| {
             [
@@ -177,41 +351,197 @@ impl App {
         }
     }
 
+    /// Counts the changes in the transcript being edited and the length it gives.
+    fn preview_edit(&self, ui: &AppWindow, text: &str) {
+        ui.set_edit_badge("".into());
+        let Some(c) = self.selected(ui) else { return };
+        let Ok(mut sc) = Sidecar::load(&self.library.sidecar_path(&c.name)) else {
+            ui.set_edit_was(fmt_time(c.duration).into());
+            ui.set_edit_length(fmt_time(c.duration).into());
+            return;
+        };
+        let was = edited_secs(&self.library, c, &sc);
+        ui.set_edit_was(fmt_time(was).into());
+        ui.set_edit_length(fmt_time(was).into());
+        let Ok(ch) = edit::apply_text(text, &mut sc) else {
+            return;
+        };
+        let n = ch.words_cut
+            + ch.words_restored
+            + ch.words_retyped
+            + ch.pauses
+            + ch.spoken
+            + ch.unspoken;
+        if n == 0 {
+            return;
+        }
+        ui.set_edit_badge(format!("{n} change{}", if n == 1 { "" } else { "s" }).into());
+        // New words have no audio yet: count a typical spoken word for each.
+        let voices = voice_lengths(&self.library, &c.name, &sc);
+        let missing = sc
+            .inserts
+            .iter()
+            .filter(|i| !voices.contains_key(&i.id))
+            .count();
+        let len = edit::edited_length(&sc, &voices) + missing as f64 * 0.35;
+        ui.set_edit_length(fmt_time(len).into());
+    }
+
     /// Index of the transcript item being heard at `secs`.
     fn item_at(&self, secs: f64) -> i32 {
         self.transcript_starts.partition_point(|&s| s <= secs) as i32 - 1
     }
 
-    fn play(&mut self, ui: &AppWindow, from_secs: f64) -> bool {
-        self.play_edit(ui, from_secs, None)
+    fn clip_named(&self, name: &str) -> Option<&Clip> {
+        self.clips.iter().find(|c| c.name == name)
     }
 
-    /// Plays the selected clip as edited in `sc`, or as saved when `sc` is `None`.
-    fn play_edit(&mut self, ui: &AppWindow, from_secs: f64, sc: Option<Sidecar>) -> bool {
-        let Some(name) = self.selected(ui).map(|c| c.name.clone()) else {
-            return false;
-        };
-        match load_clip(&self.library, &name) {
-            Ok(mut buf) => {
-                // Play the clip as edited: cut words and shortened pauses are skipped,
-                // and inserted words are spoken.
-                let sc = sc.map_or_else(|| Sidecar::load(&self.library.sidecar_path(&name)), Ok);
-                self.timeline = sc
-                    .map(|sc| {
-                        let voices = thrasher_core::voice::load_voices(&self.library, &name, &sc);
-                        edit::plan(&sc, &voices, &buf)
-                    })
-                    .unwrap_or_default();
-                buf = self.timeline.render(&buf);
-                self.player.play(buf, self.timeline.to_edited(from_secs));
-                self.playing_name = Some(name);
-                ui.set_playing(true);
-                true
-            }
+    fn sync_active(&self, ui: &AppWindow) {
+        let i = self
+            .active
+            .as_ref()
+            .and_then(|n| self.clips.iter().position(|c| &c.name == n))
+            .map_or(-1, |i| i as i32);
+        ui.set_active_clip(i);
+    }
+
+    /// Plays clip `name` as edited, from `from` seconds of the recording, at the
+    /// chosen speed.
+    fn play_clip(&mut self, ui: &AppWindow, name: &str, from: f64) -> bool {
+        let buf = match load_clip(&self.library, name) {
+            Ok(b) => b,
             Err(e) => {
                 ui.set_status(format!("Cannot open {name}: {e}").into());
-                false
+                return false;
             }
+        };
+        // Play the clip as edited: cut words and shortened pauses are skipped, and
+        // inserted words are spoken.
+        self.timeline = Sidecar::load(&self.library.sidecar_path(name))
+            .map(|sc| {
+                let voices = thrasher_core::voice::load_voices(&self.library, name, &sc);
+                edit::plan(&sc, &voices, &buf)
+            })
+            .unwrap_or_default();
+        let buf = self.timeline.render(&buf);
+        let start = self
+            .timeline
+            .to_edited(from)
+            .clamp(0.0, buf.duration_secs());
+        let speed = SPEEDS[self.speed];
+        if self.speed == NORMAL_SPEED {
+            self.play_offset = 0.0;
+            self.play_rate = 1.0;
+            self.player.play(buf, start);
+        } else {
+            let first = (start * buf.sample_rate as f64) as usize * buf.channels.max(1) as usize;
+            let rest = Buffer {
+                sample_rate: buf.sample_rate,
+                channels: buf.channels,
+                samples: buf.samples[first.min(buf.samples.len())..].to_vec(),
+            };
+            self.player
+                .play(thrasher_core::stretch::stretch(&rest, speed), 0.0);
+            self.play_offset = start;
+            self.play_rate = speed;
+        }
+        self.active = Some(name.to_string());
+        self.running = true;
+        self.paused_at = from;
+        ui.set_playing(true);
+        self.sync_active(ui);
+        self.show_position(ui);
+        true
+    }
+
+    fn edited_pos(&self) -> f64 {
+        self.play_offset + self.player.position_secs() * self.play_rate
+    }
+
+    /// Where the active clip stands, in recording time.
+    fn position(&self) -> f64 {
+        if self.running {
+            self.timeline.to_original(self.edited_pos())
+        } else {
+            self.paused_at
+        }
+    }
+
+    fn pause(&mut self, ui: &AppWindow) {
+        if !self.running {
+            return;
+        }
+        self.paused_at = self.position();
+        self.player.stop();
+        self.running = false;
+        ui.set_playing(false);
+    }
+
+    /// Stops playback and unloads the clip.
+    fn stop(&mut self, ui: &AppWindow) {
+        self.player.stop();
+        self.running = false;
+        self.active = None;
+        self.paused_at = 0.0;
+        ui.set_playing(false);
+        ui.set_play_fraction(0.0);
+        ui.set_current_word(-1);
+        self.sync_active(ui);
+    }
+
+    /// Play or pause `name`: a paused clip continues where it stopped.
+    fn toggle(&mut self, ui: &AppWindow, name: &str) -> bool {
+        if self.active.as_deref() != Some(name) {
+            return self.play_clip(ui, name, 0.0);
+        }
+        if self.running {
+            self.pause(ui);
+            return false;
+        }
+        let len = self.clip_named(name).map_or(0.0, |c| c.duration);
+        let from = if self.paused_at >= len - 0.05 {
+            0.0
+        } else {
+            self.paused_at
+        };
+        self.play_clip(ui, name, from)
+    }
+
+    /// Moves the selected clip `secs` forward or back, in the edited audio.
+    fn skip(&mut self, ui: &AppWindow, secs: f64) -> bool {
+        let Some(c) = self.selected(ui).cloned() else {
+            return false;
+        };
+        if self.active.as_deref() != Some(c.name.as_str()) {
+            return self.play_clip(ui, &c.name, secs.max(0.0));
+        }
+        let edited = self.timeline.to_edited(self.position()) + secs;
+        let to = self
+            .timeline
+            .to_original(edited.max(0.0))
+            .clamp(0.0, c.duration);
+        if self.running {
+            return self.play_clip(ui, &c.name, to);
+        }
+        self.paused_at = to;
+        self.show_position(ui);
+        false
+    }
+
+    fn show_position(&self, ui: &AppWindow) {
+        let Some(c) = self.active.as_deref().and_then(|n| self.clip_named(n)) else {
+            return;
+        };
+        let orig = self.position();
+        ui.set_play_fraction((orig / c.duration.max(1e-3)).clamp(0.0, 1.0) as f32);
+        let edited = if self.running {
+            self.edited_pos()
+        } else {
+            self.timeline.to_edited(orig)
+        };
+        ui.set_play_position(fmt_time(edited).into());
+        if self.selected(ui).is_some_and(|s| s.name == c.name) {
+            ui.set_current_word(self.item_at(orig));
         }
     }
 
@@ -228,7 +558,7 @@ impl App {
     }
 
     fn start_recording(&mut self, ui: &AppWindow) {
-        self.player.stop();
+        self.stop(ui);
         let names = self.library.names().unwrap_or_default();
         let name = self.template.next_name(
             names.iter().map(String::as_str),
@@ -249,6 +579,7 @@ impl App {
         match Recording::start(&self.library, &name, sources, RecorderOptions::default()) {
             Ok(rec) => {
                 self.recording = Some(rec);
+                self.live.clear();
                 ui.set_recording(true);
                 ui.set_paused(false);
                 ui.set_status(format!("Recording {name}").into());
@@ -265,6 +596,11 @@ impl App {
         ui.set_paused(false);
         ui.set_mic_level(0.0);
         ui.set_system_level(0.0);
+        let (big, tenth) = fmt_elapsed(0.0);
+        ui.set_elapsed(big.into());
+        ui.set_elapsed_tenth(tenth.into());
+        self.live.clear();
+        self.live_model.set_vec(vec![0.06; LIVE_BARS]);
         match rec.stop() {
             Ok(done) => {
                 let mut msg = format!("Saved {} ({})", done.name, fmt_time(done.duration));
@@ -285,48 +621,64 @@ impl App {
         let mut active = false;
         if let Some(rec) = &self.recording {
             active = true;
-            ui.set_elapsed(fmt_time(rec.elapsed()).into());
+            let (big, tenth) = fmt_elapsed(rec.elapsed());
+            ui.set_elapsed(big.into());
+            ui.set_elapsed_tenth(tenth.into());
+            let mut loudest = 0f32;
             for (kind, level) in rec.levels() {
                 let pos = meter_position(level.peak, METER_FLOOR_DB);
+                loudest = loudest.max(pos);
                 match kind {
                     TrackKind::Mic => ui.set_mic_level(pos),
                     TrackKind::System => ui.set_system_level(pos),
                 }
             }
+            if rec.is_paused() {
+                loudest = 0.0;
+            }
+            if self.live.len() >= LIVE_BARS {
+                self.live.pop_front();
+            }
+            self.live.push_back(loudest.max(0.06));
+            let mut bars = vec![0.06; LIVE_BARS - self.live.len()];
+            bars.extend(self.live.iter().copied());
+            self.live_model.set_vec(bars);
             if let Some(e) = rec.error() {
                 ui.set_status(e.into());
             }
         }
-        let playing = self.player.is_playing();
-        ui.set_playing(playing);
-        if playing {
+        if self.running {
             active = true;
-            let pos = self.player.position_secs();
-            ui.set_play_position(fmt_time(pos).into());
-            let shown = self.selected(ui).map(|c| c.name.as_str());
-            if shown.is_some() && shown == self.playing_name.as_deref() {
-                ui.set_current_word(self.item_at(self.timeline.to_original(pos)));
+            if self.player.is_playing() {
+                self.show_position(ui);
+            } else if let Some(e) = self.player.error() {
+                ui.set_status(format!("Playback failed: {e}").into());
+                self.stop(ui);
+            } else if ui.get_looping()
+                && let Some(name) = self.active.clone()
+            {
+                self.play_clip(ui, &name, 0.0);
+            } else {
+                self.stop(ui);
             }
-        } else if let Some(e) = self.player.error() {
-            ui.set_status(format!("Playback failed: {e}").into());
         }
         active
     }
 }
 
-/// A 32x32 round tray icon: red while recording, light grey otherwise.
-fn tray_image(recording: bool) -> slint::Image {
-    let size = 32u32;
+/// A round icon: ring with a dot. Orange while recording, light otherwise.
+fn dot_image(size: u32, recording: bool) -> slint::Image {
     let mut buf = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::new(size, size);
     let (r, g, b) = if recording {
-        (0xef, 0x44, 0x44)
+        (0xff, 0x6a, 0x1a)
     } else {
-        (0xe8, 0xe8, 0xe8)
+        (0xf1, 0xec, 0xe8)
     };
+    let scale = size as f32 / 32.0;
     let c = (size as f32 - 1.0) / 2.0;
     for (i, px) in buf.make_mut_slice().iter_mut().enumerate() {
         let (x, y) = ((i as u32 % size) as f32, (i as u32 / size) as f32);
-        let d = ((x - c).powi(2) + (y - c).powi(2)).sqrt();
+        let d = ((x - c).powi(2) + (y - c).powi(2)).sqrt() / scale;
         // Ring with a filled centre, anti-aliased edges.
         let ring = (1.0 - ((d - 13.0).abs() - 1.5).clamp(0.0, 1.0)) * (d <= 15.5) as u8 as f32;
         let dot = (8.5 - d).clamp(0.0, 1.0);
@@ -341,32 +693,55 @@ fn tray_image(recording: bool) -> slint::Image {
     slint::Image::from_rgba8(buf)
 }
 
-fn register_hotkey(ui: &AppWindow, spec: &str) -> Option<global_hotkey::GlobalHotKeyManager> {
-    use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState, hotkey::HotKey};
-    if spec.trim().is_empty() {
-        return None;
-    }
-    let hotkey: HotKey = match spec.parse() {
-        Ok(h) => h,
-        Err(e) => {
-            ui.set_status(format!("Hotkey '{spec}' not understood: {e}").into());
-            return None;
+/// The global record hotkey. The manager must stay alive for it to stay registered.
+#[derive(Default)]
+struct Hotkey {
+    manager: Option<global_hotkey::GlobalHotKeyManager>,
+    current: Option<global_hotkey::hotkey::HotKey>,
+}
+
+impl Hotkey {
+    /// Registers `spec` ("Ctrl+Alt+R"), replacing the previous hotkey. Empty turns
+    /// it off. Returns false, with a status message, if it cannot be used.
+    fn set(&mut self, ui: &AppWindow, spec: &str) -> bool {
+        use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState, hotkey::HotKey};
+        let hotkey: Option<HotKey> = if spec.trim().is_empty() {
+            None
+        } else {
+            match spec.parse() {
+                Ok(h) => Some(h),
+                Err(e) => {
+                    ui.set_status(format!("Hotkey '{spec}' not understood: {e}").into());
+                    return false;
+                }
+            }
+        };
+        if self.manager.is_none() {
+            self.manager = GlobalHotKeyManager::new().ok();
         }
-    };
-    let manager = GlobalHotKeyManager::new().ok()?;
-    if let Err(e) = manager.register(hotkey) {
-        ui.set_status(format!("Hotkey {spec} is taken by another app: {e}").into());
-        return None;
-    }
-    let weak = ui.as_weak();
-    let id = hotkey.id();
-    GlobalHotKeyEvent::set_event_handler(Some(move |e: GlobalHotKeyEvent| {
-        if e.id() == id && e.state() == HotKeyState::Pressed {
-            let _ = weak.upgrade_in_event_loop(|ui| ui.invoke_toggle_record());
+        let Some(manager) = &self.manager else {
+            return false;
+        };
+        if let Some(old) = self.current.take() {
+            let _ = manager.unregister(old);
         }
-    }));
-    ui.set_hotkey(spec.into());
-    Some(manager)
+        let Some(hotkey) = hotkey else {
+            return true;
+        };
+        if let Err(e) = manager.register(hotkey) {
+            ui.set_status(format!("Hotkey {spec} is taken by another app: {e}").into());
+            return false;
+        }
+        self.current = Some(hotkey);
+        let weak = ui.as_weak();
+        let id = hotkey.id();
+        GlobalHotKeyEvent::set_event_handler(Some(move |e: GlobalHotKeyEvent| {
+            if e.id() == id && e.state() == HotKeyState::Pressed {
+                let _ = weak.upgrade_in_event_loop(|ui| ui.invoke_toggle_record());
+            }
+        }));
+        true
+    }
 }
 
 fn main() -> Result<(), slint::PlatformError> {
@@ -388,6 +763,9 @@ fn main() -> Result<(), slint::PlatformError> {
 
     let ui = AppWindow::new()?;
     let recovered = library.recover().unwrap_or_default();
+    let live_model = Rc::new(VecModel::from(vec![0.06; LIVE_BARS]));
+    ui.set_live(ModelRc::from(live_model.clone()));
+    ui.set_window_icon(dot_image(64, true));
 
     let app = Rc::new(RefCell::new(App {
         settings,
@@ -399,8 +777,16 @@ fn main() -> Result<(), slint::PlatformError> {
         player: Player::new(),
         undo: Vec::new(),
         transcript_starts: Vec::new(),
+        active: None,
+        running: false,
+        paused_at: 0.0,
+        play_offset: 0.0,
+        play_rate: 1.0,
+        speed: NORMAL_SPEED,
         timeline: Edl::default(),
-        playing_name: None,
+        waves: waves::Waves::default(),
+        live: VecDeque::new(),
+        live_model,
     }));
 
     {
@@ -420,8 +806,21 @@ fn main() -> Result<(), slint::PlatformError> {
             .map_or(0, |i| i as i32 + 1);
         ui.set_mic_index(idx);
         ui.set_record_system(a.settings.record_system);
+        ui.set_device_label(a.device_label().into());
         ui.set_pinned(a.settings.pinned);
-        ui.set_folder(a.library.dir().display().to_string().into());
+        ui.set_folder(short_path(a.library.dir()).into());
+        ui.set_name_template(a.settings.name_template.clone().into());
+        ui.set_close_to_tray(a.settings.close_to_tray);
+        ui.set_start_with_windows(startup::enabled());
+        ui.set_speed_label(speed_label(NORMAL_SPEED).into());
+        let langs: Vec<SharedString> = LANGUAGES.iter().map(|(_, n)| (*n).into()).collect();
+        ui.set_languages(ModelRc::new(VecModel::from(langs)));
+        ui.set_language_index(
+            LANGUAGES
+                .iter()
+                .position(|(c, _)| *c == a.settings.language)
+                .unwrap_or(0) as i32,
+        );
         if !recovered.is_empty() {
             ui.set_status(format!("Recovered after a crash: {}", recovered.join(", ")).into());
         }
@@ -455,8 +854,31 @@ fn main() -> Result<(), slint::PlatformError> {
         })
     };
 
-    // Global hotkey. The manager must stay alive for the hotkey to stay registered.
-    let _hotkeys = register_hotkey(&ui, &app.borrow().settings.hotkey);
+    let hotkey = Rc::new(RefCell::new(Hotkey::default()));
+    {
+        let spec = app.borrow().settings.hotkey.clone();
+        if hotkey.borrow_mut().set(&ui, &spec) {
+            ui.set_hotkey(spec.into());
+        }
+    }
+    ui.on_hotkey_accepted({
+        let (app, weak, hotkey) = (app.clone(), ui.as_weak(), hotkey.clone());
+        move |spec| {
+            let ui = weak.unwrap();
+            let spec = spec.trim().to_string();
+            if hotkey.borrow_mut().set(&ui, &spec) {
+                let mut a = app.borrow_mut();
+                a.settings.hotkey = spec.clone();
+                a.settings.save();
+                ui.set_hotkey(spec.clone().into());
+                ui.set_status(if spec.is_empty() {
+                    "Hotkey turned off".into()
+                } else {
+                    format!("{spec} now records from any app").into()
+                });
+            }
+        }
+    });
 
     ui.on_toggle_record({
         let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
@@ -487,13 +909,88 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_play_selected({
+    ui.on_play_clip({
+        let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
+        move |i| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let Some(name) = a.clips.get(i as usize).map(|c| c.name.clone()) else {
+                return;
+            };
+            if ui.get_selected() != i {
+                ui.set_selected(i);
+            }
+            if a.toggle(&ui, &name) {
+                ensure();
+            }
+        }
+    });
+
+    ui.on_open_clip({
+        let weak = ui.as_weak();
+        move |i| {
+            let ui = weak.unwrap();
+            if ui.get_selected() != i {
+                ui.set_selected(i);
+            }
+        }
+    });
+
+    ui.on_toggle_play({
         let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
         move || {
             let ui = weak.unwrap();
             let mut a = app.borrow_mut();
-            if a.play(&ui, 0.0) {
+            let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
+                return;
+            };
+            if a.toggle(&ui, &name) {
                 ensure();
+            }
+        }
+    });
+
+    ui.on_seek_fraction({
+        let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
+        move |f| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let Some(c) = a.selected(&ui).cloned() else {
+                return;
+            };
+            let to = f.clamp(0.0, 1.0) as f64 * c.duration;
+            if a.active.as_deref() == Some(c.name.as_str()) && !a.running {
+                a.paused_at = to;
+                a.show_position(&ui);
+            } else if a.play_clip(&ui, &c.name, to) {
+                ensure();
+            }
+        }
+    });
+
+    ui.on_skip({
+        let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
+        move |secs| {
+            if app.borrow_mut().skip(&weak.unwrap(), secs as f64) {
+                ensure();
+            }
+        }
+    });
+
+    ui.on_cycle_speed({
+        let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
+        move || {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            a.speed = (a.speed + 1) % SPEEDS.len();
+            ui.set_speed_label(speed_label(a.speed).into());
+            if a.running
+                && let Some(name) = a.active.clone()
+            {
+                let at = a.position();
+                if a.play_clip(&ui, &name, at) {
+                    ensure();
+                }
             }
         }
     });
@@ -506,7 +1003,10 @@ fn main() -> Result<(), slint::PlatformError> {
             let Some(&start) = a.transcript_starts.get(i as usize) else {
                 return;
             };
-            if a.play(&ui, start) {
+            let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
+                return;
+            };
+            if a.play_clip(&ui, &name, start) {
                 ui.set_current_word(i);
                 ensure();
             }
@@ -515,10 +1015,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     ui.on_stop_playback({
         let (app, weak) = (app.clone(), ui.as_weak());
-        move || {
-            app.borrow_mut().player.stop();
-            weak.unwrap().set_playing(false);
-        }
+        move || app.borrow_mut().stop(&weak.unwrap())
     });
 
     let delete = {
@@ -535,7 +1032,9 @@ fn main() -> Result<(), slint::PlatformError> {
             if a.recording.as_ref().is_some_and(|r| r.name() == name) {
                 return;
             }
-            a.player.stop();
+            if a.active.as_deref() == Some(name.as_str()) {
+                a.stop(&ui);
+            }
             match a.library.delete(&name) {
                 Ok(d) => {
                     a.undo.push(d);
@@ -577,12 +1076,19 @@ fn main() -> Result<(), slint::PlatformError> {
             let Some(old) = a.selected(&ui).map(|c| c.name.clone()) else {
                 return;
             };
-            a.player.stop();
-            match a.library.rename(&old, new.trim()) {
+            let new = new.trim();
+            if new == old {
+                return;
+            }
+            if a.active.as_deref() == Some(old.as_str()) {
+                a.stop(&ui);
+            }
+            match a.library.rename(&old, new) {
                 Ok(()) => {
                     a.refresh_clips(&ui);
-                    a.select_name(&ui, new.trim());
-                    ui.set_status(format!("Renamed to {}", new.trim()).into());
+                    a.select_name(&ui, new);
+                    a.show_transcript(&ui);
+                    ui.set_status(format!("Renamed to {new}").into());
                 }
                 Err(e) => ui.set_status(e.to_string().into()),
             }
@@ -590,7 +1096,7 @@ fn main() -> Result<(), slint::PlatformError> {
     });
 
     ui.on_mic_changed({
-        let app = app.clone();
+        let (app, weak) = (app.clone(), ui.as_weak());
         move |idx| {
             let mut a = app.borrow_mut();
             a.settings.mic_device = usize::try_from(idx - 1)
@@ -598,15 +1104,17 @@ fn main() -> Result<(), slint::PlatformError> {
                 .and_then(|i| a.devices.get(i))
                 .map(|d| d.id.clone());
             a.settings.save();
+            weak.unwrap().set_device_label(a.device_label().into());
         }
     });
 
     ui.on_system_changed({
-        let app = app.clone();
+        let (app, weak) = (app.clone(), ui.as_weak());
         move |on| {
             let mut a = app.borrow_mut();
             a.settings.record_system = on;
             a.settings.save();
+            weak.unwrap().set_device_label(a.device_label().into());
         }
     });
 
@@ -624,14 +1132,37 @@ fn main() -> Result<(), slint::PlatformError> {
         move |on| {
             let ui = weak.unwrap();
             ui.set_compact(on);
-            ui.window()
-                .set_size(if on { WIDGET_SIZE } else { FULL_SIZE });
+            let size = if on { WIDGET_SIZE } else { FULL_SIZE };
+            ui.window().set_size(size);
+            // Windows keeps the framed window's minimum size until the frame is gone,
+            // so set the size again once it is.
+            let weak = weak.clone();
+            Timer::single_shot(Duration::from_millis(80), move || {
+                if let Some(ui) = weak.upgrade() {
+                    ui.window().set_size(size);
+                }
+            });
         }
     });
 
     ui.on_selection_changed({
         let (app, weak) = (app.clone(), ui.as_weak());
-        move |_| app.borrow_mut().show_transcript(&weak.unwrap())
+        move |_| {
+            let ui = weak.unwrap();
+            ui.set_renaming(false);
+            app.borrow_mut().show_transcript(&ui);
+            app.borrow().show_position(&ui);
+        }
+    });
+
+    ui.on_waves_ready({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move || app.borrow().apply_waves(&weak.unwrap())
+    });
+
+    ui.on_edit_changed({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |text| app.borrow().preview_edit(&weak.unwrap(), &text)
     });
 
     // Save never changes the clip: the edit becomes a new clip, "name (edit)", whose
@@ -669,10 +1200,8 @@ fn main() -> Result<(), slint::PlatformError> {
             if let Err(e) = a.library.copy_clip(&name, &new, &sc) {
                 return ui.set_status(e.to_string().into());
             }
-            if a.player.is_playing() {
-                a.player.stop();
-            }
-            ui.set_editing_transcript(false);
+            a.stop(&ui);
+            ui.set_page(1);
             voice::start(
                 &ui,
                 &a.library,
@@ -702,7 +1231,6 @@ fn main() -> Result<(), slint::PlatformError> {
     });
     ui.on_cancel_speaking(voice::cancel);
 
-    const EXPORT_FORMATS: [&str; 3] = ["flac", "wav", "mp3"];
     ui.set_export_format(
         EXPORT_FORMATS
             .iter()
@@ -752,15 +1280,101 @@ fn main() -> Result<(), slint::PlatformError> {
             };
             options.clean_voice = a.settings.clean_voice;
             match thrasher_core::export::export_clip(&a.library, &name, options) {
-                Ok(p) => {
-                    let subs = thrasher_core::export::export_subtitles(&a.library, &name)
-                        .map(|f| f.len())
-                        .unwrap_or(0);
-                    let extra = if subs > 0 { " with subtitles" } else { "" };
-                    ui.set_status(format!("Exported {}{extra}", p.display()).into())
-                }
+                Ok(p) => ui.set_status(format!("Exported {}", p.display()).into()),
                 Err(e) => ui.set_status(format!("Export failed: {e}").into()),
             }
+        }
+    });
+
+    ui.on_export_subtitles({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move || {
+            let ui = weak.unwrap();
+            let a = app.borrow();
+            let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
+                return;
+            };
+            match thrasher_core::export::export_subtitles(&a.library, &name) {
+                Ok(files) if files.is_empty() => ui.set_status("Transcribe this clip first".into()),
+                Ok(_) => ui.set_status(
+                    format!(
+                        "Wrote SRT, VTT and word timings to {}",
+                        thrasher_core::export::export_dir(&a.library).display()
+                    )
+                    .into(),
+                ),
+                Err(e) => ui.set_status(format!("Subtitles failed: {e}").into()),
+            }
+        }
+    });
+
+    ui.on_language_changed({
+        let app = app.clone();
+        move |i| {
+            let mut a = app.borrow_mut();
+            if let Some((code, _)) = LANGUAGES.get(i as usize) {
+                a.settings.language = (*code).into();
+                a.settings.save();
+            }
+        }
+    });
+
+    ui.on_template_edited({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |text| {
+            let ui = weak.unwrap();
+            let a = app.borrow();
+            let preview = match Template::parse(&text) {
+                Ok(t) => {
+                    let names = a.library.names().unwrap_or_default();
+                    let next = t.next_name(
+                        names.iter().map(String::as_str),
+                        chrono::Local::now().naive_local(),
+                    );
+                    format!("Next: {next}.wav")
+                }
+                Err(e) => e.to_string(),
+            };
+            ui.set_name_preview(preview.into());
+        }
+    });
+    ui.invoke_template_edited(app.borrow().settings.name_template.clone().into());
+
+    ui.on_template_accepted({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |text| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            match Template::parse(&text) {
+                Ok(t) => {
+                    a.template = t;
+                    a.settings.name_template = text.to_string();
+                    a.settings.save();
+                    ui.set_name_template(text.clone());
+                    ui.set_status("File name pattern saved".into());
+                }
+                Err(e) => ui.set_status(e.to_string().into()),
+            }
+        }
+    });
+
+    ui.on_close_to_tray_changed({
+        let app = app.clone();
+        move |on| {
+            let mut a = app.borrow_mut();
+            a.settings.close_to_tray = on;
+            a.settings.save();
+        }
+    });
+
+    ui.on_start_with_windows_changed({
+        let weak = ui.as_weak();
+        move |on| {
+            let ui = weak.unwrap();
+            if !startup::set(on) {
+                ui.set_status("Windows did not accept the change".into());
+            }
+            ui.set_start_with_windows(startup::enabled());
         }
     });
 
@@ -799,13 +1413,17 @@ fn main() -> Result<(), slint::PlatformError> {
                 let Some(m) = thrasher_core::models::CATALOG.get(i as usize) else {
                     return;
                 };
+                let ui = weak.unwrap();
                 let mut a = app.borrow_mut();
                 a.settings.model = m.id.into();
                 if !m.language.is_empty() {
                     a.settings.language = m.language.into();
+                    if let Some(p) = LANGUAGES.iter().position(|(c, _)| *c == m.language) {
+                        ui.set_language_index(p as i32);
+                    }
                 }
                 a.settings.save();
-                transcription::show_models(&weak.unwrap(), m.id);
+                transcription::show_models(&ui, m.id);
             }
         });
     }
@@ -818,10 +1436,40 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    // Tray icon. With it, closing the window hides it instead of quitting.
+    ui.on_change_folder({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move || {
+            let ui = weak.unwrap();
+            let start = app.borrow().library.dir().to_path_buf();
+            let Some(dir) = rfd::FileDialog::new()
+                .set_title("Folder for new clips")
+                .set_directory(&start)
+                .pick_folder()
+            else {
+                return;
+            };
+            let mut a = app.borrow_mut();
+            match Library::open(&dir) {
+                Ok(lib) => {
+                    a.stop(&ui);
+                    a.library = lib;
+                    a.undo.clear();
+                    a.settings.output_dir = dir.clone();
+                    a.settings.save();
+                    ui.set_folder(short_path(&dir).into());
+                    a.refresh_clips(&ui);
+                    ui.set_selected(a.clips.len() as i32 - 1);
+                    a.show_transcript(&ui);
+                }
+                Err(e) => ui.set_status(format!("Cannot use {}: {e}", dir.display()).into()),
+            }
+        }
+    });
+
+    // Tray icon. With it, closing the window can hide it instead of quitting.
     let tray = Tray::new().ok();
     if let Some(tray) = &tray {
-        tray.set_image(tray_image(false));
+        tray.set_image(dot_image(32, false));
         tray.on_toggle_record({
             let weak = ui.as_weak();
             move || weak.unwrap().invoke_toggle_record()
@@ -857,7 +1505,7 @@ fn main() -> Result<(), slint::PlatformError> {
             if last != Some(rec) {
                 last = Some(rec);
                 tray.set_recording(rec);
-                tray.set_image(tray_image(rec));
+                tray.set_image(dot_image(32, rec));
             }
         });
         std::mem::forget(sync);
@@ -875,8 +1523,9 @@ fn main() -> Result<(), slint::PlatformError> {
     });
     ui.window().on_close_requested({
         let has_tray = tray.is_some();
+        let app = app.clone();
         move || {
-            if !has_tray {
+            if !has_tray || !app.borrow().settings.close_to_tray {
                 let _ = slint::quit_event_loop();
             }
             slint::CloseRequestResponse::HideWindow

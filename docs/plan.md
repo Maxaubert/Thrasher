@@ -149,3 +149,4 @@ Max accepted the research defaults (see section 7 for the report link):
 - **Models are not a tab.** They live on the **settings page** (opened from a gear in the title bar) with recording, output, voice and shortcut settings.
 - Ember screens on the canvas: main while a clip plays, manage clip, edit transcript, settings.
 - **2026-10-24, round 2:** editing a transcript has no Preview and no Undo. There is only Cancel and **Save as new clip**; you test by playing the new clip. No help or hint text in the UI (Max removed the legend). The 19 other directions were deleted. The canvas now holds 4 variations of each screen (main, manage, edit, settings) next to the base version.
+- **2026-10-24, final picks:** main screen 02 Ember, clip page "Manage: base" with circular 5 s skip buttons, edit page "Edit: base", settings "V2 flat list". Built in PR #15, with the widget in the same style.

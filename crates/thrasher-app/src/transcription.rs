@@ -24,8 +24,8 @@ pub fn start(ui: &AppWindow, library: &Library, name: String, model_id: &str, la
         return;
     };
     if !models::find(model_id).is_some_and(|m| m.is_downloaded()) {
-        ui.set_status("Download a transcription model first (Models, top right)".into());
-        ui.set_show_models(true);
+        ui.set_status("Download a transcription model first".into());
+        ui.set_page(3);
         return;
     }
     ui.set_transcribing(true);

@@ -23,6 +23,7 @@ global-hotkey = "0.9"
 serde.workspace = true
 serde_json.workspace = true
 slint.workspace = true
+rfd = "0.17.2"
 
 [features]
 default = ["mp3"]

@@ -43,7 +43,7 @@ Running it as its own process means the model and the CUDA runtime (about 600 MB
 and 3 GB of video memory) are released when the job ends, and a whisper.cpp crash cannot
 stop a recording. The first CUDA build takes several minutes.
 
-Models are downloaded from the app (Models, top right) into
+Models are downloaded from the app (Settings, under Transcription) into
 `%LOCALAPPDATA%\Thrasher\models`. They are never committed.
 
 ## Speaking new words (voice cloning)

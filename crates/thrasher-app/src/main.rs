@@ -1443,11 +1443,16 @@ fn main() -> Result<(), slint::PlatformError> {
     });
 
     ui.on_compact_changed({
-        let weak = ui.as_weak();
+        let (app, weak) = (app.clone(), ui.as_weak());
         move |on| {
             let ui = weak.unwrap();
             ui.set_compact(on);
-            let size = if on { WIDGET_SIZE } else { FULL_SIZE };
+            let place = app.borrow().settings.window;
+            let size = if on {
+                WIDGET_SIZE
+            } else {
+                place.map_or(FULL_SIZE, |p| LogicalSize::new(p.width, p.height))
+            };
             ui.window().set_size(size);
             // Windows keeps the framed window's minimum size until the frame is gone,
             // so set the size again once it is.
@@ -1768,7 +1773,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 let i = order.remove(from);
                 order.insert(to, i);
                 thrasher_core::merge::reorder(lib, name, &order)
-                    .map(|()| "Parts in the new order".to_string())
+                    .map(|()| String::new())
                     .map_err(|e| format!("Could not reorder: {e}"))
             }))
         }
@@ -2277,7 +2282,13 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
+    if !ui.get_compact()
+        && let Some(place) = app.borrow().settings.window
+    {
+        restore_window(&ui, place);
+    }
     ui.show()?;
+    let _remember = remember_window(&ui, &app);
     // Runs once the event loop has drawn the window.
     Timer::single_shot(Duration::ZERO, || {
         crate::log!("ready: window shown {} ms after start", log::uptime_ms())
@@ -2298,6 +2309,69 @@ fn main() -> Result<(), slint::PlatformError> {
 
 /// Logs when the window stops responding for a noticeable time. Checks four times a
 /// second, so an idle window stays nearly free.
+/// Opens the window at its last size, and at its last place when that is still on a
+/// screen (a monitor may have been unplugged since).
+fn restore_window(ui: &AppWindow, place: settings::WindowPlace) {
+    if place.width >= 300.0 && place.height >= 200.0 {
+        ui.window()
+            .set_size(LogicalSize::new(place.width, place.height));
+    }
+    if on_screen(place.x, place.y) {
+        ui.window()
+            .set_position(slint::PhysicalPosition::new(place.x, place.y));
+    }
+}
+
+/// True when the point lies on the desktop, all monitors together.
+#[cfg(windows)]
+fn on_screen(x: i32, y: i32) -> bool {
+    unsafe extern "system" {
+        fn GetSystemMetrics(index: i32) -> i32;
+    }
+    // SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN.
+    // SAFETY: GetSystemMetrics takes a plain index and has no other requirements.
+    let [left, top, w, h] = [76, 77, 78, 79].map(|i| unsafe { GetSystemMetrics(i) });
+    // Keep at least a strip of the title bar reachable.
+    x >= left - 100 && x < left + w - 100 && y >= top && y < top + h - 40
+}
+
+#[cfg(not(windows))]
+fn on_screen(_: i32, _: i32) -> bool {
+    true
+}
+
+/// Saves the full window's size and place a moment after it changes. The widget and a
+/// minimized window are left out, so they never become the size to come back to.
+fn remember_window(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
+    let timer = Timer::default();
+    let (weak, app) = (ui.as_weak(), app.clone());
+    timer.start(TimerMode::Repeated, Duration::from_secs(1), move || {
+        let Some(ui) = weak.upgrade() else { return };
+        let w = ui.window();
+        if ui.get_compact() || w.is_minimized() || !w.is_visible() {
+            return;
+        }
+        let scale = w.scale_factor();
+        let (size, pos) = (w.size(), w.position());
+        let place = settings::WindowPlace {
+            x: pos.x,
+            y: pos.y,
+            width: (size.width as f32 / scale).round(),
+            height: (size.height as f32 / scale).round(),
+        };
+        // Windows parks minimized windows far off screen.
+        if pos.x <= -30000 || pos.y <= -30000 {
+            return;
+        }
+        let mut a = app.borrow_mut();
+        if a.settings.window != Some(place) {
+            a.settings.window = Some(place);
+            a.settings.save();
+        }
+    });
+    timer
+}
+
 fn freeze_watchdog() -> Timer {
     let timer = Timer::default();
     let last = std::cell::Cell::new(std::time::Instant::now());

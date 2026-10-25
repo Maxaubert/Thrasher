@@ -462,48 +462,25 @@ component ExportItem inherits Rectangle {
     }
 }
 
-// The export button. Hovering or clicking it opens a menu above it with every format;
-// `export` gets 0 to 2 for FLAC, WAV and MP3, 3 to 5 for SRT, VTT and word timings.
+// The export button. A click opens a menu above it with every format; `export` gets
+// 0 to 2 for FLAC, WAV and MP3, 3 to 5 for SRT, VTT and word timings.
 component ExportButton inherits Rectangle {
     in property <int> format;
     in property <bool> subtitles;
     callback export(int);
-    property <bool> hovering: t.has-hover || panel.has-hover;
-    // Opened by a click (or by keyboard and screen readers) rather than by hover.
-    property <bool> pinned;
-    // Closed after a choice or a second click, until the mouse leaves.
-    property <bool> dismissed;
-    property <bool> open: !dismissed && (pinned || hovering);
-    changed hovering => {
-        if (!hovering) {
-            pinned = false;
-            dismissed = false;
-        }
-    }
     function choose(kind: int) {
-        pinned = false;
-        dismissed = true;
+        popup.close();
         root.export(kind);
-    }
-    function toggle() {
-        if (root.open) {
-            root.pinned = false;
-            root.dismissed = true;
-        } else {
-            root.pinned = true;
-            root.dismissed = false;
-        }
     }
     height: 36px;
     width: label.preferred-width + 60px;
     border-radius: 9px;
-    background: t.has-hover || root.open ? Theme.accent-hover : Theme.accent;
+    background: t.has-hover ? Theme.accent-hover : Theme.accent;
     accessible-role: button;
     accessible-label: "Export";
     accessible-expandable: true;
-    accessible-expanded: root.open;
-    accessible-action-default => { root.toggle(); }
-    accessible-action-expand => { root.pinned = true; root.dismissed = false; }
+    accessible-action-default => { popup.show(); }
+    accessible-action-expand => { popup.show(); }
     HorizontalLayout {
         padding-left: 18px;
         padding-right: 14px;
@@ -516,7 +493,7 @@ component ExportButton inherits Rectangle {
             vertical-alignment: center;
         }
         Icon {
-            name: root.open ? "down" : "up";
+            name: "up";
             tint: Theme.on-accent;
             width: 13px;
             height: 13px;
@@ -526,21 +503,17 @@ component ExportButton inherits Rectangle {
     }
     t := TouchArea {
         mouse-cursor: pointer;
-        clicked => { root.toggle(); }
+        clicked => { popup.show(); }
     }
-    // Drawn above the button. The touch area reaches down to the button, so the mouse
-    // can travel from one to the other without the menu closing. It has no size while
-    // closed, so it cannot be hovered then.
-    panel := TouchArea {
-        x: 0;
-        y: -self.height;
-        width: root.open ? 250px : 0;
-        height: root.open ? menu.preferred-height + 8px : 0;
-        menu := Rectangle {
-            visible: root.open;
-            width: 250px;
-            y: 0;
-            height: self.preferred-height;
+    // Opens above the button and closes on a choice or a click anywhere else.
+    // The button sits on the right, so the menu lines up with its right edge.
+    popup := PopupWindow {
+        x: root.width - self.width;
+        y: -self.height - 6px;
+        width: 250px;
+        height: root.subtitles ? 271px : 136px;
+        close-policy: close-on-click-outside;
+        Rectangle {
             background: Theme.raised;
             border-radius: 10px;
             border-width: 1px;
@@ -1832,27 +1805,13 @@ export component AppWindow inherits Window {
                     CardRow {
                         label: "Clean voice on export";
                         note: "Less background noise, even loudness";
+                        last: true;
                         VerticalLayout {
                             alignment: center;
                             Toggle {
                                 label: "Clean voice on export";
                                 checked <=> root.clean-voice;
                                 toggled(on) => { root.clean-voice-changed(on); }
-                            }
-                        }
-                    }
-                    CardRow {
-                        label: "Delete this clip";
-                        note: "You can undo it from the clip list";
-                        last: true;
-                        VerticalLayout {
-                            alignment: center;
-                            Btn {
-                                text: "Delete";
-                                danger: true;
-                                height: 32px;
-                                font-size: 12px;
-                                clicked => { root.delete-selected(); root.go(0); }
                             }
                         }
                     }
@@ -1867,12 +1826,18 @@ export component AppWindow inherits Window {
                 padding-top: 12px;
                 padding-bottom: 14px;
                 spacing: 6px;
+                // Delete can be undone from the clip list with Ctrl+Z.
+                Btn {
+                    text: "Delete";
+                    danger: true;
+                    clicked => { root.delete-selected(); root.go(0); }
+                }
+                Rectangle { horizontal-stretch: 1; }
                 ExportButton {
                     format: root.export-format;
                     subtitles: root.transcript != "";
                     export(kind) => { root.export-as(kind); keys.focus(); }
                 }
-                Rectangle { horizontal-stretch: 1; }
             }
             if root.status != "": Text {
                 text: root.status;

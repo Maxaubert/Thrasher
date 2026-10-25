@@ -841,10 +841,17 @@ component TitleBar inherits Rectangle {
 // `moved(from, to)` reports a move; `act(i)` the row's text button, if `action` names one.
 component OrderList inherits Rectangle {
     in property <[OrderRow]> rows;
+    // A text button on each row, like "Take out"; empty for none.
     in property <string> action;
+    // An x on each row instead, that takes the row out of the list.
+    in property <bool> removable;
+    // A play button on each row; the row named `playing-name` shows pause.
+    in property <bool> playable;
+    in property <string> playing-name;
     in property <bool> enabled: true;
     callback moved(int, int);
     callback act(int);
+    callback play(int);
     property <length> row-h: 50px;
     property <int> dragging: -1;
     property <length> drag-dy;
@@ -856,6 +863,8 @@ component OrderList inherits Rectangle {
             : root.dragging >= 0 && i > root.dragging && i <= root.target ? -root.row-h
             : root.dragging >= 0 && i < root.dragging && i >= root.target ? root.row-h
             : 0);
+        // The other rows slide out of the way while one is dragged over them.
+        animate y { duration: 150ms; easing: ease-out; }
         height: root.row-h;
         z: i == root.dragging ? 1 : 0;
         border-radius: 10px;
@@ -893,12 +902,31 @@ component OrderList inherits Rectangle {
                 y: (parent.height - self.height) / 2;
             }
             Text {
-                text: i + 1;
+                // The place the row has right now, also mid-drag.
+                text: (i == root.dragging ? root.target
+                    : root.dragging >= 0 && i > root.dragging && i <= root.target ? i - 1
+                    : root.dragging >= 0 && i < root.dragging && i >= root.target ? i + 1
+                    : i) + 1;
                 color: Theme.accent;
                 font-family: Theme.mono;
                 font-size: 12px;
                 vertical-alignment: center;
                 width: 16px;
+            }
+            if root.playable: VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    size: 30px;
+                    round: true;
+                    outlined: r.name != root.playing-name;
+                    filled: r.name == root.playing-name;
+                    icon: r.name == root.playing-name ? "pause" : "play";
+                    icon-size: 10px;
+                    tint: r.name == root.playing-name ? Theme.on-accent : Theme.text;
+                    label: (r.name == root.playing-name ? "Pause " : "Play ") + r.name;
+                    tip: r.name == root.playing-name ? "Pause" : "Play";
+                    clicked => { root.play(i); }
+                }
             }
             VerticalLayout {
                 alignment: center;
@@ -907,26 +935,16 @@ component OrderList inherits Rectangle {
                 Text { text: r.name; color: Theme.text; font-size: 14px; overflow: elide; }
                 if r.note != "": Text { text: r.note; color: Theme.dim; font-size: 11px; overflow: elide; }
             }
-            VerticalLayout {
+            if root.removable: VerticalLayout {
                 alignment: center;
                 IconBtn {
-                    icon: "up";
-                    label: "Move " + r.name + " up";
-                    tip: "Move up";
-                    size: 26px;
-                    enabled: root.enabled && i > 0;
-                    clicked => { root.moved(i, i - 1); }
-                }
-            }
-            VerticalLayout {
-                alignment: center;
-                IconBtn {
-                    icon: "down";
-                    label: "Move " + r.name + " down";
-                    tip: "Move down";
-                    size: 26px;
-                    enabled: root.enabled && i < root.rows.length - 1;
-                    clicked => { root.moved(i, i + 1); }
+                    icon: "close";
+                    icon-size: 12px;
+                    label: "Remove " + r.name;
+                    tip: "Remove";
+                    size: 28px;
+                    enabled: root.enabled;
+                    clicked => { root.act(i); }
                 }
             }
             if root.action != "": VerticalLayout {
@@ -1928,6 +1946,7 @@ export component AppWindow inherits Window {
     callback start-merge();
     callback merge-move(int, int);
     callback merge-remove(int);
+    callback merge-play(int);
     callback merge-run(string);
     // A merge finished: the status line and the new clip's name (empty on failure).
     callback merged(string, string);
@@ -2985,10 +3004,13 @@ export component AppWindow inherits Window {
                             padding: 4px;
                             OrderList {
                                 rows: root.merge-rows;
-                                action: root.merge-rows.length > 2 ? "Remove" : "";
+                                removable: true;
+                                playable: true;
+                                playing-name: root.active-clip >= 0 && root.active-clip < root.clips.length && root.playing ? root.clips[root.active-clip].name : "";
                                 enabled: !root.merging;
                                 moved(a, b) => { root.merge-move(a, b); }
                                 act(i) => { root.merge-remove(i); }
+                                play(i) => { root.merge-play(i); }
                             }
                         }
                     }
@@ -3003,13 +3025,6 @@ export component AppWindow inherits Window {
                                 text <=> root.merge-name;
                             }
                         }
-                    }
-                    Text {
-                        text: "Originals go to the Recycle Bin";
-                        color: Theme.dim;
-                        font-size: 12px;
-                        wrap: word-wrap;
-                        x: 8px;
                     }
                 }
             }

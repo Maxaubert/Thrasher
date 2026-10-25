@@ -469,6 +469,8 @@ component ClipItem inherits Rectangle {
     in property <bool> playing;
     in property <float> progress;
     callback play();
+    callback cue(float);
+    callback play-at(float);
     // A click highlights the clip and a double click plays or pauses it. Ctrl and Shift
     // pick several. The three-dot menu (or a right click, or the right arrow key) opens
     // it.
@@ -530,13 +532,24 @@ component ClipItem inherits Rectangle {
                 clicked => { root.play(); }
             }
         }
-        if root.wave-width > 0: Wave {
+        // A click on the waveform moves the clip's start there (and jumps while it
+        // plays); a double click plays from there.
+        if root.wave-width > 0: Rectangle {
             width: root.wave-width;
-            height: 22px;
+            height: 28px;
             y: (parent.height - self.height) / 2;
-            gap: 1px;
-            values: root.item.wave;
-            progress: root.active ? root.progress : -1;
+            Wave {
+                height: 22px;
+                y: (parent.height - self.height) / 2;
+                gap: 1px;
+                values: root.item.wave;
+                progress: root.active ? root.progress : -1;
+            }
+            TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.cue(clamp(self.mouse-x / self.width, 0, 1)); }
+                double-clicked => { root.play-at(clamp(self.mouse-x / self.width, 0, 1)); }
+            }
         }
         VerticalLayout {
             alignment: center;
@@ -1978,6 +1991,10 @@ export component AppWindow inherits Window {
     callback change-folder();
     // See ExportButton for the kinds.
     callback export-as(int);
+    // Clip i at a point of its length (0..1): cue puts it there without playing,
+    // play-clip-at plays from there.
+    callback cue-clip(int, float);
+    callback play-clip-at(int, float);
     // Picking clips: a click, Ctrl+click (add or remove) or Shift+click (a range).
     in property <[bool]> picked;
     in property <int> picked-count;
@@ -2390,6 +2407,8 @@ export component AppWindow inherits Window {
                         playing: root.playing;
                         progress: root.play-fraction;
                         play => { root.play-clip(i); keys.focus(); }
+                        cue(f) => { root.cue-clip(i, f); keys.focus(); }
+                        play-at(f) => { root.play-clip-at(i, f); keys.focus(); }
                         select(ctrl, shift) => { root.pick(i, ctrl, shift); keys.focus(); }
                         merge => { root.start-merge(); root.go(5); }
                         open => { root.open-clip(i); root.go(1); }
@@ -2481,15 +2500,30 @@ export component AppWindow inherits Window {
                 }
             }
 
-            if root.status != "": Text {
-                text: root.status;
-                color: Theme.dim;
-                font-size: 11px;
-                overflow: elide;
-                x: 22px;
-                width: parent.width - 44px;
-                height: 28px;
-                vertical-alignment: center;
+            // Messages float just above the footer, so nothing moves when they come
+            // and go.
+            Rectangle {
+                height: 0;
+                if root.status != "": Rectangle {
+                    x: (parent.width - self.width) / 2;
+                    y: -64px - self.height - 8px;
+                    width: min(msg.preferred-width + 24px, parent.width - 32px);
+                    height: 28px;
+                    border-radius: 14px;
+                    background: #1f1610f2;
+                    border-width: 1px;
+                    border-color: #4a3626;
+                    msg := Text {
+                        text: root.status;
+                        color: Theme.text2;
+                        font-size: 12px;
+                        overflow: elide;
+                        x: 12px;
+                        width: parent.width - 24px;
+                        vertical-alignment: center;
+                        horizontal-alignment: center;
+                    }
+                }
             }
         }
 

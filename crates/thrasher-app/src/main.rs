@@ -749,6 +749,33 @@ impl App {
         self.sync_active(ui);
     }
 
+    /// Puts `name` in the player at `at` seconds without starting it, so Play starts
+    /// there. A clip that is playing jumps there and keeps playing.
+    fn cue(&mut self, ui: &AppWindow, name: &str, at: f64) -> bool {
+        if self.active.as_deref() == Some(name) && (self.running || self.loading.is_some()) {
+            return self.play_clip(ui, name, at);
+        }
+        if self.active.as_deref() != Some(name) {
+            self.player.stop();
+            self.loading = None;
+            self.running = false;
+            // The clip's edits, when it was read before, so the time shown is the
+            // edited time Play will count in.
+            self.timeline = self
+                .loaded
+                .as_ref()
+                .filter(|l| l.name == name)
+                .map(|l| l.timeline.clone())
+                .unwrap_or_default();
+            self.active = Some(name.to_string());
+            ui.set_playing(false);
+            self.sync_active(ui);
+        }
+        self.paused_at = at;
+        self.show_position(ui);
+        false
+    }
+
     /// Play or pause `name`: a paused clip continues where it stopped.
     fn toggle(&mut self, ui: &AppWindow, name: &str) -> bool {
         if self.active.as_deref() != Some(name) {
@@ -850,7 +877,6 @@ impl App {
                 self.live.clear();
                 ui.set_recording(true);
                 ui.set_paused(false);
-                ui.set_status(format!("Recording {name}").into());
             }
             Err(e) => {
                 crate::log!("recording {name} could not start: {e}");
@@ -875,12 +901,10 @@ impl App {
         match rec.stop() {
             Ok(done) => {
                 crate::log!("saved {} ({})", done.name, fmt_time(done.duration));
-                let mut msg = format!("Saved {} ({})", done.name, fmt_time(done.duration));
-                for w in &done.warnings {
-                    msg.push_str(". ");
-                    msg.push_str(w);
+                // A saved clip shows up in the list; only problems get a line.
+                if !done.warnings.is_empty() {
+                    ui.set_status(done.warnings.join(". ").into());
                 }
-                ui.set_status(msg.into());
                 self.refresh_clips(ui);
                 // Nothing highlighted, so Space records again.
                 ui.set_selected(-1);
@@ -1266,6 +1290,35 @@ fn main() -> Result<(), slint::PlatformError> {
             let ui = weak.unwrap();
             if ui.get_selected() != i {
                 ui.set_selected(i);
+            }
+        }
+    });
+
+    ui.on_cue_clip({
+        let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
+        move |i, f| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let Some(c) = a.clips.get(i as usize).cloned() else {
+                return;
+            };
+            ui.set_selected(i);
+            if a.cue(&ui, &c.name, f.clamp(0.0, 1.0) as f64 * c.duration) {
+                ensure();
+            }
+        }
+    });
+    ui.on_play_clip_at({
+        let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
+        move |i, f| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let Some(c) = a.clips.get(i as usize).cloned() else {
+                return;
+            };
+            ui.set_selected(i);
+            if a.play_clip(&ui, &c.name, f.clamp(0.0, 1.0) as f64 * c.duration) {
+                ensure();
             }
         }
     });

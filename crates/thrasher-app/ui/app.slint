@@ -146,6 +146,32 @@ component Icon inherits Path {
         : "";
 }
 
+// What a tooltip looks like: a small dark bubble with a thin warm edge.
+component Tip inherits Rectangle {
+    in property <string> text;
+    background: #1f1610f2;
+    border-radius: 7px;
+    border-width: 1px;
+    border-color: #4a3626;
+    drop-shadow-blur: 14px;
+    drop-shadow-offset-y: 4px;
+    drop-shadow-color: #00000099;
+    width: bubble.preferred-width;
+    height: bubble.preferred-height;
+    bubble := HorizontalLayout {
+        padding-left: 9px;
+        padding-right: 9px;
+        padding-top: 5px;
+        padding-bottom: 5px;
+        Text {
+            text: root.text;
+            color: Theme.text2;
+            font-size: 12px;
+            font-weight: 500;
+        }
+    }
+}
+
 // A text button. Primary is the orange one; the rest are outlined.
 component Btn inherits Rectangle {
     in property <string> text;
@@ -209,6 +235,8 @@ component IconBtn inherits Rectangle {
         width: root.icon-size;
         height: root.icon-size;
     }
+    // The button has no text, so hovering it names what it does.
+    Tooltip { Tip { text: root.label; } }
     @children
     t := TouchArea {
         enabled: root.enabled;
@@ -512,6 +540,7 @@ component ClipItem inherits Rectangle {
                 width: 16px;
                 height: 16px;
             }
+            Tooltip { Tip { text: "More: manage, rename, export, delete"; } }
             dots := TouchArea {
                 mouse-cursor: pointer;
                 clicked => { root.open-menu(); }
@@ -735,6 +764,7 @@ component WinBtn inherits Rectangle {
         width: 12px;
         height: 12px;
     }
+    Tooltip { Tip { text: root.label; } }
     t := TouchArea { clicked => { root.clicked(); } }
 }
 

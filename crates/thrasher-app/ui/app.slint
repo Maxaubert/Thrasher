@@ -883,15 +883,24 @@ component OrderList inherits Rectangle {
         }
     }
     for r[i] in root.rows: Rectangle {
-        // The others make room where the dragged row would land; the dragged one is
-        // drawn on top as a floating copy, so its own slot is left empty.
-        y: i * root.row-h + (root.dragging >= 0 && i > root.dragging && i <= root.target ? -root.row-h
+        // The dragged row follows the mouse, raised, buttons and all; the others make
+        // room where it would land.
+        y: i * root.row-h + (i == root.dragging ? root.drag-dy
+            : root.dragging >= 0 && i > root.dragging && i <= root.target ? -root.row-h
             : root.dragging >= 0 && i < root.dragging && i >= root.target ? root.row-h
             : 0);
-        // Only while dragging: after the drop the rows take their new places at once.
-        animate y { duration: root.dragging >= 0 ? 150ms : 0ms; easing: ease-out; }
+        // The others slide, only while dragging; the dragged row never lags, and after
+        // the drop every row takes its new place at once.
+        animate y { duration: root.dragging >= 0 && i != root.dragging ? 150ms : 0ms; easing: ease-out; }
         height: root.row-h;
-        opacity: i == root.dragging ? 0 : 1;
+        z: i == root.dragging ? 1 : 0;
+        border-radius: 10px;
+        background: i == root.dragging ? Theme.raised : transparent;
+        border-width: i == root.dragging ? 1px : 0;
+        border-color: Theme.edge;
+        drop-shadow-blur: i == root.dragging ? 16px : 0;
+        drop-shadow-offset-y: i == root.dragging ? 6px : 0;
+        drop-shadow-color: #00000099;
         HorizontalLayout {
             padding-left: 10px;
             padding-right: 8px;
@@ -905,7 +914,8 @@ component OrderList inherits Rectangle {
             }
             Text {
                 // The place the row has right now, also mid-drag.
-                text: (root.dragging >= 0 && i > root.dragging && i <= root.target ? i - 1
+                text: (i == root.dragging ? root.target
+                    : root.dragging >= 0 && i > root.dragging && i <= root.target ? i - 1
                     : root.dragging >= 0 && i < root.dragging && i >= root.target ? i + 1
                     : i) + 1;
                 color: Theme.accent;
@@ -966,44 +976,6 @@ component OrderList inherits Rectangle {
             width: parent.width - 20px;
             height: 1px;
             background: #221912;
-        }
-    }
-    if root.dragging >= 0 && root.dragging < root.rows.length: Rectangle {
-        y: root.dragging * root.row-h + root.drag-dy;
-        height: root.row-h;
-        border-radius: 10px;
-        background: Theme.raised;
-        border-width: 1px;
-        border-color: Theme.edge;
-        drop-shadow-blur: 16px;
-        drop-shadow-offset-y: 6px;
-        drop-shadow-color: #00000099;
-        HorizontalLayout {
-            padding-left: 10px;
-            padding-right: 8px;
-            spacing: 10px;
-            Icon {
-                name: "grip";
-                tint: Theme.text2;
-                width: 14px;
-                height: 14px;
-                y: (parent.height - self.height) / 2;
-            }
-            Text {
-                text: root.target + 1;
-                color: Theme.accent;
-                font-family: Theme.mono;
-                font-size: 12px;
-                vertical-alignment: center;
-                width: 16px;
-            }
-            VerticalLayout {
-                alignment: center;
-                horizontal-stretch: 1;
-                spacing: 1px;
-                Text { text: root.rows[root.dragging].name; color: Theme.text; font-size: 14px; overflow: elide; }
-                if root.rows[root.dragging].note != "": Text { text: root.rows[root.dragging].note; color: Theme.dim; font-size: 11px; overflow: elide; }
-            }
         }
     }
 }

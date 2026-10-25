@@ -1219,7 +1219,7 @@ fn main() -> Result<(), slint::PlatformError> {
             match hotkey_spec(&text, ctrl, alt, shift, meta) {
                 Spec::Wait => false,
                 Spec::NeedsModifier => {
-                    ui.set_status("Hold Ctrl, Alt or Win with the key".into());
+                    ui.set_status("Hold Ctrl Alt or Win too".into());
                     false
                 }
                 Spec::Done(spec) => {
@@ -1812,13 +1812,13 @@ fn main() -> Result<(), slint::PlatformError> {
             let ui = weak.unwrap();
             let mut a = app.borrow_mut();
             if ui.get_speaking() {
-                return ui.set_status("Wait until the new words are spoken, or cancel them".into());
+                return ui.set_status("Wait for the new words".into());
             }
             let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
                 return;
             };
             let Ok(mut sc) = Sidecar::load(&a.library.sidecar_path(&name)) else {
-                ui.set_status("Transcribe this clip first; older transcripts are read-only".into());
+                ui.set_status("Transcribe this clip first".into());
                 return;
             };
             let changes = match edit::apply_text(&text, &mut sc) {
@@ -2010,7 +2010,7 @@ fn main() -> Result<(), slint::PlatformError> {
                         names.iter().map(String::as_str),
                         chrono::Local::now().naive_local(),
                     );
-                    format!("Next: {next}.wav")
+                    format!("Next {next}.wav")
                 }
                 Err(e) => e.to_string(),
             };

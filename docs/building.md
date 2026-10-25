@@ -83,3 +83,6 @@ cargo run --release -p thrasher-core --features whisper-cuda --example transcrib
   through UI Automation (every button has an accessible name) and send keys with
   `PostMessage`. Never call `SetForegroundWindow` or move the cursor. Run tests from a
   renamed copy of the exe so the user's own Thrasher is never stopped.
+  Dialogs would take focus, so in this mode exports save without asking (into the last
+  export folder) and Import reads its files from **`THRASHER_TEST_IMPORT`** (paths
+  separated by `;`).

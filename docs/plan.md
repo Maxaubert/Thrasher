@@ -190,3 +190,8 @@ Plan (one PR per group, each tested headlessly):
 - C. Editor: coloured tags, copy without tags, check undo/redo.
 - D. Import with Symphonia.
 - E. Multi-select, merge page with drag reorder, parts card (reorder, extract).
+
+Built 2026-10-25 in PRs #27 (A), #28 (B), #29 (C), #30 (D), #31 (E). Differences from the
+spec: Opus files cannot be imported (Symphonia has no Opus decoder); FLAC is decoded with
+`claxon` because Symphonia rejects valid FLAC files from our own encoder. "Whole project"
+and a timestamped script ("Script", `.txt`) were added to the export menus.

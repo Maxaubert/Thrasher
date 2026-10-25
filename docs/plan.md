@@ -152,3 +152,41 @@ Max accepted the research defaults (see section 7 for the report link):
 - **2026-10-24, final picks:** main screen 02 Ember, clip page "Manage: base" with circular 5 s skip buttons, edit page "Edit: base", settings "V2 flat list". Built in PR #15, with the widget in the same style.
 - **2026-10-24, round 3 (Max's feedback on the built app):** the window frame must be part of the UI (own title bar, drag, minimise, close); the settings page needs a full rework; the Windows-default dropdowns, text fields and similar controls look bad and get Ember versions; the model list grows from Norwegian plus one global model to the whole whisper.cpp range (Whisper tiny to large-v3 and turbo, English-only and compressed versions, all NB-Whisper sizes, Swedish KB-Whisper). The record shortcut has no preset (fixed in PR #18). Four settings variations (row "Settings, round 3": V1 flat list with models inline, V2 sidebar, V3 cards with a separate model library page, V4 search and model table) wait for Max's pick.
 - **2026-10-24, round 3 pick: V3 (cards, models on their own page).** Built in the `feat/settings-round-3` PR: the window is frameless with Thrasher's own title bar on every page (drag, minimise, close; edges still resize); Ember dropdown (`Select`), text field (`TextField`) and press-the-keys shortcut box (`ShortcutBox`) replace the Windows-style widgets; settings are grouped in cards; a Models page lists all 52 ggml models from NB-Whisper (normal and verbatim), Whisper (all languages and English only) and KB-Whisper, each also compressed, with search, language chips, a compressed toggle and quality and speed bars. Transcription languages grew from 3 to 20 plus detect.
+
+## 13. Round 6: clip menu, import, merge, editor (agreed 2026-10-25)
+
+Max's answers (2026-10-25): Delete sends clips to the Windows Recycle Bin with no
+question; Import takes common formats (WAV, MP3, FLAC, M4A/AAC, OGG/Opus); a merged clip
+remembers its parts, so a part can be pulled back out or the order changed later.
+
+Spec:
+1. **Undo delete is gone**: no "Undo delete" label, no Ctrl+Z on the list. Delete moves
+   the clip's files to the Recycle Bin. The hidden `.trash` folder is no longer used.
+2. **Clip row menu**: the arrow becomes a vertical three-dot button. Its menu has
+   Manage (opens the clip page), Rename, Export (the export formats), Delete.
+3. **Clip page**: the Delete button becomes a trash icon in the header, next to the
+   rename pencil. The bottom bar keeps only Export, on the right.
+4. **Export everything**: a "Whole project" entry in the export menu. You pick a folder,
+   and Thrasher writes a folder named after the clip with the audio (default format),
+   SRT, VTT, word timings and a timestamped transcript (`.txt`, one `[mm:ss] line` per
+   subtitle line).
+5. **Marks in the preview**: pause chips in orange so they stand out.
+6. **Editor**: pause tags drawn in orange while you type (a coloured text layer behind
+   the editable text). Ctrl+Z and Ctrl+Y undo and redo like any text box, no buttons.
+   With "Show marks" off, Ctrl+C in the editor copies the words without the pause tags.
+7. **Import** (main page, button next to the clip count): pick one or more audio files.
+   Each becomes a new clip (decoded with Symphonia, stored as WAV). You can transcribe it
+   like any recording.
+8. **Merge**: Ctrl+click and Shift+click highlight several clips. Right-click (or the
+   three-dot menu) gives "Merge N clips". A merge page lists them; drag rows to set the
+   order, then Merge. The new clip's audio is the parts back to back (resampled to one
+   rate), transcripts are joined with shifted times. The originals leave the list. The
+   clip remembers its parts; on its page a Parts card lets you drag to reorder them or
+   pull one part back out as its own clip.
+
+Plan (one PR per group, each tested headlessly):
+- A. Delete to Recycle Bin, remove undo, three-dot menu, trash icon, orange pause chips.
+- B. Export project.
+- C. Editor: coloured tags, copy without tags, check undo/redo.
+- D. Import with Symphonia.
+- E. Multi-select, merge page with drag reorder, parts card (reorder, extract).

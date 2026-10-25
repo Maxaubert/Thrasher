@@ -1839,6 +1839,9 @@ export component AppWindow inherits Window {
     // them (docs/plan.md section 14).
     property <bool> narrow: root.width < 470px;
     property <bool> wide: root.width >= 820px;
+    // Only a tall window has room for the big recorder card above the list; other
+    // portrait windows get the one-line recorder, so the list keeps its space.
+    property <bool> tall: root.height >= 820px;
 
     // 0 clips, 1 one clip, 3 settings, 4 models, 5 merge (2 was the old edit page)
     in-out property <int> page;
@@ -2264,7 +2267,7 @@ export component AppWindow inherits Window {
                     padding-right: root.wide ? 0 : root.narrow ? 12px : 16px;
                     padding-top: root.wide ? 4px : 0;
                     RecorderCard {
-                        mode: root.narrow ? 0 : root.wide ? 2 : 1;
+                        mode: root.wide ? 2 : root.tall && !root.narrow ? 1 : 0;
                         recording: root.recording;
                         paused: root.paused;
                         device-label: root.device-label;

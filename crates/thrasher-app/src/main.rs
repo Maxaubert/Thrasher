@@ -71,10 +71,12 @@ const EXPORT_FORMATS: [&str; 3] = ["flac", "wav", "mp3"];
 enum Export {
     Audio(thrasher_core::export::Format),
     Subtitles(thrasher_core::export::Subtitles),
+    /// A folder with the audio in the default format and every subtitle file.
+    Project(thrasher_core::export::Format),
 }
 
 impl Export {
-    const ALL: [Export; 6] = {
+    const ALL: [Export; 8] = {
         use thrasher_core::export::{Format, Subtitles};
         [
             Export::Audio(Format::Flac),
@@ -83,6 +85,8 @@ impl Export {
             Export::Subtitles(Subtitles::Srt),
             Export::Subtitles(Subtitles::Vtt),
             Export::Subtitles(Subtitles::Words),
+            Export::Subtitles(Subtitles::Script),
+            Export::Project(Format::Flac),
         ]
     };
 
@@ -95,6 +99,8 @@ impl Export {
             Export::Subtitles(Subtitles::Srt) => "SRT subtitles",
             Export::Subtitles(Subtitles::Vtt) => "VTT subtitles",
             Export::Subtitles(Subtitles::Words) => "word timings",
+            Export::Subtitles(Subtitles::Script) => "timestamped script",
+            Export::Project(_) => "whole project",
         }
     }
 
@@ -102,6 +108,7 @@ impl Export {
         match self {
             Export::Audio(f) => f.extension(),
             Export::Subtitles(s) => s.extension(),
+            Export::Project(_) => "",
         }
     }
 
@@ -119,15 +126,19 @@ impl Export {
         path: &std::path::Path,
     ) -> std::io::Result<bool> {
         use thrasher_core::export::{ExportOptions, Format};
+        let options = |format| ExportOptions {
+            format,
+            // MP3 is always 16 bit; WAV and FLAC keep 24.
+            bits: if format == Format::Mp3 { 16 } else { 24 },
+            clean_voice,
+        };
         match self {
             Export::Audio(format) => {
-                let options = ExportOptions {
-                    format,
-                    // MP3 is always 16 bit; WAV and FLAC keep 24.
-                    bits: if format == Format::Mp3 { 16 } else { 24 },
-                    clean_voice,
-                };
-                thrasher_core::export::export_clip_to(library, name, options, path)?;
+                thrasher_core::export::export_clip_to(library, name, options(format), path)?;
+                Ok(true)
+            }
+            Export::Project(format) => {
+                thrasher_core::export::export_project(library, name, options(format), path)?;
                 Ok(true)
             }
             Export::Subtitles(kind) => {
@@ -1507,7 +1518,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let (app, weak) = (app.clone(), ui.as_weak());
         move |kind| {
             let ui = weak.unwrap();
-            let (library, name, clean_voice, folder) = {
+            let (library, name, clean_voice, default_format, folder) = {
                 let a = app.borrow();
                 let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
                     return;
@@ -1516,32 +1527,52 @@ fn main() -> Result<(), slint::PlatformError> {
                     a.library.clone(),
                     name,
                     a.settings.clean_voice,
+                    a.settings.export_format.clone(),
                     a.settings.export_dir.clone(),
                 )
             };
-            let kind = Export::ALL[(kind.max(0) as usize).min(Export::ALL.len() - 1)];
+            let mut kind = Export::ALL[(kind.max(0) as usize).min(Export::ALL.len() - 1)];
+            if let Export::Project(_) = kind {
+                kind = Export::Project(match default_format.as_str() {
+                    "wav" => thrasher_core::export::Format::Wav,
+                    "mp3" => thrasher_core::export::Format::Mp3,
+                    _ => thrasher_core::export::Format::Flac,
+                });
+            }
             let start = folder
                 .filter(|d| d.is_dir())
                 .unwrap_or_else(|| library.dir().to_path_buf());
             let file = format!("{name}.{}", kind.extension());
             // The test window must never take focus, so it saves without asking.
-            let chosen = if std::env::var_os("THRASHER_TEST_WINDOW").is_some() {
-                Some(start.join(&file))
-            } else {
-                rfd::FileDialog::new()
+            let test = std::env::var_os("THRASHER_TEST_WINDOW").is_some();
+            let chosen = match kind {
+                _ if test && matches!(kind, Export::Project(_)) => Some(start.clone()),
+                _ if test => Some(start.join(&file)),
+                // A project is a folder of files, so only the place for it is asked.
+                Export::Project(_) => rfd::FileDialog::new()
+                    .set_title("Export the whole project into a folder")
+                    .set_directory(&start)
+                    .pick_folder(),
+                _ => rfd::FileDialog::new()
                     .set_title(format!("Export {}", kind.title()))
                     .set_directory(&start)
                     .set_file_name(&file)
                     .add_filter(kind.title(), &[kind.filter()])
-                    .save_file()
+                    .save_file(),
             };
             let Some(mut path) = chosen else {
                 return;
             };
-            if path.extension().is_none() {
+            let project = matches!(kind, Export::Project(_));
+            if !project && path.extension().is_none() {
                 path.set_extension(kind.filter());
             }
-            if let Some(dir) = path.parent() {
+            let folder = if project {
+                Some(path.as_path())
+            } else {
+                path.parent()
+            };
+            if let Some(dir) = folder {
                 let mut a = app.borrow_mut();
                 a.settings.export_dir = Some(dir.to_path_buf());
                 a.settings.save();
@@ -1559,6 +1590,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     result.as_ref().err()
                 );
                 let status = match result {
+                    Ok(true) if project => format!("Exported {name} into {}", short_path(&path)),
                     Ok(true) => format!("Exported {}", short_path(&path)),
                     Ok(false) => "Transcribe this clip first".to_string(),
                     Err(e) => format!("Export failed: {e}"),
@@ -1994,6 +2026,8 @@ mod tests {
         }
         assert_eq!(Export::ALL[5].extension(), "words.json");
         assert_eq!(Export::ALL[5].filter(), "json");
+        assert_eq!(Export::ALL[6].extension(), "txt");
+        assert!(matches!(Export::ALL[7], Export::Project(_)));
     }
 
     #[test]

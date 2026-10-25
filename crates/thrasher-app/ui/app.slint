@@ -441,7 +441,7 @@ component ClipItem inherits Rectangle {
                 x: parent.width - self.width;
                 y: parent.height + 4px;
                 width: 210px;
-                height: root.exporting ? (root.item.transcribed ? 5 * 34px + 3 * 34px + 9px + 10px : 4 * 34px + 10px) : 4 * 34px + 9px + 10px;
+                height: root.exporting ? (root.item.transcribed ? 5 * 34px + 5 * 34px + 9px + 10px : 5 * 34px + 10px) : 4 * 34px + 9px + 10px;
                 close-policy: close-on-click-outside;
                 Rectangle {
                     background: Theme.raised;
@@ -465,6 +465,7 @@ component ClipItem inherits Rectangle {
                     if root.exporting: VerticalLayout {
                         padding: 5px;
                         MenuRow { text: "‹  Export"; clicked => { root.exporting = false; } }
+                        ExportItem { text: "Whole project"; tag: "folder"; clicked => { root.export(7); menu.close(); } }
                         ExportItem { text: "FLAC"; tag: "lossless"; clicked => { root.export(0); menu.close(); } }
                         ExportItem { text: "WAV"; tag: "plays anywhere"; clicked => { root.export(1); menu.close(); } }
                         ExportItem { text: "MP3"; tag: "small"; clicked => { root.export(2); menu.close(); } }
@@ -475,6 +476,7 @@ component ClipItem inherits Rectangle {
                         if root.item.transcribed: ExportItem { text: "SRT"; tag: "video players"; clicked => { root.export(3); menu.close(); } }
                         if root.item.transcribed: ExportItem { text: "VTT"; tag: "web video"; clicked => { root.export(4); menu.close(); } }
                         if root.item.transcribed: ExportItem { text: "Word timings"; tag: "json"; clicked => { root.export(5); menu.close(); } }
+                        if root.item.transcribed: ExportItem { text: "Script"; tag: "txt with times"; clicked => { root.export(6); menu.close(); } }
                     }
                 }
             }
@@ -551,7 +553,8 @@ component Scroller inherits Rectangle {
 }
 
 // The export button. A click opens a menu above it with every format; `export` gets
-// 0 to 2 for FLAC, WAV and MP3, 3 to 5 for SRT, VTT and word timings.
+// 0 to 2 for FLAC, WAV and MP3, 3 to 6 for SRT, VTT, word timings and the timestamped
+// script, 7 for the whole project (a folder with all of it).
 component ExportButton inherits Rectangle {
     in property <int> format;
     in property <bool> subtitles;
@@ -599,7 +602,7 @@ component ExportButton inherits Rectangle {
         x: root.width - self.width;
         y: -self.height - 6px;
         width: 250px;
-        height: root.subtitles ? 271px : 136px;
+        height: root.subtitles ? 34px + 9px + 24px + 3 * 34px + 9px + 24px + 4 * 34px + 10px : 34px + 9px + 24px + 3 * 34px + 10px;
         close-policy: close-on-click-outside;
         Rectangle {
             background: Theme.raised;
@@ -611,6 +614,11 @@ component ExportButton inherits Rectangle {
             drop-shadow-color: #00000099;
             VerticalLayout {
                 padding: 5px;
+                ExportItem { text: "Whole project"; tag: "folder"; clicked => { root.choose(7); } }
+                Rectangle {
+                    height: 9px;
+                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+                }
                 HorizontalLayout {
                     padding-left: 10px;
                     height: 24px;
@@ -643,6 +651,7 @@ component ExportButton inherits Rectangle {
                 if root.subtitles: ExportItem { text: "SRT"; tag: "video players"; clicked => { root.choose(3); } }
                 if root.subtitles: ExportItem { text: "VTT"; tag: "web video"; clicked => { root.choose(4); } }
                 if root.subtitles: ExportItem { text: "Word timings"; tag: "json"; clicked => { root.choose(5); } }
+                if root.subtitles: ExportItem { text: "Script"; tag: "txt with times"; clicked => { root.choose(6); } }
             }
         }
     }

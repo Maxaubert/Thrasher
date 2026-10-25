@@ -59,6 +59,47 @@ fn stamp(secs: f64, sep: char) -> String {
     )
 }
 
+/// The transcript as readable text, one sentence or spoken stretch per line, each
+/// starting with its time: `[01:23] Hei der.`
+pub fn script(words: &[Word]) -> String {
+    let mut s = String::new();
+    let mut line: Option<(f64, String)> = None;
+    let mut last_end = 0.0;
+    for c in cues(words) {
+        // A long pause starts a new line even mid-sentence.
+        if let Some((start, text)) = line.take_if(|_| c.start - last_end >= 2.0) {
+            let _ = writeln!(s, "[{}] {text}", clock(start));
+        }
+        match &mut line {
+            Some((_, text)) => {
+                text.push(' ');
+                text.push_str(&c.text);
+            }
+            None => line = Some((c.start, c.text.clone())),
+        }
+        last_end = c.end;
+        if c.text.ends_with(['.', '?', '!'])
+            && let Some((start, text)) = line.take()
+        {
+            let _ = writeln!(s, "[{}] {text}", clock(start));
+        }
+    }
+    if let Some((start, text)) = line {
+        let _ = writeln!(s, "[{}] {text}", clock(start));
+    }
+    s
+}
+
+/// `01:23`, or `1:02:03` past an hour.
+fn clock(secs: f64) -> String {
+    let t = secs.max(0.0) as u64;
+    if t >= 3600 {
+        format!("{}:{:02}:{:02}", t / 3600, t / 60 % 60, t % 60)
+    } else {
+        format!("{:02}:{:02}", t / 60, t % 60)
+    }
+}
+
 pub fn srt(words: &[Word]) -> String {
     let mut s = String::new();
     for (i, c) in cues(words).iter().enumerate() {
@@ -133,5 +174,15 @@ mod tests {
         let v = vtt(&words());
         assert!(v.starts_with("WEBVTT\n\n00:00:00.500 --> 00:00:01.100\nHei der.\n"));
         assert_eq!(stamp(3725.0042, '.'), "01:02:05.004");
+    }
+
+    #[test]
+    fn script_has_a_time_per_sentence() {
+        let s = script(&words());
+        let lines: Vec<&str> = s.lines().collect();
+        assert!(lines[0].starts_with("[00:00] Hei der."), "{s}");
+        assert!(lines.len() >= 2, "{s}");
+        assert!(lines.iter().all(|l| l.starts_with('[')));
+        assert_eq!(clock(3723.0), "1:02:03");
     }
 }

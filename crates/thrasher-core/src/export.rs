@@ -52,6 +52,8 @@ pub enum Subtitles {
     Vtt,
     /// Every word with its start and end time, as JSON.
     Words,
+    /// Plain text with a time at the start of each line.
+    Script,
 }
 
 impl Subtitles {
@@ -60,6 +62,7 @@ impl Subtitles {
             Subtitles::Srt => "srt",
             Subtitles::Vtt => "vtt",
             Subtitles::Words => "words.json",
+            Subtitles::Script => "txt",
         }
     }
 }
@@ -166,6 +169,42 @@ pub fn export_subtitles_to(
     Ok(true)
 }
 
+/// Exports everything about a clip into a new folder named after it inside `parent`:
+/// the audio, and when transcribed the SRT, VTT, word timings and timestamped script.
+/// Returns the folder.
+pub fn export_project(
+    library: &Library,
+    name: &str,
+    options: ExportOptions,
+    parent: &Path,
+) -> io::Result<PathBuf> {
+    let mut dir = parent.join(name);
+    let mut n = 2;
+    while dir.exists() {
+        dir = parent.join(format!("{name} ({n})"));
+        n += 1;
+    }
+    std::fs::create_dir_all(&dir)?;
+    export_clip_to(
+        library,
+        name,
+        options,
+        &dir.join(format!("{name}.{}", options.format.extension())),
+    )?;
+    for kind in [
+        Subtitles::Srt,
+        Subtitles::Vtt,
+        Subtitles::Words,
+        Subtitles::Script,
+    ] {
+        let path = dir.join(format!("{name}.{}", kind.extension()));
+        if !export_subtitles_to(library, name, kind, &path)? {
+            break;
+        }
+    }
+    Ok(dir)
+}
+
 /// The subtitle text of a transcribed clip, or `None` without a transcript.
 fn subtitles(library: &Library, name: &str, kind: Subtitles) -> io::Result<Option<String>> {
     let Ok(sc) = crate::sidecar::Sidecar::load(&library.sidecar_path(name)) else {
@@ -182,6 +221,7 @@ fn subtitles(library: &Library, name: &str, kind: Subtitles) -> io::Result<Optio
     Ok(Some(match kind {
         Subtitles::Srt => crate::subtitles::srt(&words),
         Subtitles::Vtt => crate::subtitles::vtt(&words),
+        Subtitles::Script => crate::subtitles::script(&words),
         Subtitles::Words => serde_json::to_string_pretty(&serde_json::json!({
             "file": sc.file,
             "duration": timeline.to_edited(sc.duration),
@@ -385,6 +425,11 @@ mod tests {
         export_clip_to(&lib, "c", ExportOptions::default(), &p).unwrap();
         assert_eq!(&std::fs::read(&p).unwrap()[..4], b"fLaC");
         assert!(!export_dir(&lib).exists());
+        let project = export_project(&lib, "c", ExportOptions::default(), out.path()).unwrap();
+        assert_eq!(project, out.path().join("c"));
+        assert!(project.join("c.flac").exists());
+        let again = export_project(&lib, "c", ExportOptions::default(), out.path()).unwrap();
+        assert_eq!(again, out.path().join("c (2)"));
         // No transcript, so no subtitles and no file.
         let srt = out.path().join("mine.srt");
         assert!(!export_subtitles_to(&lib, "c", Subtitles::Srt, &srt).unwrap());

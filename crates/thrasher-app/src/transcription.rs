@@ -183,7 +183,7 @@ pub fn show_models(ui: &AppWindow, active: &str) {
     let have: Vec<&models::ModelInfo> = CATALOG.iter().filter(|m| m.is_downloaded()).collect();
     let used: u64 = have.iter().map(|m| m.bytes).sum();
     let name = models::find(active).map_or("None chosen", |m| m.name);
-    ui.set_model_summary(format!("{name} · {} of {} downloaded", have.len(), CATALOG.len()).into());
+    ui.set_model_summary(name.into());
     ui.set_models_used(format!("{} used", fmt_size(used)).into());
     ui.set_model_count(CATALOG.len() as i32);
 }

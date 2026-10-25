@@ -373,7 +373,7 @@ component ExportChoices inherits VerticalLayout {
     in property <bool> subtitles;
     in property <int> format: -1;
     callback choose(int);
-    ExportItem { text: "Full project"; tag: "everything, in a folder"; clicked => { root.choose(7); } }
+    ExportItem { text: "Full project"; tag: "folder"; clicked => { root.choose(7); } }
     Rectangle {
         height: 9px;
         Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
@@ -390,7 +390,7 @@ component ExportChoices inherits VerticalLayout {
         }
     }
     ExportItem { text: "FLAC"; tag: "lossless"; current: root.format == 0; clicked => { root.choose(0); } }
-    ExportItem { text: "WAV"; tag: "plays anywhere"; current: root.format == 1; clicked => { root.choose(1); } }
+    ExportItem { text: "WAV"; tag: "standard"; current: root.format == 1; clicked => { root.choose(1); } }
     ExportItem { text: "MP3"; tag: "small"; current: root.format == 2; clicked => { root.choose(2); } }
     if root.subtitles: Rectangle {
         height: 9px;
@@ -407,10 +407,10 @@ component ExportChoices inherits VerticalLayout {
             vertical-alignment: center;
         }
     }
-    if root.subtitles: ExportItem { text: "Text with times"; tag: ".txt"; clicked => { root.choose(6); } }
-    if root.subtitles: ExportItem { text: "Subtitles SRT"; tag: "video players"; clicked => { root.choose(3); } }
-    if root.subtitles: ExportItem { text: "Subtitles VTT"; tag: "web video"; clicked => { root.choose(4); } }
-    if root.subtitles: ExportItem { text: "Word timestamps"; tag: ".json, for tools"; clicked => { root.choose(5); } }
+    if root.subtitles: ExportItem { text: "Text with times"; tag: "txt"; clicked => { root.choose(6); } }
+    if root.subtitles: ExportItem { text: "Subtitles SRT"; tag: "video"; clicked => { root.choose(3); } }
+    if root.subtitles: ExportItem { text: "Subtitles VTT"; tag: "web"; clicked => { root.choose(4); } }
+    if root.subtitles: ExportItem { text: "Word timestamps"; tag: "json"; clicked => { root.choose(5); } }
 }
 
 // Height of ExportChoices.
@@ -2636,7 +2636,7 @@ export component AppWindow inherits Window {
                     title: "OPTIONS";
                     CardRow {
                         label: "Clean voice on export";
-                        note: "Less background noise, even loudness";
+                        note: "Less noise";
                         last: true;
                         VerticalLayout {
                             alignment: center;
@@ -2749,7 +2749,6 @@ export component AppWindow inherits Window {
                         }
                         CardRow {
                             label: "System audio";
-                            note: "Also record what the PC plays";
                             VerticalLayout {
                                 alignment: center;
                                 Toggle {
@@ -2859,7 +2858,7 @@ export component AppWindow inherits Window {
                     spacing: 18px;
                     Card {
                         title: "TRANSCRIPTION";
-                        if !root.can-transcribe: CardRow { label: "Not part of this build"; last: true; }
+                        if !root.can-transcribe: CardRow { label: "Not in this build"; last: true; }
                         if root.can-transcribe: CardRow {
                             label: "Language";
                             VerticalLayout {
@@ -3010,7 +3009,7 @@ export component AppWindow inherits Window {
                         }
                     }
                     Text {
-                        text: "The clips play one after the other in this order, transcripts included. The originals go to the Recycle Bin; the merged clip remembers its parts, so you can change the order or take one out again later.";
+                        text: "Originals go to the Recycle Bin";
                         color: Theme.dim;
                         font-size: 12px;
                         wrap: word-wrap;
@@ -3088,7 +3087,7 @@ export component AppWindow inherits Window {
                         }
                     }
                     Text {
-                        text: "Show compressed versions too";
+                        text: "Show compressed";
                         color: Theme.muted;
                         font-size: 12px;
                         vertical-alignment: center;
@@ -3254,7 +3253,7 @@ export component AppWindow inherits Window {
                     padding: 22px;
                     spacing: 12px;
                     Text {
-                        text: "Speaking new words in your voice";
+                        text: "Speaking new words";
                         color: Theme.text;
                         font-size: 16px;
                         font-weight: 800;
@@ -3333,13 +3332,13 @@ export component AppWindow inherits Window {
                     overflow: elide;
                 }
                 if root.dialog == 3: Text {
-                    text: "You changed the transcript. Do you want to leave without saving?";
+                    text: "Leave without saving";
                     color: Theme.muted;
                     font-size: 13px;
                     wrap: word-wrap;
                 }
                 if root.dialog == 2: Text {
-                    text: "It goes to the Recycle Bin, where you can restore it.";
+                    text: "Goes to the Recycle Bin";
                     color: Theme.muted;
                     font-size: 13px;
                     wrap: word-wrap;

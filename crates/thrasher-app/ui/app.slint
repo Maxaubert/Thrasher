@@ -1132,6 +1132,9 @@ export component AppWindow inherits Window {
     in property <string> edit-length;
     in property <string> edit-was;
     in-out property <bool> renaming;
+    // Where the transcript editor's cursor is, and how tall it is.
+    in-out property <Point> caret;
+    property <length> caret-h: 20px;
     // Rename was picked from a clip's menu; it starts after the selection changes.
     in-out property <bool> rename-pending;
 
@@ -1188,6 +1191,10 @@ export component AppWindow inherits Window {
     callback change-folder();
     // See ExportButton for the kinds.
     callback export-as(int);
+    // The transcript editor's text as styled text, with the pause tags coloured.
+    pure callback edit-markup(string) -> styled-text;
+    // The selected part of the editor text (two byte offsets) without pause tags.
+    pure callback plain-selection(string, int, int) -> string;
     // Starts resizing the window from an edge: 0 top, 1 bottom, 2 right, 3 left,
     // 4 top right, 5 top left, 6 bottom right, 7 bottom left.
     callback resize-window(int);
@@ -1801,6 +1808,7 @@ export component AppWindow inherits Window {
                                 background: edit-touch.has-hover ? #2a1d14 : Theme.raised;
                                 accessible-role: button;
                                 accessible-label: "Edit transcript";
+                                accessible-action-default => { root.stop-playback(); root.edit-changed(root.transcript); root.go(2); }
                                 edit-row := HorizontalLayout {
                                     x: 10px;
                                     spacing: 6px;
@@ -2032,15 +2040,86 @@ export component AppWindow inherits Window {
                     border-color: Theme.accent;
                     background: #0f0b09;
                     clip: true;
-                    editor := TextEdit {
-                        x: 6px;
-                        y: 6px;
-                        width: parent.width - 12px;
-                        height: parent.height - 12px;
-                        text: root.transcript;
-                        font-size: 16px;
-                        wrap: word-wrap;
-                        edited(t) => { root.edit-changed(t); }
+                    // The text box draws no text of its own: the coloured layer behind it
+                    // shows the same text with the pause tags in orange. Undo and redo
+                    // (Ctrl+Z, Ctrl+Y) are the text box's own.
+                    ed-scroll := Scroller {
+                        x: 4px;
+                        y: 4px;
+                        width: parent.width - 8px;
+                        height: parent.height - 8px;
+                        VerticalLayout {
+                            padding-left: 12px;
+                            padding-right: 14px;
+                            padding-top: 10px;
+                            padding-bottom: 10px;
+                            Rectangle {
+                                height: editor.height;
+                                StyledText {
+                                    width: parent.width;
+                                    y: 0;
+                                    text: root.edit-markup(editor.text);
+                                    default-color: Theme.text2;
+                                    default-font-family: "Inter Tight";
+                                    default-font-size: 16px;
+                                }
+                                editor := TextInput {
+                                    width: parent.width;
+                                    height: max(self.preferred-height, ed-scroll.visible-height - 20px);
+                                    text: root.transcript;
+                                    font-family: "Inter Tight";
+                                    font-size: 16px;
+                                    single-line: false;
+                                    wrap: word-wrap;
+                                    color: transparent;
+                                    selection-background-color: #ff6a1a4d;
+                                    selection-foreground-color: transparent;
+                                    accessible-role: text-input;
+                                    accessible-label: "Transcript";
+                                    init => { self.focus(); }
+                                    edited => { root.edit-changed(self.text); }
+                                    cursor-position-changed(p) => {
+                                        root.caret = p;
+                                        // Keep the cursor in view.
+                                        if (p.y + 10px + root.caret-h > -ed-scroll.content-y + ed-scroll.visible-height) {
+                                            ed-scroll.content-y = -(p.y + 10px + root.caret-h + 10px - ed-scroll.visible-height);
+                                        } else if (p.y + 10px < -ed-scroll.content-y) {
+                                            ed-scroll.content-y = -max(0px, p.y);
+                                        }
+                                    }
+                                    key-pressed(e) => {
+                                        // With the marks hidden, copying gives just the words.
+                                        if (e.modifiers.control && (e.text == "c" || e.text == "C") && !root.show-marks) {
+                                            clip-buf.text = root.plain-selection(self.text, self.anchor-position-byte-offset, self.cursor-position-byte-offset);
+                                            clip-buf.select-all();
+                                            clip-buf.copy();
+                                            // Emptied at once, so it is never drawn with a selection.
+                                            clip-buf.clear-selection();
+                                            clip-buf.text = "";
+                                            return accept;
+                                        }
+                                        reject
+                                    }
+                                }
+                                // The text box's own cursor has the (invisible) text colour.
+                                if editor.has-focus && editor.anchor-position-byte-offset == editor.cursor-position-byte-offset: Rectangle {
+                                    x: root.caret.x;
+                                    y: root.caret.y;
+                                    width: 2px;
+                                    height: root.caret-h;
+                                    background: Theme.accent;
+                                }
+                            }
+                        }
+                    }
+                    // Holds the words being copied for a moment; see the editor's key-pressed.
+                    clip-buf := TextInput {
+                        x: 0;
+                        y: 0;
+                        width: 20px;
+                        height: 20px;
+                        color: transparent;
+                        read-only: true;
                     }
                 }
             }

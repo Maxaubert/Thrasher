@@ -195,6 +195,23 @@ pub fn text(sc: &Sidecar) -> String {
         .join(" ")
 }
 
+/// The editor text with its pause tags left out, for copying just the words.
+pub fn without_tags(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(i) = rest.find("[silence:") {
+        out.push_str(&rest[..i]);
+        match rest[i..].find(']') {
+            Some(end) => rest = &rest[i + end + 1..],
+            None => {
+                rest = "";
+            }
+        }
+    }
+    out.push_str(rest);
+    out.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 #[derive(Clone, Debug, PartialEq)]
 enum Token {
     Word(String),
@@ -1537,5 +1554,15 @@ mod tests {
         let voices = HashMap::from([("v1".to_string(), 1.0)]);
         let want = 6.3 + 1.0 - FADE_SECS;
         assert!((edited_length(&sc, &voices) - want).abs() < 1e-9);
+    }
+
+    #[test]
+    fn tags_left_out() {
+        assert_eq!(
+            without_tags("Hei [silence:7s] der [silence:1.5s]. Ja"),
+            "Hei der . Ja"
+        );
+        assert_eq!(without_tags("ord [silence:3"), "ord");
+        assert_eq!(without_tags("bare ord"), "bare ord");
     }
 }

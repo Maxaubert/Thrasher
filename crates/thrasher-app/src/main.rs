@@ -66,6 +66,35 @@ const LANGUAGES: [(&str, &str); 21] = [
 ];
 const EXPORT_FORMATS: [&str; 3] = ["flac", "wav", "mp3"];
 
+/// The editor text as markup for the coloured layer behind it: pause tags in orange,
+/// everything else escaped so it shows exactly as typed.
+fn edit_markup(text: &str) -> String {
+    fn escape(out: &mut String, s: &str) {
+        for c in s.chars() {
+            match c {
+                '\n' => out.push_str("\\\n"),
+                c if c.is_ascii_punctuation() => {
+                    out.push('\\');
+                    out.push(c);
+                }
+                c => out.push(c),
+            }
+        }
+    }
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(i) = rest.find("[silence:") {
+        escape(&mut out, &rest[..i]);
+        let end = rest[i..].find(']').map_or(rest.len(), |e| i + e + 1);
+        out.push_str("<font color=\"#ff6a1a\">");
+        escape(&mut out, &rest[i..end]);
+        out.push_str("</font>");
+        rest = &rest[end..];
+    }
+    escape(&mut out, rest);
+    out
+}
+
 /// What the export menu offers, in its order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Export {
@@ -1418,6 +1447,16 @@ fn main() -> Result<(), slint::PlatformError> {
         move || app.borrow().apply_waves(&weak.unwrap())
     });
 
+    ui.on_edit_markup(|text| {
+        slint::StyledText::from_markdown(&edit_markup(&text))
+            .unwrap_or_else(|_| slint::StyledText::from_plain_text(&text))
+    });
+    ui.on_plain_selection(|text, a, b| {
+        let (a, b) = (a.min(b).max(0) as usize, a.max(b).max(0) as usize);
+        let picked = text.get(a..b.min(text.len())).unwrap_or("");
+        edit::without_tags(picked).into()
+    });
+
     ui.on_edit_changed({
         let (app, weak) = (app.clone(), ui.as_weak());
         move |text| app.borrow().preview_edit(&weak.unwrap(), &text)
@@ -2016,6 +2055,25 @@ mod tests {
         match s {
             Spec::Done(x) => Some(x),
             _ => None,
+        }
+    }
+
+    #[test]
+    fn markup_colours_tags_and_escapes_the_rest() {
+        assert_eq!(
+            edit_markup("Hei* [silence:2s] der"),
+            "Hei\\* <font color=\"#ff6a1a\">\\[silence\\:2s\\]</font> der"
+        );
+        for text in [
+            "1. ord",
+            "# x",
+            "a <b> c",
+            "_x_ `y`",
+            "[silence:3",
+            "linje\nto",
+        ] {
+            let styled = slint::StyledText::from_markdown(&edit_markup(text));
+            assert!(styled.is_ok(), "{text}");
         }
     }
 

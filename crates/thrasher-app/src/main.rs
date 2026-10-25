@@ -1844,7 +1844,7 @@ fn main() -> Result<(), slint::PlatformError> {
             if let Err(e) = sc.save(&a.library.sidecar_path(&name)) {
                 return ui.set_status(e.to_string().into());
             }
-            ui.set_page(1);
+            ui.set_editing(false);
             voice::start(
                 &ui,
                 &a.library,

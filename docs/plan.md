@@ -195,3 +195,12 @@ Built 2026-10-25 in PRs #27 (A), #28 (B), #29 (C), #30 (D), #31 (E). Differences
 spec: Opus files cannot be imported (Symphonia has no Opus decoder); FLAC is decoded with
 `claxon` because Symphonia rejects valid FLAC files from our own encoder. "Whole project"
 and a timestamped script ("Script", `.txt`) were added to the export menus.
+
+## 14. Window sizes (mockups 2026-10-25)
+
+Canvas rows "Window sizes: main page / manage clip / settings" (canvas linked in section 12)
+show each page at narrow (420), default (520) and wide (1040). Rule from Max: a size
+never adds or removes options; it only rearranges them. Narrow: one-line recorder with a
+round Record button, no mini waveforms in the list, a lower player, wide controls under
+their label. Wide: recorder beside the clip list; player, parts and options beside a
+full-height transcript; settings cards in two columns. Waiting for Max's feedback.

@@ -25,8 +25,19 @@ pub struct Sidecar {
     /// in the speaker's own voice. Always synthetic audio.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub inserts: Vec<Insert>,
+    /// The clips a merged clip was made of, in order (see `merge`). Empty otherwise.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub parts: Vec<Part>,
     #[serde(default)]
     pub thrasher: Meta,
+}
+
+/// One of the clips a merged clip was made of, and where it sits in the recording.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Part {
+    pub name: String,
+    pub start: f64,
+    pub end: f64,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

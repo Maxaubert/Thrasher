@@ -95,6 +95,10 @@ fn edit_markup(text: &str) -> String {
     out
 }
 
+/// Work on a merged clip's parts, run on a worker thread: gets the library and the
+/// clip's name, returns the status line (or an error for it).
+type PartsJob = Box<dyn FnOnce(&Library, &str) -> Result<String, String> + Send>;
+
 /// What the export menu offers, in its order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Export {
@@ -201,6 +205,10 @@ struct App {
     /// Maps the edited audio being played back to times in the recording.
     timeline: Edl,
     waves: waves::Waves,
+    /// Clips picked with Ctrl or Shift, one flag per clip in the list.
+    picked: Vec<bool>,
+    /// The clips on the merge page, in merge order.
+    merge_names: Vec<String>,
     live: VecDeque<f32>,
     live_model: Rc<VecModel<f32>>,
 }
@@ -368,6 +376,8 @@ impl App {
             })
             .collect();
         ui.set_clips(ModelRc::new(VecModel::from(rows)));
+        self.picked = vec![false; self.clips.len()];
+        self.show_picked(ui);
         let n = self.clips.len();
         ui.set_clips_summary(
             match n {
@@ -437,9 +447,41 @@ impl App {
         }
     }
 
+    fn show_picked(&self, ui: &AppWindow) {
+        ui.set_picked(ModelRc::new(VecModel::from(self.picked.clone())));
+        ui.set_picked_count(self.picked.iter().filter(|p| **p).count() as i32);
+    }
+
+    /// Lists the parts of the selected clip when it was merged from several.
+    fn show_parts(&self, ui: &AppWindow) {
+        let parts = self
+            .selected(ui)
+            .and_then(|c| Sidecar::load(&self.library.sidecar_path(&c.name)).ok())
+            .map(|sc| sc.parts)
+            .unwrap_or_default();
+        let rows: Vec<OrderRow> = if parts.len() < 2 {
+            Vec::new()
+        } else {
+            parts
+                .iter()
+                .map(|p| OrderRow {
+                    name: p.name.clone().into(),
+                    note: format!(
+                        "{} · starts at {}",
+                        fmt_time(p.end - p.start),
+                        fmt_time(p.start)
+                    )
+                    .into(),
+                })
+                .collect()
+        };
+        ui.set_parts(ModelRc::new(VecModel::from(rows)));
+    }
+
     /// Shows the selected clip on the clip page: details, waveform and transcript.
     fn show_transcript(&mut self, ui: &AppWindow) {
         self.update_length(ui);
+        self.show_parts(ui);
         if let Some(c) = self.selected(ui) {
             // The same length as the list shows.
             let shown = ui
@@ -1033,6 +1075,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
     crate::log!("window built in {} ms", log::ms(t));
     let recovered = library.recover().unwrap_or_default();
+    thrasher_core::merge::clean_leftovers(&library);
     let live_model = Rc::new(VecModel::from(vec![0.06; LIVE_BARS]));
     ui.set_live(ModelRc::from(live_model.clone()));
     ui.set_window_icon(dot_image(64, true));
@@ -1054,6 +1097,8 @@ fn main() -> Result<(), slint::PlatformError> {
         speed: NORMAL_SPEED,
         timeline: Edl::default(),
         waves: waves::Waves::default(),
+        picked: Vec::new(),
+        merge_names: Vec::new(),
         live: VecDeque::new(),
         live_model,
     }));
@@ -1505,6 +1550,237 @@ fn main() -> Result<(), slint::PlatformError> {
             if !last.is_empty() {
                 a.select_name(&ui, &last);
             }
+            ui.set_status(status);
+        }
+    });
+
+    ui.on_pick({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |i, ctrl, shift| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let n = a.clips.len();
+            a.picked.resize(n, false);
+            let sel = ui.get_selected();
+            if i < 0 || i as usize >= n {
+                a.picked.fill(false);
+                ui.set_selected(-1);
+            } else if ctrl {
+                if !a.picked.contains(&true) && sel >= 0 && sel != i && (sel as usize) < n {
+                    a.picked[sel as usize] = true;
+                }
+                a.picked[i as usize] = !a.picked[i as usize];
+                ui.set_selected(i);
+            } else if shift && sel >= 0 {
+                a.picked.fill(false);
+                for j in sel.min(i)..=sel.max(i) {
+                    a.picked[j as usize] = true;
+                }
+                ui.set_selected(i);
+            } else {
+                a.picked.fill(false);
+                ui.set_selected(i);
+            }
+            // One picked clip is just the highlighted one.
+            if a.picked.iter().filter(|p| **p).count() < 2 {
+                a.picked.fill(false);
+            }
+            a.show_picked(&ui);
+        }
+    });
+
+    let merge_rows = |a: &App, ui: &AppWindow| {
+        let rows: Vec<OrderRow> = a
+            .merge_names
+            .iter()
+            .map(|n| {
+                let note = a
+                    .clips
+                    .iter()
+                    .find(|c| &c.name == n)
+                    .map(|c| fmt_time(c.duration))
+                    .unwrap_or_default();
+                OrderRow {
+                    name: n.into(),
+                    note: note.into(),
+                }
+            })
+            .collect();
+        ui.set_merge_rows(ModelRc::new(VecModel::from(rows)));
+    };
+    ui.on_start_merge({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move || {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let names: Vec<String> = a
+                .clips
+                .iter()
+                .zip(&a.picked)
+                .filter(|(_, p)| **p)
+                .map(|(c, _)| c.name.clone())
+                .collect();
+            let base = format!("{} merged", names.first().cloned().unwrap_or_default());
+            let mut name = base.clone();
+            let mut n = 2;
+            while a.library.exists(&name) {
+                name = format!("{base} {n}");
+                n += 1;
+            }
+            a.merge_names = names;
+            ui.set_merge_name(name.into());
+            merge_rows(&a, &ui);
+        }
+    });
+    ui.on_merge_move({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |from, to| {
+            let mut a = app.borrow_mut();
+            let n = a.merge_names.len() as i32;
+            if from < 0 || to < 0 || from >= n || to >= n {
+                return;
+            }
+            let item = a.merge_names.remove(from as usize);
+            a.merge_names.insert(to as usize, item);
+            merge_rows(&a, &weak.unwrap());
+        }
+    });
+    ui.on_merge_remove({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |i| {
+            let mut a = app.borrow_mut();
+            if a.merge_names.len() > 2 && (i as usize) < a.merge_names.len() {
+                a.merge_names.remove(i as usize);
+                merge_rows(&a, &weak.unwrap());
+            }
+        }
+    });
+    ui.on_merge_run({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |name| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let name = name.trim().to_string();
+            let names = a.merge_names.clone();
+            if !thrasher_core::library::valid_name(&name) {
+                return ui.set_status(format!("'{name}' cannot be a file name").into());
+            }
+            if a.library.exists(&name) && !names.contains(&name) {
+                return ui.set_status(format!("A clip named '{name}' already exists").into());
+            }
+            if a.recording
+                .as_ref()
+                .is_some_and(|r| names.iter().any(|n| n == r.name()))
+            {
+                return ui.set_status("Stop the recording first".into());
+            }
+            if a.active.as_ref().is_some_and(|n| names.contains(n)) {
+                a.stop(&ui);
+            }
+            ui.set_merging(true);
+            ui.set_status(format!("Merging {} clips...", names.len()).into());
+            let library = a.library.clone();
+            let weak = ui.as_weak();
+            std::thread::spawn(move || {
+                let started = std::time::Instant::now();
+                let result = thrasher_core::merge::merge(&library, &names, &name);
+                crate::log!(
+                    "merged {} clips into {name} in {} ms: {:?}",
+                    names.len(),
+                    crate::log::ms(started),
+                    result.as_ref().err()
+                );
+                let (status, made) = match result {
+                    Ok(()) => (format!("Merged {} clips into {name}", names.len()), name),
+                    Err(e) => (format!("Merge failed: {e}"), String::new()),
+                };
+                let _ = weak
+                    .upgrade_in_event_loop(move |ui| ui.invoke_merged(status.into(), made.into()));
+            });
+        }
+    });
+    ui.on_merged({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |status, name| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            ui.set_merging(false);
+            a.waves.forget(&name);
+            a.refresh_clips(&ui);
+            if !name.is_empty() {
+                a.merge_names.clear();
+                a.select_name(&ui, &name);
+                ui.set_page(0);
+            }
+            ui.set_status(status);
+        }
+    });
+
+    // Reordering parts and taking one out rewrite the clip on a worker thread.
+    let parts_job = {
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |job: PartsJob| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
+                return;
+            };
+            if a.active.as_deref() == Some(name.as_str()) {
+                a.stop(&ui);
+            }
+            ui.set_parts_busy(true);
+            let library = a.library.clone();
+            let weak = ui.as_weak();
+            std::thread::spawn(move || {
+                let started = std::time::Instant::now();
+                let status = job(&library, &name).unwrap_or_else(|e| e);
+                crate::log!("parts of {name}: {status} ({} ms)", crate::log::ms(started));
+                let _ = weak.upgrade_in_event_loop(move |ui| ui.invoke_parts_done(status.into()));
+            });
+        }
+    };
+    ui.on_parts_move({
+        let job = parts_job.clone();
+        move |from, to| {
+            job(Box::new(move |lib: &Library, name: &str| {
+                let n = thrasher_core::merge::parts(lib, name)
+                    .map_err(|e| e.to_string())?
+                    .len();
+                let mut order: Vec<usize> = (0..n).collect();
+                let (from, to) = (from as usize, to as usize);
+                if from >= n || to >= n {
+                    return Err("No such part".into());
+                }
+                let i = order.remove(from);
+                order.insert(to, i);
+                thrasher_core::merge::reorder(lib, name, &order)
+                    .map(|()| "Parts in the new order".to_string())
+                    .map_err(|e| format!("Could not reorder: {e}"))
+            }))
+        }
+    });
+    ui.on_part_take_out(move |i| {
+        parts_job(Box::new(move |lib: &Library, name: &str| {
+            thrasher_core::merge::extract(lib, name, i as usize)
+                .map(|new| format!("Took {new} out as its own clip"))
+                .map_err(|e| format!("Could not take it out: {e}"))
+        }))
+    });
+    ui.on_parts_done({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |status| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let current = a.selected(&ui).map(|c| c.name.clone());
+            ui.set_parts_busy(false);
+            if let Some(name) = &current {
+                a.waves.forget(name);
+            }
+            a.refresh_clips(&ui);
+            if let Some(name) = current {
+                a.select_name(&ui, &name);
+            }
+            a.show_transcript(&ui);
             ui.set_status(status);
         }
     });

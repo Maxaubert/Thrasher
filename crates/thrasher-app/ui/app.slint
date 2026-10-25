@@ -239,6 +239,8 @@ component Btn inherits Rectangle {
 component IconBtn inherits Rectangle {
     in property <string> icon;
     in property <string> label;
+    // The tooltip: a word or two, no punctuation. The label is for screen readers.
+    in property <string> tip: label;
     in property <length> size: 30px;
     in property <length> icon-size: 13px;
     in property <bool> round;
@@ -266,7 +268,7 @@ component IconBtn inherits Rectangle {
     }
     // The button has no text, so hovering it names what it does.
     property <bool> hovering: t.has-hover;
-    changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
     @children
     t := TouchArea {
         enabled: root.enabled;
@@ -515,6 +517,7 @@ component ClipItem inherits Rectangle {
                 icon-size: 11px;
                 icon: root.active && root.playing ? "pause" : "play";
                 label: (root.active && root.playing ? "Pause " : "Play ") + root.item.name;
+                tip: root.active && root.playing ? "Pause" : "Play";
                 filled: root.active;
                 outlined: !root.active;
                 tint: root.active ? Theme.on-accent : Theme.text;
@@ -571,7 +574,7 @@ component ClipItem inherits Rectangle {
                 height: 16px;
             }
             property <bool> hovering: dots.has-hover;
-            changed hovering => { Tips.hover(self.hovering, "More: manage, rename, export, delete", self.absolute-position, self.width, self.height); }
+            changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
             dots := TouchArea {
                 mouse-cursor: pointer;
                 clicked => { Tips.hide(); root.open-menu(); }
@@ -903,6 +906,7 @@ component OrderList inherits Rectangle {
                 IconBtn {
                     icon: "up";
                     label: "Move " + r.name + " up";
+                    tip: "Move up";
                     size: 26px;
                     enabled: root.enabled && i > 0;
                     clicked => { root.moved(i, i - 1); }
@@ -913,6 +917,7 @@ component OrderList inherits Rectangle {
                 IconBtn {
                     icon: "down";
                     label: "Move " + r.name + " down";
+                    tip: "Move down";
                     size: 26px;
                     enabled: root.enabled && i < root.rows.length - 1;
                     clicked => { root.moved(i, i + 1); }
@@ -1651,6 +1656,7 @@ export component AppWindow inherits Window {
                                 round: true;
                                 icon: "expand";
                                 label: "Open the window";
+                                tip: "Open window";
                                 clicked => { root.compact-changed(false); }
                             }
                             IconBtn {
@@ -1811,6 +1817,7 @@ export component AppWindow inherits Window {
                     IconBtn {
                         icon: "import";
                         label: "Import audio files";
+                        tip: "Import audio";
                         icon-size: 14px;
                         size: 28px;
                         enabled: !root.recording;
@@ -1936,6 +1943,7 @@ export component AppWindow inherits Window {
                         IconBtn {
                             icon: "pencil";
                             label: "Rename clip";
+                            tip: "Rename";
                             enabled: !root.recording;
                             clicked => { root.renaming = true; }
                         }
@@ -1945,6 +1953,7 @@ export component AppWindow inherits Window {
                         IconBtn {
                             icon: "trash";
                             label: "Delete clip";
+                            tip: "Delete";
                             icon-size: 15px;
                             enabled: !root.recording;
                             clicked => { root.ask-delete(root.selected); }
@@ -2039,6 +2048,7 @@ export component AppWindow inherits Window {
                                     icon-size: 22px;
                                     tint: Theme.text;
                                     label: "Back 5 seconds";
+                                    tip: "Back 5 seconds";
                                     clicked => { root.skip(-5); keys.focus(); }
                                     Text {
                                         text: "5";
@@ -2607,6 +2617,7 @@ export component AppWindow inherits Window {
                                     size: 32px;
                                     icon: "folder";
                                     label: "Open the folder";
+                                    tip: "Open folder";
                                     tint: Theme.text2;
                                     clicked => { root.open-folder(); }
                                 }
@@ -2721,6 +2732,7 @@ export component AppWindow inherits Window {
                                     icon: "close";
                                     icon-size: 11px;
                                     label: "Clear the shortcut";
+                                    tip: "Clear shortcut";
                                     clicked => { root.hotkey-accepted(""); }
                                 }
                             }

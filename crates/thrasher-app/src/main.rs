@@ -86,15 +86,6 @@ impl Export {
         ]
     };
 
-    /// The audio format chosen in settings ("flac", "wav" or "mp3").
-    fn from_format(format: &str) -> Export {
-        let i = EXPORT_FORMATS
-            .iter()
-            .position(|f| *f == format)
-            .unwrap_or(0);
-        Export::ALL[i]
-    }
-
     fn title(self) -> &'static str {
         use thrasher_core::export::{Format, Subtitles};
         match self {
@@ -1535,7 +1526,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let (app, weak) = (app.clone(), ui.as_weak());
         move |kind| {
             let ui = weak.unwrap();
-            let (library, name, clean_voice, default_format, folder) = {
+            let (library, name, clean_voice, folder) = {
                 let a = app.borrow();
                 let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
                     return;
@@ -1544,15 +1535,10 @@ fn main() -> Result<(), slint::PlatformError> {
                     a.library.clone(),
                     name,
                     a.settings.clean_voice,
-                    a.settings.export_format.clone(),
                     a.settings.export_dir.clone(),
                 )
             };
-            let kind = if kind < 0 {
-                Export::from_format(&default_format)
-            } else {
-                Export::ALL[(kind as usize).min(Export::ALL.len() - 1)]
-            };
+            let kind = Export::ALL[(kind.max(0) as usize).min(Export::ALL.len() - 1)];
             let start = folder
                 .filter(|d| d.is_dir())
                 .unwrap_or_else(|| library.dir().to_path_buf());
@@ -1830,6 +1816,27 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         }
     });
+    ui.on_resize_window({
+        let weak = ui.as_weak();
+        move |d| {
+            use slint::winit_030::{WinitWindowAccessor, winit::window::ResizeDirection};
+            let direction = match d {
+                0 => ResizeDirection::North,
+                1 => ResizeDirection::South,
+                2 => ResizeDirection::East,
+                3 => ResizeDirection::West,
+                4 => ResizeDirection::NorthEast,
+                5 => ResizeDirection::NorthWest,
+                6 => ResizeDirection::SouthEast,
+                _ => ResizeDirection::SouthWest,
+            };
+            weak.unwrap().window().with_winit_window(|w| {
+                if let Err(e) = w.drag_resize_window(direction) {
+                    crate::log!("resize failed: {e}");
+                }
+            });
+        }
+    });
     ui.on_minimize_window({
         let weak = ui.as_weak();
         move || weak.unwrap().window().set_minimized(true)
@@ -2004,7 +2011,6 @@ mod tests {
     fn export_menu_order_matches_the_settings_formats() {
         for (i, f) in EXPORT_FORMATS.iter().enumerate() {
             assert_eq!(Export::ALL[i].extension(), *f);
-            assert_eq!(Export::from_format(f), Export::ALL[i]);
         }
         assert_eq!(Export::ALL[5].extension(), "words.json");
         assert_eq!(Export::ALL[5].filter(), "json");

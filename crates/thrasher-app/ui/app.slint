@@ -265,7 +265,8 @@ component ClipItem inherits Rectangle {
     in property <bool> playing;
     in property <float> progress;
     callback play();
-    // The first click highlights the clip, a click on the highlighted one opens it.
+    // A click highlights the clip and a double click plays or pauses it. Only the
+    // arrow (or the right arrow key) opens it.
     callback select();
     callback open();
     height: 52px;
@@ -277,10 +278,11 @@ component ClipItem inherits Rectangle {
     accessible-label: root.item.name + ", " + root.item.duration;
     accessible-item-selectable: true;
     accessible-item-selected: root.selected;
-    accessible-action-default => { if (root.selected) { root.open(); } else { root.select(); } }
+    accessible-action-default => { root.select(); }
     row-touch := TouchArea {
         mouse-cursor: pointer;
-        clicked => { if (root.selected) { root.open(); } else { root.select(); } }
+        clicked => { root.select(); }
+        double-clicked => { root.play(); }
     }
     HorizontalLayout {
         padding-left: 8px;
@@ -460,18 +462,16 @@ component ExportItem inherits Rectangle {
     }
 }
 
-// The export button. The big part saves in the default format; hovering the button,
-// or clicking its arrow, opens a menu above it with every format. `export` gets -1
-// for the default, 0 to 2 for FLAC, WAV and MP3, 3 to 5 for SRT, VTT and word timings.
+// The export button. Hovering or clicking it opens a menu above it with every format;
+// `export` gets 0 to 2 for FLAC, WAV and MP3, 3 to 5 for SRT, VTT and word timings.
 component ExportButton inherits Rectangle {
     in property <int> format;
     in property <bool> subtitles;
     callback export(int);
-    property <string> format-name: format == 1 ? "WAV" : format == 2 ? "MP3" : "FLAC";
-    property <bool> hovering: main.has-hover || arrow.has-hover || panel.has-hover;
-    // Opened from the arrow (or by keyboard and screen readers) rather than by hover.
+    property <bool> hovering: t.has-hover || panel.has-hover;
+    // Opened by a click (or by keyboard and screen readers) rather than by hover.
     property <bool> pinned;
-    // Closed after a choice, until the mouse leaves.
+    // Closed after a choice or a second click, until the mouse leaves.
     property <bool> dismissed;
     property <bool> open: !dismissed && (pinned || hovering);
     changed hovering => {
@@ -485,65 +485,52 @@ component ExportButton inherits Rectangle {
         dismissed = true;
         root.export(kind);
     }
-    height: 36px;
-    width: label.preferred-width + 26px + 34px;
-    border-radius: 9px;
-    background: Theme.accent;
-    HorizontalLayout {
-        Rectangle {
-            border-radius: 9px;
-            background: main.has-hover ? Theme.accent-hover : transparent;
-            accessible-role: button;
-            accessible-label: "Export " + root.format-name;
-            accessible-action-default => { root.choose(-1); }
-            label := Text {
-                text: "Export " + root.format-name;
-                color: Theme.on-accent;
-                font-size: 13px;
-                font-weight: 800;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-            }
-            main := TouchArea {
-                mouse-cursor: pointer;
-                clicked => { root.choose(-1); }
-            }
-        }
-        Rectangle {
-            width: 1px;
-            background: #16090340;
-        }
-        Rectangle {
-            width: 33px;
-            border-radius: 9px;
-            background: arrow.has-hover || root.open ? Theme.accent-hover : transparent;
-            accessible-role: button;
-            accessible-label: "Export options";
-            accessible-expandable: true;
-            accessible-expanded: root.open;
-            accessible-action-default => { root.pinned = !root.open; root.dismissed = false; }
-            accessible-action-expand => { root.pinned = true; root.dismissed = false; }
-            Icon {
-                name: root.open ? "down" : "up";
-                tint: Theme.on-accent;
-                width: 13px;
-                height: 13px;
-                x: (parent.width - self.width) / 2;
-                y: (parent.height - self.height) / 2;
-                stroke-width: 2.5px;
-            }
-            arrow := TouchArea {
-                mouse-cursor: pointer;
-                clicked => {
-                    root.pinned = !root.open;
-                    root.dismissed = false;
-                }
-            }
+    function toggle() {
+        if (root.open) {
+            root.pinned = false;
+            root.dismissed = true;
+        } else {
+            root.pinned = true;
+            root.dismissed = false;
         }
     }
+    height: 36px;
+    width: label.preferred-width + 60px;
+    border-radius: 9px;
+    background: t.has-hover || root.open ? Theme.accent-hover : Theme.accent;
+    accessible-role: button;
+    accessible-label: "Export";
+    accessible-expandable: true;
+    accessible-expanded: root.open;
+    accessible-action-default => { root.toggle(); }
+    accessible-action-expand => { root.pinned = true; root.dismissed = false; }
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 14px;
+        spacing: 10px;
+        label := Text {
+            text: "Export";
+            color: Theme.on-accent;
+            font-size: 13px;
+            font-weight: 800;
+            vertical-alignment: center;
+        }
+        Icon {
+            name: root.open ? "down" : "up";
+            tint: Theme.on-accent;
+            width: 13px;
+            height: 13px;
+            y: (parent.height - self.height) / 2;
+            stroke-width: 2.5px;
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.toggle(); }
+    }
     // Drawn above the button. The touch area reaches down to the button, so the mouse
-    // can travel from one to the other without the menu closing.
-    // It has no size while closed, so it cannot be hovered then.
+    // can travel from one to the other without the menu closing. It has no size while
+    // closed, so it cannot be hovered then.
     panel := TouchArea {
         x: 0;
         y: -self.height;
@@ -596,6 +583,17 @@ component ExportButton inherits Rectangle {
                 if root.subtitles: ExportItem { text: "VTT"; tag: "web video"; clicked => { root.choose(4); } }
                 if root.subtitles: ExportItem { text: "Word timings"; tag: "json"; clicked => { root.choose(5); } }
             }
+        }
+    }
+}
+
+// An invisible strip along a window edge or corner that resizes the window.
+component ResizeEdge inherits TouchArea {
+    in property <int> direction;
+    callback resize(int);
+    pointer-event(e) => {
+        if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+            root.resize(root.direction);
         }
     }
 }
@@ -1118,8 +1116,11 @@ export component AppWindow inherits Window {
     callback compact-changed(bool);
     callback open-folder();
     callback change-folder();
-    // -1 is the default audio format; see ExportButton for the others.
+    // See ExportButton for the kinds.
     callback export-as(int);
+    // Starts resizing the window from an edge: 0 top, 1 bottom, 2 right, 3 left,
+    // 4 top right, 5 top left, 6 bottom right, 7 bottom left.
+    callback resize-window(int);
     callback transcribe-selected();
     callback selection-changed(int);
     callback edit-changed(string);
@@ -1680,7 +1681,7 @@ export component AppWindow inherits Window {
                 padding-right: 16px;
                 padding-top: 12px;
                 Rectangle {
-                    height: root.transcript != "" && !root.transcribing ? 320px : self.preferred-height;
+                    height: root.transcript != "" && !root.transcribing ? 170px : self.preferred-height;
                     border-radius: 14px;
                     border-width: 1px;
                     border-color: #241b15;
@@ -2514,4 +2515,15 @@ export component AppWindow inherits Window {
     }
 
     init => { keys.focus(); }
+
+    // The window has no frame, so its edges and corners resize it here.
+    if !compact: ResizeEdge { direction: 0; x: 12px; y: 0; width: parent.width - 24px; height: 5px; mouse-cursor: ns-resize; resize(d) => { root.resize-window(d); } }
+    if !compact: ResizeEdge { direction: 1; x: 12px; y: parent.height - 5px; width: parent.width - 24px; height: 5px; mouse-cursor: ns-resize; resize(d) => { root.resize-window(d); } }
+    if !compact: ResizeEdge { direction: 2; x: parent.width - 5px; y: 12px; width: 5px; height: parent.height - 24px; mouse-cursor: ew-resize; resize(d) => { root.resize-window(d); } }
+    if !compact: ResizeEdge { direction: 3; x: 0; y: 12px; width: 5px; height: parent.height - 24px; mouse-cursor: ew-resize; resize(d) => { root.resize-window(d); } }
+    if !compact: ResizeEdge { direction: 4; x: parent.width - 12px; y: 0; width: 12px; height: 12px; mouse-cursor: nesw-resize; resize(d) => { root.resize-window(d); } }
+    if !compact: ResizeEdge { direction: 5; x: 0; y: 0; width: 12px; height: 12px; mouse-cursor: nwse-resize; resize(d) => { root.resize-window(d); } }
+    if !compact: ResizeEdge { direction: 6; x: parent.width - 12px; y: parent.height - 12px; width: 12px; height: 12px; mouse-cursor: nwse-resize; resize(d) => { root.resize-window(d); } }
+    if !compact: ResizeEdge { direction: 7; x: 0; y: parent.height - 12px; width: 12px; height: 12px; mouse-cursor: nesw-resize; resize(d) => { root.resize-window(d); } }
+
 }

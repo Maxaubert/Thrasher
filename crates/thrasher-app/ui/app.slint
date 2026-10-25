@@ -504,11 +504,7 @@ component ClipItem inherits Rectangle {
             // On release: the press that closes an open menu is used up by that menu,
             // so opening on the press would only work every other time.
             if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
-                menu.close();
-                root.menu-x = min(self.mouse-x, root.width - 210px);
-                root.menu-y = self.mouse-y;
-                root.exporting = false;
-                menu.show();
+                root.menu-at(self.mouse-x, self.mouse-y);
             }
         }
         double-clicked => { root.play(); }
@@ -549,6 +545,14 @@ component ClipItem inherits Rectangle {
                 mouse-cursor: pointer;
                 clicked => { root.cue(clamp(self.mouse-x / self.width, 0, 1)); }
                 double-clicked => { root.play-at(clamp(self.mouse-x / self.width, 0, 1)); }
+                // A right click here opens the same menu as anywhere on the row.
+                pointer-event(e) => {
+                    if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                        root.menu-at(
+                            self.absolute-position.x - root.absolute-position.x + self.mouse-x,
+                            self.absolute-position.y - root.absolute-position.y + self.mouse-y);
+                    }
+                }
             }
         }
         VerticalLayout {
@@ -600,6 +604,14 @@ component ClipItem inherits Rectangle {
             }
 
         }
+    }
+    // Opens the menu where the right click was (row coordinates).
+    function menu-at(x: length, y: length) {
+        menu.close();
+        root.menu-x = min(x, root.width - 210px);
+        root.menu-y = y;
+        root.exporting = false;
+        menu.show();
     }
     function open-menu() {
         root.menu-x = root.width - 8px - 210px;
@@ -1530,12 +1542,15 @@ component RecorderCard inherits Rectangle {
         }
         if root.mode == 2: Rectangle { vertical-stretch: 1; }
         // Wide: the same round buttons as the one-line recorder.
+        // The record button stays in the middle: pause gets a fixed spot on its left,
+        // balanced by an empty one on its right.
         if root.mode == 2: HorizontalLayout {
             alignment: center;
             spacing: 14px;
-            if root.recording: VerticalLayout {
+            VerticalLayout {
+                width: 44px;
                 alignment: center;
-                IconBtn {
+                if root.recording: IconBtn {
                     size: 44px;
                     round: true;
                     outlined: true;
@@ -1550,6 +1565,7 @@ component RecorderCard inherits Rectangle {
                 recording: root.recording;
                 clicked => { root.record(); }
             }
+            Rectangle { width: 44px; }
         }
         if root.mode != 2 && root.recording: HorizontalLayout {
             spacing: 10px;

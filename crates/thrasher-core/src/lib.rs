@@ -6,6 +6,7 @@ pub mod capture;
 pub mod cleanup;
 pub mod edit;
 pub mod export;
+pub mod import;
 pub mod library;
 pub mod meter;
 pub mod models;

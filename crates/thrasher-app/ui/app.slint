@@ -122,6 +122,7 @@ component Icon inherits Path {
         : name == "chevron" ? "M 9 6 L 15 12 L 9 18"
         : name == "down" ? "M 6 9 L 12 15 L 18 9"
         : name == "up" ? "M 6 15 L 12 9 L 18 15"
+        : name == "import" ? "M 12 4 L 12 15 M 7 10 L 12 15 L 17 10 M 4 19 L 20 19"
         : name == "dots" ? "M 10.2 5 A 1.8 1.8 0 1 0 13.8 5 A 1.8 1.8 0 1 0 10.2 5 Z M 10.2 12 A 1.8 1.8 0 1 0 13.8 12 A 1.8 1.8 0 1 0 10.2 12 Z M 10.2 19 A 1.8 1.8 0 1 0 13.8 19 A 1.8 1.8 0 1 0 10.2 19 Z"
         : name == "pencil" ? "M 4 20 L 8 20 L 19 9 L 15 5 L 4 16 Z"
         : name == "trash" ? "M 4 7 L 20 7 M 10 11 L 10 17 M 14 11 L 14 17 M 6 7 L 7 20 L 17 20 L 18 7 M 9 7 L 9 4 L 15 4 L 15 7"
@@ -1191,6 +1192,9 @@ export component AppWindow inherits Window {
     callback change-folder();
     // See ExportButton for the kinds.
     callback export-as(int);
+    // Asks for audio files and adds each as a clip; `imported` reports back.
+    callback import-files();
+    callback imported(string, string);
     // The transcript editor's text as styled text, with the pause tags coloured.
     pure callback edit-markup(string) -> styled-text;
     // The selected part of the editor text (two byte offsets) without pause tags.
@@ -1494,6 +1498,17 @@ export component AppWindow inherits Window {
                     vertical-alignment: center;
                 }
                 Rectangle { horizontal-stretch: 1; }
+                VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        icon: "import";
+                        label: "Import audio files";
+                        icon-size: 14px;
+                        size: 28px;
+                        enabled: !root.recording;
+                        clicked => { root.import-files(); }
+                    }
+                }
                 Text {
                     text: root.clips-summary;
                     color: Theme.dim;

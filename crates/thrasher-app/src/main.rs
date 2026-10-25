@@ -1442,6 +1442,73 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
+    ui.on_import_files({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move || {
+            let ui = weak.unwrap();
+            let library = app.borrow().library.clone();
+            // The test window must never take focus, so it imports the files named in
+            // THRASHER_TEST_IMPORT instead of asking.
+            let files = match std::env::var("THRASHER_TEST_IMPORT") {
+                Ok(list) if std::env::var_os("THRASHER_TEST_WINDOW").is_some() => {
+                    list.split(';').map(std::path::PathBuf::from).collect()
+                }
+                _ => rfd::FileDialog::new()
+                    .set_title("Import audio files")
+                    .add_filter("Audio", &thrasher_core::import::EXTENSIONS)
+                    .pick_files()
+                    .unwrap_or_default(),
+            };
+            if files.is_empty() {
+                return;
+            }
+            ui.set_status(format!("Importing {} file(s)...", files.len()).into());
+            let weak = ui.as_weak();
+            std::thread::spawn(move || {
+                let started = std::time::Instant::now();
+                let (mut names, mut failed) = (Vec::new(), Vec::new());
+                for f in &files {
+                    match thrasher_core::import::import_file(&library, f) {
+                        Ok(name) => names.push(name),
+                        Err(e) => {
+                            crate::log!("import {} failed: {e}", f.display());
+                            let file = f.file_name().unwrap_or_default().to_string_lossy();
+                            failed.push(format!("{file}: {e}"));
+                        }
+                    }
+                }
+                crate::log!(
+                    "imported {} of {} file(s) in {} ms",
+                    names.len(),
+                    files.len(),
+                    crate::log::ms(started)
+                );
+                let status = match (names.len(), failed.first()) {
+                    (_, Some(f)) if failed.len() == 1 => format!("Could not import {f}"),
+                    (_, Some(_)) => format!("{} file(s) could not be imported", failed.len()),
+                    (1, None) => format!("Imported {}", names[0]),
+                    (n, None) => format!("Imported {n} clips"),
+                };
+                let last = names.last().cloned().unwrap_or_default();
+                let _ = weak.upgrade_in_event_loop(move |ui| {
+                    ui.invoke_imported(status.into(), last.into())
+                });
+            });
+        }
+    });
+    ui.on_imported({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |status, last| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            a.refresh_clips(&ui);
+            if !last.is_empty() {
+                a.select_name(&ui, &last);
+            }
+            ui.set_status(status);
+        }
+    });
+
     ui.on_waves_ready({
         let (app, weak) = (app.clone(), ui.as_weak());
         move || app.borrow().apply_waves(&weak.unwrap())

@@ -2369,88 +2369,83 @@ export component AppWindow inherits Window {
                 }
             }
 
+
+                }
+            }
+
             // Now playing: the clip in the player, else the highlighted one, else
-            // nothing yet. Always there, so the list never jumps.
-            HorizontalLayout {
+            // nothing yet. The page's footer, across the whole window.
+            now := Rectangle {
+                property <int> shown: root.active-clip >= 0 && root.active-clip < root.clips.length ? root.active-clip
+                    : root.selected >= 0 && root.selected < root.clips.length ? root.selected : -1;
+                property <bool> is-active: self.shown >= 0 && self.shown == root.active-clip;
                 vertical-stretch: 0;
-                padding-left: root.wide ? 0 : root.narrow ? 12px : 16px;
-                padding-right: root.wide ? 12px : root.narrow ? 12px : 16px;
-                padding-top: 8px;
-                padding-bottom: root.wide ? 0 : 12px;
-                now := Rectangle {
-                    property <int> shown: root.active-clip >= 0 && root.active-clip < root.clips.length ? root.active-clip
-                        : root.selected >= 0 && root.selected < root.clips.length ? root.selected : -1;
-                    property <bool> is-active: self.shown >= 0 && self.shown == root.active-clip;
-                    background: Theme.card;
-                    border-radius: 14px;
-                    height: 64px;
-                    HorizontalLayout {
-                        padding-left: 12px;
-                        padding-right: 16px;
-                        spacing: 12px;
-                        VerticalLayout {
-                            alignment: center;
-                            IconBtn {
-                                size: 40px;
-                                round: true;
-                                filled: true;
-                                enabled: now.shown >= 0;
-                                icon: now.is-active && root.playing ? "pause" : "play";
-                                icon-size: 13px;
-                                label: now.is-active && root.playing ? "Pause" : "Play";
-                                clicked => { root.play-clip(now.shown); keys.focus(); }
+                background: #110c09;
+                height: 64px;
+                Rectangle { y: 0; height: 1px; background: Theme.line; }
+                HorizontalLayout {
+                    padding-left: root.narrow ? 12px : 16px;
+                    padding-right: root.narrow ? 14px : 20px;
+                    spacing: 12px;
+                    VerticalLayout {
+                        alignment: center;
+                        IconBtn {
+                            size: 40px;
+                            round: true;
+                            filled: true;
+                            enabled: now.shown >= 0;
+                            icon: now.is-active && root.playing ? "pause" : "play";
+                            icon-size: 13px;
+                            label: now.is-active && root.playing ? "Pause" : "Play";
+                            clicked => { root.play-clip(now.shown); keys.focus(); }
+                        }
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 8px;
+                        horizontal-stretch: 1;
+                        HorizontalLayout {
+                            spacing: 10px;
+                            Text {
+                                text: now.shown >= 0 ? root.clips[now.shown].name : "Nothing playing";
+                                color: now.shown >= 0 ? Theme.text : Theme.dim;
+                                font-size: 13px;
+                                font-weight: 700;
+                                overflow: elide;
+                                horizontal-stretch: 1;
+                            }
+                            Text {
+                                text: now.shown < 0 ? "--:-- / --:--"
+                                    : (now.is-active ? root.play-position : "0:00") + " / " + root.clips[now.shown].duration;
+                                color: Theme.muted;
+                                font-family: Theme.mono;
+                                font-size: 12px;
                             }
                         }
-                        VerticalLayout {
-                            alignment: center;
-                            spacing: 8px;
-                            horizontal-stretch: 1;
-                            HorizontalLayout {
-                                spacing: 10px;
-                                Text {
-                                    text: now.shown >= 0 ? root.clips[now.shown].name : "Nothing playing";
-                                    color: now.shown >= 0 ? Theme.text : Theme.dim;
-                                    font-size: 13px;
-                                    font-weight: 700;
-                                    overflow: elide;
-                                    horizontal-stretch: 1;
-                                }
-                                Text {
-                                    text: now.shown < 0 ? "--:-- / --:--"
-                                        : (now.is-active ? root.play-position : "0:00") + " / " + root.clips[now.shown].duration;
-                                    color: Theme.muted;
-                                    font-family: Theme.mono;
-                                    font-size: 12px;
-                                }
-                            }
+                        Rectangle {
+                            height: 4px;
+                            border-radius: 2px;
+                            background: Theme.track;
                             Rectangle {
-                                height: 4px;
+                                x: 0;
+                                width: parent.width * (now.is-active ? clamp(root.play-fraction, 0, 1) : 0);
                                 border-radius: 2px;
-                                background: Theme.track;
-                                Rectangle {
-                                    x: 0;
-                                    width: parent.width * (now.is-active ? clamp(root.play-fraction, 0, 1) : 0);
-                                    border-radius: 2px;
-                                    background: Theme.accent;
-                                }
-                                // Click to jump; taller than the line so it is easy to hit.
-                                TouchArea {
-                                    y: -8px;
-                                    height: parent.height + 16px;
-                                    enabled: now.shown >= 0;
-                                    mouse-cursor: pointer;
-                                    clicked => {
-                                        root.selected = now.shown;
-                                        root.seek-fraction(self.mouse-x / self.width);
-                                        keys.focus();
-                                    }
+                                background: Theme.accent;
+                            }
+                            // Click to jump; taller than the line so it is easy to hit.
+                            TouchArea {
+                                y: -8px;
+                                height: parent.height + 16px;
+                                enabled: now.shown >= 0;
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    root.selected = now.shown;
+                                    root.seek-fraction(self.mouse-x / self.width);
+                                    keys.focus();
                                 }
                             }
                         }
                     }
-                }
-            }
-
                 }
             }
 

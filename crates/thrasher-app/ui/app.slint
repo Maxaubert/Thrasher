@@ -84,6 +84,35 @@ export struct ClipRow {
     wave: [float],
 }
 
+// The one tooltip in the window. A button without text reports here while the mouse
+// is over it; the window draws the bubble on top of everything after a short wait.
+global Tips {
+    in-out property <string> text;
+    // The hovered button, in window coordinates.
+    in-out property <Point> at;
+    in-out property <length> w;
+    in-out property <length> h;
+    in-out property <bool> wanted;
+    in-out property <bool> shown;
+    public function hover(on: bool, text: string, at: Point, w: length, h: length) {
+        if (on) {
+            self.text = text;
+            self.at = at;
+            self.w = w;
+            self.h = h;
+            self.shown = false;
+            self.wanted = true;
+        } else if (self.text == text) {
+            self.wanted = false;
+            self.shown = false;
+        }
+    }
+    public function hide() {
+        self.wanted = false;
+        self.shown = false;
+    }
+}
+
 global Theme {
     out property <color> bg: #0b0908;
     out property <color> card: #150f0b;
@@ -236,12 +265,13 @@ component IconBtn inherits Rectangle {
         height: root.icon-size;
     }
     // The button has no text, so hovering it names what it does.
-    Tooltip { Tip { text: root.label; } }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
     @children
     t := TouchArea {
         enabled: root.enabled;
         mouse-cursor: pointer;
-        clicked => { root.clicked(); }
+        clicked => { Tips.hide(); root.clicked(); }
     }
 }
 
@@ -540,10 +570,11 @@ component ClipItem inherits Rectangle {
                 width: 16px;
                 height: 16px;
             }
-            Tooltip { Tip { text: "More: manage, rename, export, delete"; } }
+            property <bool> hovering: dots.has-hover;
+            changed hovering => { Tips.hover(self.hovering, "More: manage, rename, export, delete", self.absolute-position, self.width, self.height); }
             dots := TouchArea {
                 mouse-cursor: pointer;
-                clicked => { root.open-menu(); }
+                clicked => { Tips.hide(); root.open-menu(); }
             }
 
         }
@@ -764,8 +795,9 @@ component WinBtn inherits Rectangle {
         width: 12px;
         height: 12px;
     }
-    Tooltip { Tip { text: root.label; } }
-    t := TouchArea { clicked => { root.clicked(); } }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
+    t := TouchArea { clicked => { Tips.hide(); root.clicked(); } }
 }
 
 // The window's own title bar: drag it to move the window. Whatever is put inside goes
@@ -1462,7 +1494,10 @@ export component AppWindow inherits Window {
         triggered => { self.running = false; root.status = ""; }
     }
     // Saving from the editor leaves it, so its unsaved-changes question goes too.
-    changed page => { if (root.dialog == 3) { root.dialog = 0; } }
+    changed page => {
+        Tips.hide();
+        if (root.dialog == 3) { root.dialog = 0; }
+    }
     changed status => { status-timer.running = false; status-timer.running = root.status != ""; }
 
     function move-selection(delta: int) {
@@ -3130,6 +3165,19 @@ export component AppWindow inherits Window {
                 }
             }
         }
+    }
+
+    // The tooltip, below the hovered button (above it near the bottom edge), kept
+    // inside the window.
+    Timer {
+        interval: 550ms;
+        running: Tips.wanted && !Tips.shown;
+        triggered => { Tips.shown = true; }
+    }
+    if Tips.shown && Tips.text != "": Tip {
+        text: Tips.text;
+        x: clamp(Tips.at.x + Tips.w / 2 - self.width / 2, 6px, root.width - self.width - 6px);
+        y: Tips.at.y + Tips.h + 6px + self.height > root.height - 6px ? Tips.at.y - self.height - 6px : Tips.at.y + Tips.h + 6px;
     }
 
     // The window has no frame, so its edges and corners resize it here.

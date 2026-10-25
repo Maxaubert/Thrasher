@@ -3,6 +3,16 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+/// Where the window was and how big (size in logical pixels, position in screen
+/// pixels), so it opens the same way next time.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct WindowPlace {
+    pub x: i32,
+    pub y: i32,
+    pub width: f32,
+    pub height: f32,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -30,6 +40,8 @@ pub struct Settings {
     /// A recording stops by itself after this many minutes, so one left running by
     /// mistake cannot fill the disk. 0 means no limit.
     pub max_recording_minutes: u32,
+    /// The full window's last size and place; none until it has been moved or resized.
+    pub window: Option<WindowPlace>,
 }
 
 impl Default for Settings {
@@ -51,6 +63,7 @@ impl Default for Settings {
             clean_voice: false,
             close_to_tray: true,
             max_recording_minutes: 120,
+            window: None,
         }
     }
 }

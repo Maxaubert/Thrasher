@@ -467,8 +467,10 @@ pub fn start(
                 Err(e) => e,
             };
             let msg = match (bake, baked) {
-                (true, Ok(_)) if spoken.is_empty() => format!("Saved as {name}"),
-                (true, Ok(_)) => format!("Saved as {name}. {spoken}"),
+                (true, Ok(_)) if spoken.is_empty() => {
+                    format!("Saved {name}. The old version is in the Recycle Bin")
+                }
+                (true, Ok(_)) => format!("Saved {name}. {spoken}"),
                 (true, Err(e)) => format!("Could not save {name}: {e}"),
                 (false, _) => spoken,
             };

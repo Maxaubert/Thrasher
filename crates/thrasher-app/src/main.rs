@@ -1804,8 +1804,8 @@ fn main() -> Result<(), slint::PlatformError> {
         move |text| app.borrow().preview_edit(&weak.unwrap(), &text)
     });
 
-    // Save never changes the clip: the edit becomes a new clip, "name (edit)", whose
-    // new words are spoken and whose audio is then rewritten as the edited result.
+    // Save overwrites the clip: its new words are spoken and its audio is rewritten as
+    // the edited result. A copy of the clip as it was goes to the Recycle Bin first.
     ui.on_apply_transcript({
         let (app, weak) = (app.clone(), ui.as_weak());
         move |text| {
@@ -1835,24 +1835,29 @@ fn main() -> Result<(), slint::PlatformError> {
             {
                 return ui.set_status(e.to_string().into());
             }
-            let new = a.library.edit_name(&name);
-            if let Err(e) = a.library.copy_clip(&name, &new, &sc) {
+            a.stop(&ui);
+            if let Err(e) = a.library.keep_copy(&name) {
+                return ui.set_status(
+                    format!("Not saved: no copy of the clip could be kept ({e})").into(),
+                );
+            }
+            if let Err(e) = sc.save(&a.library.sidecar_path(&name)) {
                 return ui.set_status(e.to_string().into());
             }
-            a.stop(&ui);
             ui.set_page(1);
             voice::start(
                 &ui,
                 &a.library,
-                new.clone(),
+                name.clone(),
                 a.settings.model.clone(),
                 a.settings.language.clone(),
                 true,
             );
+            a.waves.forget(&name);
             a.refresh_clips(&ui);
-            a.select_name(&ui, &new);
+            a.select_name(&ui, &name);
             a.show_transcript(&ui);
-            ui.set_status(format!("Saving as {new}: {}", changes.summary()).into());
+            ui.set_status(format!("Saving {name}: {}", changes.summary()).into());
         }
     });
 

@@ -1,7 +1,8 @@
-//! Saved edits are clips of their own (`clip_001 (edit)`). Once their new words are
-//! spoken, the edit is baked in: the audio file is rewritten to hold the edited result
-//! (cuts, pauses, spoken words) and the transcript is rebuilt to match, so the file is
-//! the edited version wherever it is opened.
+//! Saving an edit overwrites the clip (the app first puts a copy of the old version in
+//! the Recycle Bin). Once its new words are spoken, the edit is baked in: the audio
+//! file is rewritten to hold the edited result (cuts, pauses, spoken words) and the
+//! transcript is rebuilt to match, so the file is the edited version wherever it is
+//! opened.
 
 use crate::edit::{edited_words, plan};
 use crate::library::Library;

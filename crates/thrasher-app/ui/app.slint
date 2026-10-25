@@ -1302,6 +1302,8 @@ export component AppWindow inherits Window {
     in-out property <int> dialog;
     in-out property <int> dialog-clip;
     in-out property <string> dialog-text;
+    // The transcript as typed in the editor, to save or throw away when leaving it.
+    in-out property <string> edit-draft;
     // Where the transcript editor's cursor is, and how tall it is.
     in-out property <Point> caret;
     property <length> caret-h: 20px;
@@ -1429,6 +1431,8 @@ export component AppWindow inherits Window {
         running: false;
         triggered => { self.running = false; root.status = ""; }
     }
+    // Saving from the editor leaves it, so its unsaved-changes question goes too.
+    changed page => { if (root.dialog == 3) { root.dialog = 0; } }
     changed status => { status-timer.running = false; status-timer.running = root.status != ""; }
 
     function move-selection(delta: int) {
@@ -1456,6 +1460,21 @@ export component AppWindow inherits Window {
         root.dialog = 2;
         keys.focus();
     }
+    // Leaving the editor with changes asks whether to save them (dialog 3).
+    function leave-editor() {
+        if (root.edit-draft == root.transcript || root.speaking) {
+            root.go(1);
+        } else {
+            root.dialog-clip = root.selected;
+            root.dialog = 3;
+            keys.focus();
+        }
+    }
+    function discard-edit() {
+        root.dialog = 0;
+        root.edit-draft = root.transcript;
+        root.go(1);
+    }
     function close-dialog() {
         root.dialog = 0;
         keys.focus();
@@ -1469,6 +1488,8 @@ export component AppWindow inherits Window {
         } else if (kind == 2) {
             root.delete-selected();
             if (root.page != 0) { root.go(0); }
+        } else if (kind == 3) {
+            root.apply-transcript(root.edit-draft);
         }
         keys.focus();
     }
@@ -1488,7 +1509,8 @@ export component AppWindow inherits Window {
             }
             if (renaming || page == 2) { return reject; }
             if (event.text == Key.Escape) {
-                if (page != 0) { root.go(page == 2 ? 1 : page == 4 ? 3 : 0); } else { root.stop-playback(); root.pick(-1, false, false); }
+                if (page == 2) { root.leave-editor(); }
+                else if (page != 0) { root.go(page == 4 ? 3 : 0); } else { root.stop-playback(); root.pick(-1, false, false); }
                 return accept;
             }
             if (page >= 3) { return reject; }
@@ -2241,7 +2263,7 @@ export component AppWindow inherits Window {
                 BackLink {
                     text: root.clips[root.selected].name;
                     y: (parent.height - self.height) / 2;
-                    clicked => { root.go(1); }
+                    clicked => { root.leave-editor(); }
                 }
                 Rectangle { horizontal-stretch: 1; }
             }
@@ -2354,8 +2376,8 @@ export component AppWindow inherits Window {
                                     selection-foreground-color: transparent;
                                     accessible-role: text-input;
                                     accessible-label: "Transcript";
-                                    init => { self.focus(); }
-                                    edited => { root.edit-changed(self.text); }
+                                    init => { self.focus(); root.edit-draft = self.text; }
+                                    edited => { root.edit-draft = self.text; root.edit-changed(self.text); }
                                     cursor-position-changed(p) => {
                                         root.caret = p;
                                         // Keep the cursor in view.
@@ -2410,11 +2432,11 @@ export component AppWindow inherits Window {
                 Rectangle { horizontal-stretch: 1; }
                 Btn {
                     text: "Cancel";
-                    clicked => { root.go(1); }
+                    clicked => { root.leave-editor(); }
                 }
                 Btn {
                     primary: true;
-                    text: "Save as new clip";
+                    text: "Save";
                     enabled: editor.text != root.transcript && !root.speaking;
                     clicked => { root.apply-transcript(editor.text); }
                 }
@@ -3034,11 +3056,17 @@ export component AppWindow inherits Window {
                 padding: 20px;
                 spacing: 14px;
                 Text {
-                    text: root.dialog == 1 ? "Rename clip" : "Delete " + root.clips[root.dialog-clip].name + "?";
+                    text: root.dialog == 1 ? "Rename clip" : root.dialog == 3 ? "Unsaved changes" : "Delete " + root.clips[root.dialog-clip].name + "?";
                     color: Theme.text;
                     font-size: 17px;
                     font-weight: 800;
                     overflow: elide;
+                }
+                if root.dialog == 3: Text {
+                    text: "You changed the transcript. Do you want to leave without saving?";
+                    color: Theme.muted;
+                    font-size: 13px;
+                    wrap: word-wrap;
                 }
                 if root.dialog == 2: Text {
                     text: "It goes to the Recycle Bin, where you can restore it.";
@@ -3059,9 +3087,13 @@ export component AppWindow inherits Window {
                         text: "Cancel";
                         clicked => { root.close-dialog(); }
                     }
+                    if root.dialog == 3: Btn {
+                        text: "Discard changes";
+                        clicked => { root.discard-edit(); }
+                    }
                     Btn {
                         primary: true;
-                        text: root.dialog == 1 ? "Rename" : "Delete";
+                        text: root.dialog == 1 ? "Rename" : root.dialog == 3 ? "Save" : "Delete";
                         enabled: root.dialog != 1 || root.dialog-text != "";
                         clicked => { root.confirm-dialog(); }
                     }

@@ -226,17 +226,41 @@ impl Library {
         if files.is_empty() {
             return Err(LibraryError::Missing(name.into()));
         }
-        // Tests delete for good, so they don't fill the real Recycle Bin.
-        #[cfg(not(test))]
-        trash::delete_all(&files).map_err(|e| io::Error::other(e.to_string()))?;
-        #[cfg(test)]
-        for f in files {
-            if f.is_dir() {
-                std::fs::remove_dir_all(f)?;
-            } else {
-                std::fs::remove_file(f)?;
-            }
+        recycle(&files)?;
+        Ok(())
+    }
+
+    /// Puts a copy of the clip in the Recycle Bin, as a folder "<name> (before edit)",
+    /// before its audio is overwritten with an edit.
+    pub fn keep_copy(&self, name: &str) -> Result<(), LibraryError> {
+        let files = self.files_of(name);
+        if files.is_empty() {
+            return Err(LibraryError::Missing(name.into()));
         }
+        let stamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let outer = self.dir.join(format!(".copy-{stamp}"));
+        let folder = outer.join(format!("{name} (before edit)"));
+        std::fs::create_dir_all(&folder)?;
+        let copied = (|| -> io::Result<()> {
+            for f in &files {
+                let to = folder.join(f.file_name().unwrap_or_default());
+                if f.is_dir() {
+                    std::fs::create_dir_all(&to)?;
+                    for e in std::fs::read_dir(f)? {
+                        let e = e?;
+                        std::fs::copy(e.path(), to.join(e.file_name()))?;
+                    }
+                } else {
+                    std::fs::copy(f, to)?;
+                }
+            }
+            recycle(std::slice::from_ref(&folder))
+        })();
+        let _ = std::fs::remove_dir_all(&outer);
+        copied?;
         Ok(())
     }
 
@@ -267,6 +291,22 @@ impl Library {
         }
         Ok(fixed)
     }
+}
+
+/// Sends files and folders to the Recycle Bin. Tests delete them for good instead, so
+/// they don't fill the real Recycle Bin.
+fn recycle(paths: &[PathBuf]) -> io::Result<()> {
+    #[cfg(not(test))]
+    trash::delete_all(paths).map_err(|e| io::Error::other(e.to_string()))?;
+    #[cfg(test)]
+    for f in paths {
+        if f.is_dir() {
+            std::fs::remove_dir_all(f)?;
+        } else {
+            std::fs::remove_file(f)?;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -1630,11 +1630,42 @@ fn main() -> Result<(), slint::PlatformError> {
     });
     ui.on_merge_remove({
         let (app, weak) = (app.clone(), ui.as_weak());
+        // The clip leaves the merge untouched and is no longer picked. With fewer than
+        // two left there is nothing to merge, so the list comes back.
         move |i| {
+            let ui = weak.unwrap();
             let mut a = app.borrow_mut();
-            if a.merge_names.len() > 2 && (i as usize) < a.merge_names.len() {
-                a.merge_names.remove(i as usize);
-                merge_rows(&a, &weak.unwrap());
+            let Some(name) = a.merge_names.get(i as usize).cloned() else {
+                return;
+            };
+            a.merge_names.remove(i as usize);
+            if let Some(k) = a.clips.iter().position(|c| c.name == name)
+                && let Some(p) = a.picked.get_mut(k)
+            {
+                *p = false;
+            }
+            if a.merge_names.len() < 2 {
+                a.merge_names.clear();
+                a.picked.fill(false);
+                ui.set_page(0);
+            }
+            a.show_picked(&ui);
+            merge_rows(&a, &ui);
+        }
+    });
+    ui.on_merge_play({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |i| {
+            let ui = weak.unwrap();
+            let index = {
+                let a = app.borrow();
+                let Some(name) = a.merge_names.get(i as usize) else {
+                    return;
+                };
+                a.clips.iter().position(|c| &c.name == name)
+            };
+            if let Some(k) = index {
+                ui.invoke_play_clip(k as i32);
             }
         }
     });

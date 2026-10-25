@@ -499,7 +499,10 @@ component ClipItem inherits Rectangle {
             if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
                 root.select(e.modifiers.control, e.modifiers.shift);
             }
-            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.right) {
+            // On release: the press that closes an open menu is used up by that menu,
+            // so opening on the press would only work every other time.
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                menu.close();
                 root.menu-x = min(self.mouse-x, root.width - 210px);
                 root.menu-y = self.mouse-y;
                 root.exporting = false;

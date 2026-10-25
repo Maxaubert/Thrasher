@@ -267,43 +267,6 @@ component Wave inherits Rectangle {
     }
 }
 
-// One row in a menu.
-component MenuRow inherits Rectangle {
-    in property <string> text;
-    in property <bool> danger;
-    in property <bool> more;
-    callback clicked;
-    height: 34px;
-    border-radius: 6px;
-    background: t.has-hover ? #2a1d14 : transparent;
-    accessible-role: button;
-    accessible-label: text;
-    accessible-action-default => { root.clicked(); }
-    HorizontalLayout {
-        padding-left: 10px;
-        padding-right: 8px;
-        spacing: 10px;
-        Text {
-            text: root.text;
-            color: root.danger ? Theme.danger : t.has-hover ? Theme.text : Theme.text2;
-            font-size: 13px;
-            vertical-alignment: center;
-            horizontal-stretch: 1;
-        }
-        if root.more: Icon {
-            name: "chevron";
-            tint: Theme.dim;
-            width: 13px;
-            height: 13px;
-            y: (parent.height - self.height) / 2;
-        }
-    }
-    t := TouchArea {
-        mouse-cursor: pointer;
-        clicked => { root.clicked(); }
-    }
-}
-
 // One choice in the export menu.
 component ExportItem inherits Rectangle {
     in property <string> text;
@@ -334,6 +297,96 @@ component ExportItem inherits Rectangle {
             font-family: Theme.mono;
             font-size: 11px;
             vertical-alignment: center;
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// Every export, grouped: the full project, the audio formats, and the transcript
+// files. `choose` gets 7 for the full project, 0 to 2 for FLAC, WAV and MP3, and 3 to 6
+// for SRT, VTT, word timestamps and the timed text.
+component ExportChoices inherits VerticalLayout {
+    in property <bool> subtitles;
+    in property <int> format: -1;
+    callback choose(int);
+    ExportItem { text: "Full project"; tag: "everything, in a folder"; clicked => { root.choose(7); } }
+    Rectangle {
+        height: 9px;
+        Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+    }
+    HorizontalLayout {
+        padding-left: 10px;
+        height: 24px;
+        Text {
+            text: "AUDIO";
+            color: Theme.dim;
+            font-family: Theme.mono;
+            font-size: 10px;
+            vertical-alignment: center;
+        }
+    }
+    ExportItem { text: "FLAC"; tag: "lossless"; current: root.format == 0; clicked => { root.choose(0); } }
+    ExportItem { text: "WAV"; tag: "plays anywhere"; current: root.format == 1; clicked => { root.choose(1); } }
+    ExportItem { text: "MP3"; tag: "small"; current: root.format == 2; clicked => { root.choose(2); } }
+    if root.subtitles: Rectangle {
+        height: 9px;
+        Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+    }
+    if root.subtitles: HorizontalLayout {
+        padding-left: 10px;
+        height: 24px;
+        Text {
+            text: "TRANSCRIPT";
+            color: Theme.dim;
+            font-family: Theme.mono;
+            font-size: 10px;
+            vertical-alignment: center;
+        }
+    }
+    if root.subtitles: ExportItem { text: "Text with times"; tag: ".txt"; clicked => { root.choose(6); } }
+    if root.subtitles: ExportItem { text: "Subtitles SRT"; tag: "video players"; clicked => { root.choose(3); } }
+    if root.subtitles: ExportItem { text: "Subtitles VTT"; tag: "web video"; clicked => { root.choose(4); } }
+    if root.subtitles: ExportItem { text: "Word timestamps"; tag: ".json, for tools"; clicked => { root.choose(5); } }
+}
+
+// Height of ExportChoices.
+global ExportSize {
+    out property <length> audio: 34px + 9px + 24px + 3 * 34px;
+    out property <length> transcript: 9px + 24px + 4 * 34px;
+}
+
+// One row in a menu.
+component MenuRow inherits Rectangle {
+    in property <string> text;
+    in property <bool> danger;
+    in property <bool> more;
+    callback clicked;
+    height: 34px;
+    border-radius: 6px;
+    background: t.has-hover ? #2a1d14 : transparent;
+    accessible-role: button;
+    accessible-label: text;
+    accessible-action-default => { root.clicked(); }
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 8px;
+        spacing: 10px;
+        Text {
+            text: root.text;
+            color: root.danger ? Theme.danger : t.has-hover ? Theme.text : Theme.text2;
+            font-size: 13px;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+        if root.more: Icon {
+            name: "chevron";
+            tint: Theme.dim;
+            width: 13px;
+            height: 13px;
+            y: (parent.height - self.height) / 2;
         }
     }
     t := TouchArea {
@@ -473,10 +526,10 @@ component ClipItem inherits Rectangle {
         menu.show();
     }
     menu := PopupWindow {
-        x: root.menu-x;
+        x: min(root.menu-x, root.width - self.width);
         y: root.menu-y;
-        width: 210px;
-        height: root.exporting ? (root.item.transcribed ? 5 * 34px + 5 * 34px + 9px + 10px : 5 * 34px + 10px) : 4 * 34px + 9px + 10px + (root.merge-count >= 2 ? 34px + 9px : 0);
+        width: root.exporting ? 250px : 210px;
+        height: root.exporting ? 10px + 34px + ExportSize.audio + (root.item.transcribed ? ExportSize.transcript : 0) : 4 * 34px + 9px + 10px + (root.merge-count >= 2 ? 34px + 9px : 0);
         close-policy: close-on-click-outside;
         Rectangle {
             background: Theme.raised;
@@ -505,18 +558,10 @@ component ClipItem inherits Rectangle {
             if root.exporting: VerticalLayout {
                 padding: 5px;
                 MenuRow { text: "‹  Export"; clicked => { root.exporting = false; } }
-                ExportItem { text: "Whole project"; tag: "folder"; clicked => { root.export(7); menu.close(); } }
-                ExportItem { text: "FLAC"; tag: "lossless"; clicked => { root.export(0); menu.close(); } }
-                ExportItem { text: "WAV"; tag: "plays anywhere"; clicked => { root.export(1); menu.close(); } }
-                ExportItem { text: "MP3"; tag: "small"; clicked => { root.export(2); menu.close(); } }
-                if root.item.transcribed: Rectangle {
-                    height: 9px;
-                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+                ExportChoices {
+                    subtitles: root.item.transcribed;
+                    choose(kind) => { root.export(kind); menu.close(); }
                 }
-                if root.item.transcribed: ExportItem { text: "SRT"; tag: "video players"; clicked => { root.export(3); menu.close(); } }
-                if root.item.transcribed: ExportItem { text: "VTT"; tag: "web video"; clicked => { root.export(4); menu.close(); } }
-                if root.item.transcribed: ExportItem { text: "Word timings"; tag: "json"; clicked => { root.export(5); menu.close(); } }
-                if root.item.transcribed: ExportItem { text: "Script"; tag: "txt with times"; clicked => { root.export(6); menu.close(); } }
             }
         }
     }
@@ -590,9 +635,8 @@ component Scroller inherits Rectangle {
     }
 }
 
-// The export button. A click opens a menu above it with every format; `export` gets
-// 0 to 2 for FLAC, WAV and MP3, 3 to 6 for SRT, VTT, word timings and the timestamped
-// script, 7 for the whole project (a folder with all of it).
+// The export button. A click opens a menu above it with every export (see
+// ExportChoices for what `export` gets).
 component ExportButton inherits Rectangle {
     in property <int> format;
     in property <bool> subtitles;
@@ -640,7 +684,7 @@ component ExportButton inherits Rectangle {
         x: root.width - self.width;
         y: -self.height - 6px;
         width: 250px;
-        height: root.subtitles ? 34px + 9px + 24px + 3 * 34px + 9px + 24px + 4 * 34px + 10px : 34px + 9px + 24px + 3 * 34px + 10px;
+        height: 10px + ExportSize.audio + (root.subtitles ? ExportSize.transcript : 0);
         close-policy: close-on-click-outside;
         Rectangle {
             background: Theme.raised;
@@ -652,44 +696,11 @@ component ExportButton inherits Rectangle {
             drop-shadow-color: #00000099;
             VerticalLayout {
                 padding: 5px;
-                ExportItem { text: "Whole project"; tag: "folder"; clicked => { root.choose(7); } }
-                Rectangle {
-                    height: 9px;
-                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+                ExportChoices {
+                    subtitles: root.subtitles;
+                    format: root.format;
+                    choose(kind) => { root.choose(kind); }
                 }
-                HorizontalLayout {
-                    padding-left: 10px;
-                    height: 24px;
-                    Text {
-                        text: "AUDIO";
-                        color: Theme.dim;
-                        font-family: Theme.mono;
-                        font-size: 10px;
-                        vertical-alignment: center;
-                    }
-                }
-                ExportItem { text: "FLAC"; tag: "lossless"; current: root.format == 0; clicked => { root.choose(0); } }
-                ExportItem { text: "WAV"; tag: "plays anywhere"; current: root.format == 1; clicked => { root.choose(1); } }
-                ExportItem { text: "MP3"; tag: "small"; current: root.format == 2; clicked => { root.choose(2); } }
-                if root.subtitles: Rectangle {
-                    height: 9px;
-                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
-                }
-                if root.subtitles: HorizontalLayout {
-                    padding-left: 10px;
-                    height: 24px;
-                    Text {
-                        text: "SUBTITLES";
-                        color: Theme.dim;
-                        font-family: Theme.mono;
-                        font-size: 10px;
-                        vertical-alignment: center;
-                    }
-                }
-                if root.subtitles: ExportItem { text: "SRT"; tag: "video players"; clicked => { root.choose(3); } }
-                if root.subtitles: ExportItem { text: "VTT"; tag: "web video"; clicked => { root.choose(4); } }
-                if root.subtitles: ExportItem { text: "Word timings"; tag: "json"; clicked => { root.choose(5); } }
-                if root.subtitles: ExportItem { text: "Script"; tag: "txt with times"; clicked => { root.choose(6); } }
             }
         }
     }
@@ -1015,6 +1026,10 @@ component TextField inherits Rectangle {
     in property <bool> enabled: true;
     callback edited(string);
     callback accepted(string);
+    public function grab() {
+        input.focus();
+        input.select-all();
+    }
     height: 36px;
     border-radius: 8px;
     background: Theme.bg;
@@ -1282,11 +1297,14 @@ export component AppWindow inherits Window {
     in property <string> edit-length;
     in property <string> edit-was;
     in-out property <bool> renaming;
+    // A question in front of the page: 1 rename a clip, 2 confirm deleting it; which
+    // clip, and the name being typed.
+    in-out property <int> dialog;
+    in-out property <int> dialog-clip;
+    in-out property <string> dialog-text;
     // Where the transcript editor's cursor is, and how tall it is.
     in-out property <Point> caret;
     property <length> caret-h: 20px;
-    // Rename was picked from a clip's menu; it starts after the selection changes.
-    in-out property <bool> rename-pending;
 
     in property <[string]> mic-devices;
     in-out property <int> mic-index;
@@ -1428,6 +1446,33 @@ export component AppWindow inherits Window {
         list-y = clamp(list-y, min(0px, list-height - clips.length * 54px), 0px);
     }
 
+    function ask-rename(i: int) {
+        root.dialog-clip = i;
+        root.dialog-text = root.clips[i].name;
+        root.dialog = 1;
+    }
+    function ask-delete(i: int) {
+        root.dialog-clip = i;
+        root.dialog = 2;
+        keys.focus();
+    }
+    function close-dialog() {
+        root.dialog = 0;
+        keys.focus();
+    }
+    function confirm-dialog() {
+        let kind = root.dialog;
+        root.dialog = 0;
+        root.selected = root.dialog-clip;
+        if (kind == 1) {
+            root.rename-selected(root.dialog-text);
+        } else if (kind == 2) {
+            root.delete-selected();
+            if (root.page != 0) { root.go(0); }
+        }
+        keys.focus();
+    }
+
     function go(p: int) {
         root.renaming = false;
         root.page = p;
@@ -1436,6 +1481,11 @@ export component AppWindow inherits Window {
 
     keys := FocusScope {
         key-pressed(event) => {
+            if (root.dialog != 0) {
+                if (event.text == Key.Escape) { root.close-dialog(); }
+                if (event.text == Key.Return && root.dialog == 2) { root.confirm-dialog(); }
+                return accept;
+            }
             if (renaming || page == 2) { return reject; }
             if (event.text == Key.Escape) {
                 if (page != 0) { root.go(page == 2 ? 1 : page == 4 ? 3 : 0); } else { root.stop-playback(); root.pick(-1, false, false); }
@@ -1460,8 +1510,9 @@ export component AppWindow inherits Window {
             }
             if (event.text == Key.Return) { if (selected >= 0) { root.play-clip(selected); } return accept; }
             if (event.text == Key.RightArrow && selected >= 0) { root.open-clip(selected); root.go(1); return accept; }
-            if (event.text == Key.Delete) { root.delete-selected(); return accept; }
-            if (event.text == Key.Backspace) { root.delete-last(); return accept; }
+            if (event.text == Key.Delete) { if (selected >= 0) { root.ask-delete(selected); } return accept; }
+            if (event.text == Key.Backspace) { if (clips.length > 0) { root.ask-delete(clips.length - 1); } return accept; }
+            if (event.text == Key.F2) { if (selected >= 0) { root.ask-rename(selected); } return accept; }
             if (event.text == Key.UpArrow) { root.move-selection(-1); return accept; }
             if (event.text == Key.DownArrow) { root.move-selection(1); return accept; }
             reject
@@ -1739,13 +1790,9 @@ export component AppWindow inherits Window {
                         select(ctrl, shift) => { root.pick(i, ctrl, shift); keys.focus(); }
                         merge => { root.start-merge(); root.go(5); }
                         open => { root.open-clip(i); root.go(1); }
-                        rename => {
-                            // A new selection ends renaming, so it starts once that is done.
-                            if (root.selected == i) { root.go(1); root.renaming = true; }
-                            else { root.rename-pending = true; root.selected = i; root.go(1); }
-                        }
+                        rename => { root.ask-rename(i); }
                         export(kind) => { root.selected = i; root.export-as(kind); keys.focus(); }
-                        delete => { root.selected = i; root.delete-selected(); keys.focus(); }
+                        delete => { root.ask-delete(i); }
                     }
                 }
                 }
@@ -1813,7 +1860,7 @@ export component AppWindow inherits Window {
                             label: "Delete clip";
                             icon-size: 15px;
                             enabled: !root.recording;
-                            clicked => { root.delete-selected(); root.go(0); }
+                            clicked => { root.ask-delete(root.selected); }
                         }
                     }
                     Rectangle { horizontal-stretch: 1; }
@@ -2965,6 +3012,63 @@ export component AppWindow inherits Window {
     }
 
     init => { keys.focus(); }
+
+    if root.dialog != 0 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length: Rectangle {
+        background: #000000a6;
+        // A click outside the box cancels.
+        TouchArea { clicked => { root.close-dialog(); } }
+        Rectangle {
+            width: min(parent.width - 48px, 360px);
+            height: box.preferred-height;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2 - 30px;
+            background: Theme.card;
+            border-radius: 14px;
+            border-width: 1px;
+            border-color: Theme.edge;
+            drop-shadow-blur: 30px;
+            drop-shadow-offset-y: 10px;
+            drop-shadow-color: #000000aa;
+            TouchArea { }
+            box := VerticalLayout {
+                padding: 20px;
+                spacing: 14px;
+                Text {
+                    text: root.dialog == 1 ? "Rename clip" : "Delete " + root.clips[root.dialog-clip].name + "?";
+                    color: Theme.text;
+                    font-size: 17px;
+                    font-weight: 800;
+                    overflow: elide;
+                }
+                if root.dialog == 2: Text {
+                    text: "It goes to the Recycle Bin, where you can restore it.";
+                    color: Theme.muted;
+                    font-size: 13px;
+                    wrap: word-wrap;
+                }
+                if root.dialog == 1: TextField {
+                    label: "New name";
+                    text <=> root.dialog-text;
+                    init => { self.grab(); }
+                    accepted => { root.confirm-dialog(); }
+                }
+                HorizontalLayout {
+                    alignment: end;
+                    spacing: 8px;
+                    Btn {
+                        text: "Cancel";
+                        clicked => { root.close-dialog(); }
+                    }
+                    Btn {
+                        primary: true;
+                        text: root.dialog == 1 ? "Rename" : "Delete";
+                        enabled: root.dialog != 1 || root.dialog-text != "";
+                        clicked => { root.confirm-dialog(); }
+                    }
+                }
+            }
+        }
+    }
 
     // The window has no frame, so its edges and corners resize it here.
     if !compact: ResizeEdge { direction: 0; x: 12px; y: 0; width: parent.width - 24px; height: 5px; mouse-cursor: ns-resize; resize(d) => { root.resize-window(d); } }

@@ -1824,7 +1824,6 @@ export component AppWindow inherits Window {
     in property <float> system-level;
 
     in property <[ClipRow]> clips;
-    in property <string> clips-summary;
     in-out property <int> selected: -1;
     // Clip loaded in the player (playing or paused), or -1.
     in property <int> active-clip: -1;
@@ -2276,12 +2275,6 @@ export component AppWindow inherits Window {
                         enabled: !root.recording;
                         clicked => { root.import-files(); }
                     }
-                }
-                if root.picked-count < 2: Text {
-                    text: root.clips-summary;
-                    color: Theme.dim;
-                    font-size: 13px;
-                    vertical-alignment: center;
                 }
                 // Several clips picked: offer to merge them.
                 if root.picked-count >= 2: Text {

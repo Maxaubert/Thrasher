@@ -348,7 +348,6 @@ fn edited_secs(library: &Library, c: &Clip, sc: &Sidecar) -> f64 {
 impl App {
     fn refresh_clips(&mut self, ui: &AppWindow) {
         self.clips = self.library.list().unwrap_or_default();
-        let mut total = 0.0;
         let rows: Vec<ClipRow> = self
             .clips
             .iter()
@@ -357,7 +356,6 @@ impl App {
                 let secs = sc
                     .as_ref()
                     .map_or(c.duration, |sc| edited_secs(&self.library, c, sc));
-                total += secs;
                 let mut meta = when(c.created);
                 if sc.as_ref().is_some_and(|s| !s.words.is_empty()) {
                     meta.push_str(" · transcribed");
@@ -379,20 +377,6 @@ impl App {
         self.picked = vec![false; self.clips.len()];
         self.show_picked(ui);
         let n = self.clips.len();
-        ui.set_clips_summary(
-            match n {
-                0 => "No clips yet".to_string(),
-                _ if total < 60.0 => {
-                    format!("{n} clip{} · {total:.0} s", if n == 1 { "" } else { "s" })
-                }
-                _ => format!(
-                    "{n} clip{} · {:.0} min",
-                    if n == 1 { "" } else { "s" },
-                    total / 60.0
-                ),
-            }
-            .into(),
-        );
         let sel = ui.get_selected();
         if sel >= n as i32 {
             ui.set_selected(n as i32 - 1);

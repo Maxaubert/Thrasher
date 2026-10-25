@@ -857,39 +857,41 @@ component OrderList inherits Rectangle {
     property <length> drag-dy;
     property <int> target: root.dragging < 0 ? -1 : clamp(round((root.dragging * root.row-h + root.drag-dy) / root.row-h), 0, root.rows.length - 1);
     height: root.rows.length * root.row-h;
-    for r[i] in root.rows: Rectangle {
-        // The dragged row follows the mouse; the others make room where it would land.
-        y: i * root.row-h + (i == root.dragging ? root.drag-dy
-            : root.dragging >= 0 && i > root.dragging && i <= root.target ? -root.row-h
-            : root.dragging >= 0 && i < root.dragging && i >= root.target ? root.row-h
-            : 0);
-        // The other rows slide out of the way while one is dragged over them.
-        animate y { duration: 150ms; easing: ease-out; }
-        height: root.row-h;
-        z: i == root.dragging ? 1 : 0;
-        border-radius: 10px;
-        background: i == root.dragging ? Theme.raised : transparent;
-        drag := TouchArea {
-            enabled: root.enabled;
-            mouse-cursor: root.dragging == i ? grabbing : grab;
-            pointer-event(e) => {
-                if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
-                    root.dragging = i;
-                    root.drag-dy = 0;
-                }
-                if (e.kind == PointerEventKind.up && root.dragging == i) {
-                    let to = root.target;
-                    root.dragging = -1;
-                    root.drag-dy = 0;
-                    if (to != i) { root.moved(i, to); }
-                }
+    // One touch area for the whole list, under the rows: the drag is measured
+    // against the list, which stays put, not against a row that moves. The row's
+    // buttons sit on top and take their own clicks.
+    TouchArea {
+        enabled: root.enabled && root.rows.length > 1;
+        mouse-cursor: root.dragging >= 0 ? grabbing : grab;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                root.drag-dy = 0;
+                root.dragging = clamp(floor(self.mouse-y / root.row-h), 0, root.rows.length - 1);
             }
-            moved => {
-                if (self.pressed && root.dragging == i) {
-                    root.drag-dy = clamp(root.drag-dy + self.mouse-y - self.pressed-y, -i * root.row-h, (root.rows.length - 1 - i) * root.row-h);
-                }
+            if (e.kind == PointerEventKind.up && root.dragging >= 0) {
+                let from = root.dragging;
+                let to = root.target;
+                root.dragging = -1;
+                root.drag-dy = 0;
+                if (to != from) { root.moved(from, to); }
             }
         }
+        moved => {
+            if (self.pressed && root.dragging >= 0) {
+                root.drag-dy = clamp(self.mouse-y - self.pressed-y, -root.dragging * root.row-h, (root.rows.length - 1 - root.dragging) * root.row-h);
+            }
+        }
+    }
+    for r[i] in root.rows: Rectangle {
+        // The others make room where the dragged row would land; the dragged one is
+        // drawn on top as a floating copy, so its own slot is left empty.
+        y: i * root.row-h + (root.dragging >= 0 && i > root.dragging && i <= root.target ? -root.row-h
+            : root.dragging >= 0 && i < root.dragging && i >= root.target ? root.row-h
+            : 0);
+        // Only while dragging: after the drop the rows take their new places at once.
+        animate y { duration: root.dragging >= 0 ? 150ms : 0ms; easing: ease-out; }
+        height: root.row-h;
+        opacity: i == root.dragging ? 0 : 1;
         HorizontalLayout {
             padding-left: 10px;
             padding-right: 8px;
@@ -903,8 +905,7 @@ component OrderList inherits Rectangle {
             }
             Text {
                 // The place the row has right now, also mid-drag.
-                text: (i == root.dragging ? root.target
-                    : root.dragging >= 0 && i > root.dragging && i <= root.target ? i - 1
+                text: (root.dragging >= 0 && i > root.dragging && i <= root.target ? i - 1
                     : root.dragging >= 0 && i < root.dragging && i >= root.target ? i + 1
                     : i) + 1;
                 color: Theme.accent;
@@ -965,6 +966,44 @@ component OrderList inherits Rectangle {
             width: parent.width - 20px;
             height: 1px;
             background: #221912;
+        }
+    }
+    if root.dragging >= 0 && root.dragging < root.rows.length: Rectangle {
+        y: root.dragging * root.row-h + root.drag-dy;
+        height: root.row-h;
+        border-radius: 10px;
+        background: Theme.raised;
+        border-width: 1px;
+        border-color: Theme.edge;
+        drop-shadow-blur: 16px;
+        drop-shadow-offset-y: 6px;
+        drop-shadow-color: #00000099;
+        HorizontalLayout {
+            padding-left: 10px;
+            padding-right: 8px;
+            spacing: 10px;
+            Icon {
+                name: "grip";
+                tint: Theme.text2;
+                width: 14px;
+                height: 14px;
+                y: (parent.height - self.height) / 2;
+            }
+            Text {
+                text: root.target + 1;
+                color: Theme.accent;
+                font-family: Theme.mono;
+                font-size: 12px;
+                vertical-alignment: center;
+                width: 16px;
+            }
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                spacing: 1px;
+                Text { text: root.rows[root.dragging].name; color: Theme.text; font-size: 14px; overflow: elide; }
+                if root.rows[root.dragging].note != "": Text { text: root.rows[root.dragging].note; color: Theme.dim; font-size: 11px; overflow: elide; }
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
-//! Export a clip to WAV or FLAC at 16 or 24 bit. Exports go into an `export` folder
-//! inside the clip folder, so they never show up as clips themselves.
+//! Export a clip to WAV or FLAC at 16 or 24 bit, or its subtitles. The app asks where
+//! to save; without a path, exports go into an `export` folder inside the clip folder,
+//! so they never show up as clips themselves.
 
 use crate::library::Library;
 use crate::player::Buffer;
@@ -44,6 +45,25 @@ impl Default for ExportOptions {
     }
 }
 
+/// The subtitle files a transcribed clip can be exported as.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Subtitles {
+    Srt,
+    Vtt,
+    /// Every word with its start and end time, as JSON.
+    Words,
+}
+
+impl Subtitles {
+    pub fn extension(self) -> &'static str {
+        match self {
+            Subtitles::Srt => "srt",
+            Subtitles::Vtt => "vtt",
+            Subtitles::Words => "words.json",
+        }
+    }
+}
+
 pub fn export_dir(library: &Library) -> PathBuf {
     library.dir().join("export")
 }
@@ -51,6 +71,20 @@ pub fn export_dir(library: &Library) -> PathBuf {
 /// Exports the clip (mic and system audio mixed, as heard in the player), with the
 /// edits from the sidecar (cut words, shortened pauses) applied.
 pub fn export_clip(library: &Library, name: &str, options: ExportOptions) -> io::Result<PathBuf> {
+    let dir = export_dir(library);
+    std::fs::create_dir_all(&dir)?;
+    let path = dir.join(format!("{name}.{}", options.format.extension()));
+    export_clip_to(library, name, options, &path)?;
+    Ok(path)
+}
+
+/// Like [`export_clip`], into a file of the caller's choosing.
+pub fn export_clip_to(
+    library: &Library,
+    name: &str,
+    options: ExportOptions,
+    path: &Path,
+) -> io::Result<()> {
     let filter: Option<crate::player::MicFilter> = if options.clean_voice {
         Some(&crate::cleanup::clean_voice)
     } else {
@@ -61,11 +95,7 @@ pub fn export_clip(library: &Library, name: &str, options: ExportOptions) -> io:
         let voices = crate::voice::load_voices(library, name, &sc);
         buffer = crate::edit::plan(&sc, &voices, &buffer).render(&buffer);
     }
-    let dir = export_dir(library);
-    std::fs::create_dir_all(&dir)?;
-    let path = dir.join(format!("{name}.{}", options.format.extension()));
-    export_buffer(&buffer, &path, options)?;
-    Ok(path)
+    export_buffer(&buffer, path, options)
 }
 
 pub fn export_buffer(buffer: &Buffer, path: &Path, options: ExportOptions) -> io::Result<()> {
@@ -105,11 +135,41 @@ pub fn export_buffer(buffer: &Buffer, path: &Path, options: ExportOptions) -> io
 }
 
 /// Writes `.srt`, `.vtt` and word-level `.words.json` next to the audio exports, when
-/// the clip has been transcribed. Returns the files written. Timings are those of the
-/// original recording, so they match the audio only when no pauses were shortened.
+/// the clip has been transcribed. Returns the files written.
 pub fn export_subtitles(library: &Library, name: &str) -> io::Result<Vec<PathBuf>> {
+    let mut out = Vec::new();
+    for kind in [Subtitles::Srt, Subtitles::Vtt, Subtitles::Words] {
+        let Some(text) = subtitles(library, name, kind)? else {
+            return Ok(Vec::new());
+        };
+        let dir = export_dir(library);
+        std::fs::create_dir_all(&dir)?;
+        let path = dir.join(format!("{name}.{}", kind.extension()));
+        std::fs::write(&path, text)?;
+        out.push(path);
+    }
+    Ok(out)
+}
+
+/// Writes one kind of subtitles to `path`. Returns false when the clip has no
+/// transcript yet.
+pub fn export_subtitles_to(
+    library: &Library,
+    name: &str,
+    kind: Subtitles,
+    path: &Path,
+) -> io::Result<bool> {
+    let Some(text) = subtitles(library, name, kind)? else {
+        return Ok(false);
+    };
+    std::fs::write(path, text)?;
+    Ok(true)
+}
+
+/// The subtitle text of a transcribed clip, or `None` without a transcript.
+fn subtitles(library: &Library, name: &str, kind: Subtitles) -> io::Result<Option<String>> {
     let Ok(sc) = crate::sidecar::Sidecar::load(&library.sidecar_path(name)) else {
-        return Ok(Vec::new());
+        return Ok(None);
     };
     // Subtitles follow the edited audio: cut words are left out and times shift.
     let audio = crate::player::load_clip(library, name)?;
@@ -117,36 +177,19 @@ pub fn export_subtitles(library: &Library, name: &str) -> io::Result<Vec<PathBuf
     let timeline = crate::edit::plan(&sc, &voices, &audio);
     let words = crate::edit::edited_words(&sc, &timeline);
     if words.is_empty() {
-        return Ok(Vec::new());
+        return Ok(None);
     }
-    let dir = export_dir(library);
-    std::fs::create_dir_all(&dir)?;
-    let words_json = serde_json::json!({
-        "file": sc.file,
-        "duration": timeline.to_edited(sc.duration),
-        "language": sc.language,
-        "words": words,
-    });
-    let files = [
-        (
-            dir.join(format!("{name}.srt")),
-            crate::subtitles::srt(&words),
-        ),
-        (
-            dir.join(format!("{name}.vtt")),
-            crate::subtitles::vtt(&words),
-        ),
-        (
-            dir.join(format!("{name}.words.json")),
-            serde_json::to_string_pretty(&words_json).map_err(io::Error::other)?,
-        ),
-    ];
-    let mut out = Vec::new();
-    for (path, text) in files {
-        std::fs::write(&path, text)?;
-        out.push(path);
-    }
-    Ok(out)
+    Ok(Some(match kind {
+        Subtitles::Srt => crate::subtitles::srt(&words),
+        Subtitles::Vtt => crate::subtitles::vtt(&words),
+        Subtitles::Words => serde_json::to_string_pretty(&serde_json::json!({
+            "file": sc.file,
+            "duration": timeline.to_edited(sc.duration),
+            "language": sc.language,
+            "words": words,
+        }))
+        .map_err(io::Error::other)?,
+    }))
 }
 
 /// Converts float samples to integers with triangular dither, which hides the
@@ -330,6 +373,22 @@ mod tests {
         assert_eq!(r.len(), 48_000);
         // Exports must not appear as clips.
         assert_eq!(lib.names().unwrap(), ["c"]);
+    }
+
+    #[test]
+    fn export_to_a_chosen_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let lib = Library::open(dir.path()).unwrap();
+        clip(&lib);
+        let out = tempfile::tempdir().unwrap();
+        let p = out.path().join("mine.flac");
+        export_clip_to(&lib, "c", ExportOptions::default(), &p).unwrap();
+        assert_eq!(&std::fs::read(&p).unwrap()[..4], b"fLaC");
+        assert!(!export_dir(&lib).exists());
+        // No transcript, so no subtitles and no file.
+        let srt = out.path().join("mine.srt");
+        assert!(!export_subtitles_to(&lib, "c", Subtitles::Srt, &srt).unwrap());
+        assert!(!srt.exists());
     }
 
     #[test]

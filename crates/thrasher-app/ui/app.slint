@@ -120,6 +120,7 @@ component Icon inherits Path {
         : name == "back" ? "M 15 6 L 9 12 L 15 18"
         : name == "chevron" ? "M 9 6 L 15 12 L 9 18"
         : name == "down" ? "M 6 9 L 12 15 L 18 9"
+        : name == "up" ? "M 6 15 L 12 9 L 18 15"
         : name == "pencil" ? "M 4 20 L 8 20 L 19 9 L 15 5 L 4 16 Z"
         : name == "trash" ? "M 4 7 L 20 7 M 10 11 L 10 17 M 14 11 L 14 17 M 6 7 L 7 20 L 17 20 L 18 7 M 9 7 L 9 4 L 15 4 L 15 7"
         : name == "rewind" ? "M 3 12 A 9 9 0 1 0 12 3 A 9.75 9.75 0 0 0 5.26 5.74 L 3 8 M 3 3 L 3 8 L 8 8"
@@ -416,6 +417,184 @@ component Scroller inherits Rectangle {
                 if (self.pressed) {
                     fl.content-y = clamp(-(parent.y + self.mouse-y - self.pressed-y) / (fl.height - root.thumb-h) * root.range, -root.range, 0);
                 }
+            }
+        }
+    }
+}
+
+// One choice in the export menu.
+component ExportItem inherits Rectangle {
+    in property <string> text;
+    in property <string> tag;
+    in property <bool> current;
+    callback clicked;
+    height: 34px;
+    border-radius: 6px;
+    background: t.has-hover ? #2a1d14 : transparent;
+    accessible-role: button;
+    accessible-label: "Export " + text;
+    accessible-action-default => { root.clicked(); }
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 10px;
+        Text {
+            text: root.text;
+            color: t.has-hover || root.current ? Theme.text : Theme.text2;
+            font-size: 13px;
+            font-weight: root.current ? 600 : 400;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+        Text {
+            text: root.tag;
+            color: Theme.dim;
+            font-family: Theme.mono;
+            font-size: 11px;
+            vertical-alignment: center;
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The export button. The big part saves in the default format; hovering the button,
+// or clicking its arrow, opens a menu above it with every format. `export` gets -1
+// for the default, 0 to 2 for FLAC, WAV and MP3, 3 to 5 for SRT, VTT and word timings.
+component ExportButton inherits Rectangle {
+    in property <int> format;
+    in property <bool> subtitles;
+    callback export(int);
+    property <string> format-name: format == 1 ? "WAV" : format == 2 ? "MP3" : "FLAC";
+    property <bool> hovering: main.has-hover || arrow.has-hover || panel.has-hover;
+    // Opened from the arrow (or by keyboard and screen readers) rather than by hover.
+    property <bool> pinned;
+    // Closed after a choice, until the mouse leaves.
+    property <bool> dismissed;
+    property <bool> open: !dismissed && (pinned || hovering);
+    changed hovering => {
+        if (!hovering) {
+            pinned = false;
+            dismissed = false;
+        }
+    }
+    function choose(kind: int) {
+        pinned = false;
+        dismissed = true;
+        root.export(kind);
+    }
+    height: 36px;
+    width: label.preferred-width + 26px + 34px;
+    border-radius: 9px;
+    background: Theme.accent;
+    HorizontalLayout {
+        Rectangle {
+            border-radius: 9px;
+            background: main.has-hover ? Theme.accent-hover : transparent;
+            accessible-role: button;
+            accessible-label: "Export " + root.format-name;
+            accessible-action-default => { root.choose(-1); }
+            label := Text {
+                text: "Export " + root.format-name;
+                color: Theme.on-accent;
+                font-size: 13px;
+                font-weight: 800;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            main := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.choose(-1); }
+            }
+        }
+        Rectangle {
+            width: 1px;
+            background: #16090340;
+        }
+        Rectangle {
+            width: 33px;
+            border-radius: 9px;
+            background: arrow.has-hover || root.open ? Theme.accent-hover : transparent;
+            accessible-role: button;
+            accessible-label: "Export options";
+            accessible-expandable: true;
+            accessible-expanded: root.open;
+            accessible-action-default => { root.pinned = !root.open; root.dismissed = false; }
+            accessible-action-expand => { root.pinned = true; root.dismissed = false; }
+            Icon {
+                name: root.open ? "down" : "up";
+                tint: Theme.on-accent;
+                width: 13px;
+                height: 13px;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                stroke-width: 2.5px;
+            }
+            arrow := TouchArea {
+                mouse-cursor: pointer;
+                clicked => {
+                    root.pinned = !root.open;
+                    root.dismissed = false;
+                }
+            }
+        }
+    }
+    // Drawn above the button. The touch area reaches down to the button, so the mouse
+    // can travel from one to the other without the menu closing.
+    // It has no size while closed, so it cannot be hovered then.
+    panel := TouchArea {
+        x: 0;
+        y: -self.height;
+        width: root.open ? 250px : 0;
+        height: root.open ? menu.preferred-height + 8px : 0;
+        menu := Rectangle {
+            visible: root.open;
+            width: 250px;
+            y: 0;
+            height: self.preferred-height;
+            background: Theme.raised;
+            border-radius: 10px;
+            border-width: 1px;
+            border-color: Theme.edge;
+            drop-shadow-blur: 20px;
+            drop-shadow-offset-y: 6px;
+            drop-shadow-color: #00000099;
+            VerticalLayout {
+                padding: 5px;
+                HorizontalLayout {
+                    padding-left: 10px;
+                    height: 24px;
+                    Text {
+                        text: "AUDIO";
+                        color: Theme.dim;
+                        font-family: Theme.mono;
+                        font-size: 10px;
+                        vertical-alignment: center;
+                    }
+                }
+                ExportItem { text: "FLAC"; tag: "lossless"; current: root.format == 0; clicked => { root.choose(0); } }
+                ExportItem { text: "WAV"; tag: "plays anywhere"; current: root.format == 1; clicked => { root.choose(1); } }
+                ExportItem { text: "MP3"; tag: "small"; current: root.format == 2; clicked => { root.choose(2); } }
+                if root.subtitles: Rectangle {
+                    height: 9px;
+                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+                }
+                if root.subtitles: HorizontalLayout {
+                    padding-left: 10px;
+                    height: 24px;
+                    Text {
+                        text: "SUBTITLES";
+                        color: Theme.dim;
+                        font-family: Theme.mono;
+                        font-size: 10px;
+                        vertical-alignment: center;
+                    }
+                }
+                if root.subtitles: ExportItem { text: "SRT"; tag: "video players"; clicked => { root.choose(3); } }
+                if root.subtitles: ExportItem { text: "VTT"; tag: "web video"; clicked => { root.choose(4); } }
+                if root.subtitles: ExportItem { text: "Word timings"; tag: "json"; clicked => { root.choose(5); } }
             }
         }
     }
@@ -939,8 +1118,8 @@ export component AppWindow inherits Window {
     callback compact-changed(bool);
     callback open-folder();
     callback change-folder();
-    callback export-selected();
-    callback export-subtitles();
+    // -1 is the default audio format; see ExportButton for the others.
+    callback export-as(int);
     callback transcribe-selected();
     callback selection-changed(int);
     callback edit-changed(string);
@@ -1687,14 +1866,10 @@ export component AppWindow inherits Window {
                 padding-top: 12px;
                 padding-bottom: 14px;
                 spacing: 6px;
-                Btn {
-                    primary: true;
-                    text: "Export audio (" + (root.export-format == 1 ? "WAV" : root.export-format == 2 ? "MP3" : "FLAC") + ")";
-                    clicked => { root.export-selected(); keys.focus(); }
-                }
-                if root.transcript != "": Btn {
-                    text: "Export subtitles (SRT, VTT)";
-                    clicked => { root.export-subtitles(); keys.focus(); }
+                ExportButton {
+                    format: root.export-format;
+                    subtitles: root.transcript != "";
+                    export(kind) => { root.export-as(kind); keys.focus(); }
                 }
                 Rectangle { horizontal-stretch: 1; }
             }

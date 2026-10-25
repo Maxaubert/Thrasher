@@ -21,6 +21,8 @@ pub struct Settings {
     pub language: String,
     /// Export format: "flac", "wav" or "mp3".
     pub export_format: String,
+    /// The folder the last export was saved in; the save dialog starts there.
+    pub export_dir: Option<PathBuf>,
     /// Clean up the voice (noise suppression, automatic gain) when exporting.
     pub clean_voice: bool,
     /// The window's close button hides Thrasher to the tray instead of quitting.
@@ -45,6 +47,7 @@ impl Default for Settings {
             model: "nb-whisper-large".into(),
             language: "no".into(),
             export_format: "flac".into(),
+            export_dir: None,
             clean_voice: false,
             close_to_tray: true,
             max_recording_minutes: 120,

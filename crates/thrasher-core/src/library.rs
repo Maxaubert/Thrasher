@@ -1,4 +1,5 @@
-//! The clip folder: listing, naming, rename, delete with undo and crash recovery.
+//! The clip folder: listing, naming, rename, delete to the Recycle Bin and crash
+//! recovery.
 //!
 //! A clip named `clip_007` is made of:
 //! - `clip_007.wav`: the mic track (or the only track)
@@ -12,7 +13,6 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use thiserror::Error;
 
-const TRASH: &str = ".trash";
 /// Files and folders that belong to a clip besides its mic track. `.voice` holds the
 /// voice sample and generated words (see `voice`).
 const EXTRA_SUFFIXES: [&str; 4] = [".system.wav", ".mix.wav", ".json", ".voice"];
@@ -36,13 +36,6 @@ pub struct Clip {
     pub duration: f64,
     pub has_system: bool,
     pub created: SystemTime,
-}
-
-/// A deleted clip that can be put back.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Deleted {
-    pub name: String,
-    trash_dir: PathBuf,
 }
 
 #[derive(Clone, Debug)]
@@ -227,38 +220,23 @@ impl Library {
         Ok(())
     }
 
-    /// Moves the clip's files into the hidden trash folder.
-    pub fn delete(&self, name: &str) -> Result<Deleted, LibraryError> {
+    /// Moves the clip's files to the Windows Recycle Bin, where it can be restored.
+    pub fn delete(&self, name: &str) -> Result<(), LibraryError> {
         let files = self.files_of(name);
         if files.is_empty() {
             return Err(LibraryError::Missing(name.into()));
         }
-        let stamp = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0);
-        let trash_dir = self.dir.join(TRASH).join(format!("{stamp}"));
-        std::fs::create_dir_all(&trash_dir)?;
-        hide(&self.dir.join(TRASH));
+        // Tests delete for good, so they don't fill the real Recycle Bin.
+        #[cfg(not(test))]
+        trash::delete_all(&files).map_err(|e| io::Error::other(e.to_string()))?;
+        #[cfg(test)]
         for f in files {
-            std::fs::rename(&f, trash_dir.join(f.file_name().unwrap()))?;
+            if f.is_dir() {
+                std::fs::remove_dir_all(f)?;
+            } else {
+                std::fs::remove_file(f)?;
+            }
         }
-        Ok(Deleted {
-            name: name.into(),
-            trash_dir,
-        })
-    }
-
-    /// Puts a deleted clip back. Fails if a clip with the same name was made since.
-    pub fn undo_delete(&self, d: &Deleted) -> Result<(), LibraryError> {
-        if self.exists(&d.name) {
-            return Err(LibraryError::Exists(d.name.clone()));
-        }
-        for entry in std::fs::read_dir(&d.trash_dir)? {
-            let entry = entry?;
-            std::fs::rename(entry.path(), self.dir.join(entry.file_name()))?;
-        }
-        std::fs::remove_dir(&d.trash_dir)?;
         Ok(())
     }
 
@@ -290,23 +268,6 @@ impl Library {
         Ok(fixed)
     }
 }
-
-#[cfg(windows)]
-fn hide(path: &Path) {
-    use std::os::windows::ffi::OsStrExt;
-    let wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
-    // FILE_ATTRIBUTE_HIDDEN
-    unsafe extern "system" {
-        fn SetFileAttributesW(name: *const u16, attrs: u32) -> i32;
-    }
-    // SAFETY: `wide` is a NUL-terminated UTF-16 path that lives for the call.
-    unsafe {
-        SetFileAttributesW(wide.as_ptr(), 0x2);
-    }
-}
-
-#[cfg(not(windows))]
-fn hide(_: &Path) {}
 
 #[cfg(test)]
 mod tests {
@@ -370,11 +331,9 @@ mod tests {
             Err(LibraryError::BadName(_))
         ));
 
-        let d = lib.delete("intro").unwrap();
+        lib.delete("intro").unwrap();
         assert_eq!(lib.names().unwrap(), ["clip_001"]);
-        lib.undo_delete(&d).unwrap();
-        assert!(lib.exists("intro"));
-        assert!(lib.sidecar_path("intro").exists());
+        assert!(!lib.sidecar_path("intro").exists());
     }
 
     #[test]

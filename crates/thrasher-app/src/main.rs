@@ -19,7 +19,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use thrasher_core::capture::{LoopbackMode, LoopbackSource, MicSource, Source};
 use thrasher_core::edit::{self, Edl};
-use thrasher_core::library::{Clip, Deleted, Library};
+use thrasher_core::library::{Clip, Library};
 use thrasher_core::meter::meter_position;
 use thrasher_core::naming::Template;
 use thrasher_core::player::{Buffer, Player, load_clip};
@@ -145,7 +145,6 @@ struct App {
     clips: Vec<Clip>,
     recording: Option<Recording>,
     player: Player,
-    undo: Vec<Deleted>,
     /// Start time of each item (word or pause) in the shown transcript.
     transcript_starts: Vec<f64>,
     /// The clip in the player, playing or paused.
@@ -323,6 +322,7 @@ impl App {
                     duration: fmt_time(secs).into(),
                     meta: meta.into(),
                     has_system: c.has_system,
+                    transcribed: sc.as_ref().is_some_and(|s| !s.words.is_empty()),
                     wave: self.row_wave(c),
                 }
             })
@@ -347,7 +347,6 @@ impl App {
         if sel >= n as i32 {
             ui.set_selected(n as i32 - 1);
         }
-        ui.set_can_undo(!self.undo.is_empty());
         self.sync_active(ui);
         let (library, clips) = (self.library.clone(), self.clips.clone());
         self.waves.request(ui, &library, &clips);
@@ -1006,7 +1005,6 @@ fn main() -> Result<(), slint::PlatformError> {
         clips: Vec::new(),
         recording: None,
         player: Player::new(),
-        undo: Vec::new(),
         transcript_starts: Vec::new(),
         active: None,
         running: false,
@@ -1302,9 +1300,8 @@ fn main() -> Result<(), slint::PlatformError> {
                 a.stop(&ui);
             }
             match a.library.delete(&name) {
-                Ok(d) => {
-                    a.undo.push(d);
-                    ui.set_status(format!("Deleted {name}. Ctrl+Z to undo").into());
+                Ok(()) => {
+                    ui.set_status(format!("Moved {name} to the Recycle Bin").into());
                     a.refresh_clips(&ui);
                 }
                 Err(e) => ui.set_status(e.to_string().into()),
@@ -1316,23 +1313,6 @@ fn main() -> Result<(), slint::PlatformError> {
         move || d(false)
     });
     ui.on_delete_last(move || delete(true));
-
-    ui.on_undo_delete({
-        let (app, weak) = (app.clone(), ui.as_weak());
-        move || {
-            let ui = weak.unwrap();
-            let mut a = app.borrow_mut();
-            let Some(d) = a.undo.pop() else { return };
-            match a.library.undo_delete(&d) {
-                Ok(()) => {
-                    ui.set_status(format!("Restored {}", d.name).into());
-                    a.refresh_clips(&ui);
-                    a.select_name(&ui, &d.name);
-                }
-                Err(e) => ui.set_status(e.to_string().into()),
-            }
-        }
-    });
 
     ui.on_rename_selected({
         let (app, weak) = (app.clone(), ui.as_weak());
@@ -1415,7 +1395,8 @@ fn main() -> Result<(), slint::PlatformError> {
         let (app, weak) = (app.clone(), ui.as_weak());
         move |_| {
             let ui = weak.unwrap();
-            ui.set_renaming(false);
+            ui.set_renaming(ui.get_rename_pending());
+            ui.set_rename_pending(false);
             app.borrow_mut().show_transcript(&ui);
             app.borrow().show_position(&ui);
         }
@@ -1748,7 +1729,6 @@ fn main() -> Result<(), slint::PlatformError> {
                 Ok(lib) => {
                     a.stop(&ui);
                     a.library = lib;
-                    a.undo.clear();
                     a.settings.output_dir = dir.clone();
                     a.settings.save();
                     ui.set_folder(short_path(&dir).into());

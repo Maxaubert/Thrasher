@@ -1343,6 +1343,18 @@ component Meter inherits Rectangle {
     }
 }
 
+// The round record button: a mic, or a stop square while recording.
+component RecordButton inherits IconBtn {
+    in property <bool> recording;
+    size: 56px;
+    round: true;
+    filled: true;
+    icon: root.recording ? "stop" : "mic";
+    icon-size: root.recording ? 18px : 24px;
+    label: root.recording ? "Stop and save" : "Record";
+    tip: root.recording ? "Stop" : "Record";
+}
+
 // The recorder: status, time, live level and the record buttons. Mode 0 is a narrow
 // window (one line, a round Record button), 1 the default, 2 a wide window (a tall
 // panel beside the clip list).
@@ -1422,13 +1434,8 @@ component RecorderCard inherits Rectangle {
             }
             VerticalLayout {
                 alignment: center;
-                IconBtn {
-                    size: 56px;
-                    round: true;
-                    filled: true;
-                    icon: root.recording ? "stop" : "dot";
-                    icon-size: 18px;
-                    label: root.recording ? "Stop and save" : "Record";
+                RecordButton {
+                    recording: root.recording;
                     clicked => { root.record(); }
                 }
             }
@@ -1509,7 +1516,29 @@ component RecorderCard inherits Rectangle {
             rest: root.recording ? #6d4a33 : Theme.track;
         }
         if root.mode == 2: Rectangle { vertical-stretch: 1; }
-        if root.recording: HorizontalLayout {
+        // Wide: the same round buttons as the one-line recorder.
+        if root.mode == 2: HorizontalLayout {
+            alignment: center;
+            spacing: 14px;
+            if root.recording: VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    size: 44px;
+                    round: true;
+                    outlined: true;
+                    icon: root.paused ? "play" : "pause";
+                    icon-size: 14px;
+                    tint: Theme.text;
+                    label: root.paused ? "Resume" : "Pause";
+                    clicked => { root.pause(); }
+                }
+            }
+            RecordButton {
+                recording: root.recording;
+                clicked => { root.record(); }
+            }
+        }
+        if root.mode != 2 && root.recording: HorizontalLayout {
             spacing: 10px;
             Btn {
                 primary: true;
@@ -1527,7 +1556,7 @@ component RecorderCard inherits Rectangle {
                 clicked => { root.pause(); }
             }
         }
-        if !root.recording: Btn {
+        if root.mode != 2 && !root.recording: Btn {
             primary: true;
             text: "Record";
             font-size: 15px;

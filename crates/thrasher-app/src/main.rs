@@ -1480,8 +1480,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let (app, weak) = (app.clone(), ui.as_weak());
         move |_| {
             let ui = weak.unwrap();
-            ui.set_renaming(ui.get_rename_pending());
-            ui.set_rename_pending(false);
+            ui.set_renaming(false);
             app.borrow_mut().show_transcript(&ui);
             app.borrow().show_position(&ui);
         }

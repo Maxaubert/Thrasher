@@ -8,6 +8,7 @@ pub mod edit;
 pub mod export;
 pub mod import;
 pub mod library;
+pub mod merge;
 pub mod meter;
 pub mod models;
 pub mod naming;

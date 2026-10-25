@@ -36,6 +36,14 @@ impl Waves {
             .map(|(_, w)| w.clone())
     }
 
+    /// Drops a clip's waveform, for a clip rewritten at the same length (its parts
+    /// put in another order, or a new clip under an old name).
+    pub fn forget(&mut self, name: &str) {
+        self.done.lock().unwrap().remove(name);
+        let prefix = format!("{name}|");
+        self.pending.retain(|k| !k.starts_with(&prefix));
+    }
+
     /// Starts drawing the clips that have no waveform yet. The window's
     /// `waves-ready` callback runs after each one.
     pub fn request(&mut self, ui: &AppWindow, library: &Library, clips: &[Clip]) {

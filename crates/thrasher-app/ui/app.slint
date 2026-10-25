@@ -68,6 +68,11 @@ export struct WordRow {
     failed: bool,
 }
 
+export struct OrderRow {
+    name: string,
+    note: string,
+}
+
 export struct ClipRow {
     name: string,
     duration: string,
@@ -105,7 +110,7 @@ global Theme {
 component Icon inherits Path {
     in property <string> name;
     in property <color> tint: Theme.text;
-    in property <bool> solid: name == "play" || name == "pause" || name == "stop" || name == "dots";
+    in property <bool> solid: name == "play" || name == "pause" || name == "stop" || name == "dots" || name == "grip";
     width: 14px;
     height: 14px;
     viewbox-width: 24;
@@ -122,6 +127,7 @@ component Icon inherits Path {
         : name == "chevron" ? "M 9 6 L 15 12 L 9 18"
         : name == "down" ? "M 6 9 L 12 15 L 18 9"
         : name == "up" ? "M 6 15 L 12 9 L 18 15"
+        : name == "grip" ? "M 7.6 6 A 1.6 1.6 0 1 0 10.8 6 A 1.6 1.6 0 1 0 7.6 6 Z M 13.2 6 A 1.6 1.6 0 1 0 16.4 6 A 1.6 1.6 0 1 0 13.2 6 Z M 7.6 12 A 1.6 1.6 0 1 0 10.8 12 A 1.6 1.6 0 1 0 7.6 12 Z M 13.2 12 A 1.6 1.6 0 1 0 16.4 12 A 1.6 1.6 0 1 0 13.2 12 Z M 7.6 18 A 1.6 1.6 0 1 0 10.8 18 A 1.6 1.6 0 1 0 7.6 18 Z M 13.2 18 A 1.6 1.6 0 1 0 16.4 18 A 1.6 1.6 0 1 0 13.2 18 Z"
         : name == "import" ? "M 12 4 L 12 15 M 7 10 L 12 15 L 17 10 M 4 19 L 20 19"
         : name == "dots" ? "M 10.2 5 A 1.8 1.8 0 1 0 13.8 5 A 1.8 1.8 0 1 0 10.2 5 Z M 10.2 12 A 1.8 1.8 0 1 0 13.8 12 A 1.8 1.8 0 1 0 10.2 12 Z M 10.2 19 A 1.8 1.8 0 1 0 13.8 19 A 1.8 1.8 0 1 0 10.2 19 Z"
         : name == "pencil" ? "M 4 20 L 8 20 L 19 9 L 15 5 L 4 16 Z"
@@ -339,32 +345,51 @@ component ExportItem inherits Rectangle {
 component ClipItem inherits Rectangle {
     in property <ClipRow> item;
     in property <bool> selected;
+    // Part of a selection of several clips (Ctrl or Shift click).
+    in property <bool> picked;
+    // How many clips are picked, when this one is among them; its menu offers to merge.
+    in property <int> merge-count;
     in property <bool> active;
     in property <bool> playing;
     in property <float> progress;
     callback play();
-    // A click highlights the clip and a double click plays or pauses it. The
-    // three-dot menu (or the right arrow key) opens it.
-    callback select();
+    // A click highlights the clip and a double click plays or pauses it. Ctrl and Shift
+    // pick several. The three-dot menu (or a right click, or the right arrow key) opens
+    // it.
+    callback select(bool, bool);
+    callback merge();
     callback open();
     callback rename();
     callback export(int);
     callback delete();
     // The menu shows the export formats instead of its main choices.
     property <bool> exporting;
+    // Where the menu opens: under the dots, or where the right click was.
+    property <length> menu-x;
+    property <length> menu-y;
     height: 52px;
     border-radius: 10px;
-    background: root.active || root.selected ? Theme.row : row-touch.has-hover ? #120d0a : transparent;
-    border-width: root.selected ? 1px : 0;
-    border-color: Theme.edge;
+    background: root.picked ? #24180f : root.active || root.selected ? Theme.row : row-touch.has-hover ? #120d0a : transparent;
+    border-width: root.selected || root.picked ? 1px : 0;
+    border-color: root.picked ? #ff6a1a55 : Theme.edge;
     accessible-role: list-item;
     accessible-label: root.item.name + ", " + root.item.duration;
     accessible-item-selectable: true;
-    accessible-item-selected: root.selected;
-    accessible-action-default => { root.select(); }
+    accessible-item-selected: root.selected || root.picked;
+    accessible-action-default => { root.select(false, false); }
     row-touch := TouchArea {
         mouse-cursor: pointer;
-        clicked => { root.select(); }
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                root.select(e.modifiers.control, e.modifiers.shift);
+            }
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.right) {
+                root.menu-x = min(self.mouse-x, root.width - 210px);
+                root.menu-y = self.mouse-y;
+                root.exporting = false;
+                menu.show();
+            }
+        }
         double-clicked => { root.play(); }
     }
     HorizontalLayout {
@@ -427,7 +452,7 @@ component ClipItem inherits Rectangle {
             background: dots.has-hover ? Theme.raised : transparent;
             accessible-role: button;
             accessible-label: "Menu for " + root.item.name;
-            accessible-action-default => { root.exporting = false; menu.show(); }
+            accessible-action-default => { root.open-menu(); }
             Icon {
                 name: "dots";
                 tint: dots.has-hover ? Theme.text : Theme.dim;
@@ -436,50 +461,62 @@ component ClipItem inherits Rectangle {
             }
             dots := TouchArea {
                 mouse-cursor: pointer;
-                clicked => { root.exporting = false; menu.show(); }
+                clicked => { root.open-menu(); }
             }
-            menu := PopupWindow {
-                x: parent.width - self.width;
-                y: parent.height + 4px;
-                width: 210px;
-                height: root.exporting ? (root.item.transcribed ? 5 * 34px + 5 * 34px + 9px + 10px : 5 * 34px + 10px) : 4 * 34px + 9px + 10px;
-                close-policy: close-on-click-outside;
-                Rectangle {
-                    background: Theme.raised;
-                    border-radius: 10px;
-                    border-width: 1px;
-                    border-color: Theme.edge;
-                    drop-shadow-blur: 20px;
-                    drop-shadow-offset-y: 6px;
-                    drop-shadow-color: #00000099;
-                    if !root.exporting: VerticalLayout {
-                        padding: 5px;
-                        MenuRow { text: "Manage"; clicked => { root.open(); menu.close(); } }
-                        MenuRow { text: "Rename"; clicked => { root.rename(); menu.close(); } }
-                        MenuRow { text: "Export"; more: true; clicked => { root.exporting = true; } }
-                        Rectangle {
-                            height: 9px;
-                            Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
-                        }
-                        MenuRow { text: "Delete"; danger: true; clicked => { root.delete(); menu.close(); } }
-                    }
-                    if root.exporting: VerticalLayout {
-                        padding: 5px;
-                        MenuRow { text: "‹  Export"; clicked => { root.exporting = false; } }
-                        ExportItem { text: "Whole project"; tag: "folder"; clicked => { root.export(7); menu.close(); } }
-                        ExportItem { text: "FLAC"; tag: "lossless"; clicked => { root.export(0); menu.close(); } }
-                        ExportItem { text: "WAV"; tag: "plays anywhere"; clicked => { root.export(1); menu.close(); } }
-                        ExportItem { text: "MP3"; tag: "small"; clicked => { root.export(2); menu.close(); } }
-                        if root.item.transcribed: Rectangle {
-                            height: 9px;
-                            Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
-                        }
-                        if root.item.transcribed: ExportItem { text: "SRT"; tag: "video players"; clicked => { root.export(3); menu.close(); } }
-                        if root.item.transcribed: ExportItem { text: "VTT"; tag: "web video"; clicked => { root.export(4); menu.close(); } }
-                        if root.item.transcribed: ExportItem { text: "Word timings"; tag: "json"; clicked => { root.export(5); menu.close(); } }
-                        if root.item.transcribed: ExportItem { text: "Script"; tag: "txt with times"; clicked => { root.export(6); menu.close(); } }
-                    }
+
+        }
+    }
+    function open-menu() {
+        root.menu-x = root.width - 8px - 210px;
+        root.menu-y = (root.height + 28px) / 2 + 4px;
+        root.exporting = false;
+        menu.show();
+    }
+    menu := PopupWindow {
+        x: root.menu-x;
+        y: root.menu-y;
+        width: 210px;
+        height: root.exporting ? (root.item.transcribed ? 5 * 34px + 5 * 34px + 9px + 10px : 5 * 34px + 10px) : 4 * 34px + 9px + 10px + (root.merge-count >= 2 ? 34px + 9px : 0);
+        close-policy: close-on-click-outside;
+        Rectangle {
+            background: Theme.raised;
+            border-radius: 10px;
+            border-width: 1px;
+            border-color: Theme.edge;
+            drop-shadow-blur: 20px;
+            drop-shadow-offset-y: 6px;
+            drop-shadow-color: #00000099;
+            if !root.exporting: VerticalLayout {
+                padding: 5px;
+                if root.merge-count >= 2: MenuRow { text: "Merge " + root.merge-count + " clips"; clicked => { root.merge(); menu.close(); } }
+                if root.merge-count >= 2: Rectangle {
+                    height: 9px;
+                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
                 }
+                MenuRow { text: "Manage"; clicked => { root.open(); menu.close(); } }
+                MenuRow { text: "Rename"; clicked => { root.rename(); menu.close(); } }
+                MenuRow { text: "Export"; more: true; clicked => { root.exporting = true; } }
+                Rectangle {
+                    height: 9px;
+                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+                }
+                MenuRow { text: "Delete"; danger: true; clicked => { root.delete(); menu.close(); } }
+            }
+            if root.exporting: VerticalLayout {
+                padding: 5px;
+                MenuRow { text: "‹  Export"; clicked => { root.exporting = false; } }
+                ExportItem { text: "Whole project"; tag: "folder"; clicked => { root.export(7); menu.close(); } }
+                ExportItem { text: "FLAC"; tag: "lossless"; clicked => { root.export(0); menu.close(); } }
+                ExportItem { text: "WAV"; tag: "plays anywhere"; clicked => { root.export(1); menu.close(); } }
+                ExportItem { text: "MP3"; tag: "small"; clicked => { root.export(2); menu.close(); } }
+                if root.item.transcribed: Rectangle {
+                    height: 9px;
+                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+                }
+                if root.item.transcribed: ExportItem { text: "SRT"; tag: "video players"; clicked => { root.export(3); menu.close(); } }
+                if root.item.transcribed: ExportItem { text: "VTT"; tag: "web video"; clicked => { root.export(4); menu.close(); } }
+                if root.item.transcribed: ExportItem { text: "Word timings"; tag: "json"; clicked => { root.export(5); menu.close(); } }
+                if root.item.transcribed: ExportItem { text: "Script"; tag: "txt with times"; clicked => { root.export(6); menu.close(); } }
             }
         }
     }
@@ -718,6 +755,118 @@ component TitleBar inherits Rectangle {
 }
 
 // A round back button and a large page title.
+// A list whose rows can be dragged into another order, or moved with their arrows.
+// `moved(from, to)` reports a move; `act(i)` the row's text button, if `action` names one.
+component OrderList inherits Rectangle {
+    in property <[OrderRow]> rows;
+    in property <string> action;
+    in property <bool> enabled: true;
+    callback moved(int, int);
+    callback act(int);
+    property <length> row-h: 50px;
+    property <int> dragging: -1;
+    property <length> drag-dy;
+    property <int> target: root.dragging < 0 ? -1 : clamp(round((root.dragging * root.row-h + root.drag-dy) / root.row-h), 0, root.rows.length - 1);
+    height: root.rows.length * root.row-h;
+    for r[i] in root.rows: Rectangle {
+        // The dragged row follows the mouse; the others make room where it would land.
+        y: i * root.row-h + (i == root.dragging ? root.drag-dy
+            : root.dragging >= 0 && i > root.dragging && i <= root.target ? -root.row-h
+            : root.dragging >= 0 && i < root.dragging && i >= root.target ? root.row-h
+            : 0);
+        height: root.row-h;
+        z: i == root.dragging ? 1 : 0;
+        border-radius: 10px;
+        background: i == root.dragging ? Theme.raised : transparent;
+        drag := TouchArea {
+            enabled: root.enabled;
+            mouse-cursor: root.dragging == i ? grabbing : grab;
+            pointer-event(e) => {
+                if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                    root.dragging = i;
+                    root.drag-dy = 0;
+                }
+                if (e.kind == PointerEventKind.up && root.dragging == i) {
+                    let to = root.target;
+                    root.dragging = -1;
+                    root.drag-dy = 0;
+                    if (to != i) { root.moved(i, to); }
+                }
+            }
+            moved => {
+                if (self.pressed && root.dragging == i) {
+                    root.drag-dy = clamp(root.drag-dy + self.mouse-y - self.pressed-y, -i * root.row-h, (root.rows.length - 1 - i) * root.row-h);
+                }
+            }
+        }
+        HorizontalLayout {
+            padding-left: 10px;
+            padding-right: 8px;
+            spacing: 10px;
+            Icon {
+                name: "grip";
+                tint: Theme.dim;
+                width: 14px;
+                height: 14px;
+                y: (parent.height - self.height) / 2;
+            }
+            Text {
+                text: i + 1;
+                color: Theme.accent;
+                font-family: Theme.mono;
+                font-size: 12px;
+                vertical-alignment: center;
+                width: 16px;
+            }
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                spacing: 1px;
+                Text { text: r.name; color: Theme.text; font-size: 14px; overflow: elide; }
+                if r.note != "": Text { text: r.note; color: Theme.dim; font-size: 11px; overflow: elide; }
+            }
+            VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    icon: "up";
+                    label: "Move " + r.name + " up";
+                    size: 26px;
+                    enabled: root.enabled && i > 0;
+                    clicked => { root.moved(i, i - 1); }
+                }
+            }
+            VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    icon: "down";
+                    label: "Move " + r.name + " down";
+                    size: 26px;
+                    enabled: root.enabled && i < root.rows.length - 1;
+                    clicked => { root.moved(i, i + 1); }
+                }
+            }
+            if root.action != "": VerticalLayout {
+                alignment: center;
+                Btn {
+                    text: root.action;
+                    height: 28px;
+                    font-size: 12px;
+                    enabled: root.enabled;
+                    accessible-label: root.action + " " + r.name;
+                    clicked => { root.act(i); }
+                }
+            }
+        }
+        if i < root.rows.length - 1 && root.dragging < 0: Rectangle {
+            x: 10px;
+            y: parent.height - 1px;
+            width: parent.width - 20px;
+            height: 1px;
+            background: #221912;
+        }
+    }
+}
+
 component PageHeader inherits HorizontalLayout {
     in property <string> title;
     in property <string> note;
@@ -1091,7 +1240,7 @@ export component AppWindow inherits Window {
     always-on-top: pinned || compact;
     no-frame: true;
 
-    // 0 clips, 1 one clip, 2 editing its transcript, 3 settings, 4 models
+    // 0 clips, 1 one clip, 2 editing its transcript, 3 settings, 4 models, 5 merge
     in-out property <int> page;
 
     in-out property <bool> recording;
@@ -1192,6 +1341,27 @@ export component AppWindow inherits Window {
     callback change-folder();
     // See ExportButton for the kinds.
     callback export-as(int);
+    // Picking clips: a click, Ctrl+click (add or remove) or Shift+click (a range).
+    in property <[bool]> picked;
+    in property <int> picked-count;
+    callback pick(int, bool, bool);
+    // The merge page: the picked clips in merge order, and the new clip's name.
+    in property <[OrderRow]> merge-rows;
+    in-out property <string> merge-name;
+    in property <bool> merging;
+    callback start-merge();
+    callback merge-move(int, int);
+    callback merge-remove(int);
+    callback merge-run(string);
+    // A merge finished: the status line and the new clip's name (empty on failure).
+    callback merged(string, string);
+    // A merged clip's parts, shown on its page; empty for an ordinary clip.
+    in property <[OrderRow]> parts;
+    in property <bool> parts-busy;
+    callback parts-move(int, int);
+    callback part-take-out(int);
+    // Reordering or taking out a part finished, with the status line.
+    callback parts-done(string);
     // Asks for audio files and adds each as a clip; `imported` reports back.
     callback import-files();
     callback imported(string, string);
@@ -1268,7 +1438,7 @@ export component AppWindow inherits Window {
         key-pressed(event) => {
             if (renaming || page == 2) { return reject; }
             if (event.text == Key.Escape) {
-                if (page != 0) { root.go(page == 2 ? 1 : page == 4 ? 3 : 0); } else { root.stop-playback(); root.selected = -1; }
+                if (page != 0) { root.go(page == 2 ? 1 : page == 4 ? 3 : 0); } else { root.stop-playback(); root.pick(-1, false, false); }
                 return accept;
             }
             if (page >= 3) { return reject; }
@@ -1509,11 +1679,38 @@ export component AppWindow inherits Window {
                         clicked => { root.import-files(); }
                     }
                 }
-                Text {
+                if root.picked-count < 2: Text {
                     text: root.clips-summary;
                     color: Theme.dim;
                     font-size: 13px;
                     vertical-alignment: center;
+                }
+                // Several clips picked: offer to merge them.
+                if root.picked-count >= 2: Text {
+                    text: root.picked-count + " picked";
+                    color: Theme.accent;
+                    font-size: 13px;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                }
+                if root.picked-count >= 2: VerticalLayout {
+                    alignment: center;
+                    Btn {
+                        text: "Merge";
+                        primary: true;
+                        height: 28px;
+                        font-size: 12px;
+                        clicked => { root.start-merge(); root.go(5); }
+                    }
+                }
+                if root.picked-count >= 2: VerticalLayout {
+                    alignment: center;
+                    Btn {
+                        text: "Clear";
+                        height: 28px;
+                        font-size: 12px;
+                        clicked => { root.pick(root.selected, false, false); keys.focus(); }
+                    }
                 }
             }
 
@@ -1533,11 +1730,14 @@ export component AppWindow inherits Window {
                     ClipItem {
                         item: clip;
                         selected: i == root.selected;
+                        picked: root.picked[i];
+                        merge-count: root.picked[i] ? root.picked-count : 0;
                         active: i == root.active-clip;
                         playing: root.playing;
                         progress: root.play-fraction;
                         play => { root.play-clip(i); keys.focus(); }
-                        select => { root.selected = i; keys.focus(); }
+                        select(ctrl, shift) => { root.pick(i, ctrl, shift); keys.focus(); }
+                        merge => { root.start-merge(); root.go(5); }
                         open => { root.open-clip(i); root.go(1); }
                         rename => {
                             // A new selection ends renaming, so it starts once that is done.
@@ -1924,6 +2124,22 @@ export component AppWindow inherits Window {
                 padding-left: 16px;
                 padding-right: 16px;
                 padding-top: 18px;
+                if root.parts.length >= 2: VerticalLayout {
+                    padding-bottom: 18px;
+                    Card {
+                        title: root.parts-busy ? "PARTS  ·  WORKING..." : "PARTS";
+                        VerticalLayout {
+                            padding: 4px;
+                            OrderList {
+                                rows: root.parts;
+                                action: "Take out";
+                                enabled: !root.parts-busy && !root.recording;
+                                moved(a, b) => { root.parts-move(a, b); }
+                                act(i) => { root.part-take-out(i); }
+                            }
+                        }
+                    }
+                }
                 Card {
                     title: "OPTIONS";
                     CardRow {
@@ -2399,6 +2615,86 @@ export component AppWindow inherits Window {
                             }
                         }
                     }
+                }
+            }
+            if root.status != "": Text {
+                text: root.status;
+                color: Theme.dim;
+                font-size: 11px;
+                overflow: elide;
+                x: 22px;
+                width: parent.width - 44px;
+                height: 28px;
+                vertical-alignment: center;
+            }
+        }
+
+        // ---------- Merge ----------
+        if !compact && page == 5: VerticalLayout {
+            TitleBar {
+                minimize => { root.minimize-window(); }
+                close => { root.close-window(); }
+            }
+            PageHeader { title: "Merge clips"; note: root.merge-rows.length + " clips"; back => { root.go(0); } }
+            Scroller {
+                vertical-stretch: 1;
+                VerticalLayout {
+                    alignment: start;
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 8px;
+                    padding-bottom: 12px;
+                    spacing: 18px;
+                    Card {
+                        title: "ORDER";
+                        VerticalLayout {
+                            padding: 4px;
+                            OrderList {
+                                rows: root.merge-rows;
+                                action: root.merge-rows.length > 2 ? "Remove" : "";
+                                enabled: !root.merging;
+                                moved(a, b) => { root.merge-move(a, b); }
+                                act(i) => { root.merge-remove(i); }
+                            }
+                        }
+                    }
+                    Card {
+                        title: "NEW CLIP";
+                        CardRow {
+                            label: "Name";
+                            last: true;
+                            TextField {
+                                width: 220px;
+                                label: "Name of the merged clip";
+                                text <=> root.merge-name;
+                            }
+                        }
+                    }
+                    Text {
+                        text: "The clips play one after the other in this order, transcripts included. The originals go to the Recycle Bin; the merged clip remembers its parts, so you can change the order or take one out again later.";
+                        color: Theme.dim;
+                        font-size: 12px;
+                        wrap: word-wrap;
+                        x: 8px;
+                    }
+                }
+            }
+            HorizontalLayout {
+                vertical-stretch: 0;
+                padding: 16px;
+                padding-top: 12px;
+                padding-bottom: 14px;
+                spacing: 6px;
+                Rectangle { horizontal-stretch: 1; }
+                Btn {
+                    text: "Cancel";
+                    clicked => { root.go(0); }
+                }
+                Btn {
+                    primary: true;
+                    text: root.merging ? "Merging..." : "Merge " + root.merge-rows.length + " clips";
+                    enabled: !root.merging && root.merge-name != "";
+                    clicked => { root.merge-run(root.merge-name); }
                 }
             }
             if root.status != "": Text {

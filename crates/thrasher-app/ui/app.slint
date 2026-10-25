@@ -1518,12 +1518,26 @@ component TranscriptCard inherits Rectangle {
     in-out property <bool> show-marks;
     in property <bool> can-transcribe;
     in property <bool> recording;
+    // Editing happens in the card itself: the words become a text box with the pause
+    // tags in orange, and Cancel and Save take the place of Show marks and Edit.
+    in property <bool> editing;
+    in-out property <string> edit-draft;
+    in property <string> edit-badge;
+    in property <bool> speaking;
     callback edit();
     callback transcribe();
     callback seek-word(int);
+    callback edited(string);
+    callback cancel();
+    callback save();
+    pure callback edit-markup(string) -> styled-text;
+    pure callback plain-selection(string, int, int) -> string;
+    // Where the editor's cursor is, and how tall it is.
+    property <Point> caret;
+    property <length> caret-h: 20px;
         border-radius: 14px;
         border-width: 1px;
-        border-color: #241b15;
+        border-color: root.editing ? Theme.accent : #241b15;
         VerticalLayout {
             padding: 18px;
             padding-top: 12px;
@@ -1540,7 +1554,45 @@ component TranscriptCard inherits Rectangle {
                     vertical-alignment: center;
                     horizontal-stretch: 1;
                 }
-                if root.transcript != "" && !root.transcribing: HorizontalLayout {
+                if root.editing && root.edit-badge != "": Rectangle {
+                    width: badge.preferred-width + 16px;
+                    height: 20px;
+                    y: (parent.height - self.height) / 2;
+                    border-radius: 10px;
+                    background: Theme.accent;
+                    badge := Text {
+                        text: root.edit-badge;
+                        color: Theme.on-accent;
+                        font-size: 11px;
+                        font-weight: 800;
+                    }
+                }
+                if root.editing: HorizontalLayout {
+                    horizontal-stretch: 0;
+                    spacing: 6px;
+                    padding-left: 8px;
+                    VerticalLayout {
+                        alignment: center;
+                        Btn {
+                            text: "Cancel";
+                            height: 28px;
+                            font-size: 12px;
+                            clicked => { root.cancel(); }
+                        }
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        Btn {
+                            primary: true;
+                            text: "Save";
+                            height: 28px;
+                            font-size: 12px;
+                            enabled: root.edit-draft != root.transcript && !root.speaking;
+                            clicked => { root.save(); }
+                        }
+                    }
+                }
+                if root.transcript != "" && !root.transcribing && !root.editing: HorizontalLayout {
                     horizontal-stretch: 0;
                     spacing: 8px;
                     padding-right: 10px;
@@ -1558,7 +1610,7 @@ component TranscriptCard inherits Rectangle {
                         }
                     }
                 }
-                if root.transcript != "" && !root.transcribing: Rectangle {
+                if root.transcript != "" && !root.transcribing && !root.editing: Rectangle {
                     width: edit-row.preferred-width + 20px;
                     height: 26px;
                     y: 1px;
@@ -1616,7 +1668,85 @@ component TranscriptCard inherits Rectangle {
                     }
                 }
             }
-            if root.transcript != "" && !root.transcribing: Scroller {
+            if root.editing: Rectangle {
+                vertical-stretch: 1;
+                clip: true;
+            ed-scroll := Scroller {
+                VerticalLayout {
+                    padding-left: 0;
+                    padding-right: 10px;
+                    padding-top: 2px;
+                    padding-bottom: 6px;
+                    Rectangle {
+                        height: editor.height;
+                        StyledText {
+                            width: parent.width;
+                            y: 0;
+                            text: root.edit-markup(editor.text);
+                            default-color: Theme.text2;
+                            default-font-family: "Inter Tight";
+                            default-font-size: 15px;
+                        }
+                        editor := TextInput {
+                            width: parent.width;
+                            height: max(self.preferred-height, ed-scroll.visible-height - 8px);
+                            text <=> root.edit-draft;
+                            font-family: "Inter Tight";
+                            font-size: 15px;
+                            single-line: false;
+                            wrap: word-wrap;
+                            color: transparent;
+                            selection-background-color: #ff6a1a4d;
+                            selection-foreground-color: transparent;
+                            accessible-role: text-input;
+                            accessible-label: "Transcript";
+                            init => { self.focus(); }
+                            edited => { root.edit-draft = self.text; root.edited(self.text); }
+                            cursor-position-changed(p) => {
+                                root.caret = p;
+                                // Keep the cursor in view.
+                                if (p.y + 2px + root.caret-h > -ed-scroll.content-y + ed-scroll.visible-height) {
+                                    ed-scroll.content-y = -(p.y + 2px + root.caret-h + 6px - ed-scroll.visible-height);
+                                } else if (p.y + 2px < -ed-scroll.content-y) {
+                                    ed-scroll.content-y = -max(0px, p.y);
+                                }
+                            }
+                            key-pressed(e) => {
+                                // With the marks hidden, copying gives just the words.
+                                if (e.modifiers.control && (e.text == "c" || e.text == "C") && !root.show-marks) {
+                                    clip-buf.text = root.plain-selection(self.text, self.anchor-position-byte-offset, self.cursor-position-byte-offset);
+                                    clip-buf.select-all();
+                                    clip-buf.copy();
+                                    // Emptied at once, so it is never drawn with a selection.
+                                    clip-buf.clear-selection();
+                                    clip-buf.text = "";
+                                    return accept;
+                                }
+                                reject
+                            }
+                        }
+                        // The text box's own cursor has the (invisible) text colour.
+                        if editor.has-focus && editor.anchor-position-byte-offset == editor.cursor-position-byte-offset: Rectangle {
+                            x: root.caret.x;
+                            y: root.caret.y;
+                            width: 2px;
+                            height: root.caret-h;
+                            background: Theme.accent;
+                        }
+                    }
+                }
+            }
+            // Holds the words being copied for a moment; see the editor's key-pressed.
+            clip-buf := TextInput {
+                x: 0;
+                y: 0;
+                width: 20px;
+                height: 20px;
+                color: transparent;
+                read-only: true;
+            }
+            }
+            if root.transcript != "" && !root.transcribing && !root.editing: Scroller {
                 vertical-stretch: 1;
                 // A new transcript starts at the top; Slint would keep the old offset.
                 property <string> shown: root.transcript;
@@ -1633,11 +1763,9 @@ component TranscriptCard inherits Rectangle {
                         visible: !hidden;
                         horizontal-stretch: 0;
                         border-radius: 3px;
-                        background: i == root.current-word ? Theme.accent : wt.has-hover ? Theme.raised : w.is-silence ? #ff6a1a14 : transparent;
-                        width: hidden ? 0 : label.preferred-width + (w.is-silence ? 14px : 6px);
+                        background: i == root.current-word ? Theme.accent : wt.has-hover ? Theme.raised : transparent;
+                        width: hidden ? 0 : label.preferred-width + 6px;
                         height: hidden ? 0 : label.preferred-height + 4px;
-                        border-width: w.is-silence ? 1px : 0;
-                        border-color: #ff6a1a66;
                         label := Text {
                             text: w.text;
                             // Spoken words are generated speech: shown in a different colour.
@@ -1648,8 +1776,7 @@ component TranscriptCard inherits Rectangle {
                                 : w.pending ? #6d625a
                                 : w.spoken ? Theme.accent
                                 : Theme.text2;
-                            font-family: w.is-silence ? Theme.mono : "Inter Tight";
-                            font-size: w.is-silence ? 11px : 15px;
+                            font-size: 15px;
                             font-italic: w.spoken && marks;
                         }
                         wt := TouchArea {
@@ -1681,7 +1808,7 @@ export component AppWindow inherits Window {
     property <bool> narrow: root.width < 470px;
     property <bool> wide: root.width >= 820px;
 
-    // 0 clips, 1 one clip, 2 editing its transcript, 3 settings, 4 models, 5 merge
+    // 0 clips, 1 one clip, 3 settings, 4 models, 5 merge (2 was the old edit page)
     in-out property <int> page;
 
     in-out property <bool> recording;
@@ -1730,9 +1857,10 @@ export component AppWindow inherits Window {
     in-out property <string> dialog-text;
     // The transcript as typed in the editor, to save or throw away when leaving it.
     in-out property <string> edit-draft;
-    // Where the transcript editor's cursor is, and how tall it is.
-    in-out property <Point> caret;
-    property <length> caret-h: 20px;
+    // The transcript is being edited in its card on the clip page; where to go once
+    // the editor is left (-1: stay).
+    in-out property <bool> editing;
+    property <int> leave-to: -1;
 
     in property <[string]> mic-devices;
     in-out property <int> mic-index;
@@ -1862,6 +1990,8 @@ export component AppWindow inherits Window {
         Tips.hide();
         if (root.dialog == 3) { root.dialog = 0; }
     }
+    // Saving ends editing, so its unsaved-changes question goes too.
+    changed editing => { if (!root.editing && root.dialog == 3) { root.dialog = 0; } }
     changed status => { status-timer.running = false; status-timer.running = root.status != ""; }
 
     function move-selection(delta: int) {
@@ -1889,10 +2019,19 @@ export component AppWindow inherits Window {
         root.dialog = 2;
         keys.focus();
     }
-    // Leaving the editor with changes asks whether to save them (dialog 3).
-    function leave-editor() {
+    function start-edit() {
+        root.stop-playback();
+        root.edit-draft = root.transcript;
+        root.editing = true;
+        root.edit-changed(root.transcript);
+    }
+    // Leaving the editor with changes asks whether to save them (dialog 3); then it
+    // goes to page `to` (-1 stays on the clip).
+    function leave-editor(to: int) {
+        root.leave-to = to;
         if (root.edit-draft == root.transcript || root.speaking) {
-            root.go(1);
+            root.editing = false;
+            if (to >= 0) { root.go(to); }
         } else {
             root.dialog-clip = root.selected;
             root.dialog = 3;
@@ -1902,7 +2041,9 @@ export component AppWindow inherits Window {
     function discard-edit() {
         root.dialog = 0;
         root.edit-draft = root.transcript;
-        root.go(1);
+        root.editing = false;
+        if (root.leave-to >= 0) { root.go(root.leave-to); }
+        keys.focus();
     }
     function close-dialog() {
         root.dialog = 0;
@@ -1919,12 +2060,14 @@ export component AppWindow inherits Window {
             if (root.page != 0) { root.go(0); }
         } else if (kind == 3) {
             root.apply-transcript(root.edit-draft);
+            if (root.leave-to >= 0) { root.go(root.leave-to); }
         }
         keys.focus();
     }
 
     function go(p: int) {
         root.renaming = false;
+        root.editing = false;
         root.page = p;
         keys.focus();
     }
@@ -1936,10 +2079,13 @@ export component AppWindow inherits Window {
                 if (event.text == Key.Return && root.dialog == 2) { root.confirm-dialog(); }
                 return accept;
             }
-            if (renaming || page == 2) { return reject; }
+            if (renaming) { return reject; }
+            if (root.editing) {
+                if (event.text == Key.Escape) { root.leave-editor(-1); return accept; }
+                return reject;
+            }
             if (event.text == Key.Escape) {
-                if (page == 2) { root.leave-editor(); }
-                else if (page != 0) { root.go(page == 4 ? 3 : 0); } else { root.stop-playback(); root.pick(-1, false, false); }
+                if (page != 0) { root.go(page == 4 ? 3 : 0); } else { root.stop-playback(); root.pick(-1, false, false); }
                 return accept;
             }
             if (page >= 3) { return reject; }
@@ -2221,7 +2367,7 @@ export component AppWindow inherits Window {
                 BackLink {
                     text: "Clips";
                     y: (parent.height - self.height) / 2;
-                    clicked => { root.go(0); }
+                    clicked => { if (root.editing) { root.leave-editor(0); } else { root.go(0); } }
                 }
                 Rectangle { horizontal-stretch: 1; }
             }
@@ -2450,7 +2596,16 @@ export component AppWindow inherits Window {
                     show-marks <=> root.show-marks;
                     can-transcribe: root.can-transcribe;
                     recording: root.recording;
-                    edit => { root.stop-playback(); root.edit-changed(root.transcript); root.go(2); }
+                    editing: root.editing;
+                    edit-draft <=> root.edit-draft;
+                    edit-badge: root.edit-badge;
+                    speaking: root.speaking;
+                    edit => { root.start-edit(); }
+                    edited(t) => { root.edit-changed(t); }
+                    cancel => { root.leave-editor(-1); }
+                    save => { root.apply-transcript(root.edit-draft); }
+                    edit-markup(t) => { return root.edit-markup(t); }
+                    plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
                     transcribe => { root.transcribe-selected(); keys.focus(); }
                     seek-word(i) => { root.seek-word(i); keys.focus(); }
                     height: root.transcript != "" && !root.transcribing ? 170px : self.preferred-height;
@@ -2509,7 +2664,16 @@ export component AppWindow inherits Window {
                     show-marks <=> root.show-marks;
                     can-transcribe: root.can-transcribe;
                     recording: root.recording;
-                    edit => { root.stop-playback(); root.edit-changed(root.transcript); root.go(2); }
+                    editing: root.editing;
+                    edit-draft <=> root.edit-draft;
+                    edit-badge: root.edit-badge;
+                    speaking: root.speaking;
+                    edit => { root.start-edit(); }
+                    edited(t) => { root.edit-changed(t); }
+                    cancel => { root.leave-editor(-1); }
+                    save => { root.apply-transcript(root.edit-draft); }
+                    edit-markup(t) => { return root.edit-markup(t); }
+                    plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
                     transcribe => { root.transcribe-selected(); keys.focus(); }
                     seek-word(i) => { root.seek-word(i); keys.focus(); }
                     vertical-stretch: 1;
@@ -2528,205 +2692,6 @@ export component AppWindow inherits Window {
                     format: root.export-format;
                     subtitles: root.transcript != "";
                     export(kind) => { root.export-as(kind); keys.focus(); }
-                }
-            }
-            if root.status != "": Text {
-                text: root.status;
-                color: Theme.dim;
-                font-size: 11px;
-                overflow: elide;
-                x: 22px;
-                width: parent.width - 44px;
-                height: 24px;
-                vertical-alignment: center;
-            }
-        }
-
-        // ---------- Edit transcript ----------
-        if !compact && page == 2 && root.selected >= 0: VerticalLayout {
-            TitleBar {
-                height: 38px;
-                minimize => { root.minimize-window(); }
-                close => { root.close-window(); }
-                BackLink {
-                    text: root.clips[root.selected].name;
-                    y: (parent.height - self.height) / 2;
-                    clicked => { root.leave-editor(); }
-                }
-                Rectangle { horizontal-stretch: 1; }
-            }
-            HorizontalLayout {
-                vertical-stretch: 0;
-                padding-left: 22px;
-                padding-right: 22px;
-                padding-top: 4px;
-                spacing: 10px;
-                Text {
-                    text: "Edit transcript";
-                    color: Theme.text;
-                    font-size: 24px;
-                    font-weight: 800;
-                    letter-spacing: -0.4px;
-                }
-                if root.edit-badge != "": Rectangle {
-                    width: badge.preferred-width + 16px;
-                    height: 20px;
-                    y: (parent.height - self.height) / 2;
-                    border-radius: 10px;
-                    background: Theme.accent;
-                    badge := Text {
-                        text: root.edit-badge;
-                        color: Theme.on-accent;
-                        font-size: 11px;
-                        font-weight: 800;
-                    }
-                }
-                Rectangle { horizontal-stretch: 1; }
-            }
-            HorizontalLayout {
-                vertical-stretch: 0;
-                padding-left: 16px;
-                padding-right: 16px;
-                padding-top: 14px;
-                Rectangle {
-                    background: Theme.card;
-                    border-radius: 14px;
-                    VerticalLayout {
-                        padding: 18px;
-                        padding-top: 12px;
-                        padding-bottom: 12px;
-                        spacing: 6px;
-                        Wave {
-                            height: 40px;
-                            values: root.detail-wave;
-                            rest: #6a5546;
-                        }
-                        HorizontalLayout {
-                            Text {
-                                text: "New length " + root.edit-length;
-                                color: Theme.muted;
-                                font-size: 11px;
-                                horizontal-stretch: 1;
-                            }
-                            Text {
-                                text: "was " + root.edit-was;
-                                color: Theme.muted;
-                                font-size: 11px;
-                            }
-                        }
-                    }
-                }
-            }
-            HorizontalLayout {
-                padding-left: 16px;
-                padding-right: 16px;
-                padding-top: 12px;
-                vertical-stretch: 1;
-                Rectangle {
-                    border-radius: 14px;
-                    border-width: 1px;
-                    border-color: Theme.accent;
-                    background: #0f0b09;
-                    clip: true;
-                    // The text box draws no text of its own: the coloured layer behind it
-                    // shows the same text with the pause tags in orange. Undo and redo
-                    // (Ctrl+Z, Ctrl+Y) are the text box's own.
-                    ed-scroll := Scroller {
-                        x: 4px;
-                        y: 4px;
-                        width: parent.width - 8px;
-                        height: parent.height - 8px;
-                        VerticalLayout {
-                            padding-left: 12px;
-                            padding-right: 14px;
-                            padding-top: 10px;
-                            padding-bottom: 10px;
-                            Rectangle {
-                                height: editor.height;
-                                StyledText {
-                                    width: parent.width;
-                                    y: 0;
-                                    text: root.edit-markup(editor.text);
-                                    default-color: Theme.text2;
-                                    default-font-family: "Inter Tight";
-                                    default-font-size: 16px;
-                                }
-                                editor := TextInput {
-                                    width: parent.width;
-                                    height: max(self.preferred-height, ed-scroll.visible-height - 20px);
-                                    text: root.transcript;
-                                    font-family: "Inter Tight";
-                                    font-size: 16px;
-                                    single-line: false;
-                                    wrap: word-wrap;
-                                    color: transparent;
-                                    selection-background-color: #ff6a1a4d;
-                                    selection-foreground-color: transparent;
-                                    accessible-role: text-input;
-                                    accessible-label: "Transcript";
-                                    init => { self.focus(); root.edit-draft = self.text; }
-                                    edited => { root.edit-draft = self.text; root.edit-changed(self.text); }
-                                    cursor-position-changed(p) => {
-                                        root.caret = p;
-                                        // Keep the cursor in view.
-                                        if (p.y + 10px + root.caret-h > -ed-scroll.content-y + ed-scroll.visible-height) {
-                                            ed-scroll.content-y = -(p.y + 10px + root.caret-h + 10px - ed-scroll.visible-height);
-                                        } else if (p.y + 10px < -ed-scroll.content-y) {
-                                            ed-scroll.content-y = -max(0px, p.y);
-                                        }
-                                    }
-                                    key-pressed(e) => {
-                                        // With the marks hidden, copying gives just the words.
-                                        if (e.modifiers.control && (e.text == "c" || e.text == "C") && !root.show-marks) {
-                                            clip-buf.text = root.plain-selection(self.text, self.anchor-position-byte-offset, self.cursor-position-byte-offset);
-                                            clip-buf.select-all();
-                                            clip-buf.copy();
-                                            // Emptied at once, so it is never drawn with a selection.
-                                            clip-buf.clear-selection();
-                                            clip-buf.text = "";
-                                            return accept;
-                                        }
-                                        reject
-                                    }
-                                }
-                                // The text box's own cursor has the (invisible) text colour.
-                                if editor.has-focus && editor.anchor-position-byte-offset == editor.cursor-position-byte-offset: Rectangle {
-                                    x: root.caret.x;
-                                    y: root.caret.y;
-                                    width: 2px;
-                                    height: root.caret-h;
-                                    background: Theme.accent;
-                                }
-                            }
-                        }
-                    }
-                    // Holds the words being copied for a moment; see the editor's key-pressed.
-                    clip-buf := TextInput {
-                        x: 0;
-                        y: 0;
-                        width: 20px;
-                        height: 20px;
-                        color: transparent;
-                        read-only: true;
-                    }
-                }
-            }
-            HorizontalLayout {
-                vertical-stretch: 0;
-                padding: 16px;
-                padding-top: 12px;
-                padding-bottom: 14px;
-                spacing: 6px;
-                Rectangle { horizontal-stretch: 1; }
-                Btn {
-                    text: "Cancel";
-                    clicked => { root.leave-editor(); }
-                }
-                Btn {
-                    primary: true;
-                    text: "Save";
-                    enabled: editor.text != root.transcript && !root.speaking;
-                    clicked => { root.apply-transcript(editor.text); }
                 }
             }
             if root.status != "": Text {

@@ -139,7 +139,7 @@ global Theme {
 component Icon inherits Path {
     in property <string> name;
     in property <color> tint: Theme.text;
-    in property <bool> solid: name == "play" || name == "pause" || name == "stop" || name == "dots" || name == "grip";
+    in property <bool> solid: name == "play" || name == "pause" || name == "stop" || name == "dots" || name == "grip" || name == "dot";
     width: 14px;
     height: 14px;
     viewbox-width: 24;
@@ -157,6 +157,7 @@ component Icon inherits Path {
         : name == "down" ? "M 6 9 L 12 15 L 18 9"
         : name == "up" ? "M 6 15 L 12 9 L 18 15"
         : name == "grip" ? "M 7.6 6 A 1.6 1.6 0 1 0 10.8 6 A 1.6 1.6 0 1 0 7.6 6 Z M 13.2 6 A 1.6 1.6 0 1 0 16.4 6 A 1.6 1.6 0 1 0 13.2 6 Z M 7.6 12 A 1.6 1.6 0 1 0 10.8 12 A 1.6 1.6 0 1 0 7.6 12 Z M 13.2 12 A 1.6 1.6 0 1 0 16.4 12 A 1.6 1.6 0 1 0 13.2 12 Z M 7.6 18 A 1.6 1.6 0 1 0 10.8 18 A 1.6 1.6 0 1 0 7.6 18 Z M 13.2 18 A 1.6 1.6 0 1 0 16.4 18 A 1.6 1.6 0 1 0 13.2 18 Z"
+        : name == "dot" ? "M 4 12 A 8 8 0 1 0 20 12 A 8 8 0 1 0 4 12 Z"
         : name == "import" ? "M 12 4 L 12 15 M 7 10 L 12 15 L 17 10 M 4 19 L 20 19"
         : name == "dots" ? "M 10.2 5 A 1.8 1.8 0 1 0 13.8 5 A 1.8 1.8 0 1 0 10.2 5 Z M 10.2 12 A 1.8 1.8 0 1 0 13.8 12 A 1.8 1.8 0 1 0 10.2 12 Z M 10.2 19 A 1.8 1.8 0 1 0 13.8 19 A 1.8 1.8 0 1 0 10.2 19 Z"
         : name == "pencil" ? "M 4 20 L 8 20 L 19 9 L 15 5 L 4 16 Z"
@@ -457,6 +458,8 @@ component MenuRow inherits Rectangle {
 
 component ClipItem inherits Rectangle {
     in property <ClipRow> item;
+    // Width of the small waveform; 0 leaves it out (narrow windows).
+    in property <length> wave-width: 84px;
     in property <bool> selected;
     // Part of a selection of several clips (Ctrl or Shift click).
     in property <bool> picked;
@@ -524,8 +527,8 @@ component ClipItem inherits Rectangle {
                 clicked => { root.play(); }
             }
         }
-        Wave {
-            width: 84px;
+        if root.wave-width > 0: Wave {
+            width: root.wave-width;
             height: 22px;
             y: (parent.height - self.height) / 2;
             gap: 1px;
@@ -1308,6 +1311,357 @@ component Meter inherits Rectangle {
     }
 }
 
+// The recorder: status, time, live level and the record buttons. Mode 0 is a narrow
+// window (one line, a round Record button), 1 the default, 2 a wide window (a tall
+// panel beside the clip list).
+component RecorderCard inherits Rectangle {
+    in property <int> mode: 1;
+    in property <bool> recording;
+    in property <bool> paused;
+    in property <string> device-label;
+    in property <string> elapsed;
+    in property <string> elapsed-tenth;
+    in property <[float]> live;
+    callback record();
+    callback pause();
+    background: Theme.card;
+    border-radius: root.mode == 2 ? 18px : 14px;
+    vertical-stretch: root.mode == 2 ? 1 : 0;
+    VerticalLayout {
+    // Narrow: time and status on the left, round buttons on the right, level below.
+    if root.mode == 0: VerticalLayout {
+        padding: 14px;
+        padding-left: 18px;
+        spacing: 10px;
+        HorizontalLayout {
+            spacing: 12px;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 2px;
+                HorizontalLayout {
+                    spacing: 8px;
+                    Rectangle {
+                        width: 8px;
+                        height: 8px;
+                        y: (parent.height - self.height) / 2;
+                        border-radius: 4px;
+                        background: root.recording ? Theme.accent : #4a3a2f;
+                    }
+                    Text {
+                        text: root.recording ? (root.paused ? "PAUSED" : "RECORDING") : "READY";
+                        color: root.recording ? Theme.accent : Theme.muted;
+                        font-size: 12px;
+                        font-weight: 600;
+                        letter-spacing: 0.7px;
+                        horizontal-stretch: 1;
+                    }
+                }
+                HorizontalLayout {
+                    alignment: start;
+                    Text {
+                        text: root.elapsed;
+                        color: root.recording ? Theme.text : #7d7168;
+                        font-family: Theme.mono;
+                        font-size: 34px;
+                        letter-spacing: -1px;
+                    }
+                    Text {
+                        text: root.elapsed-tenth;
+                        color: root.recording ? #6d625a : #4a3f37;
+                        font-family: Theme.mono;
+                        font-size: 34px;
+                        letter-spacing: -1px;
+                    }
+                }
+            }
+            if root.recording: VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    size: 44px;
+                    round: true;
+                    outlined: true;
+                    icon: root.paused ? "play" : "pause";
+                    icon-size: 14px;
+                    tint: Theme.text;
+                    label: root.paused ? "Resume" : "Pause";
+                    clicked => { root.pause(); }
+                }
+            }
+            VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    size: 56px;
+                    round: true;
+                    filled: true;
+                    icon: root.recording ? "stop" : "dot";
+                    icon-size: 18px;
+                    label: root.recording ? "Stop and save" : "Record";
+                    clicked => { root.record(); }
+                }
+            }
+        }
+        HorizontalLayout {
+            spacing: 10px;
+            Text {
+                text: root.device-label;
+                color: Theme.muted;
+                font-size: 12px;
+                overflow: elide;
+                vertical-alignment: center;
+                max-width: 160px;
+            }
+            Wave {
+                height: 18px;
+                horizontal-stretch: 1;
+                values: root.live;
+                progress: root.recording && !root.paused ? 2 : -1;
+                rest: root.recording ? #6d4a33 : Theme.track;
+            }
+        }
+    }
+    // Default and wide: the full card. Wide stretches it and gives the time more room.
+    if root.mode != 0: VerticalLayout {
+        padding: root.mode == 2 ? 26px : 22px;
+        padding-top: root.mode == 2 ? 22px : 20px;
+        padding-bottom: root.mode == 2 ? 24px : 18px;
+        spacing: 16px;
+        HorizontalLayout {
+            spacing: 8px;
+            Rectangle {
+                width: 8px;
+                height: 8px;
+                y: (parent.height - self.height) / 2;
+                border-radius: 4px;
+                background: root.recording ? Theme.accent : #4a3a2f;
+            }
+            Text {
+                text: root.recording ? (root.paused ? "PAUSED" : "RECORDING") : "READY";
+                color: root.recording ? Theme.accent : Theme.muted;
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.7px;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+            Text {
+                text: root.device-label;
+                color: Theme.muted;
+                font-size: 12px;
+                overflow: elide;
+                vertical-alignment: center;
+            }
+        }
+        if root.mode == 2: Rectangle { vertical-stretch: 1; }
+        HorizontalLayout {
+            alignment: start;
+            Text {
+                text: root.elapsed;
+                color: root.recording ? Theme.text : #7d7168;
+                font-family: Theme.mono;
+                font-size: root.mode == 2 ? 72px : 56px;
+                letter-spacing: -2px;
+            }
+            Text {
+                text: root.elapsed-tenth;
+                color: root.recording ? #6d625a : #4a3f37;
+                font-family: Theme.mono;
+                font-size: root.mode == 2 ? 72px : 56px;
+                letter-spacing: -2px;
+            }
+        }
+        Wave {
+            height: root.mode == 2 ? 80px : 52px;
+            values: root.live;
+            progress: root.recording && !root.paused ? 2 : -1;
+            rest: root.recording ? #6d4a33 : Theme.track;
+        }
+        if root.mode == 2: Rectangle { vertical-stretch: 1; }
+        if root.recording: HorizontalLayout {
+            spacing: 10px;
+            Btn {
+                primary: true;
+                text: "Stop and save";
+                font-size: 15px;
+                height: root.mode == 2 ? 52px : 46px;
+                horizontal-stretch: 1;
+                clicked => { root.record(); }
+            }
+            Btn {
+                text: root.paused ? "Resume" : "Pause";
+                font-size: 14px;
+                height: root.mode == 2 ? 52px : 46px;
+                width: 120px;
+                clicked => { root.pause(); }
+            }
+        }
+        if !root.recording: Btn {
+            primary: true;
+            text: "Record";
+            font-size: 15px;
+            height: root.mode == 2 ? 52px : 46px;
+            clicked => { root.record(); }
+        }
+    }
+    }
+}
+
+// The transcript on the clip page: words and pauses, Show marks, Edit, or the
+// Transcribe button and progress. It sits in the page's scroll on normal windows and
+// fills its own column on wide ones.
+component TranscriptCard inherits Rectangle {
+    in property <string> transcript;
+    in property <bool> transcribing;
+    in property <float> transcribe-progress;
+    in property <[WordRow]> words;
+    in property <int> current-word: -1;
+    in-out property <bool> show-marks;
+    in property <bool> can-transcribe;
+    in property <bool> recording;
+    callback edit();
+    callback transcribe();
+    callback seek-word(int);
+        border-radius: 14px;
+        border-width: 1px;
+        border-color: #241b15;
+        VerticalLayout {
+            padding: 18px;
+            padding-top: 12px;
+            padding-bottom: 12px;
+            spacing: 8px;
+            HorizontalLayout {
+                height: 28px;
+                Text {
+                    text: "TRANSCRIPT";
+                    color: Theme.muted;
+                    font-size: 12px;
+                    font-weight: 800;
+                    letter-spacing: 0.7px;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                }
+                if root.transcript != "" && !root.transcribing: HorizontalLayout {
+                    horizontal-stretch: 0;
+                    spacing: 8px;
+                    padding-right: 10px;
+                    Text {
+                        text: "Show marks";
+                        color: Theme.muted;
+                        font-size: 12px;
+                        vertical-alignment: center;
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        Toggle {
+                            label: "Show marks";
+                            checked <=> root.show-marks;
+                        }
+                    }
+                }
+                if root.transcript != "" && !root.transcribing: Rectangle {
+                    width: edit-row.preferred-width + 20px;
+                    height: 26px;
+                    y: 1px;
+                    border-radius: 7px;
+                    background: edit-touch.has-hover ? #2a1d14 : Theme.raised;
+                    accessible-role: button;
+                    accessible-label: "Edit transcript";
+                    accessible-action-default => { root.edit(); }
+                    edit-row := HorizontalLayout {
+                        x: 10px;
+                        spacing: 6px;
+                        Icon { name: "pencil"; width: 12px; height: 12px; y: (parent.height - self.height) / 2; }
+                        Text { text: "Edit"; color: Theme.text; font-size: 12px; font-weight: 600; vertical-alignment: center; }
+                    }
+                    edit-touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.edit(); }
+                    }
+                }
+            }
+            if root.transcribing: VerticalLayout {
+                spacing: 10px;
+                alignment: start;
+                Text {
+                    text: "Transcribing " + round(root.transcribe-progress * 100) + "%";
+                    color: Theme.text2;
+                    font-size: 14px;
+                }
+                Rectangle {
+                    height: 4px;
+                    border-radius: 2px;
+                    background: Theme.track;
+                    Rectangle {
+                        x: 0;
+                        width: parent.width * clamp(root.transcribe-progress, 0, 1);
+                        border-radius: 2px;
+                        background: Theme.accent;
+                    }
+                }
+            }
+            if root.transcript == "" && !root.transcribing: VerticalLayout {
+                alignment: start;
+                spacing: 12px;
+                Text {
+                    text: "No transcript yet";
+                    color: Theme.dim;
+                    font-size: 14px;
+                }
+                if root.can-transcribe: HorizontalLayout {
+                    alignment: start;
+                    Btn {
+                        text: "Transcribe";
+                        enabled: !root.recording;
+                        clicked => { root.transcribe(); }
+                    }
+                }
+            }
+            if root.transcript != "" && !root.transcribing: Scroller {
+                vertical-stretch: 1;
+                // A new transcript starts at the top; Slint would keep the old offset.
+                property <string> shown: root.transcript;
+                init => { self.content-y = 0; }
+                changed shown => { self.content-y = 0; }
+                FlexboxLayout {
+                    spacing: 1px;
+                    flex-wrap: wrap;
+                    alignment: start;
+                    for w[i] in root.words: Rectangle {
+                        // Plain view: pauses take no room at all.
+                        property <bool> hidden: w.is-silence && !root.show-marks;
+                        property <bool> marks: root.show-marks;
+                        visible: !hidden;
+                        horizontal-stretch: 0;
+                        border-radius: 3px;
+                        background: i == root.current-word ? Theme.accent : wt.has-hover ? Theme.raised : w.is-silence ? #ff6a1a14 : transparent;
+                        width: hidden ? 0 : label.preferred-width + (w.is-silence ? 14px : 6px);
+                        height: hidden ? 0 : label.preferred-height + 4px;
+                        border-width: w.is-silence ? 1px : 0;
+                        border-color: #ff6a1a66;
+                        label := Text {
+                            text: w.text;
+                            // Spoken words are generated speech: shown in a different colour.
+                            color: i == root.current-word ? Theme.on-accent
+                                : w.is-silence ? Theme.accent
+                                : !marks ? Theme.text2
+                                : w.failed ? Theme.danger
+                                : w.pending ? #6d625a
+                                : w.spoken ? Theme.accent
+                                : Theme.text2;
+                            font-family: w.is-silence ? Theme.mono : "Inter Tight";
+                            font-size: w.is-silence ? 11px : 15px;
+                            font-italic: w.spoken && marks;
+                        }
+                        wt := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.seek-word(i); }
+                        }
+                    }
+                }
+            }
+        }
+}
+
 export component AppWindow inherits Window {
     title: "Thrasher";
     in property <image> window-icon;
@@ -1321,6 +1675,11 @@ export component AppWindow inherits Window {
     min-height: compact ? 64px : 480px;
     always-on-top: pinned || compact;
     no-frame: true;
+
+    // Window size classes. A size never adds or removes options; it only rearranges
+    // them (docs/plan.md section 14).
+    property <bool> narrow: root.width < 470px;
+    property <bool> wide: root.width >= 820px;
 
     // 0 clips, 1 one clip, 2 editing its transcript, 3 settings, 4 models, 5 merge
     in-out property <int> page;
@@ -1707,101 +2066,46 @@ export component AppWindow inherits Window {
                 Rectangle { width: 6px; }
             }
 
-            // Recorder
-            HorizontalLayout {
-                vertical-stretch: 0;
-                padding-left: 16px;
-                padding-right: 16px;
-                Rectangle {
-                    background: Theme.card;
-                    border-radius: 14px;
-                    VerticalLayout {
-                        padding: 22px;
-                        padding-top: 20px;
-                        padding-bottom: 18px;
-                        spacing: 16px;
-                        HorizontalLayout {
-                            spacing: 8px;
-                            Rectangle {
-                                width: 8px;
-                                height: 8px;
-                                y: (parent.height - self.height) / 2;
-                                border-radius: 4px;
-                                background: root.recording ? Theme.accent : #4a3a2f;
-                            }
-                            Text {
-                                text: root.recording ? (root.paused ? "PAUSED" : "RECORDING") : "READY";
-                                color: root.recording ? Theme.accent : Theme.muted;
-                                font-size: 12px;
-                                font-weight: 600;
-                                letter-spacing: 0.7px;
-                                vertical-alignment: center;
-                                horizontal-stretch: 1;
-                            }
-                            Text {
-                                text: root.device-label;
-                                color: Theme.muted;
-                                font-size: 12px;
-                                overflow: elide;
-                                vertical-alignment: center;
-                            }
-                        }
-                        HorizontalLayout {
-                            alignment: start;
-                            Text {
-                                text: root.elapsed;
-                                color: root.recording ? Theme.text : #7d7168;
-                                font-family: Theme.mono;
-                                font-size: 56px;
-                                letter-spacing: -2px;
-                            }
-                            Text {
-                                text: root.elapsed-tenth;
-                                color: root.recording ? #6d625a : #4a3f37;
-                                font-family: Theme.mono;
-                                font-size: 56px;
-                                letter-spacing: -2px;
-                            }
-                        }
-                        Wave {
-                            height: 52px;
-                            values: root.live;
-                            progress: root.recording && !root.paused ? 2 : -1;
-                            rest: root.recording ? #6d4a33 : Theme.track;
-                        }
-                        if root.recording: HorizontalLayout {
-                            spacing: 10px;
-                            Btn {
-                                primary: true;
-                                text: "Stop and save";
-                                font-size: 15px;
-                                height: 46px;
-                                horizontal-stretch: 1;
-                                clicked => { root.toggle-record(); keys.focus(); }
-                            }
-                            Btn {
-                                text: root.paused ? "Resume" : "Pause";
-                                font-size: 14px;
-                                height: 46px;
-                                width: 120px;
-                                clicked => { root.toggle-pause(); keys.focus(); }
-                            }
-                        }
-                        if !root.recording: Btn {
-                            primary: true;
-                            text: "Record";
-                            font-size: 15px;
-                            height: 46px;
-                            clicked => { root.toggle-record(); keys.focus(); }
-                        }
+            body := FlexboxLayout {
+                // Wide: the recorder beside the list. Otherwise above it.
+                flex-direction: root.wide ? FlexboxLayoutDirection.row : FlexboxLayoutDirection.column;
+                flex-wrap: no-wrap;
+                alignment: stretch;
+                cross-axis-alignment: stretch;
+                vertical-stretch: 1;
+                spacing: root.wide ? 20px : 0;
+                padding-left: root.wide ? 18px : 0;
+                padding-right: root.wide ? 6px : 0;
+                padding-bottom: root.wide ? 16px : 0;
+                HorizontalLayout {
+                    horizontal-stretch: 0;
+                    vertical-stretch: 0;
+                    min-width: root.wide ? 380px : 0;
+                    max-width: root.wide ? 380px : 100000px;
+                    padding-left: root.wide ? 0 : root.narrow ? 12px : 16px;
+                    padding-right: root.wide ? 0 : root.narrow ? 12px : 16px;
+                    padding-top: root.wide ? 4px : 0;
+                    RecorderCard {
+                        mode: root.narrow ? 0 : root.wide ? 2 : 1;
+                        recording: root.recording;
+                        paused: root.paused;
+                        device-label: root.device-label;
+                        elapsed: root.elapsed;
+                        elapsed-tenth: root.elapsed-tenth;
+                        live: root.live;
+                        record => { root.toggle-record(); keys.focus(); }
+                        pause => { root.toggle-pause(); keys.focus(); }
                     }
                 }
-            }
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    vertical-stretch: 1;
+
 
             HorizontalLayout {
-                padding-left: 22px;
-                padding-right: 22px;
-                padding-top: 18px;
+                padding-left: root.wide ? 10px : root.narrow ? 18px : 22px;
+                padding-right: root.wide ? 14px : root.narrow ? 18px : 22px;
+                padding-top: root.wide ? 6px : 18px;
                 padding-bottom: 8px;
                 spacing: 14px;
                 Text {
@@ -1874,6 +2178,7 @@ export component AppWindow inherits Window {
                     padding-bottom: 2px;
                     ClipItem {
                         item: clip;
+                        wave-width: root.narrow ? 0 : root.wide ? 160px : 84px;
                         selected: i == root.selected;
                         picked: root.picked[i];
                         merge-count: root.picked[i] ? root.picked-count : 0;
@@ -1889,6 +2194,9 @@ export component AppWindow inherits Window {
                         delete => { root.ask-delete(i); }
                     }
                 }
+                }
+            }
+
                 }
             }
 
@@ -1917,8 +2225,14 @@ export component AppWindow inherits Window {
                 }
                 Rectangle { horizontal-stretch: 1; }
             }
+            HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 2px;
+            padding-right: root.wide ? 18px : 0;
             Scroller {
             vertical-stretch: 1;
+            min-width: root.wide ? 460px : 50px;
+            max-width: root.wide ? 460px : 100000px;
             VerticalLayout {
             alignment: start;
             padding-bottom: 8px;
@@ -2002,7 +2316,7 @@ export component AppWindow inherits Window {
                         padding-bottom: 16px;
                         spacing: 12px;
                         wave-box := Rectangle {
-                            height: 64px;
+                            height: root.narrow ? 36px : 64px;
                             Wave {
                                 values: root.detail-wave;
                                 progress: root.active-clip == root.selected ? root.play-fraction : 0;
@@ -2021,7 +2335,7 @@ export component AppWindow inherits Window {
                                 clicked => { root.seek-fraction(self.mouse-x / self.width); keys.focus(); }
                             }
                         }
-                        HorizontalLayout {
+                        if !root.narrow: HorizontalLayout {
                             Text {
                                 text: root.active-clip == root.selected ? root.play-position : "0:00";
                                 color: Theme.muted;
@@ -2088,6 +2402,13 @@ export component AppWindow inherits Window {
                                     }
                                 }
                             }
+                            if root.narrow: Text {
+                                text: (root.active-clip == root.selected ? root.play-position : "0:00") + " / " + root.clips[root.selected].duration;
+                                color: Theme.muted;
+                                font-family: Theme.mono;
+                                font-size: 11px;
+                                vertical-alignment: center;
+                            }
                             Rectangle { horizontal-stretch: 1; }
                             VerticalLayout {
                                 alignment: center;
@@ -2115,152 +2436,24 @@ export component AppWindow inherits Window {
                 }
             }
 
-            // Transcript
-            HorizontalLayout {
+            // Transcript (on wide windows it has its own column instead)
+            if !root.wide: HorizontalLayout {
                 padding-left: 16px;
                 padding-right: 16px;
                 padding-top: 12px;
-                Rectangle {
+                TranscriptCard {
+                    transcript: root.transcript;
+                    transcribing: root.transcribing;
+                    transcribe-progress: root.transcribe-progress;
+                    words: root.words;
+                    current-word: root.current-word;
+                    show-marks <=> root.show-marks;
+                    can-transcribe: root.can-transcribe;
+                    recording: root.recording;
+                    edit => { root.stop-playback(); root.edit-changed(root.transcript); root.go(2); }
+                    transcribe => { root.transcribe-selected(); keys.focus(); }
+                    seek-word(i) => { root.seek-word(i); keys.focus(); }
                     height: root.transcript != "" && !root.transcribing ? 170px : self.preferred-height;
-                    border-radius: 14px;
-                    border-width: 1px;
-                    border-color: #241b15;
-                    VerticalLayout {
-                        padding: 18px;
-                        padding-top: 12px;
-                        padding-bottom: 12px;
-                        spacing: 8px;
-                        HorizontalLayout {
-                            height: 28px;
-                            Text {
-                                text: "TRANSCRIPT";
-                                color: Theme.muted;
-                                font-size: 12px;
-                                font-weight: 800;
-                                letter-spacing: 0.7px;
-                                vertical-alignment: center;
-                                horizontal-stretch: 1;
-                            }
-                            if root.transcript != "" && !root.transcribing: HorizontalLayout {
-                                horizontal-stretch: 0;
-                                spacing: 8px;
-                                padding-right: 10px;
-                                Text {
-                                    text: "Show marks";
-                                    color: Theme.muted;
-                                    font-size: 12px;
-                                    vertical-alignment: center;
-                                }
-                                VerticalLayout {
-                                    alignment: center;
-                                    Toggle {
-                                        label: "Show marks";
-                                        checked <=> root.show-marks;
-                                    }
-                                }
-                            }
-                            if root.transcript != "" && !root.transcribing: Rectangle {
-                                width: edit-row.preferred-width + 20px;
-                                height: 26px;
-                                y: 1px;
-                                border-radius: 7px;
-                                background: edit-touch.has-hover ? #2a1d14 : Theme.raised;
-                                accessible-role: button;
-                                accessible-label: "Edit transcript";
-                                accessible-action-default => { root.stop-playback(); root.edit-changed(root.transcript); root.go(2); }
-                                edit-row := HorizontalLayout {
-                                    x: 10px;
-                                    spacing: 6px;
-                                    Icon { name: "pencil"; width: 12px; height: 12px; y: (parent.height - self.height) / 2; }
-                                    Text { text: "Edit"; color: Theme.text; font-size: 12px; font-weight: 600; vertical-alignment: center; }
-                                }
-                                edit-touch := TouchArea {
-                                    mouse-cursor: pointer;
-                                    clicked => { root.stop-playback(); root.edit-changed(root.transcript); root.go(2); }
-                                }
-                            }
-                        }
-                        if root.transcribing: VerticalLayout {
-                            spacing: 10px;
-                            alignment: start;
-                            Text {
-                                text: "Transcribing " + round(root.transcribe-progress * 100) + "%";
-                                color: Theme.text2;
-                                font-size: 14px;
-                            }
-                            Rectangle {
-                                height: 4px;
-                                border-radius: 2px;
-                                background: Theme.track;
-                                Rectangle {
-                                    x: 0;
-                                    width: parent.width * clamp(root.transcribe-progress, 0, 1);
-                                    border-radius: 2px;
-                                    background: Theme.accent;
-                                }
-                            }
-                        }
-                        if root.transcript == "" && !root.transcribing: VerticalLayout {
-                            alignment: start;
-                            spacing: 12px;
-                            Text {
-                                text: "No transcript yet";
-                                color: Theme.dim;
-                                font-size: 14px;
-                            }
-                            if root.can-transcribe: HorizontalLayout {
-                                alignment: start;
-                                Btn {
-                                    text: "Transcribe";
-                                    enabled: !root.recording;
-                                    clicked => { root.transcribe-selected(); keys.focus(); }
-                                }
-                            }
-                        }
-                        if root.transcript != "" && !root.transcribing: Scroller {
-                            vertical-stretch: 1;
-                            // A new transcript starts at the top; Slint would keep the old offset.
-                            property <string> shown: root.transcript;
-                            init => { self.content-y = 0; }
-                            changed shown => { self.content-y = 0; }
-                            FlexboxLayout {
-                                spacing: 1px;
-                                flex-wrap: wrap;
-                                alignment: start;
-                                for w[i] in root.words: Rectangle {
-                                    // Plain view: pauses take no room at all.
-                                    property <bool> hidden: w.is-silence && !root.show-marks;
-                                    property <bool> marks: root.show-marks;
-                                    visible: !hidden;
-                                    horizontal-stretch: 0;
-                                    border-radius: 3px;
-                                    background: i == root.current-word ? Theme.accent : wt.has-hover ? Theme.raised : w.is-silence ? #ff6a1a14 : transparent;
-                                    width: hidden ? 0 : label.preferred-width + (w.is-silence ? 14px : 6px);
-                                    height: hidden ? 0 : label.preferred-height + 4px;
-                                    border-width: w.is-silence ? 1px : 0;
-                                    border-color: #ff6a1a66;
-                                    label := Text {
-                                        text: w.text;
-                                        // Spoken words are generated speech: shown in a different colour.
-                                        color: i == root.current-word ? Theme.on-accent
-                                            : w.is-silence ? Theme.accent
-                                            : !marks ? Theme.text2
-                                            : w.failed ? Theme.danger
-                                            : w.pending ? #6d625a
-                                            : w.spoken ? Theme.accent
-                                            : Theme.text2;
-                                        font-family: w.is-silence ? Theme.mono : "Inter Tight";
-                                        font-size: w.is-silence ? 11px : 15px;
-                                        font-italic: w.spoken && marks;
-                                    }
-                                    wt := TouchArea {
-                                        mouse-cursor: pointer;
-                                        clicked => { root.seek-word(i); keys.focus(); }
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
 
@@ -2301,6 +2494,26 @@ export component AppWindow inherits Window {
                     }
                 }
             }
+            }
+            }
+
+            if root.wide: VerticalLayout {
+                horizontal-stretch: 1;
+                padding-top: 16px;
+                TranscriptCard {
+                    transcript: root.transcript;
+                    transcribing: root.transcribing;
+                    transcribe-progress: root.transcribe-progress;
+                    words: root.words;
+                    current-word: root.current-word;
+                    show-marks <=> root.show-marks;
+                    can-transcribe: root.can-transcribe;
+                    recording: root.recording;
+                    edit => { root.stop-playback(); root.edit-changed(root.transcript); root.go(2); }
+                    transcribe => { root.transcribe-selected(); keys.focus(); }
+                    seek-word(i) => { root.seek-word(i); keys.focus(); }
+                    vertical-stretch: 1;
+                }
             }
             }
 
@@ -2545,6 +2758,15 @@ export component AppWindow inherits Window {
                     spacing: 18px;
                     alignment: start;
 
+                    FlexboxLayout {
+                    flex-direction: root.wide ? FlexboxLayoutDirection.row : FlexboxLayoutDirection.column;
+                    flex-wrap: no-wrap;
+                    alignment: stretch;
+                    cross-axis-alignment: root.wide ? CrossAxisAlignment.start : CrossAxisAlignment.stretch;
+                    spacing: 18px;
+                    VerticalLayout {
+                    horizontal-stretch: 1;
+                    spacing: 18px;
                     Card {
                         title: "RECORDING";
                         CardRow {
@@ -2666,6 +2888,10 @@ export component AppWindow inherits Window {
                         }
                     }
 
+                    }
+                    VerticalLayout {
+                    horizontal-stretch: 1;
+                    spacing: 18px;
                     Card {
                         title: "TRANSCRIPTION";
                         if !root.can-transcribe: CardRow { label: "Not part of this build"; last: true; }
@@ -2760,6 +2986,8 @@ export component AppWindow inherits Window {
                                 }
                             }
                         }
+                    }
+                    }
                     }
                 }
             }

@@ -76,7 +76,7 @@ impl Default for Settings {
             window: None,
             theme: "Ember".into(),
             project: String::new(),
-            auto_transcribe: false,
+            auto_transcribe: true,
             max_pause: 0.0,
             ai_model: "borealis-open-4b".into(),
         }

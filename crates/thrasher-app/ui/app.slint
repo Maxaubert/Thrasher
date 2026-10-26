@@ -3172,6 +3172,8 @@ export component AppWindow inherits Window {
                             }
                         }
                     }
+                    // Lets the header (and so the list under it) grow with the window.
+                    Rectangle { horizontal-stretch: 1; }
                     // Several clips picked: offer to merge them.
                     if root.picked-count >= 2: Text {
                         text: root.picked-count + " picked";

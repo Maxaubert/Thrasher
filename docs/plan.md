@@ -232,7 +232,7 @@ Max picked these after a brainstorm. Each item is its own PR, built in this orde
    the current project, the same way as the Import button. While files hover, the window
    shows a dashed outline and "Drop to import". Files Thrasher can't read are skipped with
    a status note. Built on winit's file drop events (`unstable-winit-030` is already on).
-3. **Auto transcribe** (setting, off by default, card TRANSCRIPTION, row "Auto
+3. **Auto transcribe** (setting, on by default since 2026-10-26, card TRANSCRIPTION, row "Auto
    transcribe"). When it's on, every new clip is transcribed as soon as it's saved:
    recordings, imports and dropped files. Several new clips go to one worker run (the
    worker already takes more clip names). Clips that arrive while a job runs wait in a

@@ -2260,6 +2260,8 @@ export component AppWindow inherits Window {
     callback export-project();
     // Clip i moves to project p.
     callback move-clip(int, int);
+    // Files are being dragged over the window.
+    in property <bool> dropping;
     // 1 rename clip, 2 delete clip, 3 unsaved changes, 4 new project, 5 rename project.
     in-out property <int> dialog;
     in-out property <int> dialog-clip;
@@ -3874,6 +3876,35 @@ export component AppWindow inherits Window {
 
     init => { keys.focus(); Win.height = self.height; }
     changed height => { Win.height = self.height; }
+
+    // Files dragged over the window: a drop imports them.
+    if root.dropping && !root.compact: Rectangle {
+        background: Theme.bg.with-alpha(0.88);
+        Rectangle {
+            x: 12px;
+            y: 12px;
+            width: parent.width - 24px;
+            height: parent.height - 24px;
+            border-radius: 16px;
+            border-width: 2px;
+            border-color: Theme.accent;
+            VerticalLayout {
+                alignment: center;
+                spacing: 12px;
+                HorizontalLayout {
+                    alignment: center;
+                    Icon { name: "file-plus"; tint: Theme.accent; width: 34px; height: 34px; }
+                }
+                Text {
+                    text: "Drop to import";
+                    color: Theme.text;
+                    font-size: 17px;
+                    font-weight: 800;
+                    horizontal-alignment: center;
+                }
+            }
+        }
+    }
 
     if root.dialog >= 4 || (root.dialog != 0 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length): Rectangle {
         background: #000000a6;

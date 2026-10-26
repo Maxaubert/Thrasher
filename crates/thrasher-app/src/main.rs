@@ -1834,19 +1834,43 @@ fn main() -> Result<(), slint::PlatformError> {
                 a.selected(&ui).map(|c| c.name.clone())
             };
             let Some(name) = name else { return };
-            if a.recording.as_ref().is_some_and(|r| r.name() == name) {
-                return;
-            }
-            if a.active.as_deref() == Some(name.as_str()) {
-                a.stop(&ui);
-            }
-            match a.library.delete(&name) {
-                Ok(()) => {
-                    ui.set_status(format!("Moved {name} to the Recycle Bin").into());
-                    a.refresh_clips(&ui);
+            // The highlighted clip among several picked: all of them go.
+            let sel = ui.get_selected();
+            let names: Vec<String> = if !last
+                && a.picked.iter().filter(|p| **p).count() >= 2
+                && a.picked.get(sel as usize).copied().unwrap_or(false)
+            {
+                a.clips
+                    .iter()
+                    .zip(&a.picked)
+                    .filter(|(_, p)| **p)
+                    .map(|(c, _)| c.name.clone())
+                    .collect()
+            } else {
+                vec![name]
+            };
+            let recording = a.recording.as_ref().map(|r| r.name().to_string());
+            let (mut gone, mut failed) = (Vec::new(), None);
+            for name in names.iter().filter(|n| recording.as_ref() != Some(*n)) {
+                if a.active.as_deref() == Some(name.as_str()) {
+                    a.stop(&ui);
                 }
-                Err(e) => ui.set_status(e.to_string().into()),
+                match a.library.delete(name) {
+                    Ok(()) => gone.push(name.clone()),
+                    Err(e) => failed = Some(e.to_string()),
+                }
             }
+            if !gone.is_empty() {
+                a.refresh_clips(&ui);
+                ui.set_selected(-1);
+                a.show_transcript(&ui);
+            }
+            let status = match (gone.as_slice(), failed) {
+                (_, Some(e)) => e,
+                ([one], None) => format!("Moved {one} to the Recycle Bin"),
+                (many, None) => format!("Moved {} clips to the Recycle Bin", many.len()),
+            };
+            ui.set_status(status.into());
         }
     };
     ui.on_delete_selected({

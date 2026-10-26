@@ -25,6 +25,7 @@ use thrasher_core::naming::Template;
 use thrasher_core::player::{Buffer, Player, load_clip};
 use thrasher_core::projects;
 use thrasher_core::recorder::{RecorderOptions, Recording};
+use thrasher_core::search;
 use thrasher_core::sidecar::Sidecar;
 use thrasher_core::sidecar::TrackKind;
 use thrasher_core::wasapi_io::{DeviceInfo, input_devices};
@@ -283,6 +284,8 @@ struct App {
     /// wait in `queue`, with their folder (the project may change).
     job: Option<(std::path::PathBuf, Vec<String>)>,
     queue: VecDeque<(std::path::PathBuf, String)>,
+    /// Transcripts read for search, kept while their sidecar is unchanged.
+    search_docs: HashMap<std::path::PathBuf, (Option<SystemTime>, search::Doc)>,
     live: VecDeque<f32>,
     live_model: Rc<VecModel<f32>>,
 }
@@ -526,6 +529,81 @@ impl App {
                 .is_some_and(|(d, ns)| d == self.library.dir() && ns.contains(&c.name))
         });
         ui.set_transcribing(on);
+    }
+
+    /// The clip's transcript, prepared for search; read again only when it changed.
+    fn search_doc(&mut self, path: &std::path::Path) -> search::Doc {
+        let stamp = std::fs::metadata(path).and_then(|m| m.modified()).ok();
+        if let Some((s, d)) = self.search_docs.get(path)
+            && *s == stamp
+        {
+            return d.clone();
+        }
+        let d = Sidecar::load(path)
+            .map(|sc| search::doc(&sc))
+            .unwrap_or_default();
+        self.search_docs
+            .insert(path.to_path_buf(), (stamp, d.clone()));
+        d
+    }
+
+    /// Fills the search results: clips of this project (or of all of them) whose
+    /// transcript or name holds `query`, newest first.
+    fn search(&mut self, ui: &AppWindow, query: &str, all: bool) {
+        const MAX_HITS: usize = 200;
+        let mut found: Vec<(SystemTime, SearchHit)> = Vec::new();
+        if !query.trim().is_empty() {
+            let current = ui.get_project();
+            let names: Vec<SharedString> = ui.get_projects().iter().collect();
+            let places: Vec<i32> = if all {
+                (0..names.len() as i32).collect()
+            } else {
+                vec![current]
+            };
+            for p in places {
+                let Some(name) = App::project_at(ui, p) else {
+                    continue;
+                };
+                let (library, clips) = if p == current {
+                    (self.library.clone(), self.clips.clone())
+                } else {
+                    let Ok(lib) = Library::open(projects::dir(&self.root, &name)) else {
+                        continue;
+                    };
+                    let clips = lib.list().unwrap_or_default();
+                    (lib, clips)
+                };
+                let shown = names.get(p as usize).cloned().unwrap_or_default();
+                for c in clips {
+                    let d = self.search_doc(&library.sidecar_path(&c.name));
+                    if let Some(h) = search::find(&c.name, &d, query) {
+                        found.push((
+                            c.created,
+                            SearchHit {
+                                clip: c.name.as_str().into(),
+                                project: shown.clone(),
+                                project_index: p,
+                                before: h.before.into(),
+                                matched: h.matched.into(),
+                                after: h.after.into(),
+                                more: h.more as i32,
+                                at: h.at as f32,
+                            },
+                        ));
+                    }
+                }
+            }
+        }
+        found.sort_by_key(|f| std::cmp::Reverse(f.0));
+        if found.len() > MAX_HITS {
+            crate::log!(
+                "search for {query:?}: showing {MAX_HITS} of {}",
+                found.len()
+            );
+            found.truncate(MAX_HITS);
+        }
+        let hits: Vec<SearchHit> = found.into_iter().map(|(_, h)| h).collect();
+        ui.set_hits(ModelRc::new(VecModel::from(hits)));
     }
 
     /// Fills the project dropdown: Inbox, then the projects by name.
@@ -1310,6 +1388,7 @@ fn main() -> Result<(), slint::PlatformError> {
         merge_names: Vec::new(),
         job: None,
         queue: VecDeque::new(),
+        search_docs: HashMap::new(),
         live: VecDeque::new(),
         live_model,
     }));
@@ -2429,6 +2508,35 @@ fn main() -> Result<(), slint::PlatformError> {
         move || {
             let dir = app.borrow().library.dir().to_path_buf();
             let _ = std::process::Command::new("explorer").arg(dir).spawn();
+        }
+    });
+
+    ui.on_search({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |query, all| app.borrow_mut().search(&weak.unwrap(), &query, all)
+    });
+
+    ui.on_open_hit({
+        let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
+        move |i| {
+            let ui = weak.unwrap();
+            let Some(hit) = ui.get_hits().row_data(i as usize) else {
+                return;
+            };
+            let mut a = app.borrow_mut();
+            if hit.project_index != ui.get_project() {
+                if a.recording.is_some() {
+                    return;
+                }
+                let Some(name) = App::project_at(&ui, hit.project_index) else {
+                    return;
+                };
+                a.open_project(&ui, &name);
+            }
+            a.select_name(&ui, &hit.clip);
+            if a.play_clip(&ui, &hit.clip, hit.at as f64) {
+                ensure();
+            }
         }
     });
 

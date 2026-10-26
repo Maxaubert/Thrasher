@@ -15,6 +15,7 @@ pub mod naming;
 pub mod player;
 pub mod projects;
 pub mod recorder;
+pub mod search;
 pub mod sidecar;
 pub mod stretch;
 pub mod subtitles;

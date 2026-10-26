@@ -100,6 +100,63 @@ fn edit_markup(text: &str, accent: slint::Color) -> String {
     out
 }
 
+/// Clicks clip `i` in the list the way File Explorer does: a plain click picks just
+/// it, Ctrl adds or removes it, Shift picks the range from the anchor (the last plain
+/// or Ctrl click) to it, and Ctrl+Shift adds that range. `sel` is the highlighted
+/// clip; returns the new one. A single picked clip is just the highlighted one, so
+/// `picked` only ever holds two or more.
+fn pick_clips(
+    picked: &mut [bool],
+    anchor: &mut Option<(usize, i32)>,
+    sel: i32,
+    i: i32,
+    ctrl: bool,
+    shift: bool,
+) -> i32 {
+    let n = picked.len();
+    if i < 0 || i as usize >= n {
+        picked.fill(false);
+        *anchor = None;
+        return -1;
+    }
+    let i = i as usize;
+    let valid = |s: i32| (s >= 0 && (s as usize) < n).then_some(s as usize);
+    // What is picked now, counting a lone highlighted clip.
+    if !picked.contains(&true)
+        && let Some(s) = valid(sel)
+    {
+        picked[s] = true;
+    }
+    let from = match *anchor {
+        Some((at, was)) if was == sel && at < n => at,
+        _ => valid(sel).unwrap_or(i),
+    };
+    let mut sel = i as i32;
+    if shift {
+        if !ctrl {
+            picked.fill(false);
+        }
+        for p in &mut picked[from.min(i)..=from.max(i)] {
+            *p = true;
+        }
+        *anchor = Some((from, sel));
+    } else if ctrl {
+        picked[i] = !picked[i];
+        if !picked[i] {
+            // The highlight stays on a picked clip.
+            sel = picked.iter().position(|p| *p).map_or(-1, |p| p as i32);
+        }
+        *anchor = Some((i, sel));
+    } else {
+        picked.fill(false);
+        *anchor = Some((i, sel));
+    }
+    if picked.iter().filter(|p| **p).count() < 2 {
+        picked.fill(false);
+    }
+    sel
+}
+
 /// Work on a merged clip's parts, run on a worker thread: gets the library and the
 /// clip's name, returns the status line (or an error for it).
 type PartsJob = Box<dyn FnOnce(&Library, &str) -> Result<String, String> + Send>;
@@ -212,6 +269,9 @@ struct App {
     waves: waves::Waves,
     /// Clips picked with Ctrl or Shift, one flag per clip in the list.
     picked: Vec<bool>,
+    /// Where a Shift click range starts, and the highlighted clip when it was set
+    /// (moving the highlight another way, such as with the arrow keys, moves it).
+    anchor: Option<(usize, i32)>,
     /// The clips on the merge page, in merge order.
     merge_names: Vec<String>,
     live: VecDeque<f32>,
@@ -380,6 +440,7 @@ impl App {
             .collect();
         ui.set_clips(ModelRc::new(VecModel::from(rows)));
         self.picked = vec![false; self.clips.len()];
+        self.anchor = None;
         self.show_picked(ui);
         let n = self.clips.len();
         let sel = ui.get_selected();
@@ -1111,6 +1172,7 @@ fn main() -> Result<(), slint::PlatformError> {
         timeline: Edl::default(),
         waves: waves::Waves::default(),
         picked: Vec::new(),
+        anchor: None,
         merge_names: Vec::new(),
         live: VecDeque::new(),
         live_model,
@@ -1611,30 +1673,9 @@ fn main() -> Result<(), slint::PlatformError> {
             let mut a = app.borrow_mut();
             let n = a.clips.len();
             a.picked.resize(n, false);
-            let sel = ui.get_selected();
-            if i < 0 || i as usize >= n {
-                a.picked.fill(false);
-                ui.set_selected(-1);
-            } else if ctrl {
-                if !a.picked.contains(&true) && sel >= 0 && sel != i && (sel as usize) < n {
-                    a.picked[sel as usize] = true;
-                }
-                a.picked[i as usize] = !a.picked[i as usize];
-                ui.set_selected(i);
-            } else if shift && sel >= 0 {
-                a.picked.fill(false);
-                for j in sel.min(i)..=sel.max(i) {
-                    a.picked[j as usize] = true;
-                }
-                ui.set_selected(i);
-            } else {
-                a.picked.fill(false);
-                ui.set_selected(i);
-            }
-            // One picked clip is just the highlighted one.
-            if a.picked.iter().filter(|p| **p).count() < 2 {
-                a.picked.fill(false);
-            }
+            let App { picked, anchor, .. } = &mut *a;
+            let sel = pick_clips(picked, anchor, ui.get_selected(), i, ctrl, shift);
+            ui.set_selected(sel);
             a.show_picked(&ui);
         }
     });
@@ -2575,6 +2616,43 @@ mod tests {
             Spec::Done(x) => Some(x),
             _ => None,
         }
+    }
+
+    fn picks(picked: &[bool]) -> Vec<usize> {
+        (0..picked.len()).filter(|&i| picked[i]).collect()
+    }
+
+    #[test]
+    fn picks_clips_like_file_explorer() {
+        let mut p = vec![false; 8];
+        let mut anchor = None;
+        let mut sel = pick_clips(&mut p, &mut anchor, -1, 2, false, false);
+        assert_eq!((sel, picks(&p)), (2, vec![]));
+        // Shift: range from the anchor; a second Shift click keeps the anchor.
+        sel = pick_clips(&mut p, &mut anchor, sel, 5, false, true);
+        assert_eq!((sel, picks(&p)), (5, vec![2, 3, 4, 5]));
+        sel = pick_clips(&mut p, &mut anchor, sel, 0, false, true);
+        assert_eq!((sel, picks(&p)), (0, vec![0, 1, 2]));
+        // Ctrl adds one and moves the anchor there.
+        sel = pick_clips(&mut p, &mut anchor, sel, 6, true, false);
+        assert_eq!((sel, picks(&p)), (6, vec![0, 1, 2, 6]));
+        // Ctrl+Shift adds the range from the new anchor.
+        sel = pick_clips(&mut p, &mut anchor, sel, 7, true, true);
+        assert_eq!((sel, picks(&p)), (7, vec![0, 1, 2, 6, 7]));
+        // Ctrl on a picked clip removes it; the highlight moves to a picked one.
+        sel = pick_clips(&mut p, &mut anchor, sel, 7, true, false);
+        assert_eq!((sel, picks(&p)), (0, vec![0, 1, 2, 6]));
+        // A plain click picks just that one.
+        sel = pick_clips(&mut p, &mut anchor, sel, 4, false, false);
+        assert_eq!((sel, picks(&p)), (4, vec![]));
+        // Ctrl from a lone highlighted clip makes two.
+        sel = pick_clips(&mut p, &mut anchor, sel, 1, true, false);
+        assert_eq!((sel, picks(&p)), (1, vec![1, 4]));
+        // Moving the highlight with the keys moves the anchor too.
+        sel = pick_clips(&mut p, &mut anchor, sel, 3, false, false);
+        assert_eq!(sel, 3);
+        sel = pick_clips(&mut p, &mut anchor, 6, 7, false, true);
+        assert_eq!((sel, picks(&p)), (7, vec![6, 7]));
     }
 
     const ORANGE: slint::Color = slint::Color::from_rgb_u8(0xff, 0x6a, 0x1a);

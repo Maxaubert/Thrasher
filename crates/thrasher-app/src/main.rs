@@ -1338,6 +1338,17 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.set_name_template(a.settings.name_template.clone().into());
         ui.set_close_to_tray(a.settings.close_to_tray);
         ui.set_auto_transcribe(a.settings.auto_transcribe);
+        let pauses: Vec<SharedString> = settings::MAX_PAUSES
+            .iter()
+            .map(|(_, l)| (*l).into())
+            .collect();
+        ui.set_max_pauses(ModelRc::new(VecModel::from(pauses)));
+        ui.set_max_pause_index(
+            settings::MAX_PAUSES
+                .iter()
+                .position(|(s, _)| (s - a.settings.max_pause).abs() < 1e-6)
+                .unwrap_or(0) as i32,
+        );
         let theme = ui.global::<Theme>();
         if let Some(i) = theme.get_names().iter().position(|n| n == a.settings.theme) {
             theme.set_current(i as i32);
@@ -2340,6 +2351,13 @@ fn main() -> Result<(), slint::PlatformError> {
                 let here = {
                     let mut a = app.borrow_mut();
                     let job = a.job.take();
+                    let max = a.settings.max_pause;
+                    if ok
+                        && max > 0.0
+                        && let Some((dir, names)) = &job
+                    {
+                        cap_pauses(dir, names, max);
+                    }
                     job.is_some_and(|(d, _)| d == a.library.dir())
                 };
                 ui.set_status(line);
@@ -2351,6 +2369,16 @@ fn main() -> Result<(), slint::PlatformError> {
                 let mut a = app.borrow_mut();
                 a.next_job(&ui);
                 a.show_transcribing(&ui);
+            }
+        });
+        ui.on_max_pause_changed({
+            let app = app.clone();
+            move |i| {
+                if let Some((secs, _)) = settings::MAX_PAUSES.get(i as usize) {
+                    let mut a = app.borrow_mut();
+                    a.settings.max_pause = *secs;
+                    a.settings.save();
+                }
             }
         });
         ui.on_auto_transcribe_changed({
@@ -2769,6 +2797,24 @@ fn import_paths(ui: &AppWindow, library: Library, files: Vec<std::path::PathBuf>
             ui.invoke_imported(status.into(), last.into(), names.into())
         });
     });
+}
+
+/// Shortens the pauses of freshly transcribed clips to `max` seconds (the Max pause
+/// setting), as an edit the editor can change back.
+fn cap_pauses(dir: &std::path::Path, names: &[String], max: f64) {
+    let Ok(library) = Library::open(dir) else {
+        return;
+    };
+    for name in names {
+        let path = library.sidecar_path(name);
+        let Ok(mut sc) = Sidecar::load(&path) else {
+            continue;
+        };
+        let n = edit::cap_pauses(&mut sc, max);
+        if n > 0 && sc.save(&path).is_ok() {
+            crate::log!("shortened {n} pause(s) in {name} to {max} s");
+        }
+    }
 }
 
 /// True for a file the importer offers to read, judged by its extension.

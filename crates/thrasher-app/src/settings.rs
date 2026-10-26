@@ -48,6 +48,8 @@ pub struct Settings {
     pub project: String,
     /// New clips (recordings, imports, dropped files) are transcribed right away.
     pub auto_transcribe: bool,
+    /// After a transcription, longer pauses are shortened to this many seconds. 0 is off.
+    pub max_pause: f64,
 }
 
 impl Default for Settings {
@@ -73,6 +75,7 @@ impl Default for Settings {
             theme: "Ember".into(),
             project: String::new(),
             auto_transcribe: false,
+            max_pause: 0.0,
         }
     }
 }
@@ -94,6 +97,15 @@ pub const RECORDING_LIMITS: [(u32, &str); 6] = [
     (240, "4 hours"),
     (480, "8 hours"),
     (0, "No limit"),
+];
+
+/// Choices for the longest pause in settings: seconds and label. 0 is off.
+pub const MAX_PAUSES: [(f64, &str); 5] = [
+    (0.0, "Off"),
+    (0.3, "0.3 s"),
+    (0.5, "0.5 s"),
+    (1.0, "1 s"),
+    (2.0, "2 s"),
 ];
 
 /// True when a recording of `elapsed` seconds has reached the limit.

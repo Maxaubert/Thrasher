@@ -2844,9 +2844,17 @@ export component AppWindow inherits Window {
     function go(p: int) {
         root.renaming = false;
         root.editing = false;
+        // Settings and Models remember where they were opened from, so Back returns there.
+        if (p == 3 && root.page != 3 && root.page != 4) { root.settings-back = root.page; }
+        if (p == 4 && root.page != 4) { root.models-back = root.page; }
         root.page = p;
         keys.focus();
     }
+    // Opens page p as `go` does; for the app's own jumps (a missing model).
+    public function visit(p: int) { root.go(p); }
+    // Where Back on Settings and on Models leads.
+    property <int> settings-back: 0;
+    property <int> models-back: 3;
 
     keys := FocusScope {
         key-pressed(event) => {
@@ -2865,7 +2873,7 @@ export component AppWindow inherits Window {
                 return reject;
             }
             if (event.text == Key.Escape) {
-                if (page != 0) { root.go(page == 4 ? 3 : 0); } else { root.stop-playback(); root.pick(-1, false, false); }
+                if (page != 0) { root.go(page == 4 ? root.models-back : page == 3 ? root.settings-back : 0); } else { root.stop-playback(); root.pick(-1, false, false); }
                 return accept;
             }
             if (page >= 3) { return reject; }
@@ -3793,7 +3801,7 @@ export component AppWindow inherits Window {
                 minimize => { root.minimize-window(); }
                 close => { root.close-window(); }
             }
-            PageHeader { title: "Settings"; back => { root.go(0); } }
+            PageHeader { title: "Settings"; back => { root.go(root.settings-back); } }
             Scroller {
                 vertical-stretch: 1;
                 VerticalLayout {
@@ -4307,7 +4315,7 @@ export component AppWindow inherits Window {
                 minimize => { root.minimize-window(); }
                 close => { root.close-window(); }
             }
-            PageHeader { title: "Models"; note: root.models-used; back => { root.go(3); } }
+            PageHeader { title: "Models"; note: root.models-used; back => { root.go(root.models-back); } }
             VerticalLayout {
                 vertical-stretch: 0;
                 padding-left: 16px;

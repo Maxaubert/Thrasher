@@ -23,6 +23,7 @@ use thrasher_core::library::{Clip, Library};
 use thrasher_core::meter::meter_position;
 use thrasher_core::naming::Template;
 use thrasher_core::player::{Buffer, Player, load_clip};
+use thrasher_core::projects;
 use thrasher_core::recorder::{RecorderOptions, Recording};
 use thrasher_core::sidecar::Sidecar;
 use thrasher_core::sidecar::TrackKind;
@@ -195,7 +196,7 @@ impl Export {
             Export::Subtitles(Subtitles::Vtt) => "VTT subtitles",
             Export::Subtitles(Subtitles::Words) => "word timings",
             Export::Subtitles(Subtitles::Script) => "timestamped script",
-            Export::Project(_) => "whole project",
+            Export::Project(_) => "all files",
         }
     }
 
@@ -245,6 +246,10 @@ impl Export {
 
 struct App {
     settings: Settings,
+    /// The clip folder, which is also the Inbox project.
+    root: std::path::PathBuf,
+    /// The project shown and recorded into; empty is Inbox.
+    project: String,
     library: Library,
     template: Template,
     devices: Vec<DeviceInfo>,
@@ -450,6 +455,50 @@ impl App {
         self.sync_active(ui);
         let (library, clips) = (self.library.clone(), self.clips.clone());
         self.waves.request(ui, &library, &clips);
+    }
+
+    /// Fills the project dropdown: Inbox, then the projects by name.
+    fn show_projects(&self, ui: &AppWindow) {
+        let list = projects::list(&self.root).unwrap_or_default();
+        let current = list
+            .iter()
+            .position(|p| *p == self.project)
+            .map_or(0, |i| i as i32 + 1);
+        let mut names: Vec<SharedString> = vec![projects::INBOX.into()];
+        names.extend(list.into_iter().map(SharedString::from));
+        ui.set_projects(ModelRc::new(VecModel::from(names)));
+        ui.set_project(current);
+    }
+
+    /// The name of entry `i` of the project dropdown; empty for Inbox.
+    fn project_at(ui: &AppWindow, i: i32) -> Option<String> {
+        if i == 0 {
+            return Some(String::new());
+        }
+        ui.get_projects()
+            .row_data(usize::try_from(i).ok()?)
+            .map(|s| s.to_string())
+    }
+
+    /// Shows project `name` (empty for Inbox) and records into it from now on.
+    fn open_project(&mut self, ui: &AppWindow, name: &str) {
+        match Library::open(projects::dir(&self.root, name)) {
+            Ok(lib) => {
+                self.stop(ui);
+                self.active = None;
+                self.library = lib;
+                self.project = name.to_string();
+                self.settings.project = self.project.clone();
+                self.settings.save();
+                // Clips in different projects can share a name.
+                self.waves = waves::Waves::default();
+                self.refresh_clips(ui);
+                ui.set_selected(-1);
+                self.show_transcript(ui);
+                self.show_projects(ui);
+            }
+            Err(e) => ui.set_status(format!("Cannot open {name}: {e}").into()),
+        }
     }
 
     fn row_wave(&self, c: &Clip) -> ModelRc<f32> {
@@ -1132,7 +1181,15 @@ fn main() -> Result<(), slint::PlatformError> {
     let dir = std::env::var_os("THRASHER_DIR")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| settings.output_dir.clone());
-    let library = match Library::open(&dir) {
+    let project = if projects::list(&dir)
+        .unwrap_or_default()
+        .contains(&settings.project)
+    {
+        settings.project.clone()
+    } else {
+        String::new()
+    };
+    let library = match Library::open(projects::dir(&dir, &project)) {
         Ok(l) => l,
         Err(e) => {
             eprintln!("cannot open {}: {e}", dir.display());
@@ -1156,6 +1213,8 @@ fn main() -> Result<(), slint::PlatformError> {
 
     let app = Rc::new(RefCell::new(App {
         settings,
+        root: dir.clone(),
+        project,
         library,
         template,
         devices,
@@ -1197,7 +1256,8 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.set_record_system(a.settings.record_system);
         ui.set_device_label(a.device_label().into());
         ui.set_pinned(a.settings.pinned);
-        ui.set_folder(short_path(a.library.dir()).into());
+        ui.set_folder(short_path(&a.root).into());
+        a.show_projects(&ui);
         ui.set_name_template(a.settings.name_template.clone().into());
         ui.set_close_to_tray(a.settings.close_to_tray);
         let theme = ui.global::<Theme>();
@@ -2065,7 +2125,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 _ if test => Some(start.join(&file)),
                 // A project is a folder of files, so only the place for it is asked.
                 Export::Project(_) => rfd::FileDialog::new()
-                    .set_title("Export the whole project into a folder")
+                    .set_title("Export all the clip's files into a folder")
                     .set_directory(&start)
                     .pick_folder(),
                 _ => rfd::FileDialog::new()
@@ -2274,6 +2334,175 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
+    ui.on_choose_project({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |i| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            if a.recording.is_some() {
+                return;
+            }
+            if let Some(name) = App::project_at(&ui, i)
+                && name != a.project
+            {
+                a.open_project(&ui, &name);
+            }
+        }
+    });
+
+    ui.on_create_project({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |name| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let name = name.trim().to_string();
+            match projects::create(&a.root, &name) {
+                Ok(_) if a.recording.is_none() => a.open_project(&ui, &name),
+                Ok(_) => a.show_projects(&ui),
+                Err(e) => ui.set_status(format!("Cannot make {name}: {e}").into()),
+            }
+        }
+    });
+
+    ui.on_rename_project({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |name| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let (from, to) = (a.project.clone(), name.trim().to_string());
+            if a.recording.is_some() {
+                return;
+            }
+            match projects::rename(&a.root, &from, &to) {
+                Ok(()) => a.open_project(&ui, &to),
+                Err(e) => ui.set_status(format!("Cannot rename {from}: {e}").into()),
+            }
+        }
+    });
+
+    ui.on_delete_project({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move || {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let name = a.project.clone();
+            if a.recording.is_some() {
+                return;
+            }
+            match projects::remove(&a.root, &name) {
+                Ok(()) => {
+                    a.open_project(&ui, "");
+                    ui.set_status(format!("Deleted {name}").into());
+                }
+                Err(e) => ui.set_status(format!("Cannot delete {name}: {e}").into()),
+            }
+        }
+    });
+
+    ui.on_move_clip({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |i, p| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let (Some(c), Some(target)) =
+                (a.clips.get(i as usize).cloned(), App::project_at(&ui, p))
+            else {
+                return;
+            };
+            if target == a.project || a.recording.as_ref().is_some_and(|r| r.name() == c.name) {
+                return;
+            }
+            if a.active.as_deref() == Some(c.name.as_str()) {
+                a.stop(&ui);
+                a.active = None;
+            }
+            let to = Library::open(projects::dir(&a.root, &target)).map_err(|e| e.to_string());
+            match to.and_then(|to| a.library.move_to(&c.name, &to).map_err(|e| e.to_string())) {
+                Ok(_) => {
+                    let shown = if target.is_empty() {
+                        projects::INBOX
+                    } else {
+                        target.as_str()
+                    };
+                    ui.set_status(format!("Moved {} to {shown}", c.name).into());
+                    a.refresh_clips(&ui);
+                    ui.set_selected(-1);
+                    a.show_transcript(&ui);
+                }
+                Err(e) => ui.set_status(format!("Cannot move {}: {e}", c.name).into()),
+            }
+        }
+    });
+
+    ui.on_export_project({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move || {
+            let ui = weak.unwrap();
+            let (library, project, clean_voice, format, folder) = {
+                let a = app.borrow();
+                let shown = if a.project.is_empty() {
+                    projects::INBOX
+                } else {
+                    a.project.as_str()
+                };
+                (
+                    a.library.clone(),
+                    shown.to_string(),
+                    a.settings.clean_voice,
+                    a.settings.export_format.clone(),
+                    a.settings.export_dir.clone(),
+                )
+            };
+            use thrasher_core::export::{ExportOptions, Format};
+            let format = match format.as_str() {
+                "wav" => Format::Wav,
+                "mp3" => Format::Mp3,
+                _ => Format::Flac,
+            };
+            let options = ExportOptions {
+                format,
+                bits: if format == Format::Mp3 { 16 } else { 24 },
+                clean_voice,
+            };
+            let start = folder
+                .filter(|d| d.is_dir())
+                .unwrap_or_else(|| library.dir().to_path_buf());
+            // The test window must never take focus, so it exports without asking.
+            let chosen = if std::env::var_os("THRASHER_TEST_WINDOW").is_some() {
+                Some(start)
+            } else {
+                rfd::FileDialog::new()
+                    .set_title(format!("Export {project} into a folder"))
+                    .set_directory(&start)
+                    .pick_folder()
+            };
+            let Some(parent) = chosen else {
+                return;
+            };
+            {
+                let mut a = app.borrow_mut();
+                a.settings.export_dir = Some(parent.clone());
+                a.settings.save();
+            }
+            ui.set_status(format!("Exporting {project}...").into());
+            let weak = ui.as_weak();
+            std::thread::spawn(move || {
+                let started = std::time::Instant::now();
+                let result = projects::export_all(&library, &project, options, &parent);
+                crate::log!(
+                    "export of project {project} took {} ms: {:?}",
+                    crate::log::ms(started),
+                    result.as_ref().err()
+                );
+                let status = match result {
+                    Ok(dir) => format!("Exported {project} into {}", short_path(&dir)),
+                    Err(e) => format!("Export failed: {e}"),
+                };
+                let _ = weak.upgrade_in_event_loop(move |ui| ui.set_status(status.into()));
+            });
+        }
+    });
+
     ui.on_change_folder({
         let (app, weak) = (app.clone(), ui.as_weak());
         move || {
@@ -2288,15 +2517,12 @@ fn main() -> Result<(), slint::PlatformError> {
             };
             let mut a = app.borrow_mut();
             match Library::open(&dir) {
-                Ok(lib) => {
-                    a.stop(&ui);
-                    a.library = lib;
+                Ok(_) => {
+                    a.root = dir.clone();
                     a.settings.output_dir = dir.clone();
-                    a.settings.save();
                     ui.set_folder(short_path(&dir).into());
-                    a.refresh_clips(&ui);
-                    ui.set_selected(-1);
-                    a.show_transcript(&ui);
+                    // A new folder starts in its Inbox.
+                    a.open_project(&ui, "");
                 }
                 Err(e) => ui.set_status(format!("Cannot use {}: {e}", dir.display()).into()),
             }

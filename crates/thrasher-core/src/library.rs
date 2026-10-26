@@ -144,12 +144,34 @@ impl Library {
         if self.exists(to) && !from.eq_ignore_ascii_case(to) {
             return Err(LibraryError::Exists(to.into()));
         }
+        self.move_files(from, self, to)
+    }
+
+    /// Moves the clip into `target` (another project) under the same name, or the
+    /// first free "name (2)", "name (3)" and so on. Returns the name it got.
+    pub fn move_to(&self, name: &str, target: &Library) -> Result<String, LibraryError> {
+        if !self.exists(name) {
+            return Err(LibraryError::Missing(name.into()));
+        }
+        let mut to = name.to_string();
+        let mut n = 2;
+        while !target.files_of(&to).is_empty() {
+            to = format!("{name} ({n})");
+            n += 1;
+        }
+        self.move_files(name, target, &to)?;
+        Ok(to)
+    }
+
+    /// Moves the files of clip `from` to `to` in `target` and points its sidecar at
+    /// the new file names.
+    fn move_files(&self, from: &str, target: &Library, to: &str) -> Result<(), LibraryError> {
         for path in self.files_of(from) {
             let file = path.file_name().unwrap().to_string_lossy().into_owned();
-            let target = self.dir.join(format!("{to}{}", &file[from.len()..]));
-            std::fs::rename(&path, &target)?;
+            let dest = target.dir.join(format!("{to}{}", &file[from.len()..]));
+            std::fs::rename(&path, &dest)?;
         }
-        let sc = self.sidecar_path(to);
+        let sc = target.sidecar_path(to);
         if let Ok(mut s) = Sidecar::load(&sc) {
             s.file = format!("{to}.wav");
             for t in &mut s.thrasher.tracks {

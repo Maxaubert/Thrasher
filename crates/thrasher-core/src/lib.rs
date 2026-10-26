@@ -13,6 +13,7 @@ pub mod meter;
 pub mod models;
 pub mod naming;
 pub mod player;
+pub mod projects;
 pub mod recorder;
 pub mod sidecar;
 pub mod stretch;

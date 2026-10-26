@@ -73,6 +73,19 @@ export struct OrderRow {
     note: string,
 }
 
+// A search result: the clip, its project, the words around the match and where to
+// play from.
+export struct SearchHit {
+    clip: string,
+    project: string,
+    project-index: int,
+    before: string,
+    matched: string,
+    after: string,
+    more: int,
+    at: float,
+}
+
 export struct ClipRow {
     name: string,
     duration: string,
@@ -1460,6 +1473,12 @@ component TextField inherits Rectangle {
     in property <bool> enabled: true;
     callback edited(string);
     callback accepted(string);
+    // Esc calls `escaped` instead of reaching the window (the search field).
+    in property <bool> takes-escape;
+    callback escaped();
+    // Raising it puts the cursor in the field (Ctrl+F).
+    in property <int> focus-ticket;
+    changed focus-ticket => { root.grab(); }
     public function grab() {
         input.focus();
         input.select-all();
@@ -1517,8 +1536,86 @@ component TextField inherits Rectangle {
                 accessible-label: root.label;
                 edited => { root.edited(self.text); }
                 accepted => { root.accepted(self.text); }
+                key-pressed(e) => {
+                    if (root.takes-escape && e.text == Key.Escape) {
+                        root.escaped();
+                        return accept;
+                    }
+                    reject
+                }
             }
         }
+    }
+}
+
+// One search result: the clip name (and project), then the words around the match
+// with the match in the accent colour.
+component SearchRow inherits Rectangle {
+    in property <SearchHit> hit;
+    in property <bool> show-project;
+    callback clicked;
+    height: 52px;
+    border-radius: 10px;
+    background: t.has-hover ? Theme.row-hover : transparent;
+    accessible-role: button;
+    accessible-label: root.hit.clip + ", " + root.hit.before + " " + root.hit.matched + " " + root.hit.after;
+    accessible-action-default => { root.clicked(); }
+    VerticalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        alignment: center;
+        spacing: 3px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: root.hit.clip;
+                color: Theme.text;
+                font-size: 14px;
+                font-weight: 500;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if root.show-project: Text {
+                text: root.hit.project;
+                color: Theme.dim;
+                font-size: 11px;
+                vertical-alignment: center;
+            }
+            if root.hit.more > 0: Text {
+                text: "+" + root.hit.more;
+                color: Theme.dim;
+                font-size: 11px;
+                font-family: Theme.mono;
+                vertical-alignment: center;
+            }
+        }
+        if root.hit.matched != "": HorizontalLayout {
+            spacing: 4px;
+            if root.hit.before != "": Text {
+                text: root.hit.before;
+                color: Theme.dim;
+                font-size: 12px;
+                horizontal-stretch: 0;
+            }
+            Text {
+                text: root.hit.matched;
+                color: Theme.accent;
+                font-size: 12px;
+                font-weight: 700;
+                horizontal-stretch: 0;
+            }
+            Text {
+                text: root.hit.after;
+                color: Theme.dim;
+                font-size: 12px;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
     }
 }
 
@@ -2304,6 +2401,13 @@ export component AppWindow inherits Window {
     callback move-clip(int, int);
     // Files are being dragged over the window.
     in property <bool> dropping;
+    // Search over the list: the text, whether it covers all projects, and the results.
+    in-out property <string> query;
+    in-out property <bool> search-all;
+    in property <[SearchHit]> hits;
+    callback search(string, bool);
+    callback open-hit(int);
+    property <int> search-ticket;
     // 1 rename clip, 2 delete clip, 3 unsaved changes, 4 new project, 5 rename project.
     in-out property <int> dialog;
     in-out property <int> dialog-clip;
@@ -2555,6 +2659,10 @@ export component AppWindow inherits Window {
                 return accept;
             }
             if (renaming) { return reject; }
+            if (event.modifiers.control && (event.text == "f" || event.text == "F") && root.page == 0 && !root.compact) {
+                root.search-ticket += 1;
+                return accept;
+            }
             if (root.editing) {
                 if (event.text == Key.Escape) { root.leave-editor(-1); return accept; }
                 return reject;
@@ -2796,7 +2904,51 @@ export component AppWindow inherits Window {
                             export => { root.export-project(); keys.focus(); }
                         }
                     }
-                    Rectangle { horizontal-stretch: 1; }
+                    VerticalLayout {
+                        alignment: center;
+                        horizontal-stretch: 1;
+                        TextField {
+                            height: 30px;
+                            max-width: 300px;
+                            icon: "search";
+                            placeholder: "Search";
+                            label: "Search clips";
+                            takes-escape: true;
+                            focus-ticket: root.search-ticket;
+                            text <=> root.query;
+                            edited(t) => { root.search(t, root.search-all); }
+                            escaped => { root.query = ""; root.search("", root.search-all); keys.focus(); }
+                            accepted => { if (root.hits.length > 0) { root.open-hit(0); root.go(1); } }
+                        }
+                    }
+                    // Search every project instead of this one.
+                    if root.query != "" && root.projects.length > 1: VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: all-text.preferred-width + 18px;
+                            height: 26px;
+                            border-radius: 13px;
+                            border-width: 1px;
+                            border-color: root.search-all ? Theme.accent.with-alpha(0.5) : Theme.edge;
+                            background: root.search-all ? Theme.accent.with-alpha(0.08) : transparent;
+                            accessible-role: checkbox;
+                            accessible-label: "Search all projects";
+                            accessible-checked: root.search-all;
+                            accessible-action-default => { root.search-all = !root.search-all; root.search(root.query, root.search-all); }
+                            all-text := Text {
+                                x: 9px;
+                                y: (parent.height - self.height) / 2;
+                                text: "All projects";
+                                color: root.search-all ? Theme.accent : Theme.muted;
+                                font-size: 11px;
+                                font-weight: 600;
+                            }
+                            TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => { root.search-all = !root.search-all; root.search(root.query, root.search-all); }
+                            }
+                        }
+                    }
                     // Several clips picked: offer to merge them.
                     if root.picked-count >= 2: Text {
                         text: root.picked-count + " picked";
@@ -2826,7 +2978,27 @@ export component AppWindow inherits Window {
                     }
                 }
 
-                Scroller {
+                if root.query != "": Scroller {
+                    vertical-stretch: 1;
+                    VerticalLayout {
+                        alignment: start;
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        spacing: 2px;
+                        if root.hits.length == 0: Text {
+                            text: "No matches";
+                            color: Theme.dim;
+                            font-size: 13px;
+                            horizontal-alignment: center;
+                        }
+                        for h[i] in root.hits: SearchRow {
+                            hit: h;
+                            show-project: root.search-all;
+                            clicked => { root.open-hit(i); root.go(1); }
+                        }
+                    }
+                }
+                if root.query == "": Scroller {
                     vertical-stretch: 1;
                     content-y <=> root.list-y;
                     property <int> count: root.clips.length;

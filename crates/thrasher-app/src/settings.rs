@@ -52,6 +52,9 @@ pub struct Settings {
     pub max_pause: f64,
     /// Id of the local AI model, from `thrasher_core::ai::AI_MODELS`.
     pub ai_model: String,
+    /// With auto transcribe on, the local AI names each new recording from its
+    /// transcript.
+    pub ai_names: bool,
 }
 
 impl Default for Settings {
@@ -79,6 +82,7 @@ impl Default for Settings {
             auto_transcribe: true,
             max_pause: 0.0,
             ai_model: "borealis-open-4b".into(),
+            ai_names: true,
         }
     }
 }

@@ -86,6 +86,17 @@ export struct SearchHit {
     at: float,
 }
 
+// A language in the translate menu. `ready`: it can be made now; `done`: this clip
+// has it already; `install`: what is missing (1 a Whisper model, 2 the AI model).
+export struct LangRow {
+    code: string,
+    name: string,
+    native: string,
+    ready: bool,
+    done: bool,
+    install: int,
+}
+
 // A transcript passage an answer was given from, numbered as the answer cites it.
 export struct AskSource {
     n: int,
@@ -2125,10 +2136,13 @@ component TranscriptCard inherits Rectangle {
     // The running job is a translation.
     in property <bool> translating;
     in property <float> transcribe-progress;
-    // The English translation, and whether it is shown instead of the transcript.
+    // The translation shown (its language code, empty for the original) and its text.
     in property <string> translation;
-    in-out property <bool> show-english;
-    callback translate();
+    in-out property <string> shown-lang;
+    in property <[LangRow]> langs;
+    callback choose-lang(string);
+    callback install-for(int);
+    callback lang-filter(string);
     // The local AI's summary and to-do list, and whether it is shown.
     in property <string> summary;
     in property <bool> summarising;
@@ -2136,8 +2150,8 @@ component TranscriptCard inherits Rectangle {
     in-out property <bool> show-summary;
     callback summarise();
     property <bool> summary-view: root.show-summary && (root.summary != "" || root.summarising);
-    property <bool> english: root.show-english && root.translation != "" && !root.summary-view;
-    property <bool> original-view: !root.english && !root.summary-view;
+    property <bool> lang-view: root.shown-lang != "" && !root.summary-view;
+    property <bool> original-view: !root.lang-view && !root.summary-view;
     in property <[WordRow]> words;
     in property <int> current-word: -1;
     in-out property <bool> show-marks;
@@ -2221,22 +2235,126 @@ component TranscriptCard inherits Rectangle {
                 }
                 // Translate and Summary: a click shows that view (making it the first
                 // time), a second click goes back to the original. Nothing moves.
-                if root.transcript != "" && !root.transcribing && !root.editing && root.can-transcribe: VerticalLayout {
+                if root.transcript != "" && !root.transcribing && !root.editing && root.langs.length > 0: VerticalLayout {
                     alignment: center;
-                    IconBtn {
+                    lang-btn := IconBtn {
                         size: 28px;
                         icon: "languages";
                         icon-size: 14px;
-                        active: root.english;
-                        label: root.translation == "" ? "Translate to English" : root.english ? "Show the original" : "Show the English";
-                        tip: root.english ? "Original" : "English";
-                        enabled: !root.recording || root.translation != "";
+                        active: root.lang-view;
+                        label: "Translate";
+                        tip: "Translate";
                         clicked => {
-                            if (root.translation == "") {
-                                root.translate();
-                            } else {
-                                root.show-english = !root.english;
-                                root.show-summary = false;
+                            root.lang-filter("");
+                            lang-menu.show();
+                        }
+                    }
+                    // A searchable list of languages, Original first.
+                    lang-menu := PopupWindow {
+                        x: lang-btn.width - self.width;
+                        y: lang-btn.height + 6px;
+                        width: 250px;
+                        height: 5px + 40px + 34px + min(root.langs.length, 7) * 34px + 5px;
+                        close-policy: close-on-click-outside;
+                        Rectangle {
+                            background: Theme.raised;
+                            border-radius: 10px;
+                            border-width: 1px;
+                            border-color: Theme.edge;
+                            drop-shadow-blur: 20px;
+                            drop-shadow-offset-y: 6px;
+                            drop-shadow-color: #00000099;
+                            VerticalLayout {
+                                padding: 5px;
+                                VerticalLayout {
+                                    padding-bottom: 6px;
+                                    TextField {
+                                        height: 34px;
+                                        icon: "search";
+                                        placeholder: "Search";
+                                        label: "Search languages";
+                                        init => { self.grab(); }
+                                        edited(t) => { root.lang-filter(t); }
+                                    }
+                                }
+                                MenuRow {
+                                    text: "Original";
+                                    checked: !root.lang-view;
+                                    clicked => { root.shown-lang = ""; root.show-summary = false; lang-menu.close(); }
+                                }
+                                Flickable {
+                                    height: min(root.langs.length, 7) * 34px;
+                                    content-height: root.langs.length * 34px;
+                                    for l[i] in root.langs: Rectangle {
+                                        y: i * 34px;
+                                        width: parent.width;
+                                        height: 34px;
+                                        border-radius: 6px;
+                                        background: row-t.has-hover && l.ready ? Theme.hover : transparent;
+                                        accessible-role: button;
+                                        accessible-label: l.ready ? l.name : l.name + ", install";
+                                        accessible-action-default => { if (l.ready) { root.choose-lang(l.code); root.show-summary = false; lang-menu.close(); } else { root.install-for(l.install); lang-menu.close(); } }
+                                        row-t := TouchArea {
+                                            enabled: l.ready;
+                                            mouse-cursor: pointer;
+                                            clicked => { root.choose-lang(l.code); root.show-summary = false; lang-menu.close(); }
+                                        }
+                                        HorizontalLayout {
+                                            padding-left: 10px;
+                                            padding-right: 8px;
+                                            spacing: 8px;
+                                            Text {
+                                                text: l.name;
+                                                color: l.ready ? Theme.text2 : Theme.dim;
+                                                font-size: 13px;
+                                                vertical-alignment: center;
+                                            }
+                                            Text {
+                                                text: l.native != l.name ? l.native : "";
+                                                color: Theme.dim;
+                                                opacity: l.ready ? 1 : 0.6;
+                                                font-size: 11px;
+                                                vertical-alignment: center;
+                                                horizontal-stretch: 1;
+                                                overflow: elide;
+                                            }
+                                            if l.done && root.shown-lang != l.code: Rectangle {
+                                                width: 6px;
+                                                height: 6px;
+                                                y: (parent.height - self.height) / 2;
+                                                border-radius: 3px;
+                                                background: Theme.muted;
+                                            }
+                                            if root.shown-lang == l.code && root.lang-view: Icon {
+                                                name: "check";
+                                                tint: Theme.accent;
+                                                width: 13px;
+                                                height: 13px;
+                                                y: (parent.height - self.height) / 2;
+                                            }
+                                            // Needs a model first: a link to it.
+                                            if !l.ready: Rectangle {
+                                                width: install-text.preferred-width + 12px;
+                                                height: 22px;
+                                                y: (parent.height - self.height) / 2;
+                                                border-radius: 5px;
+                                                background: install-t.has-hover ? Theme.accent.with-alpha(0.14) : transparent;
+                                                install-text := Text {
+                                                    x: 6px;
+                                                    y: (parent.height - self.height) / 2;
+                                                    text: "Install";
+                                                    color: Theme.accent;
+                                                    font-size: 12px;
+                                                    font-weight: 600;
+                                                }
+                                                install-t := TouchArea {
+                                                    mouse-cursor: pointer;
+                                                    clicked => { root.install-for(l.install); lang-menu.close(); }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -2256,7 +2374,6 @@ component TranscriptCard inherits Rectangle {
                                 root.summarise();
                             } else {
                                 root.show-summary = !root.summary-view;
-                                root.show-english = false;
                             }
                         }
                     }
@@ -2273,7 +2390,7 @@ component TranscriptCard inherits Rectangle {
                         tip: "Copy";
                         clicked => {
                             // The words only, without the pause tags.
-                            copy-buf.text = root.summary-view ? root.summary : root.english ? root.translation : root.plain-selection(root.transcript, 0, 2147483647);
+                            copy-buf.text = root.summary-view ? root.summary : root.lang-view ? root.translation : root.plain-selection(root.transcript, 0, 2147483647);
                             copy-buf.select-all();
                             copy-buf.copy();
                             copy-buf.clear-selection();
@@ -2459,19 +2576,19 @@ component TranscriptCard inherits Rectangle {
                     }
                 }
             }
-            if root.english && !root.transcribing && !root.editing: Scroller {
+            if root.lang-view && !root.transcribing && !root.editing: Scroller {
                 vertical-stretch: 1;
                 VerticalLayout {
                     padding-right: 10px;
                     Text {
-                        text: root.translation;
-                        color: Theme.text2;
+                        text: root.translation != "" ? root.translation : "Translating";
+                        color: root.translation != "" ? Theme.text2 : Theme.dim;
                         font-size: 15px;
                         wrap: word-wrap;
                     }
                 }
             }
-            if root.transcript != "" && !root.transcribing && !root.editing && !root.english && !root.summary-view: Scroller {
+            if root.transcript != "" && !root.transcribing && !root.editing && !root.lang-view && !root.summary-view: Scroller {
                 vertical-stretch: 1;
                 // A new transcript starts at the top; Slint would keep the old offset.
                 property <string> shown: root.transcript;
@@ -2592,13 +2709,23 @@ export component AppWindow inherits Window {
     in property <bool> transcribing;
     in property <bool> translating;
     in property <string> translation;
-    in-out property <bool> show-english;
-    callback translate-selected();
+    in-out property <string> shown-lang;
+    in property <[LangRow]> langs;
+    callback choose-lang(string);
+    callback lang-filter(string);
+    // A language needs a model: 1 opens the Whisper models, 2 the AI settings.
+    callback install-for(int);
+    // The translation model in settings, and its download (below 0 when none runs).
+    in property <bool> translator-ready;
+    in property <float> translator-download: -1;
     in property <string> summary;
     in property <bool> summarising;
     in property <bool> can-ai;
     in-out property <bool> show-summary;
     callback summarise-selected();
+    // The AI finished translating clip `name` into `code`: whether it worked, and the
+    // text or the error.
+    callback translated(bool, string, string, string);
     // Ask: the question, whether it covers all projects, the answer as it is
     // written, and the passages it was given.
     in-out property <string> question;
@@ -2618,7 +2745,8 @@ export component AppWindow inherits Window {
     in property <bool> ai-ready;
     in property <float> ai-download: -1;
     callback ai-model-changed(int);
-    callback download-ai();
+    // 0 the summary model, 1 the translation model.
+    callback download-ai(int);
     in property <float> transcribe-progress;
     in-out property <bool> speaking;
     in property <float> speak-progress;
@@ -3718,8 +3846,11 @@ export component AppWindow inherits Window {
                     transcribing: root.transcribing;
                     translating: root.translating;
                     translation: root.translation;
-                    show-english <=> root.show-english;
-                    translate => { root.translate-selected(); }
+                    shown-lang <=> root.shown-lang;
+                    langs: root.langs;
+                    choose-lang(c) => { root.choose-lang(c); }
+                    lang-filter(t) => { root.lang-filter(t); }
+                    install-for(k) => { root.install-for(k); }
                     summary: root.summary;
                     summarising: root.summarising;
                     can-ai: root.can-ai;
@@ -3795,8 +3926,11 @@ export component AppWindow inherits Window {
                     transcribing: root.transcribing;
                     translating: root.translating;
                     translation: root.translation;
-                    show-english <=> root.show-english;
-                    translate => { root.translate-selected(); }
+                    shown-lang <=> root.shown-lang;
+                    langs: root.langs;
+                    choose-lang(c) => { root.choose-lang(c); }
+                    lang-filter(t) => { root.lang-filter(t); }
+                    install-for(k) => { root.install-for(k); }
                     summary: root.summary;
                     summarising: root.summarising;
                     can-ai: root.can-ai;
@@ -4083,14 +4217,34 @@ export component AppWindow inherits Window {
                         }
                         CardRow {
                             label: root.ai-ready ? "Ready" : root.ai-download >= 0 ? "Downloading " + round(root.ai-download * 100) + "%" : "Not downloaded";
-                            last: true;
                             if !root.ai-ready && root.ai-download < 0: VerticalLayout {
                                 alignment: center;
                                 Btn {
                                     text: "Download";
                                     height: 30px;
                                     font-size: 12px;
-                                    clicked => { root.download-ai(); }
+                                    clicked => { root.download-ai(0); }
+                                }
+                            }
+                        }
+                        CardRow {
+                            label: "Translation";
+                            note: "Ministral 3B · 2.1 GB";
+                            last: true;
+                            if root.translator-ready: Text { text: "Ready"; color: Theme.text2; font-size: 13px; vertical-alignment: center; }
+                            if !root.translator-ready && root.translator-download >= 0: Text {
+                                text: "Downloading " + round(root.translator-download * 100) + "%";
+                                color: Theme.text2;
+                                font-size: 13px;
+                                vertical-alignment: center;
+                            }
+                            if !root.translator-ready && root.translator-download < 0: VerticalLayout {
+                                alignment: center;
+                                Btn {
+                                    text: "Download";
+                                    height: 30px;
+                                    font-size: 12px;
+                                    clicked => { root.download-ai(1); }
                                 }
                             }
                         }

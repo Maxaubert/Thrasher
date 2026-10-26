@@ -55,6 +55,9 @@ pub struct Job {
     pub model: String,
     pub max_tokens: u32,
     pub steps: Vec<Vec<Message>>,
+    /// Pass on every step's answer, not just the last (a translation in parts).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub emit_all: bool,
 }
 
 /// Words per part when a transcript is too long to summarise in one go.
@@ -146,6 +149,7 @@ pub fn summary_job(sc: &Sidecar, model: &Path) -> Option<Job> {
         model: model.to_string_lossy().into_owned(),
         max_tokens: 700,
         steps,
+        emit_all: false,
     })
 }
 
@@ -349,6 +353,7 @@ pub fn ask_job(question: &str, picked: &[Passage], model: &Path) -> Job {
     Job {
         model: model.to_string_lossy().into_owned(),
         max_tokens: 500,
+        emit_all: false,
         steps: vec![vec![
             Message {
                 role: "system",
@@ -418,6 +423,7 @@ pub fn name_job(sc: &Sidecar, model: &Path) -> Option<Job> {
         model: model.to_string_lossy().into_owned(),
         max_tokens: 60,
         steps: vec![chat(describe), chat(title.to_string())],
+        emit_all: false,
     })
 }
 
@@ -480,6 +486,156 @@ pub fn clean_title(raw: &str) -> Option<String> {
         None => String::new(),
     };
     crate::library::valid_name(&out).then_some(out)
+}
+
+/// A language the translate menu offers: code, English name, and its own name for
+/// searching.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Language {
+    pub code: &'static str,
+    pub name: &'static str,
+    pub native: &'static str,
+}
+
+pub const LANGUAGES: &[Language] = &[
+    Language {
+        code: "en",
+        name: "English",
+        native: "English",
+    },
+    Language {
+        code: "no",
+        name: "Norwegian",
+        native: "Norsk",
+    },
+    Language {
+        code: "sv",
+        name: "Swedish",
+        native: "Svenska",
+    },
+    Language {
+        code: "da",
+        name: "Danish",
+        native: "Dansk",
+    },
+    Language {
+        code: "fi",
+        name: "Finnish",
+        native: "Suomi",
+    },
+    Language {
+        code: "de",
+        name: "German",
+        native: "Deutsch",
+    },
+    Language {
+        code: "nl",
+        name: "Dutch",
+        native: "Nederlands",
+    },
+    Language {
+        code: "fr",
+        name: "French",
+        native: "Français",
+    },
+    Language {
+        code: "es",
+        name: "Spanish",
+        native: "Español",
+    },
+    Language {
+        code: "pt",
+        name: "Portuguese",
+        native: "Português",
+    },
+    Language {
+        code: "it",
+        name: "Italian",
+        native: "Italiano",
+    },
+    Language {
+        code: "pl",
+        name: "Polish",
+        native: "Polski",
+    },
+    Language {
+        code: "uk",
+        name: "Ukrainian",
+        native: "Українська",
+    },
+    Language {
+        code: "ar",
+        name: "Arabic",
+        native: "العربية",
+    },
+    Language {
+        code: "zh",
+        name: "Chinese",
+        native: "中文",
+    },
+    Language {
+        code: "ja",
+        name: "Japanese",
+        native: "日本語",
+    },
+];
+
+/// Words per part when the local AI translates a transcript.
+const TRANSLATE_WORDS: usize = 1200;
+
+/// The AI model that translates. Borealis, tuned for Norwegian, answers a request to
+/// translate with the text unchanged (tested 2026-10-26); Ministral translates well,
+/// into Nordic languages too.
+pub const TRANSLATOR: &str = "ministral-3-3b";
+
+/// The English name of a language code, for prompts.
+fn language_name(code: &str) -> &'static str {
+    let code = if matches!(code, "nb" | "nn") {
+        "no"
+    } else {
+        code
+    };
+    LANGUAGES
+        .iter()
+        .find(|l| l.code == code)
+        .map_or("the original language", |l| l.name)
+}
+
+/// The job that translates the clip's transcript into `language` with the local AI,
+/// a part at a time, every part passed on. None without a transcript.
+pub fn translate_job(sc: &Sidecar, language: &Language, model: &Path) -> Option<Job> {
+    let words = plain_words(sc);
+    if words.is_empty() {
+        return None;
+    }
+    let from = language_name(sc.language.as_deref().unwrap_or("no"));
+    let to = language.name;
+    let steps = words
+        .chunks(TRANSLATE_WORDS)
+        .map(|part| {
+            vec![
+                Message {
+                    role: "system",
+                    content: "You are a translator. You always reply in the target language."
+                        .to_string(),
+                },
+                Message {
+                    role: "user",
+                    content: format!(
+                        "Translate the following {from} text into {to}. Reply with the {to} \
+                         translation only.\n\n{from}: {}\n{to}:",
+                        part.join(" ")
+                    ),
+                },
+            ]
+        })
+        .collect();
+    Some(Job {
+        model: model.to_string_lossy().into_owned(),
+        max_tokens: 2400,
+        steps,
+        emit_all: true,
+    })
 }
 
 #[cfg(test)]
@@ -603,6 +759,25 @@ mod tests {
         let job = name_job(&sc(10, "no"), Path::new("m.gguf")).unwrap();
         assert_eq!(job.steps.len(), 2);
         assert!(job.steps[1][1].content.contains("{prev}"));
+    }
+
+    #[test]
+    fn translations_go_in_parts_and_pass_every_part_on() {
+        let lang = LANGUAGES.iter().find(|l| l.code == "de").unwrap();
+        let job = translate_job(&sc(3000, "no"), lang, Path::new("m.gguf")).unwrap();
+        assert_eq!(job.steps.len(), 3);
+        assert!(job.emit_all);
+        assert!(
+            job.steps[0][1]
+                .content
+                .contains("Norwegian text into German")
+        );
+        assert!(translate_job(&Sidecar::default(), lang, Path::new("m.gguf")).is_none());
+        assert!(
+            serde_json::to_string(&job)
+                .unwrap()
+                .contains("\"emit_all\":true")
+        );
     }
 
     #[test]

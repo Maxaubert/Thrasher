@@ -6,7 +6,8 @@
 //! Each step is a chat. A `{prev}` in a later step's text is replaced by the answers of
 //! all earlier steps, one per line, so a long transcript can be summarised in parts and
 //! then as a whole. Prints `progress <0..1>` after each earlier step, the last step's
-//! answer as `token <json string>` lines while it is written, then `done`. Errors go to
+//! answer as `token <json string>` lines while it is written (every step's with
+//! `"emit_all": true`), then `done`. Errors go to
 //! stderr with exit code 1.
 
 use llama_cpp_2::context::params::LlamaContextParams;
@@ -30,6 +31,9 @@ struct Job {
     model: String,
     max_tokens: u32,
     steps: Vec<Vec<Message>>,
+    /// Pass on every step's answer as it is written, a blank line between them.
+    #[serde(default)]
+    emit_all: bool,
 }
 
 /// Tokens fed to the model per decode call.
@@ -140,8 +144,21 @@ fn run() -> Result<(), String> {
                 content: m.content.replace("{prev}", &prev),
             })
             .collect();
+        let shown = last || job.emit_all;
+        if shown && job.emit_all && i > 0 {
+            let _ = writeln!(
+                out,
+                "token {}",
+                serde_json::to_string(
+                    "
+
+"
+                )
+                .unwrap_or_default()
+            );
+        }
         let text = answer(&backend, &model, &chat, job.max_tokens, &mut |piece| {
-            if last {
+            if shown {
                 let _ = writeln!(
                     out,
                     "token {}",

@@ -121,6 +121,10 @@ pub fn visible(sc: &Sidecar) -> Vec<Shown> {
     items(sc)
         .into_iter()
         .filter_map(|(start, it)| {
+            // Outside the trim nothing is heard, so nothing is shown.
+            if !sc.in_trim(start) {
+                return None;
+            }
             let (text, kind) = match it {
                 Item::Word(i) if !sc.words[i].cut => (sc.words[i].text.clone(), Kind::Word),
                 Item::Silence(i) if !removed(&sc.silences[i]) => {
@@ -620,6 +624,8 @@ enum Piece {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Edl {
     pieces: Vec<Piece>,
+    /// Part of the recording is trimmed off, so even one piece is an edit.
+    trimmed: bool,
     /// Inserted words: mono samples at the clip's sample rate.
     voices: Vec<Vec<f32>>,
     /// The insert id of each entry in `voices`.
@@ -902,8 +908,25 @@ pub fn plan(sc: &Sidecar, voices: &HashMap<String, Vec<f32>>, buffer: &Buffer) -
     if dur > pos {
         pieces.push(Piece::Audio(pos, dur));
     }
+    // The trim keeps only what lies between its handles.
+    let trimmed = sc.trim.is_some();
+    if trimmed {
+        let (ts, te) = sc.kept_span();
+        pieces = pieces
+            .into_iter()
+            .filter_map(|p| match p {
+                Piece::Audio(a, b) => {
+                    let (a, b) = (a.max(ts), b.min(te));
+                    (b > a + 1e-9).then_some(Piece::Audio(a, b))
+                }
+                Piece::Gap { at, .. } | Piece::Voice { at, .. } if !sc.in_trim(at) => None,
+                other => Some(other),
+            })
+            .collect();
+    }
     Edl {
         pieces,
+        trimmed,
         voices: voice_audio,
         voice_ids,
     }
@@ -923,14 +946,17 @@ pub fn edited_length(sc: &Sidecar, voices: &HashMap<String, f64>) -> f64 {
         Item::Silence(i) => removed(&sc.silences[i]),
         Item::Insert(_) => false,
     };
-    let mut len = sc.duration;
+    let (ts, te) = sc.kept_span();
+    let mut len = te - ts;
     let mut k = 0;
     while k < its.len() {
         let it = its[k].1;
         if !gone(it) {
             if let Item::Silence(i) = it {
                 let s = &sc.silences[i];
-                len += kept(s) - (s.end - s.start);
+                if sc.in_trim((s.start + s.end) / 2.0) {
+                    len += kept(s) - (s.end - s.start);
+                }
             }
             k += 1;
             continue;
@@ -942,11 +968,12 @@ pub fn edited_length(sc: &Sidecar, voices: &HashMap<String, f64>) -> f64 {
             k += 1;
         }
         let b = its.get(k).map_or(sc.duration, |n| span(sc, n.1).0);
-        len -= (b - a).max(0.0);
+        len -= (b.min(te) - a.max(ts)).max(0.0);
     }
     let spoken: f64 = sc
         .inserts
         .iter()
+        .filter(|i| sc.in_trim(i.at))
         .filter_map(|i| voices.get(&i.id))
         .map(|s| (s - FADE_SECS).max(0.0))
         .sum();
@@ -958,7 +985,7 @@ impl Edl {
     pub fn is_identity(&self) -> bool {
         match self.pieces.as_slice() {
             [] => true,
-            [Piece::Audio(a, _)] => *a == 0.0,
+            [Piece::Audio(a, _)] => *a == 0.0 && !self.trimmed,
             _ => false,
         }
     }
@@ -1156,7 +1183,7 @@ pub fn edited_words(sc: &Sidecar, edl: &Edl) -> Vec<Word> {
     let mut out: Vec<Word> = Vec::new();
     for (_, it) in items(sc) {
         let mut w = match it {
-            Item::Word(i) if !sc.words[i].cut => {
+            Item::Word(i) if !sc.words[i].cut && sc.in_trim(sc.words[i].start) => {
                 let w = &sc.words[i];
                 Word {
                     start: edl.to_edited(w.start),
@@ -1191,6 +1218,47 @@ pub fn edited_words(sc: &Sidecar, edl: &Edl) -> Vec<Word> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_trim_keeps_only_the_part_between_the_handles() {
+        let buffer = Buffer {
+            samples: vec![0.0; 1000],
+            sample_rate: 100,
+            channels: 1,
+        };
+        let mut sc = Sidecar {
+            duration: 10.0,
+            words: number_words(vec![
+                ("a".into(), 1.0, 1.5),
+                ("b".into(), 4.0, 4.5),
+                ("c".into(), 8.0, 8.5),
+            ]),
+            ..Default::default()
+        };
+        assert!(plan(&sc, &HashMap::new(), &buffer).is_identity());
+        // Only the end trimmed: still an edit.
+        sc.trim = Some(crate::sidecar::Trim {
+            start: 0.0,
+            end: 6.0,
+        });
+        let edl = plan(&sc, &HashMap::new(), &buffer);
+        assert!(!edl.is_identity());
+        assert!((edl.render(&buffer).duration_secs() - 6.0).abs() < 0.02);
+        sc.trim = Some(crate::sidecar::Trim {
+            start: 3.0,
+            end: 6.0,
+        });
+        let edl = plan(&sc, &HashMap::new(), &buffer);
+        assert!((edl.to_edited(4.0) - 1.0).abs() < 1e-6);
+        assert!((edited_length(&sc, &HashMap::new()) - 3.0).abs() < 1e-6);
+        let shown: Vec<String> = visible(&sc).into_iter().map(|s| s.text).collect();
+        assert_eq!(shown, ["b"]);
+        let words: Vec<String> = edited_words(&sc, &edl)
+            .into_iter()
+            .map(|w| w.text)
+            .collect();
+        assert_eq!(words, ["b"]);
+    }
 
     #[test]
     fn long_pauses_are_capped_once() {
@@ -1551,6 +1619,7 @@ mod tests {
                 Piece::Gap { at: 8.0, len: 1.0 },
                 Piece::Audio(8.0, 10.0),
             ],
+            trimmed: false,
             voices: Vec::new(),
             voice_ids: Vec::new(),
         };

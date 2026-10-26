@@ -152,7 +152,7 @@ struct Palette {
 // The colours. `current` picks one of the palettes, in the order of `names`; the
 // settings page switches it.
 export global Theme {
-    in-out property <int> current: 5;
+    in-out property <int> current: 0;
     out property <[string]> names: ["Ember", "Volt", "Glacier", "Mint", "Violet", "Signal", "Chalk"];
     property <[Palette]> palettes: [
         // Ember
@@ -485,6 +485,11 @@ component ExportChoices inherits VerticalLayout {
 }
 
 // Height of ExportChoices.
+// The window's height, so a dropdown can open upwards when there is no room below.
+global Win {
+    in-out property <length> height: 600px;
+}
+
 global ExportSize {
     out property <length> audio: 34px + 9px + 24px + 3 * 34px;
     out property <length> transcript: 9px + 24px + 4 * 34px;
@@ -614,16 +619,22 @@ component ClipItem inherits Rectangle {
             }
             TouchArea {
                 mouse-cursor: pointer;
-                clicked => { root.cue(clamp(self.mouse-x / self.width, 0, 1)); }
-                double-clicked => { root.play-at(clamp(self.mouse-x / self.width, 0, 1)); }
-                // A right click here opens the same menu as anywhere on the row.
+                // Ctrl or Shift picks clips here too, as anywhere on the row.
+                property <bool> picking;
                 pointer-event(e) => {
+                    if (e.kind == PointerEventKind.down) { self.picking = e.modifiers.control || e.modifiers.shift; }
+                    if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.picking && self.has-hover) {
+                        root.select(e.modifiers.control, e.modifiers.shift);
+                    }
+                    // A right click here opens the same menu as anywhere on the row.
                     if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
                         root.menu-at(
                             self.absolute-position.x - root.absolute-position.x + self.mouse-x,
                             self.absolute-position.y - root.absolute-position.y + self.mouse-y);
                     }
                 }
+                clicked => { if (!self.picking) { root.cue(clamp(self.mouse-x / self.width, 0, 1)); } }
+                double-clicked => { root.play-at(clamp(self.mouse-x / self.width, 0, 1)); }
             }
         }
         VerticalLayout {
@@ -1118,17 +1129,42 @@ component Select inherits Rectangle {
     in property <bool> enabled: true;
     in property <string> label;
     callback selected(int);
+    // Up and Down pick the next option straight away, closed or open, so two
+    // choices are easy to compare.
+    function step(by: int) {
+        if (root.model.length == 0) { return; }
+        let next = clamp(root.current-index + by, 0, root.model.length - 1);
+        if (next != root.current-index) {
+            root.current-index = next;
+            root.selected(next);
+        }
+    }
+    function open() {
+        keys.focus();
+        popup.show();
+    }
     width: 200px;
     height: 32px;
     border-radius: 8px;
+    border-width: keys.has-focus ? 1px : 0;
+    border-color: Theme.edge;
     background: t.has-hover && enabled ? Theme.hover-soft : Theme.raised;
     opacity: enabled ? 1 : 0.45;
     accessible-role: combobox;
     accessible-label: label;
     accessible-value: current-index >= 0 && current-index < model.length ? model[current-index] : "";
     accessible-expandable: true;
-    accessible-action-default => { if (enabled) { popup.show(); } }
-    accessible-action-expand => { if (enabled) { popup.show(); } }
+    accessible-action-default => { if (enabled) { root.open(); } }
+    accessible-action-expand => { if (enabled) { root.open(); } }
+    keys := FocusScope {
+        enabled: root.enabled;
+        key-pressed(e) => {
+            if (e.text == Key.UpArrow) { root.step(-1); return accept; }
+            if (e.text == Key.DownArrow) { root.step(1); return accept; }
+            if (e.text == Key.Return || e.text == " ") { root.open(); return accept; }
+            reject
+        }
+    }
     HorizontalLayout {
         padding-left: 12px;
         padding-right: 9px;
@@ -1152,13 +1188,17 @@ component Select inherits Rectangle {
     t := TouchArea {
         enabled: root.enabled;
         mouse-cursor: pointer;
-        clicked => { popup.show(); }
+        clicked => { root.open(); }
     }
+    // Opens below the box, or above it when it would not fit below; never over it.
+    property <length> list-height: min(root.model.length * 32px + 10px, 298px);
+    property <bool> upwards: root.absolute-position.y + root.height + 4px + self.list-height > Win.height
+        && root.absolute-position.y - 4px - self.list-height >= 0;
     popup := PopupWindow {
         x: 0;
-        y: root.height + 4px;
+        y: root.upwards ? -root.list-height - 4px : root.height + 4px;
         width: max(root.width, 120px);
-        height: min(root.model.length * 32px + 10px, 298px);
+        height: root.list-height;
         close-policy: close-on-click-outside;
         Rectangle {
             background: Theme.raised;
@@ -1168,7 +1208,26 @@ component Select inherits Rectangle {
             drop-shadow-blur: 20px;
             drop-shadow-offset-y: 8px;
             drop-shadow-color: #00000099;
-            Flickable {
+            FocusScope {
+                init => { self.focus(); }
+                key-pressed(e) => {
+                    if (e.text == Key.UpArrow || e.text == Key.DownArrow) {
+                        root.step(e.text == Key.UpArrow ? -1 : 1);
+                        // Keep the picked row in view.
+                        let top = root.current-index * 32px;
+                        if (top < -list.content-y) { list.content-y = -top; }
+                        if (top + 32px > -list.content-y + list.height) { list.content-y = list.height - top - 32px; }
+                        return accept;
+                    }
+                    if (e.text == Key.Return || e.text == Key.Escape || e.text == " ") {
+                        popup.close();
+                        keys.focus();
+                        return accept;
+                    }
+                    reject
+                }
+            }
+            list := Flickable {
                 x: 5px;
                 y: 5px;
                 width: parent.width - 10px;
@@ -3568,7 +3627,8 @@ export component AppWindow inherits Window {
         border-color: Theme.border;
     }
 
-    init => { keys.focus(); }
+    init => { keys.focus(); Win.height = self.height; }
+    changed height => { Win.height = self.height; }
 
     if root.dialog != 0 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length: Rectangle {
         background: #000000a6;

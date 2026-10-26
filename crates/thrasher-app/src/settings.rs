@@ -66,7 +66,7 @@ impl Default for Settings {
             close_to_tray: true,
             max_recording_minutes: 120,
             window: None,
-            theme: "Signal".into(),
+            theme: "Ember".into(),
         }
     }
 }

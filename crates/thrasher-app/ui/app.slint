@@ -1566,32 +1566,6 @@ component TextField inherits Rectangle {
     }
 }
 
-// One choice of the transcript card's view switch (Original, English, Summary).
-component ViewChip inherits Rectangle {
-    in property <string> text;
-    in property <bool> on;
-    callback clicked;
-    width: chip-text.preferred-width + 16px;
-    border-radius: 5px;
-    background: root.on ? Theme.hover : transparent;
-    accessible-role: button;
-    accessible-label: root.text;
-    accessible-checked: root.on;
-    accessible-action-default => { root.clicked(); }
-    chip-text := Text {
-        text: root.text;
-        color: root.on ? Theme.text : Theme.muted;
-        font-size: 11px;
-        font-weight: 600;
-        vertical-alignment: center;
-        horizontal-alignment: center;
-    }
-    TouchArea {
-        mouse-cursor: pointer;
-        clicked => { root.clicked(); }
-    }
-}
-
 // A source under an answer: its number, clip and time, and its words.
 component SourceRow inherits Rectangle {
     in property <AskSource> source;
@@ -2108,6 +2082,7 @@ component TranscriptCard inherits Rectangle {
     callback summarise();
     property <bool> summary-view: root.show-summary && (root.summary != "" || root.summarising);
     property <bool> english: root.show-english && root.translation != "" && !root.summary-view;
+    property <bool> original-view: !root.english && !root.summary-view;
     in property <[WordRow]> words;
     in property <int> current-word: -1;
     in-out property <bool> show-marks;
@@ -2189,56 +2164,44 @@ component TranscriptCard inherits Rectangle {
                         }
                     }
                 }
-                if root.transcript != "" && !root.transcribing && !root.editing && root.translation == "" && root.can-transcribe: VerticalLayout {
+                // Translate and Summary: a click shows that view (making it the first
+                // time), a second click goes back to the original. Nothing moves.
+                if root.transcript != "" && !root.transcribing && !root.editing && root.can-transcribe: VerticalLayout {
                     alignment: center;
                     IconBtn {
                         size: 28px;
                         icon: "languages";
                         icon-size: 14px;
-                        label: "Translate to English";
-                        tip: "Translate";
-                        enabled: !root.recording;
-                        clicked => { root.translate(); }
+                        active: root.english;
+                        label: root.translation == "" ? "Translate to English" : root.english ? "Show the original" : "Show the English";
+                        tip: root.english ? "Original" : "English";
+                        enabled: !root.recording || root.translation != "";
+                        clicked => {
+                            if (root.translation == "") {
+                                root.translate();
+                            } else {
+                                root.show-english = !root.english;
+                                root.show-summary = false;
+                            }
+                        }
                     }
                 }
-                if root.transcript != "" && !root.transcribing && !root.editing && root.summary == "" && !root.summarising && root.can-ai: VerticalLayout {
+                if root.transcript != "" && !root.transcribing && !root.editing && root.can-ai: VerticalLayout {
                     alignment: center;
                     IconBtn {
                         size: 28px;
                         icon: "sparkles";
                         icon-size: 14px;
-                        label: "Summary and to-do list";
-                        tip: "Summary";
-                        enabled: !root.recording;
-                        clicked => { root.summarise(); }
-                    }
-                }
-                if (root.translation != "" || root.summary != "" || root.summarising) && !root.transcribing && !root.editing: VerticalLayout {
-                    alignment: center;
-                    padding-right: 4px;
-                    Rectangle {
-                        width: lang-row.preferred-width + 4px;
-                        height: 26px;
-                        border-radius: 7px;
-                        background: Theme.raised;
-                        lang-row := HorizontalLayout {
-                            x: 2px;
-                            y: 2px;
-                            height: 22px;
-                            ViewChip {
-                                text: "Original";
-                                on: !root.english && !root.summary-view;
-                                clicked => { root.show-english = false; root.show-summary = false; }
-                            }
-                            if root.translation != "": ViewChip {
-                                text: "English";
-                                on: root.english;
-                                clicked => { root.show-english = true; root.show-summary = false; }
-                            }
-                            if root.summary != "" || root.summarising: ViewChip {
-                                text: "Summary";
-                                on: root.summary-view;
-                                clicked => { root.show-summary = true; }
+                        active: root.summary-view;
+                        label: root.summary == "" && !root.summarising ? "Summary and to-do list" : root.summary-view ? "Show the original" : "Show the summary";
+                        tip: root.summary-view ? "Original" : "Summary";
+                        enabled: !root.recording || root.summary != "";
+                        clicked => {
+                            if (root.summary == "" && !root.summarising) {
+                                root.summarise();
+                            } else {
+                                root.show-summary = !root.summary-view;
+                                root.show-english = false;
                             }
                         }
                     }
@@ -2265,10 +2228,11 @@ component TranscriptCard inherits Rectangle {
                         }
                     }
                 }
-                if root.transcript != "" && !root.transcribing && !root.editing && !root.english && !root.summary-view: HorizontalLayout {
+                if root.transcript != "" && !root.transcribing && !root.editing: HorizontalLayout {
                     horizontal-stretch: 0;
                     spacing: 8px;
                     padding-right: 10px;
+                    opacity: root.original-view ? 1 : 0.45;
                     Text {
                         text: "Show marks";
                         color: Theme.muted;
@@ -2279,19 +2243,21 @@ component TranscriptCard inherits Rectangle {
                         alignment: center;
                         Toggle {
                             label: "Show marks";
+                            enabled: root.original-view;
                             checked <=> root.show-marks;
                         }
                     }
                 }
-                if root.transcript != "" && !root.transcribing && !root.editing && !root.english && !root.summary-view: Rectangle {
+                if root.transcript != "" && !root.transcribing && !root.editing: Rectangle {
                     width: edit-row.preferred-width + 20px;
                     height: 26px;
                     y: 1px;
                     border-radius: 7px;
-                    background: edit-touch.has-hover ? Theme.hover : Theme.raised;
+                    opacity: root.original-view ? 1 : 0.45;
+                    background: edit-touch.has-hover && root.original-view ? Theme.hover : Theme.raised;
                     accessible-role: button;
                     accessible-label: "Edit transcript";
-                    accessible-action-default => { root.edit(); }
+                    accessible-action-default => { if (root.original-view) { root.edit(); } }
                     edit-row := HorizontalLayout {
                         x: 10px;
                         spacing: 6px;
@@ -2299,6 +2265,7 @@ component TranscriptCard inherits Rectangle {
                         Text { text: "Edit"; color: Theme.text; font-size: 12px; font-weight: 600; vertical-alignment: center; }
                     }
                     edit-touch := TouchArea {
+                        enabled: root.original-view;
                         mouse-cursor: pointer;
                         clicked => { root.edit(); }
                     }

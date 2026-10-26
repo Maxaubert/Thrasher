@@ -2393,7 +2393,7 @@ export component AppWindow inherits Window {
         }
 
         // ---------- Widget ----------
-        // The widget: status with open and hide, the time with pause and record, and
+        // The widget: status with open window, the time with pause and record, and
         // the live level.
         if compact: Rectangle {
             background: Theme.card;
@@ -2433,14 +2433,6 @@ export component AppWindow inherits Window {
                             label: "Open the window";
                             tip: "Open window";
                             clicked => { root.compact-changed(false); }
-                        }
-                        IconBtn {
-                            size: 26px;
-                            round: true;
-                            icon: "close";
-                            icon-size: 11px;
-                            label: "Hide";
-                            clicked => { root.quit(); }
                         }
                     }
                     HorizontalLayout {

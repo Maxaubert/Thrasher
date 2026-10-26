@@ -541,10 +541,13 @@ component MenuRow inherits Rectangle {
     // The current choice: a check mark on the right.
     in property <bool> checked;
     in property <bool> enabled: true;
+    // The row a submenu belongs to stays lit while its submenu is open.
+    in property <bool> lit;
+    out property <bool> hovered: t.has-hover;
     callback clicked;
     height: 34px;
     border-radius: 6px;
-    background: t.has-hover && root.enabled ? Theme.hover : transparent;
+    background: (t.has-hover || root.lit) && root.enabled ? Theme.hover : transparent;
     opacity: root.enabled ? 1 : 0.4;
     accessible-role: button;
     accessible-label: text;
@@ -699,10 +702,9 @@ component ClipItem inherits Rectangle {
     in property <[string]> projects;
     in property <int> project;
     callback move-to(int);
-    // The menu shows the export formats instead of its main choices.
-    property <bool> exporting;
-    // The menu shows the projects to move the clip to.
-    property <bool> moving;
+    // The submenu open beside the menu: 1 export formats, 2 projects, 0 none.
+    property <int> sub;
+
     // Where the menu opens: under the dots, or where the right click was.
     property <length> menu-x;
     property <length> menu-y;
@@ -837,26 +839,38 @@ component ClipItem inherits Rectangle {
         menu.close();
         root.menu-x = min(x, root.width - 210px);
         root.menu-y = y;
-        root.exporting = false;
-        root.moving = false;
+        root.sub = 0;
         menu.show();
     }
     function open-menu() {
         root.menu-x = root.width - 8px - 210px;
         root.menu-y = (root.height + 28px) / 2 + 4px;
-        root.exporting = false;
-        root.moving = false;
+        root.sub = 0;
         menu.show();
     }
+    // Sizes of the menu and its submenus.
+    property <length> main-w: 210px;
+    property <length> sub-w: root.sub == 1 ? 250px : 210px;
+    property <length> merge-h: root.merge-count >= 2 ? 34px + 9px : 0;
+    property <length> main-h: (root.projects.length > 1 ? 5 : 4) * 34px + 9px + 10px + self.merge-h;
+    property <length> sub-h: root.sub == 1 ? 10px + ExportSize.audio + (root.item.transcribed ? ExportSize.transcript : 0)
+        : 10px + min(root.projects.length, 8) * 34px;
+    // Where the submenu's row sits in the menu.
+    property <length> sub-row-y: 5px + self.merge-h + (root.sub == 2 ? 3 : 2) * 34px;
+    // The submenu opens to the right when there is room, else to the left.
+    property <bool> sub-left: root.menu-x + self.main-w + 4px + self.sub-w > root.width;
+    property <length> left-x: min(root.menu-x, root.width - self.main-w);
     menu := PopupWindow {
-        x: min(root.menu-x, root.width - self.width);
+        x: root.sub != 0 && root.sub-left ? root.left-x - root.sub-w - 4px : root.left-x;
         y: root.menu-y;
-        width: root.exporting ? 250px : 210px;
-        height: root.exporting ? 10px + 34px + ExportSize.audio + (root.item.transcribed ? ExportSize.transcript : 0)
-            : root.moving ? 10px + 34px + min(root.projects.length, 8) * 34px
-            : (root.projects.length > 1 ? 5 : 4) * 34px + 9px + 10px + (root.merge-count >= 2 ? 34px + 9px : 0);
+        width: root.main-w + (root.sub != 0 ? root.sub-w + 4px : 0);
+        height: max(root.main-h, root.sub != 0 ? root.sub-row-y - 5px + root.sub-h : 0);
         close-policy: close-on-click-outside;
         Rectangle {
+            x: root.sub != 0 && root.sub-left ? root.sub-w + 4px : 0;
+            y: 0;
+            width: root.main-w;
+            height: root.main-h;
             background: Theme.raised;
             border-radius: 10px;
             border-width: 1px;
@@ -864,26 +878,75 @@ component ClipItem inherits Rectangle {
             drop-shadow-blur: 20px;
             drop-shadow-offset-y: 6px;
             drop-shadow-color: #00000099;
-            if !root.exporting && !root.moving: VerticalLayout {
+            VerticalLayout {
                 padding: 5px;
-                if root.merge-count >= 2: MenuRow { text: "Merge " + root.merge-count + " clips"; clicked => { root.merge(); menu.close(); } }
+                if root.merge-count >= 2: MenuRow {
+                    text: "Merge " + root.merge-count + " clips";
+                    changed hovered => { if (self.hovered) { root.sub = 0; } }
+                    clicked => { root.merge(); menu.close(); }
+                }
                 if root.merge-count >= 2: Rectangle {
                     height: 9px;
                     Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
                 }
-                MenuRow { text: "Manage"; clicked => { root.open(); menu.close(); } }
-                MenuRow { text: "Rename"; clicked => { root.rename(); menu.close(); } }
-                MenuRow { text: "Export"; more: true; clicked => { root.exporting = true; } }
-                if root.projects.length > 1: MenuRow { text: "Move to"; more: true; clicked => { root.moving = true; } }
+                MenuRow {
+                    text: "Manage";
+                    changed hovered => { if (self.hovered) { root.sub = 0; } }
+                    clicked => { root.open(); menu.close(); }
+                }
+                MenuRow {
+                    text: "Rename";
+                    changed hovered => { if (self.hovered) { root.sub = 0; } }
+                    clicked => { root.rename(); menu.close(); }
+                }
+                MenuRow {
+                    text: "Export";
+                    more: true;
+                    lit: root.sub == 1;
+                    changed hovered => { if (self.hovered) { root.sub = 1; } }
+                    clicked => { root.sub = 1; }
+                }
+                if root.projects.length > 1: MenuRow {
+                    text: "Move to";
+                    more: true;
+                    lit: root.sub == 2;
+                    changed hovered => { if (self.hovered) { root.sub = 2; } }
+                    clicked => { root.sub = 2; }
+                }
                 Rectangle {
                     height: 9px;
                     Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
                 }
-                MenuRow { text: "Delete"; danger: true; clicked => { root.delete(); menu.close(); } }
+                MenuRow {
+                    text: "Delete";
+                    danger: true;
+                    changed hovered => { if (self.hovered) { root.sub = 0; } }
+                    clicked => { root.delete(); menu.close(); }
+                }
             }
-            if root.moving: VerticalLayout {
+        }
+        // The submenu, level with its row.
+        if root.sub != 0: Rectangle {
+            x: root.sub-left ? 0 : root.main-w + 4px;
+            y: root.sub-row-y - 5px;
+            width: root.sub-w;
+            height: root.sub-h;
+            background: Theme.raised;
+            border-radius: 10px;
+            border-width: 1px;
+            border-color: Theme.edge;
+            drop-shadow-blur: 20px;
+            drop-shadow-offset-y: 6px;
+            drop-shadow-color: #00000099;
+            if root.sub == 1: VerticalLayout {
                 padding: 5px;
-                MenuRow { text: "‹  Move to"; clicked => { root.moving = false; } }
+                ExportChoices {
+                    subtitles: root.item.transcribed;
+                    choose(kind) => { root.export(kind); menu.close(); }
+                }
+            }
+            if root.sub == 2: VerticalLayout {
+                padding: 5px;
                 Flickable {
                     height: min(root.projects.length, 8) * 34px;
                     content-height: root.projects.length * 34px;
@@ -895,14 +958,6 @@ component ClipItem inherits Rectangle {
                         enabled: i != root.project;
                         clicked => { root.move-to(i); menu.close(); }
                     }
-                }
-            }
-            if root.exporting: VerticalLayout {
-                padding: 5px;
-                MenuRow { text: "‹  Export"; clicked => { root.exporting = false; } }
-                ExportChoices {
-                    subtitles: root.item.transcribed;
-                    choose(kind) => { root.export(kind); menu.close(); }
                 }
             }
         }

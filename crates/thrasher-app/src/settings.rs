@@ -42,6 +42,8 @@ pub struct Settings {
     pub max_recording_minutes: u32,
     /// The full window's last size and place; none until it has been moved or resized.
     pub window: Option<WindowPlace>,
+    /// Name of the colour theme, one of `Theme.names` in the UI.
+    pub theme: String,
 }
 
 impl Default for Settings {
@@ -64,6 +66,7 @@ impl Default for Settings {
             close_to_tray: true,
             max_recording_minutes: 120,
             window: None,
+            theme: "Signal".into(),
         }
     }
 }

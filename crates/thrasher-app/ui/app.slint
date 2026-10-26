@@ -113,25 +113,96 @@ global Tips {
     }
 }
 
-global Theme {
-    out property <color> bg: #0b0908;
-    out property <color> card: #150f0b;
-    out property <color> row: #1a120c;
-    out property <color> raised: #1f1610;
-    out property <color> line: #221a15;
-    out property <color> line-soft: #1c1510;
-    out property <color> edge: #3a2b20;
-    out property <color> text: #f1ece8;
-    out property <color> text2: #d8cfc8;
-    out property <color> muted: #a39a93;
-    out property <color> dim: #8a817a;
-    out property <color> accent: #ff6a1a;
-    out property <color> accent-hover: #ff8040;
-    out property <color> on-accent: #160a03;
-    out property <color> wave: #5a4436;
-    out property <color> wave-dim: #4a3a2f;
-    out property <color> track: #2b211a;
-    out property <color> danger: #ff8f7a;
+struct Palette {
+    bg: color,
+    card: color,
+    row: color,
+    raised: color,
+    line: color,
+    line-soft: color,
+    edge: color,
+    text: color,
+    text2: color,
+    muted: color,
+    dim: color,
+    accent: color,
+    accent-hover: color,
+    on-accent: color,
+    wave: color,
+    wave-dim: color,
+    track: color,
+    danger: color,
+    hover: color,
+    hover-soft: color,
+    row-hover: color,
+    picked: color,
+    popup: color,
+    popup-edge: color,
+    knob: color,
+    faint: color,
+    fainter: color,
+    rec-rest: color,
+    divider: color,
+    border: color,
+    card-edge: color,
+    footer: color,
+    press: color,
+}
+
+// The colours. `current` picks one of the palettes, in the order of `names`; the
+// settings page switches it.
+export global Theme {
+    in-out property <int> current: 5;
+    out property <[string]> names: ["Ember", "Volt", "Glacier", "Mint", "Violet", "Signal", "Chalk"];
+    property <[Palette]> palettes: [
+        // Ember
+        { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618 },
+        // Volt
+        { bg: #0a0a09, card: #12110e, row: #151411, raised: #1a1915, line: #1e1d19, line-soft: #181714, edge: #323028, text: #ededec, text2: #d2d1ce, muted: #a09f95, dim: #89877b, accent: #ffd426, accent-hover: #ffdd56, on-accent: #1a1400, wave: #4f4d41, wave-dim: #434136, track: #26251f, danger: #ff8f7a, hover: #22211c, hover-soft: #1f1e1a, row-hover: #0f0f0d, picked: #231e0c, popup: #1a1915, popup-edge: #3e3c32, knob: #79776c, faint: #69675e, fainter: #47453a, rec-rest: #625313, divider: #1d1c17, border: #25241e, card-edge: #1f1e1a, footer: #0e0e0c, press: #342c0e },
+        // Glacier
+        { bg: #07090c, card: #0c0f14, row: #0e1218, raised: #11161e, line: #141a23, line-soft: #10151c, edge: #202b3a, text: #ebecee, text2: #cbcfd5, muted: #8c98aa, dim: #6f7f95, accent: #4da3ff, accent-hover: #74b7ff, on-accent: #04101f, wave: #34455c, wave-dim: #2c3a4d, track: #19212c, danger: #ff8f7a, hover: #161e28, hover-soft: #151b24, row-hover: #0a0d12, picked: #0e1824, popup: #11161e, popup-edge: #283548, knob: #617084, faint: #546173, fainter: #2e3d53, rec-rest: #204063, divider: #131921, border: #18202b, card-edge: #151b24, footer: #090c11, press: #132335 },
+        // Mint
+        { bg: #080b0a, card: #0d1311, row: #101614, raised: #141b19, line: #17201d, line-soft: #121a17, edge: #26342f, text: #ebeeed, text2: #cdd3d1, muted: #92a49e, dim: #778d86, accent: #3ee8a8, accent-hover: #68edbb, on-accent: #03170f, wave: #3c544c, wave-dim: #334640, track: #1d2824, danger: #ff8f7a, hover: #1a2421, hover-soft: #18211e, row-hover: #0c100f, picked: #0d211a, popup: #141b19, popup-edge: #2f413b, knob: #687d76, faint: #5b6c66, fainter: #364b44, rec-rest: #1b5b43, divider: #161e1b, border: #1c2723, card-edge: #18211e, footer: #0b0f0e, press: #113125 },
+        // Violet
+        { bg: #08070c, card: #0e0c14, row: #110f17, raised: #15121d, line: #181522, line-soft: #14111b, edge: #282337, text: #ecebee, text2: #ceccd4, muted: #958fa7, dim: #7a7391, accent: #a98bff, accent-hover: #bca5ff, on-accent: #120a26, wave: #403858, wave-dim: #362f4a, track: #1f1b2a, danger: #ff8f7a, hover: #1c1826, hover-soft: #191623, row-hover: #0c0b11, picked: #181424, popup: #15121d, popup-edge: #322c44, knob: #6c6580, faint: #5d5770, fainter: #39324f, rec-rest: #423763, divider: #171420, border: #1e1a29, card-edge: #191623, footer: #0c0a10, press: #231d35 },
+        // Signal
+        { bg: #0b0809, card: #120e0f, row: #161011, raised: #1b1415, line: #1f1819, line-soft: #191314, edge: #332729, text: #edecec, text2: #d2cece, muted: #a39396, dim: #8c787c, accent: #ff4060, accent-hover: #ff6a83, on-accent: #1f0309, wave: #523e41, wave-dim: #453437, track: #271e1f, danger: #ff8f7a, hover: #231b1c, hover-soft: #20191a, row-hover: #100c0d, picked: #230e12, popup: #1b1415, popup-edge: #403033, knob: #7b6a6d, faint: #6b5c5e, fainter: #4a373a, rec-rest: #631c28, divider: #1e1618, border: #261d1e, card-edge: #20191a, footer: #0f0b0c, press: #341218 },
+        // Chalk
+        { bg: #0a0a0a, card: #101010, row: #131313, raised: #181818, line: #1c1c1c, line-soft: #161616, edge: #2d2d2d, text: #ececec, text2: #d0d0d0, muted: #9b9b9b, dim: #828282, accent: #f2f2f2, accent-hover: #f5f5f5, on-accent: #0a0a0a, wave: #484848, wave-dim: #3d3d3d, track: #232323, danger: #ff8f7a, hover: #1f1f1f, hover-soft: #1c1c1c, row-hover: #0e0e0e, picked: #212121, popup: #181818, popup-edge: #383838, knob: #727272, faint: #646464, fainter: #404040, rec-rest: #5e5e5e, divider: #1a1a1a, border: #222222, card-edge: #1c1c1c, footer: #0d0d0d, press: #313131 },
+    ];
+    out property <color> bg: root.palettes[root.current].bg;
+    out property <color> card: root.palettes[root.current].card;
+    out property <color> row: root.palettes[root.current].row;
+    out property <color> raised: root.palettes[root.current].raised;
+    out property <color> line: root.palettes[root.current].line;
+    out property <color> line-soft: root.palettes[root.current].line-soft;
+    out property <color> edge: root.palettes[root.current].edge;
+    out property <color> text: root.palettes[root.current].text;
+    out property <color> text2: root.palettes[root.current].text2;
+    out property <color> muted: root.palettes[root.current].muted;
+    out property <color> dim: root.palettes[root.current].dim;
+    out property <color> accent: root.palettes[root.current].accent;
+    out property <color> accent-hover: root.palettes[root.current].accent-hover;
+    out property <color> on-accent: root.palettes[root.current].on-accent;
+    out property <color> wave: root.palettes[root.current].wave;
+    out property <color> wave-dim: root.palettes[root.current].wave-dim;
+    out property <color> track: root.palettes[root.current].track;
+    out property <color> danger: root.palettes[root.current].danger;
+    out property <color> hover: root.palettes[root.current].hover;  // hovered button or row
+    out property <color> hover-soft: root.palettes[root.current].hover-soft;  // hovered field
+    out property <color> row-hover: root.palettes[root.current].row-hover;  // hovered clip row
+    out property <color> picked: root.palettes[root.current].picked;  // clip picked for a merge
+    out property <color> popup: root.palettes[root.current].popup;  // menus and tips
+    out property <color> popup-edge: root.palettes[root.current].popup-edge;  // menu outline
+    out property <color> knob: root.palettes[root.current].knob;  // switch knob when off
+    out property <color> faint: root.palettes[root.current].faint;  // tenths of the timer while recording
+    out property <color> fainter: root.palettes[root.current].fainter;  // tenths when idle
+    out property <color> rec-rest: root.palettes[root.current].rec-rest;  // level bars at rest while recording
+    out property <color> divider: root.palettes[root.current].divider;  // line between rows
+    out property <color> border: root.palettes[root.current].border;  // card outline
+    out property <color> card-edge: root.palettes[root.current].card-edge;  // transcript card outline
+    out property <color> footer: root.palettes[root.current].footer;  // now playing bar
+    out property <color> press: root.palettes[root.current].press;  // pressed download button
     out property <string> mono: "JetBrains Mono";
 }
 
@@ -179,10 +250,10 @@ component Icon inherits Path {
 // What a tooltip looks like: a small dark bubble with a thin warm edge.
 component Tip inherits Rectangle {
     in property <string> text;
-    background: #1f1610f2;
+    background: Theme.popup.with-alpha(0.95);
     border-radius: 7px;
     border-width: 1px;
-    border-color: #4a3626;
+    border-color: Theme.popup-edge;
     drop-shadow-blur: 14px;
     drop-shadow-offset-y: 4px;
     drop-shadow-color: #00000099;
@@ -297,7 +368,7 @@ component Toggle inherits Rectangle {
         width: 16px;
         height: 16px;
         border-radius: 8px;
-        background: root.checked ? Theme.on-accent : #7d7168;
+        background: root.checked ? Theme.on-accent : Theme.knob;
         animate x { duration: 120ms; easing: ease-out; }
     }
     TouchArea {
@@ -336,7 +407,7 @@ component ExportItem inherits Rectangle {
     callback clicked;
     height: 34px;
     border-radius: 6px;
-    background: t.has-hover ? #2a1d14 : transparent;
+    background: t.has-hover ? Theme.hover : transparent;
     accessible-role: button;
     accessible-label: "Export " + text;
     accessible-action-default => { root.clicked(); }
@@ -427,7 +498,7 @@ component MenuRow inherits Rectangle {
     callback clicked;
     height: 34px;
     border-radius: 6px;
-    background: t.has-hover ? #2a1d14 : transparent;
+    background: t.has-hover ? Theme.hover : transparent;
     accessible-role: button;
     accessible-label: text;
     accessible-action-default => { root.clicked(); }
@@ -487,9 +558,9 @@ component ClipItem inherits Rectangle {
     property <length> menu-y;
     height: 52px;
     border-radius: 10px;
-    background: root.picked ? #24180f : root.active || root.selected ? Theme.row : row-touch.has-hover ? #120d0a : transparent;
+    background: root.picked ? Theme.picked : root.active || root.selected ? Theme.row : row-touch.has-hover ? Theme.row-hover : transparent;
     border-width: root.selected || root.picked ? 1px : 0;
-    border-color: root.picked ? #ff6a1a55 : Theme.edge;
+    border-color: root.picked ? Theme.accent.with-alpha(0.33) : Theme.edge;
     accessible-role: list-item;
     accessible-label: root.item.name + ", " + root.item.duration;
     accessible-item-selectable: true;
@@ -715,7 +786,7 @@ component Scroller inherits Rectangle {
         width: drag.has-hover || drag.pressed ? 6px : 3px;
         height: root.thumb-h;
         border-radius: self.width / 2;
-        background: drag.pressed ? #f1ece855 : drag.has-hover ? #f1ece833 : #f1ece81c;
+        background: drag.pressed ? Theme.text.with-alpha(0.33) : drag.has-hover ? Theme.text.with-alpha(0.2) : Theme.text.with-alpha(0.11);
         animate width, background { duration: 120ms; }
         drag := TouchArea {
             x: -6px;
@@ -1000,7 +1071,7 @@ component OrderList inherits Rectangle {
             y: parent.height - 1px;
             width: parent.width - 20px;
             height: 1px;
-            background: #221912;
+            background: Theme.divider;
         }
     }
 }
@@ -1050,7 +1121,7 @@ component Select inherits Rectangle {
     width: 200px;
     height: 32px;
     border-radius: 8px;
-    background: t.has-hover && enabled ? #261b13 : Theme.raised;
+    background: t.has-hover && enabled ? Theme.hover-soft : Theme.raised;
     opacity: enabled ? 1 : 0.45;
     accessible-role: combobox;
     accessible-label: label;
@@ -1107,7 +1178,7 @@ component Select inherits Rectangle {
                     y: i * 32px;
                     height: 32px;
                     border-radius: 6px;
-                    background: i == root.current-index ? #2a1d14 : it.has-hover ? #261b13 : transparent;
+                    background: i == root.current-index ? Theme.hover : it.has-hover ? Theme.hover-soft : transparent;
                     HorizontalLayout {
                         padding-left: 10px;
                         padding-right: 10px;
@@ -1171,7 +1242,7 @@ component TextField inherits Rectangle {
         height: parent.height + 6px;
         border-radius: 11px;
         border-width: 3px;
-        border-color: #ff6a1a2a;
+        border-color: Theme.accent.with-alpha(0.16);
     }
     HorizontalLayout {
         padding-left: 12px;
@@ -1205,7 +1276,7 @@ component TextField inherits Rectangle {
                 color: Theme.text;
                 font-size: 13px;
                 font-family: root.mono ? Theme.mono : "Inter Tight";
-                selection-background-color: #ff6a1a66;
+                selection-background-color: Theme.accent.with-alpha(0.4);
                 selection-foreground-color: Theme.text;
                 accessible-label: root.label;
                 edited => { root.edited(self.text); }
@@ -1227,7 +1298,7 @@ component ShortcutBox inherits Rectangle {
     width: 200px;
     height: 32px;
     border-radius: 8px;
-    background: listening ? #ff6a1a14 : t.has-hover ? #261b13 : Theme.raised;
+    background: listening ? Theme.accent.with-alpha(0.08) : t.has-hover ? Theme.hover-soft : Theme.raised;
     border-width: 1px;
     border-color: listening ? Theme.accent : transparent;
     accessible-role: button;
@@ -1327,7 +1398,7 @@ component CardRow inherits VerticalLayout {
             @children
         }
     }
-    if !root.last: Rectangle { height: 1px; background: #221912; }
+    if !root.last: Rectangle { height: 1px; background: Theme.divider; }
 }
 
 // A filter chip on the model page.
@@ -1340,7 +1411,7 @@ component Chip inherits Rectangle {
     border-radius: 14px;
     background: on ? Theme.text : t.has-hover ? Theme.raised : transparent;
     border-width: on ? 0 : 1px;
-    border-color: #2a2019;
+    border-color: Theme.border;
     accessible-role: button;
     accessible-label: text;
     accessible-action-default => { root.clicked(); }
@@ -1415,7 +1486,7 @@ component RecorderCard inherits Rectangle {
                         height: 8px;
                         y: (parent.height - self.height) / 2;
                         border-radius: 4px;
-                        background: root.recording ? Theme.accent : #4a3a2f;
+                        background: root.recording ? Theme.accent : Theme.wave-dim;
                     }
                     Text {
                         text: root.recording ? (root.paused ? "PAUSED" : "RECORDING") : "READY";
@@ -1430,14 +1501,14 @@ component RecorderCard inherits Rectangle {
                     alignment: start;
                     Text {
                         text: root.elapsed;
-                        color: root.recording ? Theme.text : #7d7168;
+                        color: root.recording ? Theme.text : Theme.knob;
                         font-family: Theme.mono;
                         font-size: 34px;
                         letter-spacing: -1px;
                     }
                     Text {
                         text: root.elapsed-tenth;
-                        color: root.recording ? #6d625a : #4a3f37;
+                        color: root.recording ? Theme.faint : Theme.fainter;
                         font-family: Theme.mono;
                         font-size: 34px;
                         letter-spacing: -1px;
@@ -1480,7 +1551,7 @@ component RecorderCard inherits Rectangle {
                 horizontal-stretch: 1;
                 values: root.live;
                 progress: root.recording && !root.paused ? 2 : -1;
-                rest: root.recording ? #6d4a33 : Theme.track;
+                rest: root.recording ? Theme.rec-rest : Theme.track;
             }
         }
     }
@@ -1497,7 +1568,7 @@ component RecorderCard inherits Rectangle {
                 height: 8px;
                 y: (parent.height - self.height) / 2;
                 border-radius: 4px;
-                background: root.recording ? Theme.accent : #4a3a2f;
+                background: root.recording ? Theme.accent : Theme.wave-dim;
             }
             Text {
                 text: root.recording ? (root.paused ? "PAUSED" : "RECORDING") : "READY";
@@ -1521,14 +1592,14 @@ component RecorderCard inherits Rectangle {
             alignment: start;
             Text {
                 text: root.elapsed;
-                color: root.recording ? Theme.text : #7d7168;
+                color: root.recording ? Theme.text : Theme.knob;
                 font-family: Theme.mono;
                 font-size: root.mode == 2 ? 72px : 56px;
                 letter-spacing: -2px;
             }
             Text {
                 text: root.elapsed-tenth;
-                color: root.recording ? #6d625a : #4a3f37;
+                color: root.recording ? Theme.faint : Theme.fainter;
                 font-family: Theme.mono;
                 font-size: root.mode == 2 ? 72px : 56px;
                 letter-spacing: -2px;
@@ -1538,7 +1609,7 @@ component RecorderCard inherits Rectangle {
             height: root.mode == 2 ? 80px : 52px;
             values: root.live;
             progress: root.recording && !root.paused ? 2 : -1;
-            rest: root.recording ? #6d4a33 : Theme.track;
+            rest: root.recording ? Theme.rec-rest : Theme.track;
         }
         if root.mode == 2: Rectangle { vertical-stretch: 1; }
         // Wide: the same round buttons as the one-line recorder.
@@ -1627,7 +1698,7 @@ component TranscriptCard inherits Rectangle {
     property <length> caret-h: 20px;
         border-radius: 14px;
         border-width: 1px;
-        border-color: root.editing ? Theme.accent : #241b15;
+        border-color: root.editing ? Theme.accent : Theme.card-edge;
         VerticalLayout {
             padding: 18px;
             padding-top: 12px;
@@ -1705,7 +1776,7 @@ component TranscriptCard inherits Rectangle {
                     height: 26px;
                     y: 1px;
                     border-radius: 7px;
-                    background: edit-touch.has-hover ? #2a1d14 : Theme.raised;
+                    background: edit-touch.has-hover ? Theme.hover : Theme.raised;
                     accessible-role: button;
                     accessible-label: "Edit transcript";
                     accessible-action-default => { root.edit(); }
@@ -1786,7 +1857,7 @@ component TranscriptCard inherits Rectangle {
                             single-line: false;
                             wrap: word-wrap;
                             color: transparent;
-                            selection-background-color: #ff6a1a4d;
+                            selection-background-color: Theme.accent.with-alpha(0.3);
                             selection-foreground-color: transparent;
                             accessible-role: text-input;
                             accessible-label: "Transcript";
@@ -1863,7 +1934,7 @@ component TranscriptCard inherits Rectangle {
                                 : w.is-silence ? Theme.accent
                                 : !marks ? Theme.text2
                                 : w.failed ? Theme.danger
-                                : w.pending ? #6d625a
+                                : w.pending ? Theme.faint
                                 : w.spoken ? Theme.accent
                                 : Theme.text2;
                             font-size: 15px;
@@ -2059,6 +2130,8 @@ export component AppWindow inherits Window {
     callback hotkey-accepted(string);
     callback close-to-tray-changed(bool);
     callback recording-limit-changed(int);
+    // Settings picked theme i of Theme.names.
+    callback theme-changed(int);
     callback start-with-windows-changed(bool);
     callback download-model(int);
     // The model page's search, chips or compressed toggle changed.
@@ -2217,7 +2290,7 @@ export component AppWindow inherits Window {
             background: Theme.card;
             border-radius: 32px;
             border-width: 1px;
-            border-color: root.recording ? Theme.accent : #2a2019;
+            border-color: root.recording ? Theme.accent : Theme.border;
             WindowMoveArea {
                 HorizontalLayout {
                     padding: 8px;
@@ -2447,7 +2520,7 @@ export component AppWindow inherits Window {
                     : root.selected >= 0 && root.selected < root.clips.length ? root.selected : -1;
                 property <bool> is-active: self.shown >= 0 && self.shown == root.active-clip;
                 vertical-stretch: 0;
-                background: #110c09;
+                background: Theme.footer;
                 height: 64px;
                 Rectangle { y: 0; height: 1px; background: Theme.line; }
                 HorizontalLayout {
@@ -2526,9 +2599,9 @@ export component AppWindow inherits Window {
                     width: min(msg.preferred-width + 24px, parent.width - 32px);
                     height: 28px;
                     border-radius: 14px;
-                    background: #1f1610f2;
+                    background: Theme.popup.with-alpha(0.95);
                     border-width: 1px;
-                    border-color: #4a3626;
+                    border-color: Theme.popup-edge;
                     msg := Text {
                         text: root.status;
                         color: Theme.text2;
@@ -3021,7 +3094,7 @@ export component AppWindow inherits Window {
                                 overflow: elide;
                             }
                         }
-                        Rectangle { height: 1px; background: #221912; }
+                        Rectangle { height: 1px; background: Theme.divider; }
                         CardRow {
                             label: "Export format";
                             last: true;
@@ -3120,6 +3193,18 @@ export component AppWindow inherits Window {
                                     label: "Close button hides to tray";
                                     checked <=> root.close-to-tray;
                                     toggled(on) => { root.close-to-tray-changed(on); }
+                                }
+                            }
+                        }
+                        CardRow {
+                            label: "Theme";
+                            VerticalLayout {
+                                alignment: center;
+                                Select {
+                                    label: "Theme";
+                                    model: Theme.names;
+                                    current-index: Theme.current;
+                                    selected(i) => { root.theme-changed(i); }
                                 }
                             }
                         }
@@ -3336,7 +3421,7 @@ export component AppWindow inherits Window {
                                         width: use-label.preferred-width + 20px;
                                         height: 26px;
                                         border-radius: 13px;
-                                        background: #ff6a1a24;
+                                        background: Theme.accent.with-alpha(0.14);
                                         use-label := Text { text: "In use"; color: Theme.accent; font-size: 12px; font-weight: 800; }
                                     }
                                 }
@@ -3354,7 +3439,7 @@ export component AppWindow inherits Window {
                                         width: dl.preferred-width + 24px;
                                         height: 30px;
                                         border-radius: 8px;
-                                        background: dl-touch.has-hover && root.downloading < 0 ? #3a2618 : #2a1d14;
+                                        background: dl-touch.has-hover && root.downloading < 0 ? Theme.press : Theme.hover;
                                         opacity: root.downloading < 0 ? 1 : 0.4;
                                         accessible-role: button;
                                         accessible-label: "Download " + m.title;
@@ -3391,7 +3476,7 @@ export component AppWindow inherits Window {
                                 }
                             }
                         }
-                        if !m.last: Rectangle { y: parent.height - 1px; height: 1px; background: #221912; }
+                        if !m.last: Rectangle { y: parent.height - 1px; height: 1px; background: Theme.divider; }
                     }
                 }
                 }
@@ -3480,7 +3565,7 @@ export component AppWindow inherits Window {
         width: 100%;
         height: 100%;
         border-width: 1px;
-        border-color: #2a2019;
+        border-color: Theme.border;
     }
 
     init => { keys.focus(); }

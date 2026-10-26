@@ -68,7 +68,7 @@ const EXPORT_FORMATS: [&str; 3] = ["flac", "wav", "mp3"];
 
 /// The editor text as markup for the coloured layer behind it: pause tags in orange,
 /// everything else escaped so it shows exactly as typed.
-fn edit_markup(text: &str) -> String {
+fn edit_markup(text: &str, accent: slint::Color) -> String {
     fn escape(out: &mut String, s: &str) {
         for c in s.chars() {
             match c {
@@ -86,7 +86,12 @@ fn edit_markup(text: &str) -> String {
     while let Some(i) = rest.find("[silence:") {
         escape(&mut out, &rest[..i]);
         let end = rest[i..].find(']').map_or(rest.len(), |e| i + e + 1);
-        out.push_str("<font color=\"#ff6a1a\">");
+        out.push_str(&format!(
+            "<font color=\"#{:02x}{:02x}{:02x}\">",
+            accent.red(),
+            accent.green(),
+            accent.blue()
+        ));
         escape(&mut out, &rest[i..end]);
         out.push_str("</font>");
         rest = &rest[end..];
@@ -1133,6 +1138,10 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.set_folder(short_path(a.library.dir()).into());
         ui.set_name_template(a.settings.name_template.clone().into());
         ui.set_close_to_tray(a.settings.close_to_tray);
+        let theme = ui.global::<Theme>();
+        if let Some(i) = theme.get_names().iter().position(|n| n == a.settings.theme) {
+            theme.set_current(i as i32);
+        }
         let limits: Vec<SharedString> = settings::RECORDING_LIMITS
             .iter()
             .map(|(_, l)| (*l).into())
@@ -1862,9 +1871,15 @@ fn main() -> Result<(), slint::PlatformError> {
         move || app.borrow().apply_waves(&weak.unwrap())
     });
 
-    ui.on_edit_markup(|text| {
-        slint::StyledText::from_markdown(&edit_markup(&text))
+    ui.on_edit_markup({
+        let weak = ui.as_weak();
+        move |text| {
+            {
+                let accent = weak.unwrap().global::<Theme>().get_accent();
+                slint::StyledText::from_markdown(&edit_markup(&text, accent))
+            }
             .unwrap_or_else(|_| slint::StyledText::from_plain_text(&text))
+        }
     });
     ui.on_plain_selection(|text, a, b| {
         let (a, b) = (a.min(b).max(0) as usize, a.max(b).max(0) as usize);
@@ -2107,6 +2122,21 @@ fn main() -> Result<(), slint::PlatformError> {
                 }
                 Err(e) => ui.set_status(e.to_string().into()),
             }
+        }
+    });
+
+    ui.on_theme_changed({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |i| {
+            let ui = weak.unwrap();
+            let theme = ui.global::<Theme>();
+            let Some(name) = theme.get_names().row_data(i as usize) else {
+                return;
+            };
+            theme.set_current(i);
+            let mut a = app.borrow_mut();
+            a.settings.theme = name.into();
+            a.settings.save();
         }
     });
 
@@ -2547,10 +2577,12 @@ mod tests {
         }
     }
 
+    const ORANGE: slint::Color = slint::Color::from_rgb_u8(0xff, 0x6a, 0x1a);
+
     #[test]
     fn markup_colours_tags_and_escapes_the_rest() {
         assert_eq!(
-            edit_markup("Hei* [silence:2s] der"),
+            edit_markup("Hei* [silence:2s] der", ORANGE),
             "Hei\\* <font color=\"#ff6a1a\">\\[silence\\:2s\\]</font> der"
         );
         for text in [
@@ -2561,7 +2593,7 @@ mod tests {
             "[silence:3",
             "linje\nto",
         ] {
-            let styled = slint::StyledText::from_markdown(&edit_markup(text));
+            let styled = slint::StyledText::from_markdown(&edit_markup(text, ORANGE));
             assert!(styled.is_ok(), "{text}");
         }
     }

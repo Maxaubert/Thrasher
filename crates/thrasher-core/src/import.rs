@@ -114,11 +114,16 @@ fn decode_into(path: &Path, out: &Path) -> io::Result<(u32, u16, u64)> {
 const FFMPEG_LIMIT: Duration = Duration::from_secs(600);
 
 /// Lets ffmpeg pull the sound out of `path` into a plain WAV, then reads that. None
-/// when ffmpeg is not installed. ffmpeg may only read local files, so a playlist or
-/// other file dressed up as a video cannot make it fetch from the network, and it is
-/// stopped if it runs too long.
+/// when ffmpeg is not installed. ffmpeg gets the file on its stdin and may open
+/// nothing else, so a playlist or other file dressed up as a video cannot make it read
+/// other files or reach the network (a share path would leak the Windows login). It
+/// is stopped if it runs too long.
 fn decode_with_ffmpeg(path: &Path, out: &Path) -> Option<io::Result<(u32, u16, u64)>> {
     let tmp = out.with_extension("ffmpeg.wav");
+    let file = match std::fs::File::open(path) {
+        Ok(f) => f,
+        Err(e) => return Some(Err(e)),
+    };
     let mut cmd = Command::new("ffmpeg");
     cmd.args([
         "-nostdin",
@@ -126,13 +131,13 @@ fn decode_with_ffmpeg(path: &Path, out: &Path) -> Option<io::Result<(u32, u16, u
         "error",
         "-y",
         "-protocol_whitelist",
-        "file",
+        "pipe",
+        "-i",
+        "pipe:0",
     ])
-    .args(["-i"])
-    .arg(path)
     .args(["-vn", "-sn", "-dn", "-c:a", "pcm_f32le"])
     .arg(&tmp)
-    .stdin(Stdio::null())
+    .stdin(Stdio::from(file))
     .stdout(Stdio::null())
     .stderr(Stdio::null());
     #[cfg(windows)]
@@ -383,6 +388,30 @@ mod tests {
 #EXTINF:1,
 http://127.0.0.1:9/part.ts
 #EXT-X-ENDLIST
+",
+        )
+        .unwrap();
+        assert!(import_file(&lib, &p).is_err());
+        assert!(lib.names().unwrap().is_empty());
+    }
+
+    /// A list naming other files must not make ffmpeg open them.
+    #[test]
+    fn a_file_list_posing_as_video_is_refused() {
+        let src = tempfile::tempdir().unwrap();
+        let lib_dir = tempfile::tempdir().unwrap();
+        let lib = Library::open(lib_dir.path()).unwrap();
+        let o = ExportOptions {
+            format: Format::Wav,
+            bits: 16,
+            clean_voice: false,
+        };
+        export_buffer(&tone(44_100, 1, 1.0), &src.path().join("real.wav"), o).unwrap();
+        let p = src.path().join("sneaky.avi");
+        std::fs::write(
+            &p,
+            "ffconcat version 1.0
+file 'real.wav'
 ",
         )
         .unwrap();

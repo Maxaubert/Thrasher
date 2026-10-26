@@ -144,6 +144,8 @@ Max accepted the research defaults (see section 7 for the report link):
 
 20 main-screen directions on a Claude Design canvas (private link): https://claude.ai/artifact/SU1FDLC9SZgMi9sXMe6wbB
 
+**2026-10-26:** Max asked to clear the canvas. It now has one page, "Screens", with 17 boards made from headless screenshots of the current app in Ember: main, search, clip menu, projects, delete dialog and wide main; clip page, translate menu, summary, editor and wide clip page; Settings, Models, Ask and Merge; the widget ready and recording. All earlier boards (directions, rounds, window sizes, themes) were removed. The screenshot script is `capture.sh` in the session scratchpad, not in the repo.
+
 - **Max picked 02 Ember:** orange (#ff6a1a) on warm black, Inter Tight with JetBrains Mono for times, 520×600 window.
 - Each clip row has a play button (plays from the main view) and a `>` that opens a **manage screen** for that clip: player with seek, speed and loop, transcript view, and transcript editing (cut words, shorten silences, type new words in your voice).
 - **Models are not a tab.** They live on the **settings page** (opened from a gear in the title bar) with recording, output, voice and shortcut settings.

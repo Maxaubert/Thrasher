@@ -1,0 +1,25 @@
+[package]
+name = "thrasher-ask"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Thrasher's local AI worker: runs a small GGUF language model with llama.cpp"
+
+# Built only with `--features llm` (or `cuda`), like the transcription worker, so the
+# normal build and CI never compile llama.cpp. It must never be linked into the same
+# exe as whisper-rs: both carry their own ggml, which clashes on Windows.
+[[bin]]
+name = "thrasher-ask"
+path = "src/main.rs"
+required-features = ["llm"]
+
+[dependencies]
+llama-cpp-2 = { version = "=0.1.160", default-features = false, optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+llm = ["dep:llama-cpp-2"]
+# Runs the model on an NVIDIA GPU. Needs the CUDA toolkit at build time.
+cuda = ["llm", "llama-cpp-2/cuda"]

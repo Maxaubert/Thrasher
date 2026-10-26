@@ -262,6 +262,7 @@ component Icon inherits Path {
         : name == "pushpin" ? "M12 17v5 M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"
         : name == "pip" ? "M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4 M14 13h6a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z"
         : name == "file-plus" ? "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z M14 2v4a2 2 0 0 0 2 2h4 M12 12v6 M9 15h6"
+        : name == "sparkles" ? "M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z M20 3v4 M22 5h-4 M4 17v2 M5 18H3"
         : name == "languages" ? "m5 8 6 6 M4 14l6-6 2-3 M2 5h12 M7 2h1 M22 22l-5-10-5 10 M14 18h6"
         : name == "copy" ? "M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2z M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
         : name == "list" ? "M8 6h13 M8 12h13 M8 18h13 M3 6h1 M3 12h1 M3 18h1"
@@ -1549,6 +1550,32 @@ component TextField inherits Rectangle {
     }
 }
 
+// One choice of the transcript card's view switch (Original, English, Summary).
+component ViewChip inherits Rectangle {
+    in property <string> text;
+    in property <bool> on;
+    callback clicked;
+    width: chip-text.preferred-width + 16px;
+    border-radius: 5px;
+    background: root.on ? Theme.hover : transparent;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-checked: root.on;
+    accessible-action-default => { root.clicked(); }
+    chip-text := Text {
+        text: root.text;
+        color: root.on ? Theme.text : Theme.muted;
+        font-size: 11px;
+        font-weight: 600;
+        vertical-alignment: center;
+        horizontal-alignment: center;
+    }
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
 // One search result: the clip name (and project), then the words around the match
 // with the match in the accent colour.
 component SearchRow inherits Rectangle {
@@ -2014,7 +2041,14 @@ component TranscriptCard inherits Rectangle {
     in property <string> translation;
     in-out property <bool> show-english;
     callback translate();
-    property <bool> english: root.show-english && root.translation != "";
+    // The local AI's summary and to-do list, and whether it is shown.
+    in property <string> summary;
+    in property <bool> summarising;
+    in property <bool> can-ai;
+    in-out property <bool> show-summary;
+    callback summarise();
+    property <bool> summary-view: root.show-summary && (root.summary != "" || root.summarising);
+    property <bool> english: root.show-english && root.translation != "" && !root.summary-view;
     in property <[WordRow]> words;
     in property <int> current-word: -1;
     in-out property <bool> show-marks;
@@ -2108,7 +2142,19 @@ component TranscriptCard inherits Rectangle {
                         clicked => { root.translate(); }
                     }
                 }
-                if root.translation != "" && !root.transcribing && !root.editing: VerticalLayout {
+                if root.transcript != "" && !root.transcribing && !root.editing && root.summary == "" && !root.summarising && root.can-ai: VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        size: 28px;
+                        icon: "sparkles";
+                        icon-size: 14px;
+                        label: "Summary and to-do list";
+                        tip: "Summary";
+                        enabled: !root.recording;
+                        clicked => { root.summarise(); }
+                    }
+                }
+                if (root.translation != "" || root.summary != "" || root.summarising) && !root.transcribing && !root.editing: VerticalLayout {
                     alignment: center;
                     padding-right: 4px;
                     Rectangle {
@@ -2120,27 +2166,20 @@ component TranscriptCard inherits Rectangle {
                             x: 2px;
                             y: 2px;
                             height: 22px;
-                            for l[k] in ["Original", "English"]: Rectangle {
-                                property <bool> on: (k == 1) == root.english;
-                                width: lang-text.preferred-width + 16px;
-                                border-radius: 5px;
-                                background: self.on ? Theme.hover : transparent;
-                                accessible-role: button;
-                                accessible-label: l;
-                                accessible-checked: self.on;
-                                accessible-action-default => { root.show-english = k == 1; }
-                                lang-text := Text {
-                                    text: l;
-                                    color: parent.on ? Theme.text : Theme.muted;
-                                    font-size: 11px;
-                                    font-weight: 600;
-                                    vertical-alignment: center;
-                                    horizontal-alignment: center;
-                                }
-                                TouchArea {
-                                    mouse-cursor: pointer;
-                                    clicked => { root.show-english = k == 1; }
-                                }
+                            ViewChip {
+                                text: "Original";
+                                on: !root.english && !root.summary-view;
+                                clicked => { root.show-english = false; root.show-summary = false; }
+                            }
+                            if root.translation != "": ViewChip {
+                                text: "English";
+                                on: root.english;
+                                clicked => { root.show-english = true; root.show-summary = false; }
+                            }
+                            if root.summary != "" || root.summarising: ViewChip {
+                                text: "Summary";
+                                on: root.summary-view;
+                                clicked => { root.show-summary = true; }
                             }
                         }
                     }
@@ -2157,7 +2196,7 @@ component TranscriptCard inherits Rectangle {
                         tip: "Copy";
                         clicked => {
                             // The words only, without the pause tags.
-                            copy-buf.text = root.english ? root.translation : root.plain-selection(root.transcript, 0, 2147483647);
+                            copy-buf.text = root.summary-view ? root.summary : root.english ? root.translation : root.plain-selection(root.transcript, 0, 2147483647);
                             copy-buf.select-all();
                             copy-buf.copy();
                             copy-buf.clear-selection();
@@ -2167,7 +2206,7 @@ component TranscriptCard inherits Rectangle {
                         }
                     }
                 }
-                if root.transcript != "" && !root.transcribing && !root.editing && !root.english: HorizontalLayout {
+                if root.transcript != "" && !root.transcribing && !root.editing && !root.english && !root.summary-view: HorizontalLayout {
                     horizontal-stretch: 0;
                     spacing: 8px;
                     padding-right: 10px;
@@ -2185,7 +2224,7 @@ component TranscriptCard inherits Rectangle {
                         }
                     }
                 }
-                if root.transcript != "" && !root.transcribing && !root.editing && !root.english: Rectangle {
+                if root.transcript != "" && !root.transcribing && !root.editing && !root.english && !root.summary-view: Rectangle {
                     width: edit-row.preferred-width + 20px;
                     height: 26px;
                     y: 1px;
@@ -2321,6 +2360,24 @@ component TranscriptCard inherits Rectangle {
                 read-only: true;
             }
             }
+            if root.summary-view && !root.transcribing && !root.editing: Scroller {
+                vertical-stretch: 1;
+                VerticalLayout {
+                    padding-right: 10px;
+                    spacing: 8px;
+                    if root.summarising && root.summary == "": Text {
+                        text: "Summarising";
+                        color: Theme.dim;
+                        font-size: 14px;
+                    }
+                    Text {
+                        text: root.summary;
+                        color: Theme.text2;
+                        font-size: 15px;
+                        wrap: word-wrap;
+                    }
+                }
+            }
             if root.english && !root.transcribing && !root.editing: Scroller {
                 vertical-stretch: 1;
                 VerticalLayout {
@@ -2333,7 +2390,7 @@ component TranscriptCard inherits Rectangle {
                     }
                 }
             }
-            if root.transcript != "" && !root.transcribing && !root.editing && !root.english: Scroller {
+            if root.transcript != "" && !root.transcribing && !root.editing && !root.english && !root.summary-view: Scroller {
                 vertical-stretch: 1;
                 // A new transcript starts at the top; Slint would keep the old offset.
                 property <string> shown: root.transcript;
@@ -2454,6 +2511,21 @@ export component AppWindow inherits Window {
     in property <string> translation;
     in-out property <bool> show-english;
     callback translate-selected();
+    in property <string> summary;
+    in property <bool> summarising;
+    in property <bool> can-ai;
+    in-out property <bool> show-summary;
+    callback summarise-selected();
+    // The AI finished clip `name`: whether it worked, and the summary or the error.
+    callback summarised(bool, string, string);
+    // The AI model in settings: the choices, the one picked, whether it is
+    // downloaded, and the download's progress (below 0 when none runs).
+    in property <[string]> ai-models;
+    in-out property <int> ai-model-index;
+    in property <bool> ai-ready;
+    in property <float> ai-download: -1;
+    callback ai-model-changed(int);
+    callback download-ai();
     in property <float> transcribe-progress;
     in-out property <bool> speaking;
     in property <float> speak-progress;
@@ -3527,6 +3599,11 @@ export component AppWindow inherits Window {
                     translation: root.translation;
                     show-english <=> root.show-english;
                     translate => { root.translate-selected(); }
+                    summary: root.summary;
+                    summarising: root.summarising;
+                    can-ai: root.can-ai;
+                    show-summary <=> root.show-summary;
+                    summarise => { root.summarise-selected(); }
                     transcribe-progress: root.transcribe-progress;
                     words: root.words;
                     current-word: root.current-word;
@@ -3599,6 +3676,11 @@ export component AppWindow inherits Window {
                     translation: root.translation;
                     show-english <=> root.show-english;
                     translate => { root.translate-selected(); }
+                    summary: root.summary;
+                    summarising: root.summarising;
+                    can-ai: root.can-ai;
+                    show-summary <=> root.show-summary;
+                    summarise => { root.summarise-selected(); }
                     transcribe-progress: root.transcribe-progress;
                     words: root.words;
                     current-word: root.current-word;
@@ -3848,6 +3930,35 @@ export component AppWindow inherits Window {
                                 last: true;
                                 Text { text: "Browse"; color: model-touch.has-hover ? Theme.accent-hover : Theme.accent; font-size: 13px; font-weight: 600; vertical-alignment: center; }
                                 Icon { name: "chevron"; tint: Theme.muted; y: (parent.height - self.height) / 2; }
+                            }
+                        }
+                    }
+
+                    if root.can-ai: Card {
+                        title: "AI";
+                        CardRow {
+                            label: "Model";
+                            VerticalLayout {
+                                alignment: center;
+                                Select {
+                                    label: "AI model";
+                                    model: root.ai-models;
+                                    current-index <=> root.ai-model-index;
+                                    selected(i) => { root.ai-model-changed(i); }
+                                }
+                            }
+                        }
+                        CardRow {
+                            label: root.ai-ready ? "Ready" : root.ai-download >= 0 ? "Downloading " + round(root.ai-download * 100) + "%" : "Not downloaded";
+                            last: true;
+                            if !root.ai-ready && root.ai-download < 0: VerticalLayout {
+                                alignment: center;
+                                Btn {
+                                    text: "Download";
+                                    height: 30px;
+                                    font-size: 12px;
+                                    clicked => { root.download-ai(); }
+                                }
                             }
                         }
                     }

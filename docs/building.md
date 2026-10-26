@@ -31,6 +31,7 @@ export LIBCLANG_PATH="C:/Users/Admin/AppData/Roaming/Python/Python314/site-packa
 export CMAKE_CUDA_ARCHITECTURES=120   # RTX 5090 (Blackwell); keeps the CUDA build short
 cargo build --release -p thrasher-app                                          # the app
 cargo build --release -p thrasher-app --features whisper-cuda --bin thrasher-transcribe  # the worker
+cargo build --release -p thrasher-ask --features cuda                           # the local AI worker
 ```
 
 Build them with **two commands**, in this order. Cargo merges features across the
@@ -42,6 +43,13 @@ finds next to itself. The app shows the Transcribe button only when the worker i
 Running it as its own process means the model and the CUDA runtime (about 600 MB of RAM
 and 3 GB of video memory) are released when the job ends, and a whisper.cpp crash cannot
 stop a recording. The first CUDA build takes several minutes.
+
+The local AI (summaries, later Ask) runs in `thrasher-ask.exe`, built from its own crate
+with llama.cpp (`llama-cpp-2`, pinned). It must never share an exe with whisper-rs: both
+carry their own ggml, which clashes on Windows. Without `--features llm` (or `cuda`) the
+crate builds nothing, so the normal build and CI never compile llama.cpp. The app shows
+the AI card and the Summary button only when the worker sits next to it. The first CUDA
+build takes about four minutes.
 
 Models are downloaded from the app (Settings, under Transcription) into
 `%LOCALAPPDATA%\Thrasher\models`. They are never committed.

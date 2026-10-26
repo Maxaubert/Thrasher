@@ -1,6 +1,7 @@
 // Hide the console window in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod ask;
 mod log;
 mod settings;
 mod startup;
@@ -290,6 +291,8 @@ struct App {
     /// The last flag is true for a translation.
     job: Option<(std::path::PathBuf, Vec<String>, bool)>,
     queue: VecDeque<(std::path::PathBuf, String, bool)>,
+    /// The clip the local AI is summarising, with its folder.
+    ai_job: Option<(std::path::PathBuf, String)>,
     /// Transcripts read for search, kept while their sidecar is unchanged.
     search_docs: HashMap<std::path::PathBuf, (Option<SystemTime>, search::Doc)>,
     live: VecDeque<f32>,
@@ -810,6 +813,8 @@ impl App {
         let Some(sc) = sidecar else {
             ui.set_transcript("".into());
             ui.set_translation("".into());
+            ui.set_summary("".into());
+            ui.set_summarising(false);
             ui.set_words(ModelRc::default());
             self.transcript_starts.clear();
             return;
@@ -822,6 +827,16 @@ impl App {
             .map(|w| w.text.trim())
             .collect();
         ui.set_translation(english.join(" ").into());
+        ui.set_summary(sc.summary.clone().unwrap_or_default().into());
+        let name = self
+            .selected(ui)
+            .map(|c| c.name.clone())
+            .unwrap_or_default();
+        ui.set_summarising(
+            self.ai_job
+                .as_ref()
+                .is_some_and(|(d, n)| d == self.library.dir() && *n == name),
+        );
         let items = edit::visible(&sc);
         self.transcript_starts = items.iter().map(|i| i.start).collect();
         let rows: Vec<WordRow> = items
@@ -1444,6 +1459,7 @@ fn main() -> Result<(), slint::PlatformError> {
         job: None,
         queue: VecDeque::new(),
         search_docs: HashMap::new(),
+        ai_job: None,
         live: VecDeque::new(),
         live_model,
     }));
@@ -1472,6 +1488,8 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.set_name_template(a.settings.name_template.clone().into());
         ui.set_close_to_tray(a.settings.close_to_tray);
         ui.set_auto_transcribe(a.settings.auto_transcribe);
+        ui.set_can_ai(ask::worker_path().is_some());
+        show_ai_model(&ui, &a.settings.ai_model);
         let pauses: Vec<SharedString> = settings::MAX_PAUSES
             .iter()
             .map(|(_, l)| (*l).into())
@@ -2618,6 +2636,146 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
+    ui.on_summarise_selected({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move || {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let Some(c) = a.selected(&ui).cloned() else {
+                return;
+            };
+            let Some(worker) = ask::worker_path() else {
+                return;
+            };
+            if a.ai_job.is_some() {
+                ui.set_status("The AI is busy".into());
+                return;
+            }
+            let model = thrasher_core::ai::find(&a.settings.ai_model)
+                .filter(|m| m.is_downloaded())
+                .and_then(|m| m.path());
+            let Some(model) = model else {
+                ui.set_status("Download the AI model first".into());
+                ui.set_page(3);
+                return;
+            };
+            let path = a.library.sidecar_path(&c.name);
+            let Some(job) = Sidecar::load(&path)
+                .ok()
+                .and_then(|sc| thrasher_core::ai::summary_job(&sc, &model))
+            else {
+                ui.set_status("Transcribe this clip first".into());
+                return;
+            };
+            a.ai_job = Some((a.library.dir().to_path_buf(), c.name.clone()));
+            ui.set_summarising(true);
+            ui.set_show_summary(true);
+            crate::log!("summarising {} in {} step(s)", c.name, job.steps.len());
+            let (weak, name) = (ui.as_weak(), c.name.clone());
+            std::thread::spawn(move || {
+                let started = std::time::Instant::now();
+                // Shows the summary as it is written, while its clip is the one shown.
+                let live = |text: String| {
+                    let (weak, name) = (weak.clone(), name.clone());
+                    move || {
+                        let _ = weak.upgrade_in_event_loop(move |ui| {
+                            let shown = ui
+                                .get_clips()
+                                .row_data(ui.get_selected() as usize)
+                                .is_some_and(|r| r.name == name);
+                            if shown {
+                                ui.set_summary(text.into());
+                            }
+                        });
+                    }
+                };
+                let result = ask::run(&worker, &job, &mut |_| {}, &mut |text| {
+                    live(thrasher_core::ai::tidy(text))()
+                });
+                crate::log!(
+                    "summary of {name} took {} ms: {:?}",
+                    crate::log::ms(started),
+                    result.as_ref().err()
+                );
+                let result = result.and_then(|text| {
+                    let text = thrasher_core::ai::tidy(&text);
+                    let mut sc = Sidecar::load(&path).map_err(|e| e.to_string())?;
+                    sc.summary = Some(text.clone());
+                    sc.save(&path).map_err(|e| e.to_string())?;
+                    Ok(text)
+                });
+                let ok = result.is_ok();
+                let text = result.unwrap_or_else(|e| e);
+                let _ = weak.upgrade_in_event_loop(move |ui| {
+                    ui.invoke_summarised(ok, name.into(), text.into())
+                });
+            });
+        }
+    });
+
+    ui.on_summarised({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |ok, name, text| {
+            let ui = weak.unwrap();
+            app.borrow_mut().ai_job = None;
+            if ok {
+                ui.set_status(format!("Summary of {name} ready").into());
+            } else {
+                ui.set_status(format!("Summary failed: {text}").into());
+            }
+            app.borrow_mut().show_transcript(&ui);
+        }
+    });
+
+    ui.on_ai_model_changed({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |i| {
+            let Some(m) = thrasher_core::ai::AI_MODELS.get(i as usize) else {
+                return;
+            };
+            let mut a = app.borrow_mut();
+            a.settings.ai_model = m.id.to_string();
+            a.settings.save();
+            show_ai_model(&weak.unwrap(), m.id);
+        }
+    });
+
+    ui.on_download_ai({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move || {
+            let ui = weak.unwrap();
+            let Some(model) = thrasher_core::ai::find(&app.borrow().settings.ai_model) else {
+                return;
+            };
+            ui.set_ai_download(0.0);
+            let weak = ui.as_weak();
+            std::thread::spawn(move || {
+                let cancel = std::sync::atomic::AtomicBool::new(false);
+                let mut last = 0.0f32;
+                let w = weak.clone();
+                let result = thrasher_core::models::download(
+                    model,
+                    &mut |done, total| {
+                        let p = done as f32 / total.max(1) as f32;
+                        if p - last >= 0.005 {
+                            last = p;
+                            let _ = w.upgrade_in_event_loop(move |ui| ui.set_ai_download(p));
+                        }
+                    },
+                    &cancel,
+                );
+                let _ = weak.upgrade_in_event_loop(move |ui| {
+                    ui.set_ai_download(-1.0);
+                    match result {
+                        Ok(_) => ui.set_status(format!("Downloaded {}", model.name).into()),
+                        Err(e) => ui.set_status(format!("{}: {e}", model.name).into()),
+                    }
+                    show_ai_model(&ui, model.id);
+                });
+            });
+        }
+    });
+
     ui.on_search({
         let (app, weak) = (app.clone(), ui.as_weak());
         move |query, all| app.borrow_mut().search(&weak.unwrap(), &query, all)
@@ -3012,6 +3170,19 @@ fn import_paths(ui: &AppWindow, library: Library, files: Vec<std::path::PathBuf>
             ui.invoke_imported(status.into(), last.into(), names.into())
         });
     });
+}
+
+/// Fills the AI model choice in settings and whether that model is downloaded.
+fn show_ai_model(ui: &AppWindow, id: &str) {
+    use thrasher_core::ai::AI_MODELS;
+    let names: Vec<SharedString> = AI_MODELS
+        .iter()
+        .map(|m| format!("{} · {:.1} GB", m.name, m.bytes as f64 / 1e9).into())
+        .collect();
+    ui.set_ai_models(ModelRc::new(VecModel::from(names)));
+    let i = AI_MODELS.iter().position(|m| m.id == id).unwrap_or(0);
+    ui.set_ai_model_index(i as i32);
+    ui.set_ai_ready(AI_MODELS[i].is_downloaded());
 }
 
 /// Shortens the pauses of freshly transcribed clips to `max` seconds (the Max pause

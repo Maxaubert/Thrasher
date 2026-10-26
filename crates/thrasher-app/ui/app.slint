@@ -249,6 +249,7 @@ component Icon inherits Path {
         : name == "pushpin" ? "M12 17v5 M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"
         : name == "pip" ? "M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4 M14 13h6a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z"
         : name == "file-plus" ? "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z M14 2v4a2 2 0 0 0 2 2h4 M12 12v6 M9 15h6"
+        : name == "copy" ? "M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2z M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
         : name == "list" ? "M8 6h13 M8 12h13 M8 18h13 M3 6h1 M3 12h1 M3 18h1"
         : "";
 }
@@ -1928,6 +1929,8 @@ component TranscriptCard inherits Rectangle {
     callback save();
     pure callback edit-markup(string) -> styled-text;
     pure callback plain-selection(string, int, int) -> string;
+    // The copy button shows a check mark for a moment after a copy.
+    property <bool> copied;
     // Where the editor's cursor is, and how tall it is.
     property <Point> caret;
     property <length> caret-h: 20px;
@@ -1985,6 +1988,28 @@ component TranscriptCard inherits Rectangle {
                             font-size: 12px;
                             enabled: root.edit-draft != root.transcript && !root.speaking;
                             clicked => { root.save(); }
+                        }
+                    }
+                }
+                if root.transcript != "" && !root.transcribing && !root.editing: VerticalLayout {
+                    alignment: center;
+                    padding-right: 6px;
+                    IconBtn {
+                        size: 28px;
+                        icon: root.copied ? "check" : "copy";
+                        icon-size: 13px;
+                        active: root.copied;
+                        label: "Copy the transcript";
+                        tip: "Copy";
+                        clicked => {
+                            // The words only, without the pause tags.
+                            copy-buf.text = root.plain-selection(root.transcript, 0, 2147483647);
+                            copy-buf.select-all();
+                            copy-buf.copy();
+                            copy-buf.clear-selection();
+                            copy-buf.text = "";
+                            root.copied = true;
+                            copied-timer.running = true;
                         }
                     }
                 }
@@ -2183,6 +2208,23 @@ component TranscriptCard inherits Rectangle {
                 }
             }
         }
+    // Holds the transcript for a moment while it is copied.
+    copy-buf := TextInput {
+        x: 0;
+        y: 0;
+        width: 20px;
+        height: 20px;
+        color: transparent;
+        read-only: true;
+    }
+    copied-timer := Timer {
+        interval: 1500ms;
+        running: false;
+        triggered => {
+            root.copied = false;
+            self.running = false;
+        }
+    }
 }
 
 export component AppWindow inherits Window {

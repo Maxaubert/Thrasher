@@ -1611,8 +1611,8 @@ fn main() -> Result<(), slint::PlatformError> {
                     list.split(';').map(std::path::PathBuf::from).collect()
                 }
                 _ => rfd::FileDialog::new()
-                    .set_title("Import audio files")
-                    .add_filter("Audio", &thrasher_core::import::EXTENSIONS)
+                    .set_title("Import")
+                    .add_filter("Audio and video", &thrasher_core::import::EXTENSIONS)
                     .pick_files()
                     .unwrap_or_default(),
             };

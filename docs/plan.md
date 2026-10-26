@@ -197,6 +197,9 @@ Built 2026-10-25 in PRs #27 (A), #28 (B), #29 (C), #30 (D), #31 (E). Differences
 spec: Opus files cannot be imported (Symphonia has no Opus decoder); FLAC is decoded with
 `claxon` because Symphonia rejects valid FLAC files from our own encoder. "Whole project"
 and a timestamped script ("Script", `.txt`) were added to the export menus.
+**2026-10-26:** the rail button is just "Import" and takes video too (Max): only the sound is
+kept. Symphonia reads MP4, MOV and MKV audio; anything it cannot read (Opus, WebM, AVI, WMV)
+goes through ffmpeg when it is installed on the PC, so Opus now imports where ffmpeg exists.
 
 ## 14. Window sizes (mockups 2026-10-25)
 

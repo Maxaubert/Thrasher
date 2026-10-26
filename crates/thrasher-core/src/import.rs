@@ -1,12 +1,16 @@
-//! Import an audio file (WAV, MP3, FLAC, M4A/AAC, ALAC, OGG Vorbis, AIFF) as a new
-//! clip. The file is decoded with Symphonia and stored as the clip's WAV track, so it
-//! plays, transcribes and exports like a recording. The original file is left alone.
+//! Import an audio or video file as a new clip. Only the sound is kept: it is decoded
+//! with Symphonia (WAV, MP3, FLAC, M4A/AAC, ALAC, OGG Vorbis, AIFF, and the audio of
+//! MP4, MOV and MKV videos) and stored as the clip's WAV track, so it plays,
+//! transcribes and exports like a recording. Anything Symphonia cannot read (Opus in
+//! WebM, AVI, WMV) goes through ffmpeg when it is installed. The original file is left
+//! alone.
 
 use crate::library::{Library, valid_name};
 use crate::sidecar::{Meta, RecordingState, Sidecar, Track, TrackKind};
 use crate::wav::WavWriter;
 use std::io;
 use std::path::Path;
+use std::process::{Command, Stdio};
 use symphonia::core::audio::SampleBuffer;
 use symphonia::core::codecs::{CODEC_TYPE_NULL, DecoderOptions};
 use symphonia::core::errors::Error;
@@ -15,9 +19,10 @@ use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
-/// File extensions offered in the import dialog.
-pub const EXTENSIONS: [&str; 10] = [
-    "wav", "mp3", "flac", "m4a", "aac", "mp4", "ogg", "oga", "aif", "aiff",
+/// File extensions offered in the import dialog: audio, then video.
+pub const EXTENSIONS: [&str; 18] = [
+    "wav", "mp3", "flac", "m4a", "aac", "ogg", "oga", "opus", "aif", "aiff", "wma", "mp4", "m4v",
+    "mov", "mkv", "webm", "avi", "wmv",
 ];
 
 /// Imports `path` as a new clip named after the file, and returns the clip's name.
@@ -101,6 +106,40 @@ fn decode_into(path: &Path, out: &Path) -> io::Result<(u32, u16, u64)> {
         // Symphonia rejects some valid FLAC files (Thrasher's own exports among them).
         return decode_flac(path, out);
     }
+    decode_symphonia(path, out).or_else(|e| decode_with_ffmpeg(path, out).unwrap_or(Err(e)))
+}
+
+/// Lets ffmpeg pull the sound out of `path` into a plain WAV, then reads that. None
+/// when ffmpeg is not installed.
+fn decode_with_ffmpeg(path: &Path, out: &Path) -> Option<io::Result<(u32, u16, u64)>> {
+    let tmp = out.with_extension("ffmpeg.wav");
+    let mut cmd = Command::new("ffmpeg");
+    cmd.args(["-nostdin", "-v", "error", "-y", "-i"])
+        .arg(path)
+        .args(["-vn", "-sn", "-dn", "-c:a", "pcm_f32le"])
+        .arg(&tmp)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // CREATE_NO_WINDOW: no console flashes up.
+        cmd.creation_flags(0x0800_0000);
+    }
+    let status = cmd.status().ok()?;
+    let result = if status.success() {
+        decode_symphonia(&tmp, out)
+    } else {
+        Err(invalid("the file has no sound Thrasher can read"))
+    };
+    let _ = std::fs::remove_file(&tmp);
+    Some(result)
+}
+
+/// Decodes `path` with Symphonia: the first track it has a decoder for, so a video's
+/// picture track is passed over.
+fn decode_symphonia(path: &Path, out: &Path) -> io::Result<(u32, u16, u64)> {
     let file = std::fs::File::open(path)?;
     let mss = MediaSourceStream::new(Box::new(file), Default::default());
     let mut hint = Hint::new();
@@ -116,15 +155,22 @@ fn decode_into(path: &Path, out: &Path) -> io::Result<(u32, u16, u64)> {
         )
         .map_err(|e| invalid(format!("not an audio file Thrasher can read ({e})")))?;
     let mut format = probed.format;
-    let track = format
-        .tracks()
-        .iter()
-        .find(|t| t.codec_params.codec != CODEC_TYPE_NULL)
-        .ok_or_else(|| invalid("the file has no audio"))?;
-    let track_id = track.id;
-    let mut decoder = symphonia::default::get_codecs()
-        .make(&track.codec_params, &DecoderOptions::default())
-        .map_err(|e| invalid(format!("cannot decode this audio: {e}")))?;
+    let codecs = symphonia::default::get_codecs();
+    let mut failure = invalid("the file has no audio");
+    let mut found = None;
+    for track in format.tracks() {
+        if track.codec_params.codec == CODEC_TYPE_NULL {
+            continue;
+        }
+        match codecs.make(&track.codec_params, &DecoderOptions::default()) {
+            Ok(d) => {
+                found = Some((track.id, d));
+                break;
+            }
+            Err(e) => failure = invalid(format!("cannot decode this audio: {e}")),
+        }
+    }
+    let (track_id, mut decoder) = found.ok_or(failure)?;
 
     let mut writer: Option<WavWriter> = None;
     let mut mixed = Vec::new();
@@ -245,6 +291,55 @@ mod tests {
         }
         assert_eq!(lib.names().unwrap().len(), 2);
         assert!(lib.exists("talk") && lib.exists("talk (2)"));
+    }
+
+    /// Videos keep only their sound: AAC in MP4 through Symphonia, Opus in WebM through
+    /// ffmpeg. Skipped where ffmpeg is not installed, as it makes the test videos.
+    #[test]
+    fn imports_the_sound_of_videos() {
+        let src = tempfile::tempdir().unwrap();
+        let lib_dir = tempfile::tempdir().unwrap();
+        let lib = Library::open(lib_dir.path()).unwrap();
+        for (file, audio) in [("clip.mp4", "aac"), ("clip.webm", "libopus")] {
+            let p = src.path().join(file);
+            let video = if file.ends_with("webm") {
+                "libvpx"
+            } else {
+                "mpeg4"
+            };
+            let made = Command::new("ffmpeg")
+                .args([
+                    "-nostdin",
+                    "-v",
+                    "error",
+                    "-y",
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "testsrc=size=64x64:rate=10",
+                ])
+                .args([
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "sine=frequency=440:sample_rate=48000",
+                    "-t",
+                    "1.5",
+                ])
+                .args(["-c:v", video, "-c:a", audio])
+                .arg(&p)
+                .stdin(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
+            if !made.is_ok_and(|s| s.success()) {
+                eprintln!("skipped {file}: ffmpeg cannot make it here");
+                continue;
+            }
+            let name = import_file(&lib, &p).unwrap_or_else(|e| panic!("{file}: {e}"));
+            let sc = Sidecar::load(&lib.sidecar_path(&name)).unwrap();
+            assert!((sc.duration - 1.5).abs() < 0.1, "{file}: {}", sc.duration);
+            assert_eq!(sc.thrasher.tracks[0].sample_rate, 48_000, "{file}");
+        }
     }
 
     #[test]

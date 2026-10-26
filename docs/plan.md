@@ -210,35 +210,81 @@ round Record button, no mini waveforms in the list, a lower player, wide control
 their label. Wide: recorder beside the clip list; player, parts and options beside a
 full-height transcript; settings cards in two columns. Waiting for Max's feedback.
 
-## 15. Round 7: auto transcribe, search, trim, translate (proposed 2026-10-26)
+## 15. Round 7: projects, auto transcribe, search, trim, translate, local AI (proposed 2026-10-26)
 
-Max picked these from a brainstorm. Each is its own PR, in this order.
+Max picked these after a brainstorm. Each item is its own PR, built in this order.
 
-1. **Drag and drop.** Drop audio or video files anywhere on the window to import them,
-   the same way as the Import button. While files hover, the window shows a dashed
-   outline and "Drop to import". Files Thrasher cannot read are skipped with a status
-   note. Built on winit's file drop events (`unstable-winit-030` is already on).
-2. **Auto transcribe** (setting, off by default, card TRANSCRIPTION, row "Auto
-   transcribe"). When on, every new clip is transcribed when it is saved: recordings,
-   imports and dropped files. Several new clips go to one worker run (the worker already
-   takes more clip names); clips that arrive while a job runs wait in a queue.
-3. **Shorten pauses** (setting, card TRANSCRIPTION, row "Max pause": Off, 0.3 s, 0.5 s,
-   1 s, 2 s; default Off). After each transcription, every pause longer than the limit is
-   set to the limit, as a normal non-destructive edit (the same as typing a shorter
-   `[silence]` tag). Playback and export use it; the editor can change it back. Chosen
-   instead of starting the recording on voice, which can cut the first word.
-4. **Copy transcript.** A copy icon in the transcript card header. A click copies the
-   text without pause tags and the icon turns into a check mark for 1.5 s. Tooltip only.
-5. **Search all clips.** A search field in the Clips header (Ctrl+F). Typing filters the
-   list to clips whose name or transcript contains the text; each hit shows the matching
-   words under the name, with the match in the accent colour. Clicking a hit opens the
-   clip page and plays from that word. Esc clears.
-6. **Trim by waveform.** On the clip page, the player waveform gets a start and an end
-   handle. Dragging them hides the audio outside, non-destructively (new sidecar field
-   `trim`, used by playback, export and the edited length). Words outside the trim are
-   shown as cut. Dragging a handle back restores it.
-7. **Translate.** In the transcript card menu: "Translate to English". Whisper can only
-   translate into English, so that is the one target. The result is saved next to the
-   transcript (sidecar `translation`, segments with times) and the card gets an
-   Original / English switch; subtitles export uses the one shown. Turbo models do not
-   translate well; the menu says so when one is active.
+1. **Projects.** A project is a folder of clips, for example School, To do or a work site.
+   - **Storage:** each project is a subfolder of the clip folder. The clip folder itself
+     is the first project, **Inbox**, so no existing file moves.
+   - **Picking a project:** the word "Clips" over the list becomes a project dropdown
+     (Max's pick). It lists the projects and ends with "New project". The current project
+     is remembered in settings.
+   - **Where new clips go:** every recording, import and drop goes into the current
+     project.
+   - **Moving clips:** the clip menu gets "Move to" with the list of projects.
+   - **Project menu:** rename and delete (delete only when the project is empty), and
+     export the whole project as a folder.
+   - **Naming clash:** today's export "Full project" (one clip with all its files) is
+     renamed "All files", so "project" only means the new kind.
+   - **Widget and hotkey:** they record into the current project.
+2. **Drag and drop.** Drop audio or video files anywhere on the window to import them into
+   the current project, the same way as the Import button. While files hover, the window
+   shows a dashed outline and "Drop to import". Files Thrasher can't read are skipped with
+   a status note. Built on winit's file drop events (`unstable-winit-030` is already on).
+3. **Auto transcribe** (setting, off by default, card TRANSCRIPTION, row "Auto
+   transcribe"). When it's on, every new clip is transcribed as soon as it's saved:
+   recordings, imports and dropped files. Several new clips go to one worker run (the
+   worker already takes more clip names). Clips that arrive while a job runs wait in a
+   queue.
+4. **Shorten pauses** (setting, card TRANSCRIPTION, row "Max pause": Off, 0.3 s, 0.5 s,
+   1 s, 2 s; default Off).
+   - After each transcription, every pause longer than the limit is set to the limit.
+   - It's a normal non-destructive edit, the same as typing a shorter `[silence]` tag.
+     Playback and export use it, and the editor can change it back.
+   - Chosen instead of starting the recording on voice, which can cut off the first word.
+5. **Copy transcript.** A copy icon in the transcript card header. A click copies the text
+   without pause tags, and the icon turns into a check mark for 1.5 s. Tooltip only.
+6. **Search.** A search field next to the project dropdown (Ctrl+F).
+   - **Filtering:** typing filters the list to clips whose name or transcript contains the
+     text.
+   - **Hits:** each hit shows the matching words under the clip name, with the match in
+     the accent colour.
+   - **Playing a hit:** a click opens the clip page and plays from that word. Esc clears.
+   - **Scope:** a toggle searches all projects instead of the current one.
+7. **Trim by waveform.** On the clip page, the player waveform gets a start handle and an
+   end handle.
+   - Dragging them hides the audio outside, non-destructively: a new sidecar field `trim`,
+     used by playback, export and the edited length.
+   - Words outside the trim are shown as cut. Dragging a handle back restores the audio.
+8. **Translate.** "Translate to English" in the transcript card menu.
+   - **Target:** Whisper can only translate into English, so that is the only target.
+   - **Storage:** the result is saved next to the transcript (sidecar `translation`,
+     segments with times).
+   - **Display:** the card gets an Original / English switch, and the subtitles export uses
+     whichever is shown.
+   - **Model warning:** turbo models translate badly, and the menu says so when one is
+     active.
+9. **Local AI** (research: `C:\Users\Admin\Documents\Claude\research\thrasher\2026-10-26-local-llm.md`).
+   - **Summary:** "Summary" in the transcript card menu writes a short summary and a to-do
+     list, saved in the sidecar.
+   - **Ask:** an "Ask" item in the side rail opens a question box over the current project,
+     or all projects. The answer lists the clips and moments it used, and a click plays
+     from there.
+   - **Models:** downloaded on demand, like the Whisper models, on the Models page.
+     - Default: **NbAiLab borealis-open-4b**, Q4 from NB's own GGUF, 2.5 GB, tuned for
+       Norwegian.
+     - Smaller fallback: **Ministral-3-3B-Instruct-2512**, 2.2 GB.
+     - Before settling on the default, A/B test both on a few of Max's own transcripts.
+   - **Runtime:** a new worker `thrasher-ask.exe` (its own crate and cargo command), using
+     `llama-cpp-2` with optional CUDA.
+     - It talks over stdin and stdout like `thrasher-transcribe`.
+     - It never shares an exe with whisper-rs, because the two ggml copies clash on
+       Windows.
+   - **How answers are found:**
+     - First, pick the clips by project, date and name ("the last lecture" means the newest
+       clip).
+     - Then search the transcripts by keyword (tantivy BM25, Norwegian stemmer).
+     - The model reads only the best passages, with their times, and answers in the
+       language of the question.
+     - Long transcripts are summarised in chunks.

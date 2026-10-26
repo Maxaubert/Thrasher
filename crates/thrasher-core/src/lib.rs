@@ -1,6 +1,7 @@
 //! Thrasher's audio engine: capture, recording, playback and the clip library.
 //! No UI code lives here.
 
+pub mod ai;
 pub mod bake;
 pub mod capture;
 pub mod cleanup;

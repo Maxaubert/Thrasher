@@ -28,6 +28,9 @@ pub struct Sidecar {
     /// The clips a merged clip was made of, in order (see `merge`). Empty otherwise.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub parts: Vec<Part>,
+    /// A summary and to-do list written by the local AI (see `ai`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
     /// The transcript translated into English by Whisper, with recording times.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub translation: Vec<Word>,

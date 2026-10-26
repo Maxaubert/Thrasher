@@ -50,6 +50,8 @@ pub struct Settings {
     pub auto_transcribe: bool,
     /// After a transcription, longer pauses are shortened to this many seconds. 0 is off.
     pub max_pause: f64,
+    /// Id of the local AI model, from `thrasher_core::ai::AI_MODELS`.
+    pub ai_model: String,
 }
 
 impl Default for Settings {
@@ -76,6 +78,7 @@ impl Default for Settings {
             project: String::new(),
             auto_transcribe: false,
             max_pause: 0.0,
+            ai_model: "borealis-open-4b".into(),
         }
     }
 }

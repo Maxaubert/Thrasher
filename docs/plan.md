@@ -295,3 +295,13 @@ Max picked these after a brainstorm. Each item is its own PR, built in this orde
      - The model reads only the best passages, with their times, and answers in the
        language of the question.
      - Long transcripts are summarised in chunks.
+   - **9a built 2026-10-26 (Summary):** a Summary button (sparkles) on the transcript
+     card, a Summary view next to Original and English, written live as it streams.
+     Settings has an AI card (model and download). Prompts are in Norwegian for Norwegian
+     transcripts; more than 2,500 words are summarised in parts, then as a whole.
+   - **A/B on clip_001** (17 min Norwegian lecture, RTX 5090): both took about 4 s.
+     - **Borealis:** concise and in the asked format, but the to-do list is generic and
+       repeats itself.
+     - **Ministral:** more specific (names, tools, firm), but too long, and it puts
+       non-tasks in the to-do list.
+     - Borealis stays the default until Max picks.

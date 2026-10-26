@@ -209,3 +209,36 @@ never adds or removes options; it only rearranges them. Narrow: one-line recorde
 round Record button, no mini waveforms in the list, a lower player, wide controls under
 their label. Wide: recorder beside the clip list; player, parts and options beside a
 full-height transcript; settings cards in two columns. Waiting for Max's feedback.
+
+## 15. Round 7: auto transcribe, search, trim, translate (proposed 2026-10-26)
+
+Max picked these from a brainstorm. Each is its own PR, in this order.
+
+1. **Drag and drop.** Drop audio or video files anywhere on the window to import them,
+   the same way as the Import button. While files hover, the window shows a dashed
+   outline and "Drop to import". Files Thrasher cannot read are skipped with a status
+   note. Built on winit's file drop events (`unstable-winit-030` is already on).
+2. **Auto transcribe** (setting, off by default, card TRANSCRIPTION, row "Auto
+   transcribe"). When on, every new clip is transcribed when it is saved: recordings,
+   imports and dropped files. Several new clips go to one worker run (the worker already
+   takes more clip names); clips that arrive while a job runs wait in a queue.
+3. **Shorten pauses** (setting, card TRANSCRIPTION, row "Max pause": Off, 0.3 s, 0.5 s,
+   1 s, 2 s; default Off). After each transcription, every pause longer than the limit is
+   set to the limit, as a normal non-destructive edit (the same as typing a shorter
+   `[silence]` tag). Playback and export use it; the editor can change it back. Chosen
+   instead of starting the recording on voice, which can cut the first word.
+4. **Copy transcript.** A copy icon in the transcript card header. A click copies the
+   text without pause tags and the icon turns into a check mark for 1.5 s. Tooltip only.
+5. **Search all clips.** A search field in the Clips header (Ctrl+F). Typing filters the
+   list to clips whose name or transcript contains the text; each hit shows the matching
+   words under the name, with the match in the accent colour. Clicking a hit opens the
+   clip page and plays from that word. Esc clears.
+6. **Trim by waveform.** On the clip page, the player waveform gets a start and an end
+   handle. Dragging them hides the audio outside, non-destructively (new sidecar field
+   `trim`, used by playback, export and the edited length). Words outside the trim are
+   shown as cut. Dragging a handle back restores it.
+7. **Translate.** In the transcript card menu: "Translate to English". Whisper can only
+   translate into English, so that is the one target. The result is saved next to the
+   transcript (sidecar `translation`, segments with times) and the card gets an
+   Original / English switch; subtitles export uses the one shown. Turbo models do not
+   translate well; the menu says so when one is active.

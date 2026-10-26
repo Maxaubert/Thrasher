@@ -291,6 +291,8 @@ struct App {
     /// The last flag is true for a translation.
     job: Option<(std::path::PathBuf, Vec<String>, bool)>,
     queue: VecDeque<(std::path::PathBuf, String, bool)>,
+    /// A question is being answered.
+    asking: bool,
     /// The clip the local AI is summarising, with its folder.
     ai_job: Option<(std::path::PathBuf, String)>,
     /// Transcripts read for search, kept while their sidecar is unchanged.
@@ -1460,6 +1462,7 @@ fn main() -> Result<(), slint::PlatformError> {
         queue: VecDeque::new(),
         search_docs: HashMap::new(),
         ai_job: None,
+        asking: false,
         live: VecDeque::new(),
         live_model,
     }));
@@ -2647,7 +2650,7 @@ fn main() -> Result<(), slint::PlatformError> {
             let Some(worker) = ask::worker_path() else {
                 return;
             };
-            if a.ai_job.is_some() {
+            if a.ai_job.is_some() || a.asking {
                 ui.set_status("The AI is busy".into());
                 return;
             }
@@ -2724,6 +2727,141 @@ fn main() -> Result<(), slint::PlatformError> {
                 ui.set_status(format!("Summary failed: {text}").into());
             }
             app.borrow_mut().show_transcript(&ui);
+        }
+    });
+
+    ui.on_ask({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |question, all| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let Some(worker) = ask::worker_path() else {
+                return;
+            };
+            if a.ai_job.is_some() || a.asking {
+                ui.set_status("The AI is busy".into());
+                return;
+            }
+            let model = thrasher_core::ai::find(&a.settings.ai_model)
+                .filter(|m| m.is_downloaded())
+                .and_then(|m| m.path());
+            let Some(model) = model else {
+                ui.set_status("Download the AI model first".into());
+                ui.set_page(3);
+                return;
+            };
+            // Every transcript in this project, or in all of them.
+            let current = ui.get_project();
+            let places: Vec<i32> = if all {
+                (0..ui.get_projects().row_count() as i32).collect()
+            } else {
+                vec![current]
+            };
+            let mut all_passages = Vec::new();
+            for p in places {
+                let Some(name) = App::project_at(&ui, p) else {
+                    continue;
+                };
+                let (library, clips) = if p == current {
+                    (a.library.clone(), a.clips.clone())
+                } else {
+                    let Ok(lib) = Library::open(projects::dir(&a.root, &name)) else {
+                        continue;
+                    };
+                    let clips = lib.list().unwrap_or_default();
+                    (lib, clips)
+                };
+                for c in clips {
+                    let Ok(sc) = Sidecar::load(&library.sidecar_path(&c.name)) else {
+                        continue;
+                    };
+                    let created = c
+                        .created
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map_or(0, |d| d.as_secs());
+                    all_passages.extend(thrasher_core::ai::passages(&sc, &c.name, p, created));
+                }
+            }
+            let picked = thrasher_core::ai::retrieve(&question, &all_passages);
+            let sources: Vec<AskSource> = picked
+                .iter()
+                .enumerate()
+                .map(|(i, p)| AskSource {
+                    n: i as i32 + 1,
+                    clip: p.clip.as_str().into(),
+                    place: p.place,
+                    at: p.at as f32,
+                    time: fmt_time(p.at).into(),
+                    text: p.text.as_str().into(),
+                })
+                .collect();
+            ui.set_sources(ModelRc::new(VecModel::from(sources)));
+            if picked.is_empty() {
+                ui.set_answer("Nothing in your transcripts matches".into());
+                return;
+            }
+            crate::log!(
+                "asking with {} passage(s) from {} in all",
+                picked.len(),
+                all_passages.len()
+            );
+            let job = thrasher_core::ai::ask_job(&question, &picked, &model);
+            a.asking = true;
+            ui.set_asking(true);
+            ui.set_answer("".into());
+            let weak = ui.as_weak();
+            std::thread::spawn(move || {
+                let started = std::time::Instant::now();
+                let w = weak.clone();
+                let result = ask::run(&worker, &job, &mut |_| {}, &mut |text| {
+                    let text = thrasher_core::ai::tidy(text);
+                    let _ = w.upgrade_in_event_loop(move |ui| ui.set_answer(text.into()));
+                });
+                crate::log!(
+                    "answer took {} ms: {:?}",
+                    crate::log::ms(started),
+                    result.as_ref().err()
+                );
+                let _ = weak.upgrade_in_event_loop(move |ui| {
+                    match result {
+                        Ok(text) => ui.set_answer(thrasher_core::ai::tidy(&text).into()),
+                        Err(e) => ui.set_answer(format!("The AI failed: {e}").into()),
+                    }
+                    ui.invoke_answered();
+                });
+            });
+        }
+    });
+
+    ui.on_answered({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move || {
+            app.borrow_mut().asking = false;
+            weak.unwrap().set_asking(false);
+        }
+    });
+
+    ui.on_open_source({
+        let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
+        move |i| {
+            let ui = weak.unwrap();
+            let Some(s) = ui.get_sources().row_data(i as usize) else {
+                return;
+            };
+            let mut a = app.borrow_mut();
+            if s.place != ui.get_project() {
+                if a.recording.is_some() {
+                    return;
+                }
+                let Some(name) = App::project_at(&ui, s.place) else {
+                    return;
+                };
+                a.open_project(&ui, &name);
+            }
+            a.select_name(&ui, &s.clip);
+            if a.play_clip(&ui, &s.clip, s.at as f64) {
+                ensure();
+            }
         }
     });
 

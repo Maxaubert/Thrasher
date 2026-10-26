@@ -304,4 +304,13 @@ Max picked these after a brainstorm. Each item is its own PR, built in this orde
        repeats itself.
      - **Ministral:** more specific (names, tools, firm), but too long, and it puts
        non-tasks in the to-do list.
-     - Borealis stays the default until Max picks.
+     - Borealis stays the default (Max's pick, 2026-10-26).
+   - **9b built 2026-10-26 (Ask):**
+     - **How it answers:** an Ask item in the side rail opens the Ask page (question,
+       All projects, answer written live, numbered sources that play from their moment).
+       Transcripts are cut into passages of 120 words, overlapping 30. Plain BM25 picks
+       the best 8: stop words are dropped, words are cut to 6 letters, and there is no
+       extra dependency in place of tantivy. A question with "siste", "forrige", "last"
+       and similar reads only the newest clip.
+     - **Tested on the lecture:** Borealis answered in Norwegian in about 2 s, but it
+       left out the [n] citations and answered only half of a two-part question.

@@ -2620,7 +2620,8 @@ export component AppWindow inherits Window {
     preferred-height: 600px;
     min-width: compact ? 240px : 420px;
     min-height: compact ? 124px : 480px;
-    always-on-top: pinned || compact;
+    // Only the widget stays on top.
+    always-on-top: compact;
     no-frame: true;
 
     // Window size classes. A size never adds or removes options; it only rearranges
@@ -2777,7 +2778,6 @@ export component AppWindow inherits Window {
     in property <[string]> recording-limits;
     in-out property <int> recording-limit-index: 2;
     in-out property <bool> start-with-windows;
-    in-out property <bool> pinned;
     in-out property <bool> compact;
     in-out property <length> list-y;
     in-out property <length> list-height: 300px;
@@ -2798,7 +2798,6 @@ export component AppWindow inherits Window {
     callback rename-selected(string);
     callback mic-changed(int);
     callback system-changed(bool);
-    callback pinned-changed(bool);
     callback compact-changed(bool);
     callback open-folder();
     callback change-folder();
@@ -3269,7 +3268,7 @@ export component AppWindow inherits Window {
                     }
                     // Lets the header (and so the list under it) grow with the window.
                     Rectangle { horizontal-stretch: 1; }
-                    // Import, Ask, keep on top and the widget, after the search field.
+                    // Import, Ask and the widget, after the search field.
                     HorizontalLayout {
                         horizontal-stretch: 0;
                         spacing: 2px;
@@ -3292,17 +3291,6 @@ export component AppWindow inherits Window {
                                 label: "Ask your clips";
                                 tip: "Ask";
                                 clicked => { root.go(6); }
-                            }
-                        }
-                        VerticalLayout {
-                            alignment: center;
-                            IconBtn {
-                                icon: "pushpin";
-                                icon-size: 15px;
-                                label: "Keep on top";
-                                tip: "Keep on top";
-                                active: root.pinned;
-                                clicked => { root.pinned = !root.pinned; root.pinned-changed(root.pinned); }
                             }
                         }
                         VerticalLayout {

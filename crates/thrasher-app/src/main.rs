@@ -293,6 +293,9 @@ struct App {
     queue: VecDeque<(std::path::PathBuf, String, bool)>,
     /// A question is being answered.
     asking: bool,
+    /// The widget is showing because a recording window was covered or minimised; the
+    /// window comes back when the user switches to Thrasher.
+    auto_widget: bool,
     /// The clip the local AI is translating, and into which language.
     ai_translation: Option<(std::path::PathBuf, String, String)>,
     /// What the translate menu's search field holds.
@@ -1644,6 +1647,7 @@ fn main() -> Result<(), slint::PlatformError> {
         search_docs: HashMap::new(),
         ai_job: None,
         asking: false,
+        auto_widget: false,
         ai_translation: None,
         lang_filter: String::new(),
         english_words: false,
@@ -1670,7 +1674,6 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.set_mic_index(idx);
         ui.set_record_system(a.settings.record_system);
         ui.set_device_label(a.device_label().into());
-        ui.set_pinned(a.settings.pinned);
         ui.set_folder(short_path(&a.root).into());
         a.show_projects(&ui);
         ui.set_name_template(a.settings.name_template.clone().into());
@@ -2107,20 +2110,12 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_pinned_changed({
-        let app = app.clone();
-        move |on| {
-            let mut a = app.borrow_mut();
-            a.settings.pinned = on;
-            a.settings.save();
-        }
-    });
-
     ui.on_compact_changed({
         let (app, weak) = (app.clone(), ui.as_weak());
         move |on| {
             let ui = weak.unwrap();
             ui.set_compact(on);
+            app.borrow_mut().auto_widget = false;
             let place = app.borrow().settings.window;
             let size = if on {
                 WIDGET_SIZE
@@ -3553,6 +3548,7 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.show()?;
     let _remember = remember_window(&ui, &app);
     let _drops = accept_drops(&ui, &app);
+    let _cover = widget_when_hidden(&ui, &app);
     // Runs once the event loop has drawn the window.
     Timer::single_shot(Duration::ZERO, || {
         crate::log!("ready: window shown {} ms after start", log::uptime_ms())
@@ -3707,6 +3703,14 @@ fn accept_drops(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<Timer> {
             return EventResult::Propagate;
         };
         match event {
+            // Alt-Tab or the taskbar back to an automatic widget brings the window
+            // back; a click on the widget itself (the mouse is over it) does not.
+            WindowEvent::Focused(true)
+                if ui.get_compact() && app.borrow().auto_widget && !cursor_over(&ui) =>
+            {
+                crate::log!("back to the window from the widget");
+                ui.invoke_compact_changed(false);
+            }
             WindowEvent::HoveredFile(_) => ui.set_dropping(true),
             WindowEvent::HoveredFileCancelled => ui.set_dropping(false),
             WindowEvent::DroppedFile(path) => {
@@ -3739,6 +3743,139 @@ fn accept_drops(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<Timer> {
         EventResult::Propagate
     });
     timer
+}
+
+/// While recording, the window turns into the widget when it is minimised or when
+/// another window covers it (maximised, or over most of it), so the recording stays in
+/// sight. A window beside another one, without focus, stays as it is.
+fn widget_when_hidden(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
+    let timer = Timer::default();
+    let (weak, app) = (ui.as_weak(), app.clone());
+    timer.start(TimerMode::Repeated, Duration::from_millis(400), move || {
+        let Some(ui) = weak.upgrade() else { return };
+        if ui.get_compact() || !ui.get_recording() || app.borrow().recording.is_none() {
+            return;
+        }
+        let minimised = ui.window().is_minimized();
+        if !minimised && !covered(&ui) {
+            return;
+        }
+        crate::log!(
+            "recording window {}: showing the widget",
+            if minimised { "minimised" } else { "covered" }
+        );
+        if minimised {
+            ui.window().set_minimized(false);
+        }
+        ui.invoke_compact_changed(true);
+        app.borrow_mut().auto_widget = true;
+    });
+    timer
+}
+
+#[cfg(windows)]
+mod cover {
+    #[repr(C)]
+    #[derive(Default)]
+    pub struct Rect {
+        pub left: i32,
+        pub top: i32,
+        pub right: i32,
+        pub bottom: i32,
+    }
+    #[repr(C)]
+    #[derive(Default)]
+    pub struct Point {
+        pub x: i32,
+        pub y: i32,
+    }
+    unsafe extern "system" {
+        pub fn GetForegroundWindow() -> isize;
+        pub fn GetWindowRect(hwnd: isize, rect: *mut Rect) -> i32;
+        pub fn IsZoomed(hwnd: isize) -> i32;
+        pub fn IsIconic(hwnd: isize) -> i32;
+        pub fn MonitorFromWindow(hwnd: isize, flags: u32) -> isize;
+        pub fn GetWindowThreadProcessId(hwnd: isize, pid: *mut u32) -> u32;
+        pub fn GetCursorPos(p: *mut Point) -> i32;
+    }
+
+    pub fn rect(hwnd: isize) -> Option<Rect> {
+        let mut r = Rect::default();
+        // SAFETY: `r` is a valid RECT to write into; a bad handle just returns 0.
+        (unsafe { GetWindowRect(hwnd, &mut r) } != 0).then_some(r)
+    }
+}
+
+/// Thrasher's own window handle.
+#[cfg(windows)]
+fn own_hwnd(ui: &AppWindow) -> Option<isize> {
+    use slint::winit_030::WinitWindowAccessor;
+    use slint::winit_030::winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    ui.window()
+        .with_winit_window(|w| match w.window_handle().ok()?.as_raw() {
+            RawWindowHandle::Win32(h) => Some(h.hwnd.get()),
+            _ => None,
+        })
+        .flatten()
+}
+
+/// True when the window in front is another app's and is maximised on Thrasher's
+/// screen or covers most of Thrasher.
+#[cfg(windows)]
+fn covered(ui: &AppWindow) -> bool {
+    use cover::*;
+    let Some(own) = own_hwnd(ui) else {
+        return false;
+    };
+    // SAFETY: plain Win32 queries on window handles; no memory is handed over.
+    unsafe {
+        let front = GetForegroundWindow();
+        if front == 0 || front == own || IsIconic(front) != 0 {
+            return false;
+        }
+        let (mut a, mut b) = (0u32, 0u32);
+        GetWindowThreadProcessId(front, &mut a);
+        GetWindowThreadProcessId(own, &mut b);
+        if a == b {
+            return false;
+        }
+        // MONITOR_DEFAULTTONEAREST.
+        if IsZoomed(front) != 0 && MonitorFromWindow(front, 2) == MonitorFromWindow(own, 2) {
+            return true;
+        }
+        let (Some(f), Some(o)) = (rect(front), rect(own)) else {
+            return false;
+        };
+        let w = (f.right.min(o.right) - f.left.max(o.left)).max(0) as i64;
+        let h = (f.bottom.min(o.bottom) - f.top.max(o.top)).max(0) as i64;
+        let area = ((o.right - o.left) as i64 * (o.bottom - o.top) as i64).max(1);
+        w * h * 10 >= area * 8
+    }
+}
+
+#[cfg(not(windows))]
+fn covered(_: &AppWindow) -> bool {
+    false
+}
+
+/// True when the mouse is over Thrasher's window.
+#[cfg(windows)]
+fn cursor_over(ui: &AppWindow) -> bool {
+    use cover::*;
+    let Some(own) = own_hwnd(ui) else {
+        return false;
+    };
+    let mut p = Point::default();
+    // SAFETY: `p` is a valid POINT to write into.
+    if unsafe { GetCursorPos(&mut p) } == 0 {
+        return false;
+    }
+    rect(own).is_some_and(|r| p.x >= r.left && p.x < r.right && p.y >= r.top && p.y < r.bottom)
+}
+
+#[cfg(not(windows))]
+fn cursor_over(_: &AppWindow) -> bool {
+    false
 }
 
 /// Opens the window at its last size, and at its last place when that is still on a

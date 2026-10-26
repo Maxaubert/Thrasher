@@ -2629,6 +2629,8 @@ export component AppWindow inherits Window {
     property <int> search-ticket;
     // 1 rename clip, 2 delete clip, 3 unsaved changes, 4 new project, 5 rename project.
     in-out property <int> dialog;
+    // How many clips the delete dialog removes.
+    property <int> delete-count: 1;
     in-out property <int> dialog-clip;
     in-out property <string> dialog-text;
     // The transcript as typed in the editor, to save or throw away when leaving it.
@@ -2813,6 +2815,8 @@ export component AppWindow inherits Window {
     }
     function ask-delete(i: int) {
         root.dialog-clip = i;
+        // A clip among several picked deletes them all.
+        root.delete-count = root.picked-count >= 2 && i >= 0 && i < root.picked.length && root.picked[i] ? root.picked-count : 1;
         root.dialog = 2;
         keys.focus();
     }
@@ -4637,7 +4641,8 @@ export component AppWindow inherits Window {
                 spacing: 14px;
                 Text {
                     text: root.dialog == 1 ? "Rename clip" : root.dialog == 3 ? "Unsaved changes" : root.dialog == 4 ? "New project"
-                        : root.dialog == 5 ? "Rename project" : "Delete " + root.clips[root.dialog-clip].name + "?";
+                        : root.dialog == 5 ? "Rename project"
+                        : root.delete-count > 1 ? "Delete " + root.delete-count + " clips?" : "Delete " + root.clips[root.dialog-clip].name + "?";
                     color: Theme.text;
                     font-size: 17px;
                     font-weight: 800;
@@ -4650,7 +4655,7 @@ export component AppWindow inherits Window {
                     wrap: word-wrap;
                 }
                 if root.dialog == 2: Text {
-                    text: "Goes to the Recycle Bin";
+                    text: root.delete-count > 1 ? "They go to the Recycle Bin" : "Goes to the Recycle Bin";
                     color: Theme.muted;
                     font-size: 13px;
                     wrap: word-wrap;

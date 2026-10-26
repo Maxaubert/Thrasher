@@ -20,7 +20,15 @@ pub fn worker_path() -> Option<PathBuf> {
 /// Transcribes `names` in the clip folder `dir` in one worker run, which loads the
 /// model once. The window's `transcribed` callback gets whether it worked and the
 /// line to show. The caller checks that the worker and the model are there.
-pub fn start(ui: &AppWindow, dir: PathBuf, names: Vec<String>, model_id: &str, language: String) {
+/// With `translate`, the result is the clips' English translation.
+pub fn start(
+    ui: &AppWindow,
+    dir: PathBuf,
+    names: Vec<String>,
+    model_id: &str,
+    language: String,
+    translate: bool,
+) {
     let Some(worker) = worker_path() else {
         ui.invoke_transcribed(false, "Transcription is not part of this build".into());
         return;
@@ -29,19 +37,32 @@ pub fn start(ui: &AppWindow, dir: PathBuf, names: Vec<String>, model_id: &str, l
     let weak = ui.as_weak();
     let model_id = model_id.to_string();
     let list = names.join(", ");
-    crate::log!("transcribing {list} with {model_id}");
+    let doing = if translate {
+        "translating"
+    } else {
+        "transcribing"
+    };
+    crate::log!("{doing} {list} with {model_id}");
     std::thread::spawn(move || {
         let started = std::time::Instant::now();
-        let result = run_worker(&worker, &dir, &names, &model_id, &language, &weak);
+        let result = run_worker(
+            &worker, &dir, &names, &model_id, &language, translate, &weak,
+        );
         let secs = started.elapsed().as_secs_f64();
         match &result {
-            Ok(()) => crate::log!("transcribed {list} with {model_id} in {secs:.1} s"),
-            Err(e) => crate::log!("transcribing {list} with {model_id} failed: {e}"),
+            Ok(()) => crate::log!("{doing} {list} with {model_id} took {secs:.1} s"),
+            Err(e) => crate::log!("{doing} {list} with {model_id} failed: {e}"),
         }
         let ok = result.is_ok();
+        let done = if translate {
+            "Translated"
+        } else {
+            "Transcribed"
+        };
         let line = match result {
-            Ok(()) if names.len() == 1 => format!("Transcribed {} in {secs:.0} s", names[0]),
-            Ok(()) => format!("Transcribed {} clips in {secs:.0} s", names.len()),
+            Ok(()) if names.len() == 1 => format!("{done} {} in {secs:.0} s", names[0]),
+            Ok(()) => format!("{done} {} clips in {secs:.0} s", names.len()),
+            Err(e) if translate => format!("Translation failed: {e}"),
             Err(e) => format!("Transcription failed: {e}"),
         };
         let _ = weak.upgrade_in_event_loop(move |ui| ui.invoke_transcribed(ok, line.into()));
@@ -59,10 +80,14 @@ fn run_worker(
     names: &[String],
     model_id: &str,
     language: &str,
+    translate: bool,
     weak: &slint::Weak<AppWindow>,
 ) -> Result<(), String> {
     let (first, more) = names.split_first().ok_or("nothing to transcribe")?;
     let mut cmd = Command::new(worker);
+    if translate {
+        cmd.arg("--translate");
+    }
     cmd.arg(dir)
         .arg(first)
         .arg(model_id)

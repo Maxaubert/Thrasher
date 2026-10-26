@@ -768,6 +768,36 @@ pub fn find(id: &str) -> Option<&'static ModelInfo> {
     CATALOG.iter().find(|m| m.id == id)
 }
 
+/// Models that can translate into English, best first. The NB and KB fine-tunes only
+/// transcribe (they answer a translation request in Norwegian or Swedish), turbo
+/// models translate poorly, and English-only models cannot translate at all.
+pub const TRANSLATORS: [&str; 12] = [
+    "whisper-large-v3",
+    "whisper-large-v3-q5",
+    "whisper-large-v2",
+    "whisper-large-v2-q5",
+    "whisper-medium",
+    "whisper-medium-q5",
+    "whisper-small",
+    "whisper-small-q5",
+    "whisper-base",
+    "whisper-base-q5",
+    "whisper-tiny",
+    "whisper-tiny-q5",
+];
+
+/// The model to translate with: the active one when it can, else the best one that
+/// is downloaded.
+pub fn translator(active: &str) -> Option<&'static ModelInfo> {
+    let ready = |id: &str| find(id).filter(|m| m.is_downloaded());
+    if TRANSLATORS.contains(&active)
+        && let Some(m) = ready(active)
+    {
+        return Some(m);
+    }
+    TRANSLATORS.iter().find_map(|id| ready(id))
+}
+
 /// `%LOCALAPPDATA%\Thrasher\models` on Windows: per user, never a shared folder.
 pub fn models_dir() -> Option<PathBuf> {
     directories::BaseDirs::new().map(|b| b.data_local_dir().join("Thrasher").join("models"))

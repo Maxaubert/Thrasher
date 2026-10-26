@@ -15,6 +15,8 @@ use crate::player::Buffer;
 use crate::sidecar::{Insert, Sidecar, Silence, Word};
 use std::collections::HashMap;
 
+/// The shortest a translated word lasts in subtitles.
+const MIN_WORD_SECS: f64 = 0.2;
 /// Crossfade length at each cut.
 const FADE_SECS: f64 = 0.015;
 /// How far a cut edge may move from Whisper's word time to find a quiet point.
@@ -1148,6 +1150,26 @@ impl Edl {
 /// The words in the edited result with their times there: recorded words that were
 /// not cut, and inserted words that have audio. They keep transcript order; a word
 /// whose rough Whisper time falls inside an inserted word starts after it.
+/// The English translation in the edited result's time: words outside the trim are
+/// left out, the rest move with the cuts.
+pub fn translated_words(sc: &Sidecar, edl: &Edl) -> Vec<Word> {
+    let mut out: Vec<Word> = Vec::new();
+    for w in sc.translation.iter().filter(|w| sc.in_trim(w.start)) {
+        let mut w = Word {
+            start: edl.to_edited(w.start),
+            end: edl.to_edited(w.end),
+            ..w.clone()
+        };
+        if let Some(prev) = out.last() {
+            w.start = w.start.max(prev.end);
+        }
+        // Words that fell into a shortened pause would get no time at all.
+        w.end = w.end.max(w.start + MIN_WORD_SECS);
+        out.push(w);
+    }
+    out
+}
+
 pub fn edited_words(sc: &Sidecar, edl: &Edl) -> Vec<Word> {
     let mut spoken: HashMap<String, (f64, f64)> = edl
         .spoken()
@@ -1258,6 +1280,34 @@ mod tests {
             .map(|w| w.text)
             .collect();
         assert_eq!(words, ["b"]);
+    }
+
+    #[test]
+    fn translated_words_follow_the_trim_and_keep_a_length() {
+        let buffer = Buffer {
+            samples: vec![0.0; 1000],
+            sample_rate: 100,
+            channels: 1,
+        };
+        let mut sc = Sidecar {
+            duration: 10.0,
+            translation: number_words(vec![
+                ("Hello".into(), 1.0, 1.5),
+                ("there".into(), 4.0, 4.0),
+                ("again".into(), 8.0, 8.5),
+            ]),
+            ..Default::default()
+        };
+        sc.trim = Some(crate::sidecar::Trim {
+            start: 3.0,
+            end: 9.0,
+        });
+        let edl = plan(&sc, &HashMap::new(), &buffer);
+        let w = translated_words(&sc, &edl);
+        let texts: Vec<&str> = w.iter().map(|w| w.text.as_str()).collect();
+        assert_eq!(texts, ["there", "again"]);
+        assert!((w[0].start - 1.0).abs() < 1e-6);
+        assert!(w[0].end - w[0].start >= MIN_WORD_SECS - 1e-9);
     }
 
     #[test]

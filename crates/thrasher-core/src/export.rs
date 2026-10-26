@@ -142,7 +142,7 @@ pub fn export_buffer(buffer: &Buffer, path: &Path, options: ExportOptions) -> io
 pub fn export_subtitles(library: &Library, name: &str) -> io::Result<Vec<PathBuf>> {
     let mut out = Vec::new();
     for kind in [Subtitles::Srt, Subtitles::Vtt, Subtitles::Words] {
-        let Some(text) = subtitles(library, name, kind)? else {
+        let Some(text) = subtitles(library, name, kind, false)? else {
             return Ok(Vec::new());
         };
         let dir = export_dir(library);
@@ -162,7 +162,21 @@ pub fn export_subtitles_to(
     kind: Subtitles,
     path: &Path,
 ) -> io::Result<bool> {
-    let Some(text) = subtitles(library, name, kind)? else {
+    let Some(text) = subtitles(library, name, kind, false)? else {
+        return Ok(false);
+    };
+    std::fs::write(path, text)?;
+    Ok(true)
+}
+
+/// Like `export_subtitles_to`, from the English translation. False when there is none.
+pub fn export_translation_to(
+    library: &Library,
+    name: &str,
+    kind: Subtitles,
+    path: &Path,
+) -> io::Result<bool> {
+    let Some(text) = subtitles(library, name, kind, true)? else {
         return Ok(false);
     };
     std::fs::write(path, text)?;
@@ -206,7 +220,12 @@ pub fn export_project(
 }
 
 /// The subtitle text of a transcribed clip, or `None` without a transcript.
-fn subtitles(library: &Library, name: &str, kind: Subtitles) -> io::Result<Option<String>> {
+fn subtitles(
+    library: &Library,
+    name: &str,
+    kind: Subtitles,
+    translated: bool,
+) -> io::Result<Option<String>> {
     let Ok(sc) = crate::sidecar::Sidecar::load(&library.sidecar_path(name)) else {
         return Ok(None);
     };
@@ -214,7 +233,11 @@ fn subtitles(library: &Library, name: &str, kind: Subtitles) -> io::Result<Optio
     let audio = crate::player::load_clip(library, name)?;
     let voices = crate::voice::load_voices(library, name, &sc);
     let timeline = crate::edit::plan(&sc, &voices, &audio);
-    let words = crate::edit::edited_words(&sc, &timeline);
+    let words = if translated {
+        crate::edit::translated_words(&sc, &timeline)
+    } else {
+        crate::edit::edited_words(&sc, &timeline)
+    };
     if words.is_empty() {
         return Ok(None);
     }
@@ -225,7 +248,7 @@ fn subtitles(library: &Library, name: &str, kind: Subtitles) -> io::Result<Optio
         Subtitles::Words => serde_json::to_string_pretty(&serde_json::json!({
             "file": sc.file,
             "duration": timeline.to_edited(sc.duration),
-            "language": sc.language,
+            "language": if translated { Some("en".to_string()) } else { sc.language.clone() },
             "words": words,
         }))
         .map_err(io::Error::other)?,

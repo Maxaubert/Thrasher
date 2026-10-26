@@ -28,6 +28,9 @@ pub struct Sidecar {
     /// The clips a merged clip was made of, in order (see `merge`). Empty otherwise.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub parts: Vec<Part>,
+    /// The transcript translated into English by Whisper, with recording times.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub translation: Vec<Word>,
     /// The part of the recording that is kept, set with the handles on the waveform.
     /// The audio outside it stays in the file. None keeps everything.
     #[serde(default, skip_serializing_if = "Option::is_none")]

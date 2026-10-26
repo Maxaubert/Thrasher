@@ -78,6 +78,7 @@ impl Transcriber for WhisperTranscriber {
                 patience: -1.0,
             });
             params.set_language(language.as_deref());
+            params.set_translate(options.translate);
             params.set_n_threads(threads);
             params.set_token_timestamps(true);
             // Each chunk stands alone: this keeps a bad chunk from looping into the next.

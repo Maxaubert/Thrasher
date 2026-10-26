@@ -373,28 +373,37 @@ pub fn name_job(sc: &Sidecar, model: &Path) -> Option<Job> {
         return None;
     }
     let text = words[..words.len().min(NAME_WORDS)].join(" ");
-    let (system, user) = match sc.language.as_deref() {
+    // Two steps: a sentence on what the recording is, then a title made from that.
+    // Asked for a title straight away, a small model tends to copy the first words;
+    // given an example title, it copies the example.
+    let (system, describe, title) = match sc.language.as_deref() {
         Some("no" | "nb" | "nn") | None => (
-            "Du gir lydopptak korte, presise titler på norsk bokmål.",
+            "Du lager korte notater fra lydopptak. Skriv på norsk bokmål.",
             format!(
-                "Her er starten av en transkripsjon:\n\n{text}\n\nSkriv en tittel på to til \
-                 fem ord som sier hva opptaket handler om. Svar bare med tittelen, uten \
-                 anførselstegn og uten punktum."
+                "Transkripsjon:\n\"\"\"\n{text}\n\"\"\"\n\nSkriv én kort setning om hva slags \
+                 opptak dette er og hva det handler om."
             ),
+            "Her er en beskrivelse av et lydopptak:\n{prev}\n\nLag en kort tittel på 2 til 5 \
+             ord og høyst 40 tegn. Begynn med hva slags opptak det er (presentasjon, møte, \
+             forelesning, befaring, huskeliste, samtale eller notat), og si så hva det \
+             handler om, med navn fra beskrivelsen. Skriv vanlige ord med mellomrom. Svar \
+             bare med tittelen, uten punktum.",
         ),
         _ => (
-            "You give recordings short, precise titles in the language of the transcript.",
+            "You write short notes from recordings, in the language of the transcript.",
             format!(
-                "Here is the start of a transcript:\n\n{text}\n\nWrite a title of two to \
-                 five words that says what the recording is about. Reply with the title \
-                 only, no quotes and no full stop."
+                "Transcript:\n\"\"\"\n{text}\n\"\"\"\n\nWrite one short sentence on what kind \
+                 of recording this is and what it is about."
             ),
+            "Here is a description of a recording:\n{prev}\n\nWrite a short title of 2 to 5 \
+             words and at most 40 letters. Start with the kind of recording (presentation, \
+             meeting, lecture, site visit, to-do list, conversation or note), then say what \
+             it is about, with names from the description. Use normal words with spaces. \
+             Reply with the title only, no full stop.",
         ),
     };
-    Some(Job {
-        model: model.to_string_lossy().into_owned(),
-        max_tokens: 24,
-        steps: vec![vec![
+    let chat = |user: String| {
+        vec![
             Message {
                 role: "system",
                 content: system.to_string(),
@@ -403,12 +412,26 @@ pub fn name_job(sc: &Sidecar, model: &Path) -> Option<Job> {
                 role: "user",
                 content: user,
             },
-        ]],
+        ]
+    };
+    Some(Job {
+        model: model.to_string_lossy().into_owned(),
+        max_tokens: 60,
+        steps: vec![chat(describe), chat(title.to_string())],
     })
 }
 
-/// Makes a clip name of the model's title: one line, no quotes, labels or end
-/// punctuation, nothing a file name cannot hold, at most 60 letters. None when
+/// Longest clip name the AI may give.
+const TITLE_CHARS: usize = 40;
+/// Small words a cut title must not end on.
+const DANGLING: &[&str] = &[
+    "om", "og", "av", "på", "i", "til", "for", "med", "å", "fra", "ved", "en", "et", "about",
+    "and", "of", "on", "in", "to", "for", "with", "the", "a", "an", "from",
+];
+
+/// Makes a clip name of the model's title: one line, no quotes, labels, markdown or
+/// end punctuation, nothing a file name cannot hold, at most 40 letters cut at a word
+/// and not ending on a word such as "om". The first letter is a capital. None when
 /// nothing usable is left.
 pub fn clean_title(raw: &str) -> Option<String> {
     let line = raw.lines().map(str::trim).find(|l| !l.is_empty())?;
@@ -427,7 +450,7 @@ pub fn clean_title(raw: &str) -> Option<String> {
                 c
             }
         })
-        .filter(|c| !matches!(c, '«' | '»' | '“' | '”' | '‘' | '’' | '`'))
+        .filter(|c| !matches!(c, '«' | '»' | '“' | '”' | '‘' | '’' | '`' | '*'))
         .collect();
     let t = t
         .trim()
@@ -435,7 +458,7 @@ pub fn clean_title(raw: &str) -> Option<String> {
         .trim();
     let mut out = String::new();
     for w in t.split_whitespace() {
-        if out.chars().count() + w.chars().count() + 1 > 60 {
+        if out.chars().count() + w.chars().count() + 1 > TITLE_CHARS {
             break;
         }
         if !out.is_empty() {
@@ -443,6 +466,19 @@ pub fn clean_title(raw: &str) -> Option<String> {
         }
         out.push_str(w);
     }
+    // A cut title should not end on "om", "og" and the like.
+    while let Some((head, last)) = out.rsplit_once(' ') {
+        if DANGLING.contains(&last.to_lowercase().as_str()) {
+            out.truncate(head.len());
+        } else {
+            break;
+        }
+    }
+    let mut chars = out.chars();
+    let out: String = match chars.next() {
+        Some(c) => c.to_uppercase().chain(chars).collect(),
+        None => String::new(),
+    };
     crate::library::valid_name(&out).then_some(out)
 }
 
@@ -555,9 +591,18 @@ mod tests {
         );
         assert!(clean_title("  \n ").is_none());
         let long = "ord ".repeat(40);
-        assert!(clean_title(&long).unwrap().chars().count() <= 60);
+        assert!(clean_title(&long).unwrap().chars().count() <= 40);
+        assert_eq!(
+            clean_title("presentasjon om opprettelse av HMS-agent og rapportering").as_deref(),
+            Some("Presentasjon om opprettelse av HMS-agent")
+        );
+        assert_eq!(
+            clean_title("**Møte om taket**").as_deref(),
+            Some("Møte om taket")
+        );
         let job = name_job(&sc(10, "no"), Path::new("m.gguf")).unwrap();
-        assert!(job.steps[0][1].content.contains("tittel"));
+        assert_eq!(job.steps.len(), 2);
+        assert!(job.steps[1][1].content.contains("{prev}"));
     }
 
     #[test]

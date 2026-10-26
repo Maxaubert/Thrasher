@@ -8,7 +8,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
-use thrasher_core::library::Library;
 use thrasher_core::models::{self, CATALOG};
 
 /// The worker sits next to the app, and only exists in builds with transcription.
@@ -18,57 +17,57 @@ pub fn worker_path() -> Option<PathBuf> {
     worker.exists().then_some(worker)
 }
 
-pub fn start(ui: &AppWindow, library: &Library, name: String, model_id: &str, language: String) {
+/// Transcribes `names` in the clip folder `dir` in one worker run, which loads the
+/// model once. The window's `transcribed` callback gets whether it worked and the
+/// line to show. The caller checks that the worker and the model are there.
+pub fn start(ui: &AppWindow, dir: PathBuf, names: Vec<String>, model_id: &str, language: String) {
     let Some(worker) = worker_path() else {
-        ui.set_status("Transcription is not part of this build".into());
+        ui.invoke_transcribed(false, "Transcription is not part of this build".into());
         return;
     };
-    if !models::find(model_id).is_some_and(|m| m.is_downloaded()) {
-        ui.set_status("Download a transcription model first".into());
-        ui.set_page(3);
-        return;
-    }
-    ui.set_transcribing(true);
     ui.set_transcribe_progress(0.0);
     let weak = ui.as_weak();
-    let dir = library.dir().to_path_buf();
     let model_id = model_id.to_string();
-    crate::log!("transcribing {name} with {model_id}");
+    let list = names.join(", ");
+    crate::log!("transcribing {list} with {model_id}");
     std::thread::spawn(move || {
         let started = std::time::Instant::now();
-        let result = run_worker(&worker, &dir, &name, &model_id, &language, &weak);
+        let result = run_worker(&worker, &dir, &names, &model_id, &language, &weak);
         let secs = started.elapsed().as_secs_f64();
         match &result {
-            Ok(()) => crate::log!("transcribed {name} with {model_id} in {secs:.1} s"),
-            Err(e) => crate::log!("transcribing {name} with {model_id} failed: {e}"),
+            Ok(()) => crate::log!("transcribed {list} with {model_id} in {secs:.1} s"),
+            Err(e) => crate::log!("transcribing {list} with {model_id} failed: {e}"),
         }
-        let _ = weak.upgrade_in_event_loop(move |ui| {
-            ui.set_transcribing(false);
-            match result {
-                Ok(()) => {
-                    ui.set_status(format!("Transcribed {name} in {secs:.0} s").into());
-                    // Reloads the transcript and the synced word list.
-                    ui.invoke_selection_changed(ui.get_selected());
-                }
-                Err(e) => ui.set_status(format!("Transcription failed: {e}").into()),
-            }
-        });
+        let ok = result.is_ok();
+        let line = match result {
+            Ok(()) if names.len() == 1 => format!("Transcribed {} in {secs:.0} s", names[0]),
+            Ok(()) => format!("Transcribed {} clips in {secs:.0} s", names.len()),
+            Err(e) => format!("Transcription failed: {e}"),
+        };
+        let _ = weak.upgrade_in_event_loop(move |ui| ui.invoke_transcribed(ok, line.into()));
     });
+}
+
+/// True when the model can transcribe now.
+pub fn model_ready(model_id: &str) -> bool {
+    models::find(model_id).is_some_and(|m| m.is_downloaded())
 }
 
 fn run_worker(
     worker: &Path,
     dir: &Path,
-    name: &str,
+    names: &[String],
     model_id: &str,
     language: &str,
     weak: &slint::Weak<AppWindow>,
 ) -> Result<(), String> {
+    let (first, more) = names.split_first().ok_or("nothing to transcribe")?;
     let mut cmd = Command::new(worker);
     cmd.arg(dir)
-        .arg(name)
+        .arg(first)
         .arg(model_id)
         .arg(language)
+        .args(more)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     #[cfg(windows)]

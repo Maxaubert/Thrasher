@@ -46,6 +46,8 @@ pub struct Settings {
     pub theme: String,
     /// The project new clips go into; empty is Inbox, the clip folder itself.
     pub project: String,
+    /// New clips (recordings, imports, dropped files) are transcribed right away.
+    pub auto_transcribe: bool,
 }
 
 impl Default for Settings {
@@ -70,6 +72,7 @@ impl Default for Settings {
             window: None,
             theme: "Ember".into(),
             project: String::new(),
+            auto_transcribe: false,
         }
     }
 }

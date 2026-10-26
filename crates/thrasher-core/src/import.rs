@@ -11,6 +11,7 @@ use crate::wav::WavWriter;
 use std::io;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 use symphonia::core::audio::SampleBuffer;
 use symphonia::core::codecs::{CODEC_TYPE_NULL, DecoderOptions};
 use symphonia::core::errors::Error;
@@ -109,26 +110,53 @@ fn decode_into(path: &Path, out: &Path) -> io::Result<(u32, u16, u64)> {
     decode_symphonia(path, out).or_else(|e| decode_with_ffmpeg(path, out).unwrap_or(Err(e)))
 }
 
+/// How long ffmpeg may take before it is stopped.
+const FFMPEG_LIMIT: Duration = Duration::from_secs(600);
+
 /// Lets ffmpeg pull the sound out of `path` into a plain WAV, then reads that. None
-/// when ffmpeg is not installed.
+/// when ffmpeg is not installed. ffmpeg may only read local files, so a playlist or
+/// other file dressed up as a video cannot make it fetch from the network, and it is
+/// stopped if it runs too long.
 fn decode_with_ffmpeg(path: &Path, out: &Path) -> Option<io::Result<(u32, u16, u64)>> {
     let tmp = out.with_extension("ffmpeg.wav");
     let mut cmd = Command::new("ffmpeg");
-    cmd.args(["-nostdin", "-v", "error", "-y", "-i"])
-        .arg(path)
-        .args(["-vn", "-sn", "-dn", "-c:a", "pcm_f32le"])
-        .arg(&tmp)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
+    cmd.args([
+        "-nostdin",
+        "-v",
+        "error",
+        "-y",
+        "-protocol_whitelist",
+        "file",
+    ])
+    .args(["-i"])
+    .arg(path)
+    .args(["-vn", "-sn", "-dn", "-c:a", "pcm_f32le"])
+    .arg(&tmp)
+    .stdin(Stdio::null())
+    .stdout(Stdio::null())
+    .stderr(Stdio::null());
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         // CREATE_NO_WINDOW: no console flashes up.
         cmd.creation_flags(0x0800_0000);
     }
-    let status = cmd.status().ok()?;
-    let result = if status.success() {
+    let mut child = cmd.spawn().ok()?;
+    let started = Instant::now();
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Some(status),
+            Ok(None) if started.elapsed() < FFMPEG_LIMIT => {
+                std::thread::sleep(Duration::from_millis(50))
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                break None;
+            }
+        }
+    };
+    let result = if status.is_some_and(|s| s.success()) {
         decode_symphonia(&tmp, out)
     } else {
         Err(invalid("the file has no sound Thrasher can read"))
@@ -340,6 +368,26 @@ mod tests {
             assert!((sc.duration - 1.5).abs() < 0.1, "{file}: {}", sc.duration);
             assert_eq!(sc.thrasher.tracks[0].sample_rate, 48_000, "{file}");
         }
+    }
+
+    /// A playlist named like a video must not make ffmpeg reach the network.
+    #[test]
+    fn a_playlist_posing_as_video_is_refused() {
+        let src = tempfile::tempdir().unwrap();
+        let lib_dir = tempfile::tempdir().unwrap();
+        let lib = Library::open(lib_dir.path()).unwrap();
+        let p = src.path().join("talk.mp4");
+        std::fs::write(
+            &p,
+            "#EXTM3U
+#EXTINF:1,
+http://127.0.0.1:9/part.ts
+#EXT-X-ENDLIST
+",
+        )
+        .unwrap();
+        assert!(import_file(&lib, &p).is_err());
+        assert!(lib.names().unwrap().is_empty());
     }
 
     #[test]

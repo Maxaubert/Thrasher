@@ -278,7 +278,7 @@ component Icon inherits Path {
         : name == "updown" ? "M 8 10 L 12 6 L 16 10 M 8 14 L 12 18 L 16 14"
         : name == "folder" ? "M 3 7 L 9 7 L 11 9 L 21 9 L 21 19 L 3 19 Z"
         : name == "search" ? "M 18 11 A 7 7 0 1 1 4 11 A 7 7 0 1 1 18 11 Z M 20 20 L 16 16"
-        // The side rail's icons, after Lucide.
+        // Icons after Lucide.
         : name == "cog" ? "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M15 12a3 3 0 1 1-6 0a3 3 0 1 1 6 0z"
         : name == "pushpin" ? "M12 17v5 M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"
         : name == "pip" ? "M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4 M14 13h6a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z"
@@ -700,8 +700,8 @@ component ClipItem inherits Rectangle {
     callback play();
     callback cue(float);
     callback play-at(float);
-    // A click highlights the clip and a double click plays or pauses it. Ctrl and Shift
-    // pick several. The three-dot menu (or a right click, or the right arrow key) opens
+    // A click highlights the clip and a double click opens it. Ctrl and Shift pick
+    // several. The three-dot menu (or a right click, or the right arrow key) opens
     // it.
     callback select(bool, bool);
     callback merge();
@@ -741,7 +741,8 @@ component ClipItem inherits Rectangle {
                 root.menu-at(self.mouse-x, self.mouse-y);
             }
         }
-        double-clicked => { root.play(); }
+        // Opens just this clip, even out of several picked.
+        double-clicked => { root.select(false, false); root.open(); }
     }
     HorizontalLayout {
         padding-left: 8px;
@@ -1150,48 +1151,6 @@ component WinBtn inherits Rectangle {
 
 // The window's own title bar: drag it to move the window. Whatever is put inside goes
 // on the left; minimise and close are always on the right.
-component RailBtn inherits Rectangle {
-    in property <string> icon;
-    in property <string> label;
-    in property <string> tip: label;
-    // The page you are on: a raised square and an accent bar.
-    in property <bool> current;
-    // A switch that is on: the icon turns the accent colour.
-    in property <bool> on;
-    in property <bool> enabled: true;
-    callback clicked;
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
-    background: root.current || (t.has-hover && root.enabled) ? Theme.raised : transparent;
-    opacity: root.enabled ? 1 : 0.4;
-    accessible-role: button;
-    accessible-label: root.label;
-    accessible-checked: root.on;
-    accessible-action-default => { if (root.enabled) { root.clicked(); } }
-    if root.current: Rectangle {
-        x: -7px;
-        y: 9px;
-        width: 3px;
-        height: parent.height - 18px;
-        border-radius: 1.5px;
-        background: Theme.accent;
-    }
-    Icon {
-        name: root.icon;
-        width: 17px;
-        height: 17px;
-        tint: root.on ? Theme.accent : root.current || t.has-hover ? Theme.text : Theme.dim;
-    }
-    property <bool> hovering: t.has-hover;
-    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
-    t := TouchArea {
-        enabled: root.enabled;
-        mouse-cursor: pointer;
-        clicked => { Tips.hide(); root.clicked(); }
-    }
-}
-
 component TitleBar inherits Rectangle {
     in property <length> left-padding: 8px;
     // Pushes the content to the left; off when the content stretches itself.
@@ -3197,53 +3156,15 @@ export component AppWindow inherits Window {
                     vertical-alignment: center;
                     horizontal-stretch: 1;
                 }
+                VerticalLayout {
+                    alignment: center;
+                    IconBtn { icon: "cog"; icon-size: 15px; label: "Settings"; clicked => { root.go(3); } }
+                }
+                Rectangle { width: 4px; }
             }
 
-            // The side rail: clips and import at the top, then keep on top, the widget
-            // and settings at the bottom.
             HorizontalLayout {
                 vertical-stretch: 1;
-                Rectangle {
-                    width: 52px;
-                    VerticalLayout {
-                        padding-top: 8px;
-                        padding-bottom: 10px;
-                        spacing: 4px;
-                        HorizontalLayout { alignment: center; RailBtn { icon: "list"; label: "Clips"; current: true; clicked => { keys.focus(); } } }
-                        HorizontalLayout {
-                            alignment: center;
-                            RailBtn {
-                                icon: "file-plus";
-                                label: "Import audio or video";
-                                tip: "Import";
-                                enabled: !root.recording;
-                                clicked => { root.import-files(); }
-                            }
-                        }
-                        if root.can-ai: HorizontalLayout {
-                            alignment: center;
-                            RailBtn {
-                                icon: "message";
-                                label: "Ask your clips";
-                                tip: "Ask";
-                                clicked => { root.go(6); }
-                            }
-                        }
-                        Rectangle { vertical-stretch: 1; }
-                        HorizontalLayout {
-                            alignment: center;
-                            RailBtn {
-                                icon: "pushpin";
-                                label: "Keep on top";
-                                on: root.pinned;
-                                clicked => { root.pinned = !root.pinned; root.pinned-changed(root.pinned); }
-                            }
-                        }
-                        HorizontalLayout { alignment: center; RailBtn { icon: "pip"; label: "Small widget"; clicked => { root.compact-changed(true); } } }
-                        HorizontalLayout { alignment: center; RailBtn { icon: "cog"; label: "Settings"; clicked => { root.go(3); } } }
-                    }
-                    Rectangle { x: parent.width - 1px; width: 1px; background: Theme.line; }
-                }
                 body := FlexboxLayout {
                     // Wide: the recorder beside the list. Otherwise above it.
                     flex-direction: root.wide ? FlexboxLayoutDirection.row : FlexboxLayoutDirection.column;
@@ -3348,31 +3269,51 @@ export component AppWindow inherits Window {
                     }
                     // Lets the header (and so the list under it) grow with the window.
                     Rectangle { horizontal-stretch: 1; }
-                    // Several clips picked: offer to merge them.
-                    if root.picked-count >= 2: Text {
-                        text: root.picked-count + " picked";
-                        color: Theme.accent;
-                        font-size: 13px;
-                        font-weight: 600;
-                        vertical-alignment: center;
-                    }
-                    if root.picked-count >= 2: VerticalLayout {
-                        alignment: center;
-                        Btn {
-                            text: "Merge";
-                            primary: true;
-                            height: 28px;
-                            font-size: 12px;
-                            clicked => { root.start-merge(); root.go(5); }
+                    // Import, Ask, keep on top and the widget, after the search field.
+                    HorizontalLayout {
+                        horizontal-stretch: 0;
+                        spacing: 2px;
+                        VerticalLayout {
+                            alignment: center;
+                            IconBtn {
+                                icon: "file-plus";
+                                icon-size: 15px;
+                                label: "Import audio or video";
+                                tip: "Import";
+                                enabled: !root.recording;
+                                clicked => { root.import-files(); }
+                            }
                         }
-                    }
-                    if root.picked-count >= 2: VerticalLayout {
-                        alignment: center;
-                        Btn {
-                            text: "Clear";
-                            height: 28px;
-                            font-size: 12px;
-                            clicked => { root.pick(root.selected, false, false); keys.focus(); }
+                        if root.can-ai: VerticalLayout {
+                            alignment: center;
+                            IconBtn {
+                                icon: "message";
+                                icon-size: 15px;
+                                label: "Ask your clips";
+                                tip: "Ask";
+                                clicked => { root.go(6); }
+                            }
+                        }
+                        VerticalLayout {
+                            alignment: center;
+                            IconBtn {
+                                icon: "pushpin";
+                                icon-size: 15px;
+                                label: "Keep on top";
+                                tip: "Keep on top";
+                                active: root.pinned;
+                                clicked => { root.pinned = !root.pinned; root.pinned-changed(root.pinned); }
+                            }
+                        }
+                        VerticalLayout {
+                            alignment: center;
+                            IconBtn {
+                                icon: "pip";
+                                icon-size: 15px;
+                                label: "Small widget";
+                                tip: "Widget";
+                                clicked => { root.compact-changed(true); }
+                            }
                         }
                     }
                 }

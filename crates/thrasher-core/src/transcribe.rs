@@ -28,6 +28,8 @@ pub struct Options {
     /// ISO code such as "no" or "en"; `None` lets the model detect it.
     pub language: Option<String>,
     pub beam_size: i32,
+    /// Write the result in English instead (Whisper only translates into English).
+    pub translate: bool,
 }
 
 impl Default for Options {
@@ -35,6 +37,7 @@ impl Default for Options {
         Self {
             language: Some("no".into()),
             beam_size: 5,
+            translate: false,
         }
     }
 }

@@ -265,6 +265,13 @@ Max picked these after a brainstorm. Each item is its own PR, built in this orde
      whichever is shown.
    - **Model warning:** turbo models translate badly, and the menu says so when one is
      active.
+   - **As built (2026-10-26):** NB-Whisper and KB-Whisper only transcribe; asked to
+     translate, they answer in Norwegian or Swedish. So translation uses the active model
+     only when it is a multilingual OpenAI Whisper model, and otherwise the best one
+     downloaded (`models::TRANSLATORS`: Large v3 first, no turbo, no English-only). With
+     none downloaded, Translate says so and opens the Models page. The translation is
+     stored as English words with times (sidecar `translation`), so every subtitle
+     format works from it.
 9. **Local AI** (research: `C:\Users\Admin\Documents\Claude\research\thrasher\2026-10-26-local-llm.md`).
    - **Summary:** "Summary" in the transcript card menu writes a short summary and a to-do
      list, saved in the sidecar.

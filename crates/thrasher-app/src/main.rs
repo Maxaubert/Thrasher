@@ -215,11 +215,13 @@ impl Export {
     }
 
     /// Writes the export. False means a subtitle export of a clip with no transcript.
+    /// `english`: subtitles come from the English translation.
     fn write(
         self,
         library: &Library,
         name: &str,
         clean_voice: bool,
+        english: bool,
         path: &std::path::Path,
     ) -> std::io::Result<bool> {
         use thrasher_core::export::{ExportOptions, Format};
@@ -237,6 +239,9 @@ impl Export {
             Export::Project(format) => {
                 thrasher_core::export::export_project(library, name, options(format), path)?;
                 Ok(true)
+            }
+            Export::Subtitles(kind) if english => {
+                thrasher_core::export::export_translation_to(library, name, kind, path)
             }
             Export::Subtitles(kind) => {
                 thrasher_core::export::export_subtitles_to(library, name, kind, path)
@@ -282,8 +287,9 @@ struct App {
     merge_names: Vec<String>,
     /// The transcription running now: its folder and clips. Clips asked for meanwhile
     /// wait in `queue`, with their folder (the project may change).
-    job: Option<(std::path::PathBuf, Vec<String>)>,
-    queue: VecDeque<(std::path::PathBuf, String)>,
+    /// The last flag is true for a translation.
+    job: Option<(std::path::PathBuf, Vec<String>, bool)>,
+    queue: VecDeque<(std::path::PathBuf, String, bool)>,
     /// Transcripts read for search, kept while their sidecar is unchanged.
     search_docs: HashMap<std::path::PathBuf, (Option<SystemTime>, search::Doc)>,
     live: VecDeque<f32>,
@@ -468,13 +474,28 @@ impl App {
     /// Transcribes `names` in the shown project, now or after the job that runs.
     /// `auto` (a new clip, with auto transcribe on) never leaves the page.
     fn transcribe(&mut self, ui: &AppWindow, names: Vec<String>, auto: bool) {
+        self.enqueue(ui, names, auto, false);
+    }
+
+    /// Translates the clip into English, after whatever runs now, with a model that
+    /// can (see `models::translator`).
+    fn translate(&mut self, ui: &AppWindow, name: String) {
+        if thrasher_core::models::translator(&self.settings.model).is_none() {
+            ui.set_status("Download a Whisper model to translate".into());
+            ui.set_page(4);
+            return;
+        }
+        self.enqueue(ui, vec![name], false, true);
+    }
+
+    fn enqueue(&mut self, ui: &AppWindow, names: Vec<String>, auto: bool, translate: bool) {
         if transcription::worker_path().is_none() {
             if !auto {
                 ui.set_status("Transcription is not part of this build".into());
             }
             return;
         }
-        if !transcription::model_ready(&self.settings.model) {
+        if !translate && !transcription::model_ready(&self.settings.model) {
             ui.set_status("Download a transcription model first".into());
             if !auto {
                 ui.set_page(3);
@@ -483,11 +504,11 @@ impl App {
         }
         let dir = self.library.dir().to_path_buf();
         for name in names {
-            let item = (dir.clone(), name);
+            let item = (dir.clone(), name, translate);
             let running = self
                 .job
                 .as_ref()
-                .is_some_and(|(d, ns)| *d == item.0 && ns.contains(&item.1));
+                .is_some_and(|(d, ns, t)| *d == item.0 && ns.contains(&item.1) && *t == item.2);
             if !running && !self.queue.contains(&item) {
                 self.queue.push_back(item);
             }
@@ -504,32 +525,41 @@ impl App {
         if self.job.is_some() {
             return;
         }
-        let Some((dir, _)) = self.queue.front().cloned() else {
+        let Some((dir, _, translate)) = self.queue.front().cloned() else {
             return;
         };
-        let (now, later): (VecDeque<_>, VecDeque<_>) =
-            self.queue.drain(..).partition(|(d, _)| *d == dir);
+        let (now, later): (VecDeque<_>, VecDeque<_>) = self
+            .queue
+            .drain(..)
+            .partition(|(d, _, t)| *d == dir && *t == translate);
         self.queue = later;
-        let names: Vec<String> = now.into_iter().map(|(_, n)| n).collect();
-        self.job = Some((dir.clone(), names.clone()));
+        let names: Vec<String> = now.into_iter().map(|(_, n, _)| n).collect();
+        self.job = Some((dir.clone(), names.clone(), translate));
+        let model = if translate {
+            thrasher_core::models::translator(&self.settings.model).map_or("", |m| m.id)
+        } else {
+            &self.settings.model
+        };
         transcription::start(
             ui,
             dir,
             names,
-            &self.settings.model,
+            model,
             self.settings.language.clone(),
+            translate,
         );
         self.show_transcribing(ui);
     }
 
     /// The transcript card shows progress when the highlighted clip is being transcribed.
     fn show_transcribing(&self, ui: &AppWindow) {
-        let on = self.selected(ui).is_some_and(|c| {
+        let job = self.selected(ui).and_then(|c| {
             self.job
                 .as_ref()
-                .is_some_and(|(d, ns)| d == self.library.dir() && ns.contains(&c.name))
+                .filter(|(d, ns, _)| d == self.library.dir() && ns.contains(&c.name))
         });
-        ui.set_transcribing(on);
+        ui.set_transcribing(job.is_some());
+        ui.set_translating(job.is_some_and(|j| j.2));
     }
 
     /// The clip's transcript, prepared for search; read again only when it changed.
@@ -779,11 +809,19 @@ impl App {
         });
         let Some(sc) = sidecar else {
             ui.set_transcript("".into());
+            ui.set_translation("".into());
             ui.set_words(ModelRc::default());
             self.transcript_starts.clear();
             return;
         };
         ui.set_transcript(edit::text(&sc).into());
+        let english: Vec<&str> = sc
+            .translation
+            .iter()
+            .filter(|w| sc.in_trim(w.start))
+            .map(|w| w.text.trim())
+            .collect();
+        ui.set_translation(english.join(" ").into());
         let items = edit::visible(&sc);
         self.transcript_starts = items.iter().map(|i| i.start).collect();
         let rows: Vec<WordRow> = items
@@ -2284,6 +2322,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let (app, weak) = (app.clone(), ui.as_weak());
         move |kind| {
             let ui = weak.unwrap();
+            let english = ui.get_show_english() && !ui.get_translation().is_empty();
             let (library, name, clean_voice, default_format, folder) = {
                 let a = app.borrow();
                 let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
@@ -2347,7 +2386,7 @@ fn main() -> Result<(), slint::PlatformError> {
             let weak = ui.as_weak();
             std::thread::spawn(move || {
                 let started = std::time::Instant::now();
-                let result = kind.write(&library, &name, clean_voice, &path);
+                let result = kind.write(&library, &name, clean_voice, english, &path);
                 crate::log!(
                     "export {} as {} took {} ms: {:?}",
                     name,
@@ -2486,11 +2525,15 @@ fn main() -> Result<(), slint::PlatformError> {
                     let max = a.settings.max_pause;
                     if ok
                         && max > 0.0
-                        && let Some((dir, names)) = &job
+                        && let Some((dir, names, false)) = &job
                     {
                         cap_pauses(dir, names, max);
                     }
-                    job.is_some_and(|(d, _)| d == a.library.dir())
+                    if ok && job.as_ref().is_some_and(|j| j.2) {
+                        // Show what was just made.
+                        ui.set_show_english(true);
+                    }
+                    job.is_some_and(|(d, _, _)| d == a.library.dir())
                 };
                 ui.set_status(line);
                 if ok && here {
@@ -2501,6 +2544,17 @@ fn main() -> Result<(), slint::PlatformError> {
                 let mut a = app.borrow_mut();
                 a.next_job(&ui);
                 a.show_transcribing(&ui);
+            }
+        });
+        ui.on_translate_selected({
+            let (app, weak) = (app.clone(), ui.as_weak());
+            move || {
+                let ui = weak.unwrap();
+                let mut a = app.borrow_mut();
+                let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
+                    return;
+                };
+                a.translate(&ui, name);
             }
         });
         ui.on_max_pause_changed({

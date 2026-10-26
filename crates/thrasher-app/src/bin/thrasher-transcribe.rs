@@ -2,7 +2,9 @@
 //! runtime (hundreds of MB) leave memory when the job ends, and a crash inside
 //! whisper.cpp cannot take a running recording down with it.
 //!
-//! Usage: thrasher-transcribe <clip folder> <clip name> <model id> <language or ""> [more clip names]
+//! Usage: thrasher-transcribe [--translate] <clip folder> <clip name> <model id> <language or ""> [more clip names]
+//! With `--translate` the result is written in English as the clip's translation, and
+//! the transcript is left alone.
 //! Prints `progress <0..1>` lines, then `done`. Errors go to stderr with exit code 1.
 //! Extra clip names are transcribed with the same loaded model (used to find inserted
 //! words in generated speech).
@@ -18,6 +20,10 @@ use thrasher_core::transcribe::{self, Options, Transcriber};
 use thrasher_core::whisper::WhisperTranscriber;
 
 fn run(args: &[String]) -> Result<(), String> {
+    let (translate, args) = match args.split_first() {
+        Some((first, rest)) if first == "--translate" => (true, rest),
+        _ => (false, args),
+    };
     let [dir, name, model_id, language, more @ ..] = args else {
         return Err("usage: thrasher-transcribe <folder> <clip> <model id> <language>".into());
     };
@@ -27,6 +33,7 @@ fn run(args: &[String]) -> Result<(), String> {
     let mut engine = WhisperTranscriber::load(&path, model.heads, true)?;
     let options = Options {
         language: (!language.is_empty()).then(|| language.clone()),
+        translate,
         ..Default::default()
     };
     let names: Vec<&String> = std::iter::once(name).chain(more).collect();
@@ -69,9 +76,13 @@ fn transcribe_one(
         duration,
         ..Default::default()
     });
-    sc.language = result.language;
-    sc.words = result.words;
-    sc.silences = silences;
+    if options.translate {
+        sc.translation = result.words;
+    } else {
+        sc.language = result.language;
+        sc.words = result.words;
+        sc.silences = silences;
+    }
     sc.save(&sc_path).map_err(|e| e.to_string())
 }
 

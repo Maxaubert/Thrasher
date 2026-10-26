@@ -489,7 +489,7 @@ impl App {
     fn translate(&mut self, ui: &AppWindow, name: String) {
         if thrasher_core::models::translator(&self.settings.model).is_none() {
             ui.set_status("Download a Whisper model to translate".into());
-            ui.set_page(4);
+            ui.invoke_visit(4);
             return;
         }
         self.enqueue(ui, vec![name], false, true);
@@ -505,7 +505,7 @@ impl App {
         if !translate && !transcription::model_ready(&self.settings.model) {
             ui.set_status("Download a transcription model first".into());
             if !auto {
-                ui.set_page(3);
+                ui.invoke_visit(3);
             }
             return;
         }
@@ -2741,7 +2741,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 .and_then(|m| m.path());
             let Some(model) = model else {
                 ui.set_status("Download the AI model first".into());
-                ui.set_page(3);
+                ui.invoke_visit(3);
                 return;
             };
             let path = a.library.sidecar_path(&c.name);
@@ -2829,7 +2829,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 .and_then(|m| m.path());
             let Some(model) = model else {
                 ui.set_status("Download the AI model first".into());
-                ui.set_page(3);
+                ui.invoke_visit(3);
                 return;
             };
             // Every transcript in this project, or in all of them.

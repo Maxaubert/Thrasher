@@ -3203,107 +3203,114 @@ export component AppWindow inherits Window {
                         vertical-stretch: 1;
 
 
+                // The list's toolbar, on a card like the recorder's, lined up with it.
                 HorizontalLayout {
-                    padding-left: root.wide ? 10px : root.narrow ? 18px : 22px;
-                    padding-right: root.wide ? 14px : root.narrow ? 18px : 22px;
-                    padding-top: root.wide ? 6px : 18px;
+                    padding-left: root.wide || root.narrow ? 12px : 16px;
+                    padding-right: root.wide || root.narrow ? 12px : 16px;
+                    padding-top: root.wide ? 4px : 12px;
                     padding-bottom: 8px;
-                    spacing: 14px;
-                    VerticalLayout {
-                        alignment: center;
-                        ProjectPicker {
-                            x: -8px;
-                            projects: root.projects;
-                            current: root.project;
-                            enabled: !root.recording;
-                            has-clips: root.clips.length > 0;
-                            choose(i) => { root.choose-project(i); keys.focus(); }
-                            create => { root.dialog-text = ""; root.dialog = 4; }
-                            rename => { root.dialog-text = root.projects[root.project]; root.dialog = 5; }
-                            delete => { root.delete-project(); keys.focus(); }
-                            export => { root.export-project(); keys.focus(); }
-                        }
-                    }
-                    VerticalLayout {
-                        alignment: center;
-                        horizontal-stretch: 1;
-                        TextField {
-                            height: 30px;
-                            max-width: 300px;
-                            icon: "search";
-                            placeholder: "Search";
-                            label: "Search clips";
-                            takes-escape: true;
-                            focus-ticket: root.search-ticket;
-                            text <=> root.query;
-                            edited(t) => { root.search(t, root.search-all); }
-                            escaped => { root.query = ""; root.search("", root.search-all); keys.focus(); }
-                            accepted => { if (root.hits.length > 0) { root.open-hit(0); root.go(1); } }
-                        }
-                    }
-                    // Search every project instead of this one.
-                    if root.query != "" && root.projects.length > 1: VerticalLayout {
-                        alignment: center;
-                        Rectangle {
-                            width: all-text.preferred-width + 18px;
-                            height: 26px;
-                            border-radius: 13px;
-                            border-width: 1px;
-                            border-color: root.search-all ? Theme.accent.with-alpha(0.5) : Theme.edge;
-                            background: root.search-all ? Theme.accent.with-alpha(0.08) : transparent;
-                            accessible-role: checkbox;
-                            accessible-label: "Search all projects";
-                            accessible-checked: root.search-all;
-                            accessible-action-default => { root.search-all = !root.search-all; root.search(root.query, root.search-all); }
-                            all-text := Text {
-                                x: 9px;
-                                y: (parent.height - self.height) / 2;
-                                text: "All projects";
-                                color: root.search-all ? Theme.accent : Theme.muted;
-                                font-size: 11px;
-                                font-weight: 600;
+                    Rectangle {
+                        background: Theme.card;
+                        border-radius: 14px;
+                        HorizontalLayout {
+                            padding-top: 8px;
+                            padding-bottom: 8px;
+                            padding-left: 8px;
+                            padding-right: 8px;
+                            spacing: 10px;
+                            VerticalLayout {
+                                alignment: center;
+                                ProjectPicker {
+                                    projects: root.projects;
+                                    current: root.project;
+                                    enabled: !root.recording;
+                                    has-clips: root.clips.length > 0;
+                                    choose(i) => { root.choose-project(i); keys.focus(); }
+                                    create => { root.dialog-text = ""; root.dialog = 4; }
+                                    rename => { root.dialog-text = root.projects[root.project]; root.dialog = 5; }
+                                    delete => { root.delete-project(); keys.focus(); }
+                                    export => { root.export-project(); keys.focus(); }
+                                }
                             }
-                            TouchArea {
-                                mouse-cursor: pointer;
-                                clicked => { root.search-all = !root.search-all; root.search(root.query, root.search-all); }
+                            VerticalLayout {
+                                alignment: center;
+                                horizontal-stretch: 1;
+                                TextField {
+                                    height: 32px;
+                                    icon: "search";
+                                    placeholder: "Search";
+                                    label: "Search clips";
+                                    takes-escape: true;
+                                    focus-ticket: root.search-ticket;
+                                    text <=> root.query;
+                                    edited(t) => { root.search(t, root.search-all); }
+                                    escaped => { root.query = ""; root.search("", root.search-all); keys.focus(); }
+                                    accepted => { if (root.hits.length > 0) { root.open-hit(0); root.go(1); } }
+                                }
                             }
-                        }
-                    }
-                    // Lets the header (and so the list under it) grow with the window.
-                    Rectangle { horizontal-stretch: 1; }
-                    // Import, Ask and the widget, after the search field.
-                    HorizontalLayout {
-                        horizontal-stretch: 0;
-                        spacing: 2px;
-                        VerticalLayout {
-                            alignment: center;
-                            IconBtn {
-                                icon: "file-plus";
-                                icon-size: 15px;
-                                label: "Import audio or video";
-                                tip: "Import";
-                                enabled: !root.recording;
-                                clicked => { root.import-files(); }
+                            // Search every project instead of this one.
+                            if root.query != "" && root.projects.length > 1: VerticalLayout {
+                                alignment: center;
+                                Rectangle {
+                                    width: all-text.preferred-width + 18px;
+                                    height: 26px;
+                                    border-radius: 13px;
+                                    border-width: 1px;
+                                    border-color: root.search-all ? Theme.accent.with-alpha(0.5) : Theme.edge;
+                                    background: root.search-all ? Theme.accent.with-alpha(0.08) : transparent;
+                                    accessible-role: checkbox;
+                                    accessible-label: "Search all projects";
+                                    accessible-checked: root.search-all;
+                                    accessible-action-default => { root.search-all = !root.search-all; root.search(root.query, root.search-all); }
+                                    all-text := Text {
+                                        x: 9px;
+                                        y: (parent.height - self.height) / 2;
+                                        text: "All projects";
+                                        color: root.search-all ? Theme.accent : Theme.muted;
+                                        font-size: 11px;
+                                        font-weight: 600;
+                                    }
+                                    TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => { root.search-all = !root.search-all; root.search(root.query, root.search-all); }
+                                    }
+                                }
                             }
-                        }
-                        if root.can-ai: VerticalLayout {
-                            alignment: center;
-                            IconBtn {
-                                icon: "message";
-                                icon-size: 15px;
-                                label: "Ask your clips";
-                                tip: "Ask";
-                                clicked => { root.go(6); }
-                            }
-                        }
-                        VerticalLayout {
-                            alignment: center;
-                            IconBtn {
-                                icon: "pip";
-                                icon-size: 15px;
-                                label: "Small widget";
-                                tip: "Widget";
-                                clicked => { root.compact-changed(true); }
+                            // Import, Ask and the widget, after the search field.
+                            HorizontalLayout {
+                                horizontal-stretch: 0;
+                                spacing: 2px;
+                                VerticalLayout {
+                                    alignment: center;
+                                    IconBtn {
+                                        icon: "file-plus";
+                                        icon-size: 15px;
+                                        label: "Import audio or video";
+                                        tip: "Import";
+                                        enabled: !root.recording;
+                                        clicked => { root.import-files(); }
+                                    }
+                                }
+                                if root.can-ai: VerticalLayout {
+                                    alignment: center;
+                                    IconBtn {
+                                        icon: "message";
+                                        icon-size: 15px;
+                                        label: "Ask your clips";
+                                        tip: "Ask";
+                                        clicked => { root.go(6); }
+                                    }
+                                }
+                                VerticalLayout {
+                                    alignment: center;
+                                    IconBtn {
+                                        icon: "pip";
+                                        icon-size: 15px;
+                                        label: "Small widget";
+                                        tip: "Widget";
+                                        clicked => { root.compact-changed(true); }
+                                    }
+                                }
                             }
                         }
                     }

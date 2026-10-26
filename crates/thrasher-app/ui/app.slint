@@ -385,26 +385,31 @@ component IconBtn inherits Rectangle {
 component Toggle inherits Rectangle {
     in-out property <bool> checked;
     in property <string> label;
+    // Off: dimmed, and shown as off whatever `checked` holds.
+    in property <bool> enabled: true;
     callback toggled(bool);
+    property <bool> on: root.checked && root.enabled;
     width: 38px;
     height: 22px;
     border-radius: 11px;
-    background: checked ? Theme.accent : Theme.track;
+    background: on ? Theme.accent : Theme.track;
+    opacity: root.enabled ? 1 : 0.45;
     accessible-role: checkbox;
     accessible-checkable: true;
-    accessible-checked: checked;
+    accessible-checked: on;
     accessible-label: label;
-    accessible-action-default => { root.checked = !root.checked; root.toggled(root.checked); }
+    accessible-action-default => { if (root.enabled) { root.checked = !root.checked; root.toggled(root.checked); } }
     Rectangle {
-        x: root.checked ? root.width - self.width - 3px : 3px;
+        x: root.on ? root.width - self.width - 3px : 3px;
         y: 3px;
         width: 16px;
         height: 16px;
         border-radius: 8px;
-        background: root.checked ? Theme.on-accent : Theme.knob;
+        background: root.on ? Theme.on-accent : Theme.knob;
         animate x { duration: 120ms; easing: ease-out; }
     }
     TouchArea {
+        enabled: root.enabled;
         mouse-cursor: pointer;
         clicked => { root.checked = !root.checked; root.toggled(root.checked); }
     }
@@ -2720,6 +2725,11 @@ export component AppWindow inherits Window {
     callback transcribed(bool, string);
     in-out property <bool> auto-transcribe;
     callback auto-transcribe-changed(bool);
+    // New recordings are named by the local AI; needs auto transcribe.
+    in-out property <bool> ai-names;
+    callback ai-names-changed(bool);
+    // The AI named clip `old` in folder `dir`: `title` is the new name.
+    callback ai-named(string, string, string);
     // Longer pauses are shortened to this after each transcription.
     in property <[string]> max-pauses;
     in-out property <int> max-pause-index;
@@ -3977,6 +3987,18 @@ export component AppWindow inherits Window {
                                     label: "Auto transcribe";
                                     checked <=> root.auto-transcribe;
                                     toggled(on) => { root.auto-transcribe-changed(on); }
+                                }
+                            }
+                        }
+                        if root.can-transcribe && root.can-ai: CardRow {
+                            label: "AI names";
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "AI names";
+                                    enabled: root.auto-transcribe;
+                                    checked <=> root.ai-names;
+                                    toggled(on) => { root.ai-names-changed(on); }
                                 }
                             }
                         }

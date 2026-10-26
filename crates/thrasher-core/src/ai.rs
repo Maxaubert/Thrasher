@@ -362,6 +362,90 @@ pub fn ask_job(question: &str, picked: &[Passage], model: &Path) -> Job {
     }
 }
 
+/// Words of the transcript the model reads to name a clip.
+const NAME_WORDS: usize = 600;
+
+/// The job that names a clip from its transcript: a few words, in the transcript's
+/// language. None when there is no transcript.
+pub fn name_job(sc: &Sidecar, model: &Path) -> Option<Job> {
+    let words = plain_words(sc);
+    if words.is_empty() {
+        return None;
+    }
+    let text = words[..words.len().min(NAME_WORDS)].join(" ");
+    let (system, user) = match sc.language.as_deref() {
+        Some("no" | "nb" | "nn") | None => (
+            "Du gir lydopptak korte, presise titler på norsk bokmål.",
+            format!(
+                "Her er starten av en transkripsjon:\n\n{text}\n\nSkriv en tittel på to til \
+                 fem ord som sier hva opptaket handler om. Svar bare med tittelen, uten \
+                 anførselstegn og uten punktum."
+            ),
+        ),
+        _ => (
+            "You give recordings short, precise titles in the language of the transcript.",
+            format!(
+                "Here is the start of a transcript:\n\n{text}\n\nWrite a title of two to \
+                 five words that says what the recording is about. Reply with the title \
+                 only, no quotes and no full stop."
+            ),
+        ),
+    };
+    Some(Job {
+        model: model.to_string_lossy().into_owned(),
+        max_tokens: 24,
+        steps: vec![vec![
+            Message {
+                role: "system",
+                content: system.to_string(),
+            },
+            Message {
+                role: "user",
+                content: user,
+            },
+        ]],
+    })
+}
+
+/// Makes a clip name of the model's title: one line, no quotes, labels or end
+/// punctuation, nothing a file name cannot hold, at most 60 letters. None when
+/// nothing usable is left.
+pub fn clean_title(raw: &str) -> Option<String> {
+    let line = raw.lines().map(str::trim).find(|l| !l.is_empty())?;
+    let mut t = line.to_string();
+    for label in ["Tittel:", "tittel:", "Title:", "title:"] {
+        if let Some(rest) = t.strip_prefix(label) {
+            t = rest.to_string();
+        }
+    }
+    let t: String = t
+        .chars()
+        .map(|c| {
+            if "<>:\"/\\|?*".contains(c) || c.is_control() {
+                ' '
+            } else {
+                c
+            }
+        })
+        .filter(|c| !matches!(c, '«' | '»' | '“' | '”' | '‘' | '’' | '`'))
+        .collect();
+    let t = t
+        .trim()
+        .trim_matches(|c: char| matches!(c, '\'' | '.' | '!' | ',' | ';' | '-'))
+        .trim();
+    let mut out = String::new();
+    for w in t.split_whitespace() {
+        if out.chars().count() + w.chars().count() + 1 > 60 {
+            break;
+        }
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        out.push_str(w);
+    }
+    crate::library::valid_name(&out).then_some(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -453,6 +537,27 @@ mod tests {
         assert_eq!(hit[0].clip, "lecture 2");
         let job = ask_job("hva?", &hit, Path::new("m.gguf"));
         assert!(job.steps[0][1].content.contains("[1] lecture 2 (0:00)"));
+    }
+
+    #[test]
+    fn titles_become_clean_clip_names() {
+        assert_eq!(
+            clean_title("«Møte om taket.»").as_deref(),
+            Some("Møte om taket")
+        );
+        assert_eq!(
+            clean_title("Tittel: Plan for uke 12\nmer").as_deref(),
+            Some("Plan for uke 12")
+        );
+        assert_eq!(
+            clean_title("A/B test: results?").as_deref(),
+            Some("A B test results")
+        );
+        assert!(clean_title("  \n ").is_none());
+        let long = "ord ".repeat(40);
+        assert!(clean_title(&long).unwrap().chars().count() <= 60);
+        let job = name_job(&sc(10, "no"), Path::new("m.gguf")).unwrap();
+        assert!(job.steps[0][1].content.contains("tittel"));
     }
 
     #[test]

@@ -293,6 +293,8 @@ struct App {
     queue: VecDeque<(std::path::PathBuf, String, bool)>,
     /// A question is being answered.
     asking: bool,
+    /// New recordings to name with the AI once they are transcribed.
+    to_name: Vec<(std::path::PathBuf, String)>,
     /// The clip the local AI is summarising, with its folder.
     ai_job: Option<(std::path::PathBuf, String)>,
     /// Transcripts read for search, kept while their sidecar is unchanged.
@@ -1246,6 +1248,10 @@ impl App {
                 // Nothing highlighted, so Space records again.
                 ui.set_selected(-1);
                 if self.settings.auto_transcribe {
+                    if self.settings.ai_names {
+                        let item = (self.library.dir().to_path_buf(), done.name.clone());
+                        self.to_name.push(item);
+                    }
                     self.transcribe(ui, vec![done.name.clone()], true);
                 }
             }
@@ -1463,6 +1469,7 @@ fn main() -> Result<(), slint::PlatformError> {
         search_docs: HashMap::new(),
         ai_job: None,
         asking: false,
+        to_name: Vec::new(),
         live: VecDeque::new(),
         live_model,
     }));
@@ -1491,6 +1498,7 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.set_name_template(a.settings.name_template.clone().into());
         ui.set_close_to_tray(a.settings.close_to_tray);
         ui.set_auto_transcribe(a.settings.auto_transcribe);
+        ui.set_ai_names(a.settings.ai_names);
         ui.set_can_ai(ask::worker_path().is_some());
         show_ai_model(&ui, &a.settings.ai_model);
         let pauses: Vec<SharedString> = settings::MAX_PAUSES
@@ -2550,6 +2558,17 @@ fn main() -> Result<(), slint::PlatformError> {
                     {
                         cap_pauses(dir, names, max);
                     }
+                    if ok && let Some((dir, names, false)) = &job {
+                        let wanted: Vec<String> = names
+                            .iter()
+                            .filter(|n| a.to_name.iter().any(|(d, m)| d == dir && m == *n))
+                            .cloned()
+                            .collect();
+                        a.to_name.retain(|(d, m)| !(d == dir && wanted.contains(m)));
+                        if a.settings.ai_names && a.settings.auto_transcribe && !wanted.is_empty() {
+                            name_with_ai(&ui, &a.settings.ai_model, dir.clone(), wanted);
+                        }
+                    }
                     if ok && job.as_ref().is_some_and(|j| j.2) {
                         // Show what was just made.
                         ui.set_show_english(true);
@@ -2585,6 +2604,45 @@ fn main() -> Result<(), slint::PlatformError> {
                     let mut a = app.borrow_mut();
                     a.settings.max_pause = *secs;
                     a.settings.save();
+                }
+            }
+        });
+        ui.on_ai_names_changed({
+            let app = app.clone();
+            move |on| {
+                let mut a = app.borrow_mut();
+                a.settings.ai_names = on;
+                a.settings.save();
+            }
+        });
+        ui.on_ai_named({
+            let (app, weak) = (app.clone(), ui.as_weak());
+            move |dir, old, title| {
+                let ui = weak.unwrap();
+                let mut a = app.borrow_mut();
+                // Only in the project shown, and never under the player's feet.
+                if a.library.dir() != std::path::Path::new(dir.as_str())
+                    || a.active.as_deref() == Some(old.as_str())
+                {
+                    return;
+                }
+                let mut to = title.to_string();
+                let mut n = 2;
+                while a.library.exists(&to) {
+                    to = format!("{title} ({n})");
+                    n += 1;
+                }
+                let was = a.selected(&ui).map(|c| c.name.clone());
+                match a.library.rename(&old, &to) {
+                    Ok(()) => {
+                        crate::log!("AI named {old} {to:?}");
+                        a.refresh_clips(&ui);
+                        if was.as_deref() == Some(old.as_str()) {
+                            a.select_name(&ui, &to);
+                        }
+                        ui.set_status(format!("Named {to}").into());
+                    }
+                    Err(e) => crate::log!("AI name for {old} failed: {e}"),
                 }
             }
         });
@@ -3307,6 +3365,42 @@ fn import_paths(ui: &AppWindow, library: Library, files: Vec<std::path::PathBuf>
         let _ = weak.upgrade_in_event_loop(move |ui| {
             ui.invoke_imported(status.into(), last.into(), names.into())
         });
+    });
+}
+
+/// Asks the local AI for a name for each of `names` (just transcribed, in `dir`), one
+/// after another on a worker thread; the window's `ai-named` callback renames them.
+/// Does nothing without the AI worker or its model.
+fn name_with_ai(ui: &AppWindow, model_id: &str, dir: std::path::PathBuf, names: Vec<String>) {
+    let (Some(worker), Some(model)) = (
+        ask::worker_path(),
+        thrasher_core::ai::find(model_id)
+            .filter(|m| m.is_downloaded())
+            .and_then(|m| m.path()),
+    ) else {
+        return;
+    };
+    let weak = ui.as_weak();
+    std::thread::spawn(move || {
+        let Ok(library) = Library::open(&dir) else {
+            return;
+        };
+        for name in names {
+            let Some(job) = Sidecar::load(&library.sidecar_path(&name))
+                .ok()
+                .and_then(|sc| thrasher_core::ai::name_job(&sc, &model))
+            else {
+                continue;
+            };
+            let title = ask::run(&worker, &job, &mut |_| {}, &mut |_| {})
+                .ok()
+                .and_then(|t| thrasher_core::ai::clean_title(&t));
+            let Some(title) = title else { continue };
+            let d = dir.to_string_lossy().into_owned();
+            let _ = weak.upgrade_in_event_loop(move |ui| {
+                ui.invoke_ai_named(d.into(), name.into(), title.into())
+            });
+        }
     });
 }
 

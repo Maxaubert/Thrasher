@@ -86,6 +86,16 @@ export struct SearchHit {
     at: float,
 }
 
+// A transcript passage an answer was given from, numbered as the answer cites it.
+export struct AskSource {
+    n: int,
+    clip: string,
+    place: int,
+    at: float,
+    time: string,
+    text: string,
+}
+
 export struct ClipRow {
     name: string,
     duration: string,
@@ -262,6 +272,7 @@ component Icon inherits Path {
         : name == "pushpin" ? "M12 17v5 M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"
         : name == "pip" ? "M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4 M14 13h6a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z"
         : name == "file-plus" ? "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z M14 2v4a2 2 0 0 0 2 2h4 M12 12v6 M9 15h6"
+        : name == "message" ? "M7.9 20A9 9 0 1 0 4 16.1L2 22Z"
         : name == "sparkles" ? "M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z M20 3v4 M22 5h-4 M4 17v2 M5 18H3"
         : name == "languages" ? "m5 8 6 6 M4 14l6-6 2-3 M2 5h12 M7 2h1 M22 22l-5-10-5 10 M14 18h6"
         : name == "copy" ? "M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2z M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
@@ -1576,6 +1587,49 @@ component ViewChip inherits Rectangle {
     }
 }
 
+// A source under an answer: its number, clip and time, and its words.
+component SourceRow inherits Rectangle {
+    in property <AskSource> source;
+    in property <bool> show-project;
+    in property <string> project;
+    callback clicked;
+    height: 56px;
+    border-radius: 10px;
+    background: t.has-hover ? Theme.row-hover : transparent;
+    accessible-role: button;
+    accessible-label: root.source.n + " " + root.source.clip + " " + root.source.time;
+    accessible-action-default => { root.clicked(); }
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 12px;
+        spacing: 12px;
+        Text {
+            text: root.source.n;
+            color: Theme.accent;
+            font-family: Theme.mono;
+            font-size: 12px;
+            font-weight: 600;
+            vertical-alignment: center;
+            width: 16px;
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 3px;
+            HorizontalLayout {
+                spacing: 8px;
+                Text { text: root.source.clip; color: Theme.text; font-size: 13px; font-weight: 600; overflow: elide; horizontal-stretch: 1; }
+                if root.show-project: Text { text: root.project; color: Theme.dim; font-size: 11px; vertical-alignment: center; }
+                Text { text: root.source.time; color: Theme.muted; font-family: Theme.mono; font-size: 11px; vertical-alignment: center; }
+            }
+            Text { text: root.source.text; color: Theme.dim; font-size: 12px; overflow: elide; }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
 // One search result: the clip name (and project), then the words around the match
 // with the match in the accent colour.
 component SearchRow inherits Rectangle {
@@ -2516,6 +2570,16 @@ export component AppWindow inherits Window {
     in property <bool> can-ai;
     in-out property <bool> show-summary;
     callback summarise-selected();
+    // Ask: the question, whether it covers all projects, the answer as it is
+    // written, and the passages it was given.
+    in-out property <string> question;
+    in-out property <bool> ask-all;
+    in property <string> answer;
+    in property <bool> asking;
+    in property <[AskSource]> sources;
+    callback ask(string, bool);
+    callback open-source(int);
+    callback answered();
     // The AI finished clip `name`: whether it worked, and the summary or the error.
     callback summarised(bool, string, string);
     // The AI model in settings: the choices, the one picked, whether it is
@@ -2980,6 +3044,15 @@ export component AppWindow inherits Window {
                                 tip: "Import";
                                 enabled: !root.recording;
                                 clicked => { root.import-files(); }
+                            }
+                        }
+                        if root.can-ai: HorizontalLayout {
+                            alignment: center;
+                            RailBtn {
+                                icon: "message";
+                                label: "Ask your clips";
+                                tip: "Ask";
+                                clicked => { root.go(6); }
                             }
                         }
                         Rectangle { vertical-stretch: 1; }
@@ -4127,6 +4200,107 @@ export component AppWindow inherits Window {
                 width: parent.width - 44px;
                 height: 28px;
                 vertical-alignment: center;
+            }
+        }
+
+        // ---------- Ask ----------
+        if !compact && page == 6: VerticalLayout {
+            TitleBar {
+                minimize => { root.minimize-window(); }
+                close => { root.close-window(); }
+            }
+            PageHeader { title: "Ask"; back => { root.go(0); } }
+            VerticalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 8px;
+                padding-bottom: 16px;
+                spacing: 14px;
+                HorizontalLayout {
+                    spacing: 8px;
+                    TextField {
+                        height: 36px;
+                        icon: "message";
+                        placeholder: "Ask about your clips";
+                        label: "Question";
+                        text <=> root.question;
+                        init => { self.grab(); }
+                        accepted => { if (root.question != "" && !root.asking) { root.ask(root.question, root.ask-all); } }
+                    }
+                    if root.projects.length > 1: VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: scope-text.preferred-width + 18px;
+                            height: 28px;
+                            border-radius: 14px;
+                            border-width: 1px;
+                            border-color: root.ask-all ? Theme.accent.with-alpha(0.5) : Theme.edge;
+                            background: root.ask-all ? Theme.accent.with-alpha(0.08) : transparent;
+                            accessible-role: checkbox;
+                            accessible-label: "Ask all projects";
+                            accessible-checked: root.ask-all;
+                            accessible-action-default => { root.ask-all = !root.ask-all; }
+                            scope-text := Text {
+                                x: 9px;
+                                y: (parent.height - self.height) / 2;
+                                text: "All projects";
+                                color: root.ask-all ? Theme.accent : Theme.muted;
+                                font-size: 11px;
+                                font-weight: 600;
+                            }
+                            TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => { root.ask-all = !root.ask-all; }
+                            }
+                        }
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        Btn {
+                            text: "Ask";
+                            primary: true;
+                            height: 36px;
+                            enabled: root.question != "" && !root.asking;
+                            clicked => { root.ask(root.question, root.ask-all); }
+                        }
+                    }
+                }
+                if root.answer != "" || root.asking: Rectangle {
+                    background: Theme.card;
+                    border-radius: 14px;
+                    height: min(answer-box.preferred-height, 320px);
+                    Scroller {
+                        answer-box := VerticalLayout {
+                            padding: 16px;
+                            Text {
+                                text: root.answer != "" ? root.answer : "Thinking";
+                                color: root.answer != "" ? Theme.text2 : Theme.dim;
+                                font-size: 15px;
+                                wrap: word-wrap;
+                            }
+                        }
+                    }
+                }
+                if root.sources.length > 0: Text {
+                    text: "SOURCES";
+                    color: Theme.muted;
+                    font-size: 11px;
+                    font-weight: 800;
+                    letter-spacing: 1px;
+                }
+                Scroller {
+                    vertical-stretch: 1;
+                    VerticalLayout {
+                        alignment: start;
+                        spacing: 2px;
+                        for s[i] in root.sources: SourceRow {
+                            source: s;
+                            show-project: root.ask-all;
+                            project: s.place >= 0 && s.place < root.projects.length ? root.projects[s.place] : "";
+                            clicked => { root.open-source(i); root.go(1); }
+                        }
+                    }
+                }
             }
         }
 

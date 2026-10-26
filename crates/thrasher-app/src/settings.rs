@@ -21,7 +21,6 @@ pub struct Settings {
     /// WASAPI device id; `None` follows the Windows default.
     pub mic_device: Option<String>,
     pub record_system: bool,
-    pub pinned: bool,
     /// Starts and stops recording from any app, for example "Ctrl+Alt+R". Empty (the
     /// default) turns it off.
     pub hotkey: String,
@@ -67,7 +66,6 @@ impl Default for Settings {
             name_template: thrasher_core::naming::DEFAULT_TEMPLATE.into(),
             mic_device: None,
             record_system: false,
-            pinned: false,
             hotkey: String::new(),
             model: "nb-whisper-large".into(),
             language: "no".into(),
@@ -153,8 +151,9 @@ mod tests {
 
     #[test]
     fn old_settings_files_get_the_default_limit() {
-        let s: Settings = serde_json::from_str(r#"{"pinned": true}"#).unwrap();
-        assert!(s.pinned);
+        // Old files may hold fields that are gone, such as "pinned".
+        let s: Settings = serde_json::from_str(r#"{"pinned": true, "language": "en"}"#).unwrap();
+        assert_eq!(s.language, "en");
         assert_eq!(s.max_recording_minutes, 120);
     }
 }

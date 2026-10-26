@@ -1676,41 +1676,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     .pick_files()
                     .unwrap_or_default(),
             };
-            if files.is_empty() {
-                return;
-            }
-            ui.set_status(format!("Importing {} file(s)...", files.len()).into());
-            let weak = ui.as_weak();
-            std::thread::spawn(move || {
-                let started = std::time::Instant::now();
-                let (mut names, mut failed) = (Vec::new(), Vec::new());
-                for f in &files {
-                    match thrasher_core::import::import_file(&library, f) {
-                        Ok(name) => names.push(name),
-                        Err(e) => {
-                            crate::log!("import {} failed: {e}", f.display());
-                            let file = f.file_name().unwrap_or_default().to_string_lossy();
-                            failed.push(format!("{file}: {e}"));
-                        }
-                    }
-                }
-                crate::log!(
-                    "imported {} of {} file(s) in {} ms",
-                    names.len(),
-                    files.len(),
-                    crate::log::ms(started)
-                );
-                let status = match (names.len(), failed.first()) {
-                    (_, Some(f)) if failed.len() == 1 => format!("Could not import {f}"),
-                    (_, Some(_)) => format!("{} file(s) could not be imported", failed.len()),
-                    (1, None) => format!("Imported {}", names[0]),
-                    (n, None) => format!("Imported {n} clips"),
-                };
-                let last = names.last().cloned().unwrap_or_default();
-                let _ = weak.upgrade_in_event_loop(move |ui| {
-                    ui.invoke_imported(status.into(), last.into())
-                });
-            });
+            import_paths(&ui, library, files);
         }
     });
     ui.on_imported({
@@ -2639,6 +2605,7 @@ fn main() -> Result<(), slint::PlatformError> {
     }
     ui.show()?;
     let _remember = remember_window(&ui, &app);
+    let _drops = accept_drops(&ui, &app);
     // Runs once the event loop has drawn the window.
     Timer::single_shot(Duration::ZERO, || {
         crate::log!("ready: window shown {} ms after start", log::uptime_ms())
@@ -2659,6 +2626,102 @@ fn main() -> Result<(), slint::PlatformError> {
 
 /// Logs when the window stops responding for a noticeable time. Checks four times a
 /// second, so an idle window stays nearly free.
+/// Imports `files` into `library` on a worker thread; the window's `imported`
+/// callback shows the result.
+fn import_paths(ui: &AppWindow, library: Library, files: Vec<std::path::PathBuf>) {
+    if files.is_empty() {
+        return;
+    }
+    ui.set_status(format!("Importing {} file(s)...", files.len()).into());
+    let weak = ui.as_weak();
+    std::thread::spawn(move || {
+        let started = std::time::Instant::now();
+        let (mut names, mut failed) = (Vec::new(), Vec::new());
+        for f in &files {
+            match thrasher_core::import::import_file(&library, f) {
+                Ok(name) => names.push(name),
+                Err(e) => {
+                    crate::log!("import {} failed: {e}", f.display());
+                    let file = f.file_name().unwrap_or_default().to_string_lossy();
+                    failed.push(format!("{file}: {e}"));
+                }
+            }
+        }
+        crate::log!(
+            "imported {} of {} file(s) in {} ms",
+            names.len(),
+            files.len(),
+            crate::log::ms(started)
+        );
+        let status = match (names.len(), failed.first()) {
+            (_, Some(f)) if failed.len() == 1 => format!("Could not import {f}"),
+            (_, Some(_)) => format!("{} file(s) could not be imported", failed.len()),
+            (1, None) => format!("Imported {}", names[0]),
+            (n, None) => format!("Imported {n} clips"),
+        };
+        let last = names.last().cloned().unwrap_or_default();
+        let _ =
+            weak.upgrade_in_event_loop(move |ui| ui.invoke_imported(status.into(), last.into()));
+    });
+}
+
+/// True for a file the importer offers to read, judged by its extension.
+fn importable(path: &std::path::Path) -> bool {
+    path.extension().and_then(|e| e.to_str()).is_some_and(|e| {
+        thrasher_core::import::EXTENSIONS
+            .iter()
+            .any(|x| x.eq_ignore_ascii_case(e))
+    })
+}
+
+/// Files dropped on the window are imported into the current project, a moment after
+/// the last one lands (Windows hands them over one at a time). While files hover, the
+/// window says so.
+fn accept_drops(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<Timer> {
+    use slint::winit_030::winit::event::WindowEvent;
+    use slint::winit_030::{EventResult, WinitWindowAccessor};
+    let dropped: Rc<RefCell<Vec<std::path::PathBuf>>> = Rc::default();
+    let timer = Rc::new(Timer::default());
+    let (weak, app, t) = (ui.as_weak(), app.clone(), timer.clone());
+    ui.window().on_winit_window_event(move |_, event| {
+        let Some(ui) = weak.upgrade() else {
+            return EventResult::Propagate;
+        };
+        match event {
+            WindowEvent::HoveredFile(_) => ui.set_dropping(true),
+            WindowEvent::HoveredFileCancelled => ui.set_dropping(false),
+            WindowEvent::DroppedFile(path) => {
+                ui.set_dropping(false);
+                dropped.borrow_mut().push(path.clone());
+                let (weak, app, dropped) = (ui.as_weak(), app.clone(), dropped.clone());
+                t.start(
+                    TimerMode::SingleShot,
+                    Duration::from_millis(150),
+                    move || {
+                        let files = std::mem::take(&mut *dropped.borrow_mut());
+                        let Some(ui) = weak.upgrade() else { return };
+                        let (files, skipped): (Vec<_>, Vec<_>) =
+                            files.into_iter().partition(|f| importable(f));
+                        crate::log!("dropped {} file(s), {} skipped", files.len(), skipped.len());
+                        if files.is_empty() {
+                            ui.set_status("Thrasher cannot import that".into());
+                            return;
+                        }
+                        if !ui.get_editing() && ui.get_page() != 0 {
+                            ui.set_page(0);
+                        }
+                        let library = app.borrow().library.clone();
+                        import_paths(&ui, library, files);
+                    },
+                );
+            }
+            _ => {}
+        }
+        EventResult::Propagate
+    });
+    timer
+}
+
 /// Opens the window at its last size, and at its last place when that is still on a
 /// screen (a monitor may have been unplugged since).
 fn restore_window(ui: &AppWindow, place: settings::WindowPlace) {

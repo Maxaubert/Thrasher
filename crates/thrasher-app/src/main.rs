@@ -279,6 +279,10 @@ struct App {
     anchor: Option<(usize, i32)>,
     /// The clips on the merge page, in merge order.
     merge_names: Vec<String>,
+    /// The transcription running now: its folder and clips. Clips asked for meanwhile
+    /// wait in `queue`, with their folder (the project may change).
+    job: Option<(std::path::PathBuf, Vec<String>)>,
+    queue: VecDeque<(std::path::PathBuf, String)>,
     live: VecDeque<f32>,
     live_model: Rc<VecModel<f32>>,
 }
@@ -457,6 +461,73 @@ impl App {
         self.waves.request(ui, &library, &clips);
     }
 
+    /// Transcribes `names` in the shown project, now or after the job that runs.
+    /// `auto` (a new clip, with auto transcribe on) never leaves the page.
+    fn transcribe(&mut self, ui: &AppWindow, names: Vec<String>, auto: bool) {
+        if transcription::worker_path().is_none() {
+            if !auto {
+                ui.set_status("Transcription is not part of this build".into());
+            }
+            return;
+        }
+        if !transcription::model_ready(&self.settings.model) {
+            ui.set_status("Download a transcription model first".into());
+            if !auto {
+                ui.set_page(3);
+            }
+            return;
+        }
+        let dir = self.library.dir().to_path_buf();
+        for name in names {
+            let item = (dir.clone(), name);
+            let running = self
+                .job
+                .as_ref()
+                .is_some_and(|(d, ns)| *d == item.0 && ns.contains(&item.1));
+            if !running && !self.queue.contains(&item) {
+                self.queue.push_back(item);
+            }
+        }
+        if self.job.is_some() && !auto {
+            ui.set_status("Queued".into());
+        }
+        self.next_job(ui);
+    }
+
+    /// Starts the next queued clips: all those waiting in the same folder as the
+    /// first, in one worker run.
+    fn next_job(&mut self, ui: &AppWindow) {
+        if self.job.is_some() {
+            return;
+        }
+        let Some((dir, _)) = self.queue.front().cloned() else {
+            return;
+        };
+        let (now, later): (VecDeque<_>, VecDeque<_>) =
+            self.queue.drain(..).partition(|(d, _)| *d == dir);
+        self.queue = later;
+        let names: Vec<String> = now.into_iter().map(|(_, n)| n).collect();
+        self.job = Some((dir.clone(), names.clone()));
+        transcription::start(
+            ui,
+            dir,
+            names,
+            &self.settings.model,
+            self.settings.language.clone(),
+        );
+        self.show_transcribing(ui);
+    }
+
+    /// The transcript card shows progress when the highlighted clip is being transcribed.
+    fn show_transcribing(&self, ui: &AppWindow) {
+        let on = self.selected(ui).is_some_and(|c| {
+            self.job
+                .as_ref()
+                .is_some_and(|(d, ns)| d == self.library.dir() && ns.contains(&c.name))
+        });
+        ui.set_transcribing(on);
+    }
+
     /// Fills the project dropdown: Inbox, then the projects by name.
     fn show_projects(&self, ui: &AppWindow) {
         let list = projects::list(&self.root).unwrap_or_default();
@@ -579,6 +650,7 @@ impl App {
 
     /// Shows the selected clip on the clip page: details, waveform and transcript.
     fn show_transcript(&mut self, ui: &AppWindow) {
+        self.show_transcribing(ui);
         self.update_length(ui);
         self.show_parts(ui);
         if let Some(c) = self.selected(ui) {
@@ -1023,6 +1095,9 @@ impl App {
                 self.refresh_clips(ui);
                 // Nothing highlighted, so Space records again.
                 ui.set_selected(-1);
+                if self.settings.auto_transcribe {
+                    self.transcribe(ui, vec![done.name.clone()], true);
+                }
             }
             Err(e) => ui.set_status(format!("Recording failed: {e}").into()),
         }
@@ -1233,6 +1308,8 @@ fn main() -> Result<(), slint::PlatformError> {
         picked: Vec::new(),
         anchor: None,
         merge_names: Vec::new(),
+        job: None,
+        queue: VecDeque::new(),
         live: VecDeque::new(),
         live_model,
     }));
@@ -1260,6 +1337,7 @@ fn main() -> Result<(), slint::PlatformError> {
         a.show_projects(&ui);
         ui.set_name_template(a.settings.name_template.clone().into());
         ui.set_close_to_tray(a.settings.close_to_tray);
+        ui.set_auto_transcribe(a.settings.auto_transcribe);
         let theme = ui.global::<Theme>();
         if let Some(i) = theme.get_names().iter().position(|n| n == a.settings.theme) {
             theme.set_current(i as i32);
@@ -1681,7 +1759,7 @@ fn main() -> Result<(), slint::PlatformError> {
     });
     ui.on_imported({
         let (app, weak) = (app.clone(), ui.as_weak());
-        move |status, last| {
+        move |status, last, names| {
             let ui = weak.unwrap();
             let mut a = app.borrow_mut();
             a.refresh_clips(&ui);
@@ -1689,6 +1767,10 @@ fn main() -> Result<(), slint::PlatformError> {
                 a.select_name(&ui, &last);
             }
             ui.set_status(status);
+            if a.settings.auto_transcribe && !names.is_empty() {
+                let names = names.split('\n').map(str::to_string).collect();
+                a.transcribe(&ui, names, true);
+            }
         }
     });
 
@@ -2244,17 +2326,39 @@ fn main() -> Result<(), slint::PlatformError> {
             let (app, weak) = (app.clone(), ui.as_weak());
             move || {
                 let ui = weak.unwrap();
-                let a = app.borrow();
+                let mut a = app.borrow_mut();
                 let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
                     return;
                 };
-                transcription::start(
-                    &ui,
-                    &a.library,
-                    name,
-                    &a.settings.model,
-                    a.settings.language.clone(),
-                );
+                a.transcribe(&ui, vec![name], false);
+            }
+        });
+        ui.on_transcribed({
+            let (app, weak) = (app.clone(), ui.as_weak());
+            move |ok, line| {
+                let ui = weak.unwrap();
+                let here = {
+                    let mut a = app.borrow_mut();
+                    let job = a.job.take();
+                    job.is_some_and(|(d, _)| d == a.library.dir())
+                };
+                ui.set_status(line);
+                if ok && here {
+                    // The list marks the clips transcribed, and the card reloads.
+                    app.borrow_mut().refresh_clips(&ui);
+                    ui.invoke_selection_changed(ui.get_selected());
+                }
+                let mut a = app.borrow_mut();
+                a.next_job(&ui);
+                a.show_transcribing(&ui);
+            }
+        });
+        ui.on_auto_transcribe_changed({
+            let app = app.clone();
+            move |on| {
+                let mut a = app.borrow_mut();
+                a.settings.auto_transcribe = on;
+                a.settings.save();
             }
         });
         transcription::show_models(&ui, &app.borrow().settings.model);
@@ -2660,8 +2764,10 @@ fn import_paths(ui: &AppWindow, library: Library, files: Vec<std::path::PathBuf>
             (n, None) => format!("Imported {n} clips"),
         };
         let last = names.last().cloned().unwrap_or_default();
-        let _ =
-            weak.upgrade_in_event_loop(move |ui| ui.invoke_imported(status.into(), last.into()));
+        let names = names.join("\n");
+        let _ = weak.upgrade_in_event_loop(move |ui| {
+            ui.invoke_imported(status.into(), last.into(), names.into())
+        });
     });
 }
 

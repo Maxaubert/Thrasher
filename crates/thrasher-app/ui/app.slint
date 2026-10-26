@@ -2354,7 +2354,12 @@ export component AppWindow inherits Window {
     callback parts-done(string);
     // Asks for audio files and adds each as a clip; `imported` reports back.
     callback import-files();
-    callback imported(string, string);
+    // The status line, the last clip, and every new clip (one per line).
+    callback imported(string, string, string);
+    // A transcription run ended: whether it worked, and the line to show.
+    callback transcribed(bool, string);
+    in-out property <bool> auto-transcribe;
+    callback auto-transcribe-changed(bool);
     // The transcript editor's text as styled text, with the pause tags coloured.
     pure callback edit-markup(string) -> styled-text;
     // The selected part of the editor text (two byte offsets) without pause tags.
@@ -3432,6 +3437,17 @@ export component AppWindow inherits Window {
                                     model: root.languages;
                                     current-index <=> root.language-index;
                                     selected(i) => { root.language-changed(i); }
+                                }
+                            }
+                        }
+                        if root.can-transcribe: CardRow {
+                            label: "Auto transcribe";
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Auto transcribe";
+                                    checked <=> root.auto-transcribe;
+                                    toggled(on) => { root.auto-transcribe-changed(on); }
                                 }
                             }
                         }

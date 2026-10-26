@@ -31,7 +31,7 @@ use thrasher_core::wasapi_io::{DeviceInfo, input_devices};
 slint::include_modules!();
 
 const FULL_SIZE: LogicalSize = LogicalSize::new(520.0, 600.0);
-const WIDGET_SIZE: LogicalSize = LogicalSize::new(320.0, 64.0);
+const WIDGET_SIZE: LogicalSize = LogicalSize::new(240.0, 124.0);
 /// Meter range in dBFS.
 const METER_FLOOR_DB: f32 = -60.0;
 /// Bars in the live recording waveform: about 2.6 s at the 33 ms tick.

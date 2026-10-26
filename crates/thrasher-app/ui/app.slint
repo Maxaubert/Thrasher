@@ -2459,6 +2459,8 @@ component TranscriptCard inherits Rectangle {
                     spacing: 1px;
                     flex-wrap: wrap;
                     alignment: start;
+                    // Lines sit at the top; the default spreads them over the card.
+                    cross-axis-line-alignment: start;
                     for w[i] in root.words: Rectangle {
                         // Plain view: pauses take no room at all.
                         property <bool> hidden: w.is-silence && !root.show-marks;

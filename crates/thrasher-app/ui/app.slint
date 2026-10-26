@@ -622,8 +622,11 @@ component ProjectPicker inherits Rectangle {
     accessible-expandable: true;
     accessible-action-default => { if (root.enabled) { popup.show(); } }
     accessible-action-expand => { if (root.enabled) { popup.show(); } }
+    // Name and arrow inside the box, so both light up and open the list.
     row := HorizontalLayout {
         x: 8px;
+        width: parent.width - 16px;
+        alignment: start;
         spacing: 6px;
         Text {
             text: root.current >= 0 && root.current < root.projects.length ? root.projects[root.current] : "";

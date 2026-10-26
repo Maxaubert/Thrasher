@@ -25,6 +25,20 @@ pub fn kept(s: &Silence) -> f64 {
     s.keep.map_or(s.end - s.start, |k| k.max(0.0))
 }
 
+/// Shortens every pause longer than `max` seconds to `max`, the same edit as typing a
+/// shorter `[silence]` tag. Pauses whose length was already set are left alone.
+/// Returns how many changed.
+pub fn cap_pauses(sc: &mut Sidecar, max: f64) -> usize {
+    let mut changed = 0;
+    for s in &mut sc.silences {
+        if s.keep.is_none() && s.end - s.start > max + 1e-6 {
+            s.keep = Some(max);
+            changed += 1;
+        }
+    }
+    changed
+}
+
 /// Formats a pause tag, for example `[silence:7s]` or `[silence:1.5s]`.
 pub fn tag(secs: f64) -> String {
     if secs >= 10.0 {
@@ -1177,6 +1191,38 @@ pub fn edited_words(sc: &Sidecar, edl: &Edl) -> Vec<Word> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn long_pauses_are_capped_once() {
+        let mut sc = Sidecar {
+            silences: vec![
+                Silence {
+                    start: 0.0,
+                    end: 4.0,
+                    keep: None,
+                },
+                Silence {
+                    start: 6.0,
+                    end: 6.4,
+                    keep: None,
+                },
+                Silence {
+                    start: 9.0,
+                    end: 12.0,
+                    keep: Some(2.5),
+                },
+            ],
+            ..Default::default()
+        };
+        assert_eq!(cap_pauses(&mut sc, 0.5), 1);
+        let kept: Vec<f64> = sc
+            .silences
+            .iter()
+            .map(|s| (kept(s) * 10.0).round() / 10.0)
+            .collect();
+        assert_eq!(kept, [0.5, 0.4, 2.5]);
+        assert_eq!(cap_pauses(&mut sc, 0.5), 0);
+    }
     use crate::transcribe::{number_words, render_text};
 
     /// `apply_text` on loose word and pause lists.

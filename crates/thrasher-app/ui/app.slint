@@ -2360,6 +2360,10 @@ export component AppWindow inherits Window {
     callback transcribed(bool, string);
     in-out property <bool> auto-transcribe;
     callback auto-transcribe-changed(bool);
+    // Longer pauses are shortened to this after each transcription.
+    in property <[string]> max-pauses;
+    in-out property <int> max-pause-index;
+    callback max-pause-changed(int);
     // The transcript editor's text as styled text, with the pause tags coloured.
     pure callback edit-markup(string) -> styled-text;
     // The selected part of the editor text (two byte offsets) without pause tags.
@@ -3448,6 +3452,18 @@ export component AppWindow inherits Window {
                                     label: "Auto transcribe";
                                     checked <=> root.auto-transcribe;
                                     toggled(on) => { root.auto-transcribe-changed(on); }
+                                }
+                            }
+                        }
+                        if root.can-transcribe: CardRow {
+                            label: "Max pause";
+                            VerticalLayout {
+                                alignment: center;
+                                Select {
+                                    label: "Max pause";
+                                    model: root.max-pauses;
+                                    current-index <=> root.max-pause-index;
+                                    selected(i) => { root.max-pause-changed(i); }
                                 }
                             }
                         }

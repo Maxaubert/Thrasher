@@ -293,6 +293,12 @@ struct App {
     queue: VecDeque<(std::path::PathBuf, String, bool)>,
     /// A question is being answered.
     asking: bool,
+    /// The clip the local AI is translating, and into which language.
+    ai_translation: Option<(std::path::PathBuf, String, String)>,
+    /// What the translate menu's search field holds.
+    lang_filter: String,
+    /// The highlighted clip has Whisper's English with times, for subtitles.
+    english_words: bool,
     /// New recordings to name with the AI once they are transcribed.
     to_name: Vec<(std::path::PathBuf, String)>,
     /// The clip the local AI is summarising, with its folder.
@@ -644,6 +650,157 @@ impl App {
         ui.set_hits(ModelRc::new(VecModel::from(hits)));
     }
 
+    /// Fills the translate menu for the highlighted clip: every language but its own,
+    /// matching the search, with whether it is made already and whether it can be.
+    fn show_langs(&self, ui: &AppWindow, sc: Option<&Sidecar>) {
+        let Some(sc) = sc.filter(|sc| !sc.words.is_empty()) else {
+            ui.set_langs(ModelRc::default());
+            return;
+        };
+        let whisper = thrasher_core::models::translator(&self.settings.model).is_some()
+            && transcription::worker_path().is_some();
+        let ai = ask::worker_path().is_some()
+            && thrasher_core::ai::find(thrasher_core::ai::TRANSLATOR)
+                .is_some_and(|m| m.is_downloaded());
+        let own = match sc.language.as_deref() {
+            Some("nb" | "nn") => "no",
+            Some(code) => code,
+            None => "",
+        };
+        let q = self.lang_filter.trim().to_lowercase();
+        let rows: Vec<LangRow> = thrasher_core::ai::LANGUAGES
+            .iter()
+            .filter(|l| l.code != own)
+            .filter(|l| {
+                q.is_empty()
+                    || l.name.to_lowercase().contains(&q)
+                    || l.native.to_lowercase().contains(&q)
+                    || l.code == q
+            })
+            .map(|l| {
+                let done = (l.code == "en" && !sc.translation.is_empty())
+                    || sc.translations.contains_key(l.code);
+                let ready = done || ai || (l.code == "en" && whisper);
+                // English can come from Whisper (with times); the rest need the AI.
+                let install = if ready {
+                    0
+                } else if l.code == "en" && ask::worker_path().is_none() {
+                    1
+                } else {
+                    2
+                };
+                LangRow {
+                    code: l.code.into(),
+                    name: l.name.into(),
+                    native: l.native.into(),
+                    ready,
+                    done,
+                    install,
+                }
+            })
+            .collect();
+        ui.set_langs(ModelRc::new(VecModel::from(rows)));
+    }
+
+    /// Shows the clip in `code`, translating it first when it has no such translation
+    /// yet: English with Whisper when a model can (it keeps word times), the rest with
+    /// the local AI.
+    fn choose_lang(&mut self, ui: &AppWindow, code: &str) {
+        let Some(c) = self.selected(ui).cloned() else {
+            return;
+        };
+        let path = self.library.sidecar_path(&c.name);
+        let Ok(sc) = Sidecar::load(&path) else {
+            return;
+        };
+        ui.set_shown_lang(code.into());
+        ui.set_show_summary(false);
+        let done =
+            (code == "en" && !sc.translation.is_empty()) || sc.translations.contains_key(code);
+        if done {
+            self.show_transcript(ui);
+            return;
+        }
+        if code == "en" && thrasher_core::models::translator(&self.settings.model).is_some() {
+            ui.set_translation("".into());
+            self.translate(ui, c.name.clone());
+            return;
+        }
+        let Some(worker) = ask::worker_path() else {
+            return;
+        };
+        let model = thrasher_core::ai::find(thrasher_core::ai::TRANSLATOR)
+            .filter(|m| m.is_downloaded())
+            .and_then(|m| m.path());
+        let Some(model) = model else {
+            ui.set_shown_lang("".into());
+            ui.set_status("Download the translation model first".into());
+            ui.invoke_visit(3);
+            return;
+        };
+        if self.ai_job.is_some() || self.asking || self.ai_translation.is_some() {
+            ui.set_shown_lang("".into());
+            ui.set_status("The AI is busy".into());
+            return;
+        }
+        let Some(language) = thrasher_core::ai::LANGUAGES.iter().find(|l| l.code == code) else {
+            return;
+        };
+        let Some(job) = thrasher_core::ai::translate_job(&sc, language, &model) else {
+            return;
+        };
+        crate::log!(
+            "translating {} into {code} with the AI in {} part(s)",
+            c.name,
+            job.steps.len()
+        );
+        self.ai_translation = Some((
+            self.library.dir().to_path_buf(),
+            c.name.clone(),
+            code.to_string(),
+        ));
+        ui.set_translation("".into());
+        let (weak, name, code) = (ui.as_weak(), c.name.clone(), code.to_string());
+        std::thread::spawn(move || {
+            let started = std::time::Instant::now();
+            let live = |text: String| {
+                let (weak, name, code) = (weak.clone(), name.clone(), code.clone());
+                move || {
+                    let _ = weak.upgrade_in_event_loop(move |ui| {
+                        let shown = ui
+                            .get_clips()
+                            .row_data(ui.get_selected() as usize)
+                            .is_some_and(|r| r.name == name)
+                            && ui.get_shown_lang() == code.as_str();
+                        if shown {
+                            ui.set_translation(text.into());
+                        }
+                    });
+                }
+            };
+            let result = ask::run(&worker, &job, &mut |_| {}, &mut |text| {
+                live(thrasher_core::ai::tidy(text))()
+            });
+            crate::log!(
+                "translation of {name} into {code} took {} ms: {:?}",
+                crate::log::ms(started),
+                result.as_ref().err()
+            );
+            let result = result.and_then(|text| {
+                let text = thrasher_core::ai::tidy(&text);
+                let mut sc = Sidecar::load(&path).map_err(|e| e.to_string())?;
+                sc.translations.insert(code.clone(), text.clone());
+                sc.save(&path).map_err(|e| e.to_string())?;
+                Ok(text)
+            });
+            let ok = result.is_ok();
+            let text = result.unwrap_or_else(|e| e);
+            let _ = weak.upgrade_in_event_loop(move |ui| {
+                ui.invoke_translated(ok, name.into(), code.into(), text.into())
+            });
+        });
+    }
+
     /// Fills the project dropdown: Inbox, then the projects by name.
     fn show_projects(&self, ui: &AppWindow) {
         let list = projects::list(&self.root).unwrap_or_default();
@@ -817,6 +974,8 @@ impl App {
         let Some(sc) = sidecar else {
             ui.set_transcript("".into());
             ui.set_translation("".into());
+            self.english_words = false;
+            self.show_langs(ui, None);
             ui.set_summary("".into());
             ui.set_summarising(false);
             ui.set_words(ModelRc::default());
@@ -830,7 +989,23 @@ impl App {
             .filter(|w| sc.in_trim(w.start))
             .map(|w| w.text.trim())
             .collect();
-        ui.set_translation(english.join(" ").into());
+        self.english_words = !english.is_empty();
+        self.show_langs(ui, Some(&sc));
+        let shown = ui.get_shown_lang().to_string();
+        let busy = self.ai_translation.as_ref().is_some_and(|(d, n, code)| {
+            d == self.library.dir()
+                && Some(n) == self.selected(ui).map(|c| &c.name)
+                && *code == shown
+        }) || (shown == "en" && ui.get_translating() && ui.get_transcribing());
+        let text = match shown.as_str() {
+            "" => String::new(),
+            "en" if !english.is_empty() => english.join(" "),
+            code => sc.translations.get(code).cloned().unwrap_or_default(),
+        };
+        if !shown.is_empty() && text.is_empty() && !busy {
+            ui.set_shown_lang("".into());
+        }
+        ui.set_translation(text.into());
         ui.set_summary(sc.summary.clone().unwrap_or_default().into());
         let name = self
             .selected(ui)
@@ -1469,6 +1644,9 @@ fn main() -> Result<(), slint::PlatformError> {
         search_docs: HashMap::new(),
         ai_job: None,
         asking: false,
+        ai_translation: None,
+        lang_filter: String::new(),
+        english_words: false,
         to_name: Vec::new(),
         live: VecDeque::new(),
         live_model,
@@ -2375,7 +2553,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let (app, weak) = (app.clone(), ui.as_weak());
         move |kind| {
             let ui = weak.unwrap();
-            let english = ui.get_show_english() && !ui.get_translation().is_empty();
+            let english = ui.get_shown_lang() == "en" && app.borrow().english_words;
             let (library, name, clean_voice, default_format, folder) = {
                 let a = app.borrow();
                 let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
@@ -2595,7 +2773,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     }
                     if ok && job.as_ref().is_some_and(|j| j.2) {
                         // Show what was just made.
-                        ui.set_show_english(true);
+                        ui.set_shown_lang("en".into());
                     }
                     job.is_some_and(|(d, _, _)| d == a.library.dir())
                 };
@@ -2610,15 +2788,46 @@ fn main() -> Result<(), slint::PlatformError> {
                 a.show_transcribing(&ui);
             }
         });
-        ui.on_translate_selected({
+        ui.on_choose_lang({
             let (app, weak) = (app.clone(), ui.as_weak());
-            move || {
+            move |code| app.borrow_mut().choose_lang(&weak.unwrap(), &code)
+        });
+        ui.on_lang_filter({
+            let (app, weak) = (app.clone(), ui.as_weak());
+            move |text| {
                 let ui = weak.unwrap();
                 let mut a = app.borrow_mut();
-                let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
-                    return;
-                };
-                a.translate(&ui, name);
+                a.lang_filter = text.to_string();
+                let sc = a
+                    .selected(&ui)
+                    .and_then(|c| Sidecar::load(&a.library.sidecar_path(&c.name)).ok());
+                a.show_langs(&ui, sc.as_ref());
+            }
+        });
+        ui.on_install_for({
+            let weak = ui.as_weak();
+            move |kind| {
+                let ui = weak.unwrap();
+                if kind == 1 {
+                    ui.set_status("Download a Whisper model to translate".into());
+                    ui.invoke_visit(4);
+                } else {
+                    ui.set_status("Download the translation model".into());
+                    ui.invoke_visit(3);
+                }
+            }
+        });
+        ui.on_translated({
+            let (app, weak) = (app.clone(), ui.as_weak());
+            move |ok, name, _code, text| {
+                let ui = weak.unwrap();
+                app.borrow_mut().ai_translation = None;
+                if ok {
+                    ui.set_status(format!("Translated {name}").into());
+                } else {
+                    ui.set_status(format!("Translation failed: {text}").into());
+                }
+                app.borrow_mut().show_transcript(&ui);
             }
         });
         ui.on_max_pause_changed({
@@ -2732,7 +2941,7 @@ fn main() -> Result<(), slint::PlatformError> {
             let Some(worker) = ask::worker_path() else {
                 return;
             };
-            if a.ai_job.is_some() || a.asking {
+            if a.ai_job.is_some() || a.asking || a.ai_translation.is_some() {
                 ui.set_status("The AI is busy".into());
                 return;
             }
@@ -2820,7 +3029,7 @@ fn main() -> Result<(), slint::PlatformError> {
             let Some(worker) = ask::worker_path() else {
                 return;
             };
-            if a.ai_job.is_some() || a.asking {
+            if a.ai_job.is_some() || a.asking || a.ai_translation.is_some() {
                 ui.set_status("The AI is busy".into());
                 return;
             }
@@ -2962,12 +3171,25 @@ fn main() -> Result<(), slint::PlatformError> {
 
     ui.on_download_ai({
         let (app, weak) = (app.clone(), ui.as_weak());
-        move || {
+        move |which| {
             let ui = weak.unwrap();
-            let Some(model) = thrasher_core::ai::find(&app.borrow().settings.ai_model) else {
+            let id = if which == 1 {
+                thrasher_core::ai::TRANSLATOR.to_string()
+            } else {
+                app.borrow().settings.ai_model.clone()
+            };
+            let Some(model) = thrasher_core::ai::find(&id) else {
                 return;
             };
-            ui.set_ai_download(0.0);
+            let summary_model = app.borrow().settings.ai_model.clone();
+            let set = move |ui: &AppWindow, p: f32| {
+                if which == 1 {
+                    ui.set_translator_download(p)
+                } else {
+                    ui.set_ai_download(p)
+                }
+            };
+            set(&ui, 0.0);
             let weak = ui.as_weak();
             std::thread::spawn(move || {
                 let cancel = std::sync::atomic::AtomicBool::new(false);
@@ -2979,18 +3201,18 @@ fn main() -> Result<(), slint::PlatformError> {
                         let p = done as f32 / total.max(1) as f32;
                         if p - last >= 0.005 {
                             last = p;
-                            let _ = w.upgrade_in_event_loop(move |ui| ui.set_ai_download(p));
+                            let _ = w.upgrade_in_event_loop(move |ui| set(&ui, p));
                         }
                     },
                     &cancel,
                 );
                 let _ = weak.upgrade_in_event_loop(move |ui| {
-                    ui.set_ai_download(-1.0);
+                    set(&ui, -1.0);
                     match result {
                         Ok(_) => ui.set_status(format!("Downloaded {}", model.name).into()),
                         Err(e) => ui.set_status(format!("{}: {e}", model.name).into()),
                     }
-                    show_ai_model(&ui, model.id);
+                    show_ai_model(&ui, &summary_model);
                 });
             });
         }
@@ -3439,6 +3661,9 @@ fn show_ai_model(ui: &AppWindow, id: &str) {
     let i = AI_MODELS.iter().position(|m| m.id == id).unwrap_or(0);
     ui.set_ai_model_index(i as i32);
     ui.set_ai_ready(AI_MODELS[i].is_downloaded());
+    ui.set_translator_ready(
+        thrasher_core::ai::find(thrasher_core::ai::TRANSLATOR).is_some_and(|m| m.is_downloaded()),
+    );
 }
 
 /// Shortens the pauses of freshly transcribed clips to `max` seconds (the Max pause

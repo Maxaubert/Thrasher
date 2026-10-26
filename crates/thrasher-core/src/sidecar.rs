@@ -31,6 +31,9 @@ pub struct Sidecar {
     /// A summary and to-do list written by the local AI (see `ai`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
+    /// Translations written by the local AI, by language code (plain text, no times).
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub translations: std::collections::BTreeMap<String, String>,
     /// The transcript translated into English by Whisper, with recording times.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub translation: Vec<Word>,

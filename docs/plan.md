@@ -272,6 +272,18 @@ Max picked these after a brainstorm. Each item is its own PR, built in this orde
      none downloaded, Translate says so and opens the Models page. The translation is
      stored as English words with times (sidecar `translation`), so every subtitle
      format works from it.
+   - **2026-10-26, language menu (Max):**
+     - **The menu:** the translate icon opens a searchable list of 16 languages
+       (`ai::LANGUAGES`), without the clip's own, with Original first.
+     - **Missing model:** a language whose model is missing is greyed out with an
+       Install link (the Whisper models, or the AI card in Settings).
+     - **How each is made:** English uses Whisper when a model can, so it keeps word
+       times. Every other language, and English without such a model, is translated
+       by the local AI in parts of 1,200 words and stored as text (sidecar
+       `translations`).
+     - **Which AI model:** the AI translation always uses Ministral 3B. In a test,
+       Borealis answered translation requests with the text unchanged, while Ministral
+       translated well, into Nordic languages, Polish and Ukrainian too.
 9. **Local AI** (research: `C:\Users\Admin\Documents\Claude\research\thrasher\2026-10-26-local-llm.md`).
    - **Summary:** "Summary" in the transcript card menu writes a short summary and a to-do
      list, saved in the sidecar.

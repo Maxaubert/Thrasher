@@ -44,6 +44,8 @@ pub struct Settings {
     pub window: Option<WindowPlace>,
     /// Name of the colour theme, one of `Theme.names` in the UI.
     pub theme: String,
+    /// The project new clips go into; empty is Inbox, the clip folder itself.
+    pub project: String,
 }
 
 impl Default for Settings {
@@ -67,6 +69,7 @@ impl Default for Settings {
             max_recording_minutes: 120,
             window: None,
             theme: "Ember".into(),
+            project: String::new(),
         }
     }
 }

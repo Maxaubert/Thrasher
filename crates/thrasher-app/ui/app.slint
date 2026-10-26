@@ -450,7 +450,7 @@ component ExportChoices inherits VerticalLayout {
     in property <bool> subtitles;
     in property <int> format: -1;
     callback choose(int);
-    ExportItem { text: "Full project"; tag: "folder"; clicked => { root.choose(7); } }
+    ExportItem { text: "All files"; tag: "folder"; clicked => { root.choose(7); } }
     Rectangle {
         height: 9px;
         Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
@@ -506,13 +506,18 @@ component MenuRow inherits Rectangle {
     in property <string> text;
     in property <bool> danger;
     in property <bool> more;
+    // The current choice: a check mark on the right.
+    in property <bool> checked;
+    in property <bool> enabled: true;
     callback clicked;
     height: 34px;
     border-radius: 6px;
-    background: t.has-hover ? Theme.hover : transparent;
+    background: t.has-hover && root.enabled ? Theme.hover : transparent;
+    opacity: root.enabled ? 1 : 0.4;
     accessible-role: button;
     accessible-label: text;
-    accessible-action-default => { root.clicked(); }
+    accessible-checked: root.checked;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
     HorizontalLayout {
         padding-left: 10px;
         padding-right: 8px;
@@ -531,10 +536,106 @@ component MenuRow inherits Rectangle {
             height: 13px;
             y: (parent.height - self.height) / 2;
         }
+        if root.checked: Icon {
+            name: "check";
+            tint: Theme.accent;
+            width: 13px;
+            height: 13px;
+            y: (parent.height - self.height) / 2;
+        }
     }
     t := TouchArea {
+        enabled: root.enabled;
         mouse-cursor: pointer;
         clicked => { root.clicked(); }
+    }
+}
+
+// The project dropdown over the clip list: pick a project, make a new one, or
+// rename, delete (when empty) or export the current one. Project 0 is Inbox.
+component ProjectPicker inherits Rectangle {
+    in property <[string]> projects;
+    in property <int> current;
+    in property <bool> enabled: true;
+    in property <bool> has-clips;
+    callback choose(int);
+    callback create();
+    callback rename();
+    callback delete();
+    callback export();
+    property <int> shown-rows: min(root.projects.length, 8);
+    width: row.preferred-width + 16px;
+    height: 30px;
+    vertical-stretch: 0;
+    horizontal-stretch: 0;
+    border-radius: 8px;
+    background: t.has-hover && root.enabled ? Theme.raised : transparent;
+    accessible-role: combobox;
+    accessible-label: "Project";
+    accessible-value: root.current >= 0 && root.current < root.projects.length ? root.projects[root.current] : "";
+    accessible-expandable: true;
+    accessible-action-default => { if (root.enabled) { popup.show(); } }
+    accessible-action-expand => { if (root.enabled) { popup.show(); } }
+    row := HorizontalLayout {
+        x: 8px;
+        spacing: 6px;
+        Text {
+            text: root.current >= 0 && root.current < root.projects.length ? root.projects[root.current] : "";
+            color: Theme.text;
+            font-size: 13px;
+            font-weight: 800;
+            vertical-alignment: center;
+        }
+        Icon {
+            name: "down";
+            tint: Theme.muted;
+            width: 12px;
+            height: 12px;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { popup.show(); }
+    }
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: 220px;
+        height: root.shown-rows * 34px + 9px + (root.current > 0 ? 4 : 2) * 34px + 10px;
+        close-policy: close-on-click-outside;
+        Rectangle {
+            background: Theme.raised;
+            border-radius: 10px;
+            border-width: 1px;
+            border-color: Theme.edge;
+            drop-shadow-blur: 20px;
+            drop-shadow-offset-y: 6px;
+            drop-shadow-color: #00000099;
+            VerticalLayout {
+                padding: 5px;
+                Flickable {
+                    height: root.shown-rows * 34px;
+                    content-height: root.projects.length * 34px;
+                    for p[i] in root.projects: MenuRow {
+                        y: i * 34px;
+                        width: parent.width;
+                        text: p;
+                        checked: i == root.current;
+                        clicked => { root.choose(i); popup.close(); }
+                    }
+                }
+                Rectangle {
+                    height: 9px;
+                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+                }
+                MenuRow { text: "New project"; clicked => { root.create(); popup.close(); } }
+                if root.current > 0: MenuRow { text: "Rename project"; clicked => { root.rename(); popup.close(); } }
+                MenuRow { text: "Export project"; enabled: root.has-clips; clicked => { root.export(); popup.close(); } }
+                if root.current > 0: MenuRow { text: "Delete project"; danger: true; enabled: !root.has-clips; clicked => { root.delete(); popup.close(); } }
+            }
+        }
     }
 }
 
@@ -562,8 +663,14 @@ component ClipItem inherits Rectangle {
     callback rename();
     callback export(int);
     callback delete();
+    // The projects, for "Move to", and the one this clip is in.
+    in property <[string]> projects;
+    in property <int> project;
+    callback move-to(int);
     // The menu shows the export formats instead of its main choices.
     property <bool> exporting;
+    // The menu shows the projects to move the clip to.
+    property <bool> moving;
     // Where the menu opens: under the dots, or where the right click was.
     property <length> menu-x;
     property <length> menu-y;
@@ -699,19 +806,23 @@ component ClipItem inherits Rectangle {
         root.menu-x = min(x, root.width - 210px);
         root.menu-y = y;
         root.exporting = false;
+        root.moving = false;
         menu.show();
     }
     function open-menu() {
         root.menu-x = root.width - 8px - 210px;
         root.menu-y = (root.height + 28px) / 2 + 4px;
         root.exporting = false;
+        root.moving = false;
         menu.show();
     }
     menu := PopupWindow {
         x: min(root.menu-x, root.width - self.width);
         y: root.menu-y;
         width: root.exporting ? 250px : 210px;
-        height: root.exporting ? 10px + 34px + ExportSize.audio + (root.item.transcribed ? ExportSize.transcript : 0) : 4 * 34px + 9px + 10px + (root.merge-count >= 2 ? 34px + 9px : 0);
+        height: root.exporting ? 10px + 34px + ExportSize.audio + (root.item.transcribed ? ExportSize.transcript : 0)
+            : root.moving ? 10px + 34px + min(root.projects.length, 8) * 34px
+            : (root.projects.length > 1 ? 5 : 4) * 34px + 9px + 10px + (root.merge-count >= 2 ? 34px + 9px : 0);
         close-policy: close-on-click-outside;
         Rectangle {
             background: Theme.raised;
@@ -721,7 +832,7 @@ component ClipItem inherits Rectangle {
             drop-shadow-blur: 20px;
             drop-shadow-offset-y: 6px;
             drop-shadow-color: #00000099;
-            if !root.exporting: VerticalLayout {
+            if !root.exporting && !root.moving: VerticalLayout {
                 padding: 5px;
                 if root.merge-count >= 2: MenuRow { text: "Merge " + root.merge-count + " clips"; clicked => { root.merge(); menu.close(); } }
                 if root.merge-count >= 2: Rectangle {
@@ -731,11 +842,28 @@ component ClipItem inherits Rectangle {
                 MenuRow { text: "Manage"; clicked => { root.open(); menu.close(); } }
                 MenuRow { text: "Rename"; clicked => { root.rename(); menu.close(); } }
                 MenuRow { text: "Export"; more: true; clicked => { root.exporting = true; } }
+                if root.projects.length > 1: MenuRow { text: "Move to"; more: true; clicked => { root.moving = true; } }
                 Rectangle {
                     height: 9px;
                     Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
                 }
                 MenuRow { text: "Delete"; danger: true; clicked => { root.delete(); menu.close(); } }
+            }
+            if root.moving: VerticalLayout {
+                padding: 5px;
+                MenuRow { text: "‹  Move to"; clicked => { root.moving = false; } }
+                Flickable {
+                    height: min(root.projects.length, 8) * 34px;
+                    content-height: root.projects.length * 34px;
+                    for p[i] in root.projects: MenuRow {
+                        y: i * 34px;
+                        width: parent.width;
+                        text: p;
+                        checked: i == root.project;
+                        enabled: i != root.project;
+                        clicked => { root.move-to(i); menu.close(); }
+                    }
+                }
             }
             if root.exporting: VerticalLayout {
                 padding: 5px;
@@ -2122,6 +2250,17 @@ export component AppWindow inherits Window {
     in-out property <bool> renaming;
     // A question in front of the page: 1 rename a clip, 2 confirm deleting it; which
     // clip, and the name being typed.
+    // The projects (0 is Inbox) and the one shown.
+    in property <[string]> projects: ["Inbox"];
+    in property <int> project;
+    callback choose-project(int);
+    callback create-project(string);
+    callback rename-project(string);
+    callback delete-project();
+    callback export-project();
+    // Clip i moves to project p.
+    callback move-clip(int, int);
+    // 1 rename clip, 2 delete clip, 3 unsaved changes, 4 new project, 5 rename project.
     in-out property <int> dialog;
     in-out property <int> dialog-clip;
     in-out property <string> dialog-text;
@@ -2329,7 +2468,13 @@ export component AppWindow inherits Window {
     function confirm-dialog() {
         let kind = root.dialog;
         root.dialog = 0;
-        root.selected = root.dialog-clip;
+        if (kind == 4) {
+            root.create-project(root.dialog-text);
+        } else if (kind == 5) {
+            root.rename-project(root.dialog-text);
+        } else {
+            root.selected = root.dialog-clip;
+        }
         if (kind == 1) {
             root.rename-selected(root.dialog-text);
         } else if (kind == 2) {
@@ -2583,12 +2728,20 @@ export component AppWindow inherits Window {
                     padding-top: root.wide ? 6px : 18px;
                     padding-bottom: 8px;
                     spacing: 14px;
-                    Text {
-                        text: "Clips";
-                        color: Theme.text;
-                        font-size: 13px;
-                        font-weight: 800;
-                        vertical-alignment: center;
+                    VerticalLayout {
+                        alignment: center;
+                        ProjectPicker {
+                            x: -8px;
+                            projects: root.projects;
+                            current: root.project;
+                            enabled: !root.recording;
+                            has-clips: root.clips.length > 0;
+                            choose(i) => { root.choose-project(i); keys.focus(); }
+                            create => { root.dialog-text = ""; root.dialog = 4; }
+                            rename => { root.dialog-text = root.projects[root.project]; root.dialog = 5; }
+                            delete => { root.delete-project(); keys.focus(); }
+                            export => { root.export-project(); keys.focus(); }
+                        }
                     }
                     Rectangle { horizontal-stretch: 1; }
                     // Several clips picked: offer to merge them.
@@ -2651,6 +2804,9 @@ export component AppWindow inherits Window {
                             rename => { root.ask-rename(i); }
                             export(kind) => { root.selected = i; root.export-as(kind); keys.focus(); }
                             delete => { root.ask-delete(i); }
+                            projects: root.projects;
+                            project: root.project;
+                            move-to(p) => { root.move-clip(i, p); keys.focus(); }
                         }
                     }
                     }
@@ -3719,7 +3875,7 @@ export component AppWindow inherits Window {
     init => { keys.focus(); Win.height = self.height; }
     changed height => { Win.height = self.height; }
 
-    if root.dialog != 0 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length: Rectangle {
+    if root.dialog >= 4 || (root.dialog != 0 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length): Rectangle {
         background: #000000a6;
         // A click outside the box cancels.
         TouchArea { clicked => { root.close-dialog(); } }
@@ -3740,7 +3896,8 @@ export component AppWindow inherits Window {
                 padding: 20px;
                 spacing: 14px;
                 Text {
-                    text: root.dialog == 1 ? "Rename clip" : root.dialog == 3 ? "Unsaved changes" : "Delete " + root.clips[root.dialog-clip].name + "?";
+                    text: root.dialog == 1 ? "Rename clip" : root.dialog == 3 ? "Unsaved changes" : root.dialog == 4 ? "New project"
+                        : root.dialog == 5 ? "Rename project" : "Delete " + root.clips[root.dialog-clip].name + "?";
                     color: Theme.text;
                     font-size: 17px;
                     font-weight: 800;
@@ -3758,8 +3915,8 @@ export component AppWindow inherits Window {
                     font-size: 13px;
                     wrap: word-wrap;
                 }
-                if root.dialog == 1: TextField {
-                    label: "New name";
+                if root.dialog == 1 || root.dialog >= 4: TextField {
+                    label: root.dialog == 4 ? "Project name" : "New name";
                     text <=> root.dialog-text;
                     init => { self.grab(); }
                     accepted => { root.confirm-dialog(); }
@@ -3777,8 +3934,8 @@ export component AppWindow inherits Window {
                     }
                     Btn {
                         primary: true;
-                        text: root.dialog == 1 ? "Rename" : root.dialog == 3 ? "Save" : "Delete";
-                        enabled: root.dialog != 1 || root.dialog-text != "";
+                        text: root.dialog == 1 || root.dialog == 5 ? "Rename" : root.dialog == 3 ? "Save" : root.dialog == 4 ? "Create" : "Delete";
+                        enabled: (root.dialog != 1 && root.dialog < 4) || root.dialog-text != "";
                         clicked => { root.confirm-dialog(); }
                     }
                 }

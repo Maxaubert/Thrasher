@@ -2371,6 +2371,11 @@ export component AppWindow inherits Window {
     in-out property <bool> show-marks: true;
     in-out property <bool> looping;
     in property <[float]> detail-wave;
+    // The kept part of the highlighted clip, as parts of its length; the handles on
+    // the player waveform move them.
+    in-out property <float> trim-start: 0;
+    in-out property <float> trim-end: 1;
+    callback trim-changed(float, float);
     in property <string> detail-meta;
 
     in-out property <string> status;
@@ -3250,22 +3255,90 @@ export component AppWindow inherits Window {
                         spacing: 12px;
                         wave-box := Rectangle {
                             height: root.narrow ? 36px : 64px;
-                            Wave {
-                                values: root.detail-wave;
-                                progress: root.active-clip == root.selected ? root.play-fraction : 0;
-                                rest: Theme.wave-dim;
+                            // The handle being dragged: 1 start, 2 end, 0 none.
+                            property <int> grab;
+                            property <bool> dragged;
+                            // The drawing sits 8px in from each side, so a handle at an end
+                            // still has room to be grabbed.
+                            property <length> inner-w: self.width - 16px;
+                            property <length> start-x: root.trim-start * self.inner-w;
+                            property <length> end-x: root.trim-end * self.inner-w;
+                            Rectangle {
+                                x: 8px;
+                                width: parent.width - 16px;
+                                Wave {
+                                    values: root.detail-wave;
+                                    progress: root.active-clip == root.selected ? root.play-fraction : 0;
+                                    rest: Theme.wave-dim;
+                                }
+                                // Trimmed off: dimmed.
+                                Rectangle {
+                                    x: 0;
+                                    width: wave-box.start-x;
+                                    background: Theme.card.with-alpha(0.75);
+                                }
+                                Rectangle {
+                                    x: wave-box.end-x;
+                                    width: parent.width - wave-box.end-x;
+                                    background: Theme.card.with-alpha(0.75);
+                                }
+                                if root.active-clip == root.selected: Rectangle {
+                                    x: clamp(root.play-fraction, 0, 1) * (parent.width - 2px);
+                                    y: -4px;
+                                    width: 2px;
+                                    height: parent.height + 8px;
+                                    border-radius: 1px;
+                                    background: Theme.text;
+                                }
+                                // The handles: a bar with a grip at each end of the kept part.
+                                for h[k] in [0, 1]: Rectangle {
+                                    property <bool> on: k == 0 ? root.trim-start > 0.0005 : root.trim-end < 0.9995;
+                                    property <bool> hot: wave-box.grab == k + 1 || (wave-touch.has-hover && abs(wave-touch.at - (k == 0 ? wave-box.start-x : wave-box.end-x)) <= 8px);
+                                    x: (k == 0 ? wave-box.start-x : wave-box.end-x) - 1.5px;
+                                    y: -6px;
+                                    width: 3px;
+                                    height: parent.height + 12px;
+                                    border-radius: 1.5px;
+                                    background: self.on || self.hot ? Theme.accent : Theme.muted.with-alpha(0.5);
+                                    Rectangle {
+                                        x: -3px;
+                                        y: (parent.height - self.height) / 2;
+                                        width: 9px;
+                                        height: 20px;
+                                        border-radius: 4.5px;
+                                        background: parent.background;
+                                    }
+                                }
                             }
-                            if root.active-clip == root.selected: Rectangle {
-                                x: clamp(root.play-fraction, 0, 1) * (parent.width - 2px);
-                                y: -4px;
-                                width: 2px;
-                                height: parent.height + 8px;
-                                border-radius: 1px;
-                                background: Theme.text;
-                            }
-                            TouchArea {
-                                mouse-cursor: pointer;
-                                clicked => { root.seek-fraction(self.mouse-x / self.width); keys.focus(); }
+                            wave-touch := TouchArea {
+                                property <length> at: self.mouse-x - 8px;
+                                mouse-cursor: abs(self.at - wave-box.start-x) <= 8px || abs(self.at - wave-box.end-x) <= 8px
+                                    ? MouseCursor.ew-resize : MouseCursor.pointer;
+                                pointer-event(e) => {
+                                    if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                                        wave-box.dragged = false;
+                                        wave-box.grab = abs(self.at - wave-box.start-x) <= 8px ? 1
+                                            : abs(self.at - wave-box.end-x) <= 8px ? 2 : 0;
+                                    }
+                                    if (e.kind == PointerEventKind.up && wave-box.grab != 0) {
+                                        if (wave-box.dragged) { root.trim-changed(root.trim-start, root.trim-end); }
+                                        wave-box.grab = 0;
+                                    }
+                                }
+                                moved => {
+                                    if (wave-box.grab == 1) {
+                                        root.trim-start = clamp(self.at / wave-box.inner-w, 0, root.trim-end - 0.01);
+                                        wave-box.dragged = true;
+                                    } else if (wave-box.grab == 2) {
+                                        root.trim-end = clamp(self.at / wave-box.inner-w, root.trim-start + 0.01, 1);
+                                        wave-box.dragged = true;
+                                    }
+                                }
+                                clicked => {
+                                    // Runs before the release above; `dragged` is reset on the next press.
+                                    if (!wave-box.dragged) { root.seek-fraction(clamp(self.at / wave-box.inner-w, 0, 1)); }
+                                    keys.focus();
+                                }
                             }
                         }
                         if !root.narrow: HorizontalLayout {

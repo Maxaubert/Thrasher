@@ -28,8 +28,32 @@ pub struct Sidecar {
     /// The clips a merged clip was made of, in order (see `merge`). Empty otherwise.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub parts: Vec<Part>,
+    /// The part of the recording that is kept, set with the handles on the waveform.
+    /// The audio outside it stays in the file. None keeps everything.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trim: Option<Trim>,
     #[serde(default)]
     pub thrasher: Meta,
+}
+
+/// Start and end of the kept part, in recording seconds.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Trim {
+    pub start: f64,
+    pub end: f64,
+}
+
+impl Sidecar {
+    /// The kept part of the recording: the trim, or all of it.
+    pub fn kept_span(&self) -> (f64, f64) {
+        self.trim.map_or((0.0, self.duration), |t| (t.start, t.end))
+    }
+
+    /// True when time `t` lies in the kept part (always, with no trim).
+    pub fn in_trim(&self, t: f64) -> bool {
+        self.trim
+            .is_none_or(|tr| t >= tr.start - 1e-6 && t <= tr.end + 1e-6)
+    }
 }
 
 /// One of the clips a merged clip was made of, and where it sits in the recording.

@@ -415,7 +415,8 @@ fn voice_lengths(library: &Library, name: &str, sc: &Sidecar) -> HashMap<String,
 fn edited_secs(library: &Library, c: &Clip, sc: &Sidecar) -> f64 {
     let edited = sc.words.iter().any(|w| w.cut)
         || sc.silences.iter().any(|s| s.keep.is_some())
-        || !sc.inserts.is_empty();
+        || !sc.inserts.is_empty()
+        || sc.trim.is_some();
     if !edited || (sc.duration - c.duration).abs() >= 0.5 {
         return c.duration;
     }
@@ -727,8 +728,24 @@ impl App {
     }
 
     /// Shows the selected clip on the clip page: details, waveform and transcript.
+    /// Puts the trim handles where the highlighted clip's trim is.
+    fn show_trim(&self, ui: &AppWindow) {
+        let (mut start, mut end) = (0.0, 1.0);
+        if let Some(c) = self.selected(ui)
+            && let Ok(sc) = Sidecar::load(&self.library.sidecar_path(&c.name))
+            && let Some(t) = sc.trim
+            && c.duration > 0.0
+        {
+            start = (t.start / c.duration).clamp(0.0, 1.0) as f32;
+            end = (t.end / c.duration).clamp(0.0, 1.0) as f32;
+        }
+        ui.set_trim_start(start);
+        ui.set_trim_end(end);
+    }
+
     fn show_transcript(&mut self, ui: &AppWindow) {
         self.show_transcribing(ui);
+        self.show_trim(ui);
         self.update_length(ui);
         self.show_parts(ui);
         if let Some(c) = self.selected(ui) {
@@ -1633,6 +1650,42 @@ fn main() -> Result<(), slint::PlatformError> {
             if a.toggle(&ui, &name) {
                 ensure();
             }
+        }
+    });
+
+    ui.on_trim_changed({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |start, end| {
+            let ui = weak.unwrap();
+            let mut a = app.borrow_mut();
+            let Some(c) = a.selected(&ui).cloned() else {
+                return;
+            };
+            let path = a.library.sidecar_path(&c.name);
+            // A clip without a sidecar gets one, so the trim has somewhere to live.
+            let mut sc = Sidecar::load(&path).unwrap_or_else(|_| Sidecar {
+                file: format!("{}.wav", c.name),
+                duration: c.duration,
+                ..Default::default()
+            });
+            let (s, e) = (start.clamp(0.0, 1.0) as f64, end.clamp(0.0, 1.0) as f64);
+            sc.trim = (s > 0.0005 || e < 0.9995).then_some(thrasher_core::sidecar::Trim {
+                start: s * c.duration,
+                end: e * c.duration,
+            });
+            if let Err(e) = sc.save(&path) {
+                ui.set_status(format!("Cannot save the trim: {e}").into());
+                return;
+            }
+            crate::log!("trim of {} set to {:?}", c.name, sc.trim);
+            // The edited audio changed; it is read again on the next play.
+            if a.active.as_deref() == Some(c.name.as_str()) {
+                a.stop(&ui);
+            }
+            let sel = ui.get_selected();
+            a.refresh_clips(&ui);
+            ui.set_selected(sel);
+            a.show_transcript(&ui);
         }
     });
 

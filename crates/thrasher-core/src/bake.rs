@@ -47,6 +47,8 @@ pub fn bake(library: &Library, name: &str) -> io::Result<()> {
         words,
         inserts: Vec::new(),
         duration,
+        // The new audio is already trimmed.
+        trim: None,
         ..sc
     };
     let device = baked.thrasher.tracks.first().and_then(|t| t.device.clone());

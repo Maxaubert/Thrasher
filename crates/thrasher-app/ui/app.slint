@@ -244,6 +244,12 @@ component Icon inherits Path {
         : name == "updown" ? "M 8 10 L 12 6 L 16 10 M 8 14 L 12 18 L 16 14"
         : name == "folder" ? "M 3 7 L 9 7 L 11 9 L 21 9 L 21 19 L 3 19 Z"
         : name == "search" ? "M 18 11 A 7 7 0 1 1 4 11 A 7 7 0 1 1 18 11 Z M 20 20 L 16 16"
+        // The side rail's icons, after Lucide.
+        : name == "cog" ? "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M15 12a3 3 0 1 1-6 0a3 3 0 1 1 6 0z"
+        : name == "pushpin" ? "M12 17v5 M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"
+        : name == "pip" ? "M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4 M14 13h6a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z"
+        : name == "file-plus" ? "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z M14 2v4a2 2 0 0 0 2 2h4 M12 12v6 M9 15h6"
+        : name == "list" ? "M8 6h13 M8 12h13 M8 18h13 M3 6h1 M3 12h1 M3 18h1"
         : "";
 }
 
@@ -918,6 +924,48 @@ component WinBtn inherits Rectangle {
 
 // The window's own title bar: drag it to move the window. Whatever is put inside goes
 // on the left; minimise and close are always on the right.
+component RailBtn inherits Rectangle {
+    in property <string> icon;
+    in property <string> label;
+    in property <string> tip: label;
+    // The page you are on: a raised square and an accent bar.
+    in property <bool> current;
+    // A switch that is on: the icon turns the accent colour.
+    in property <bool> on;
+    in property <bool> enabled: true;
+    callback clicked;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: root.current || (t.has-hover && root.enabled) ? Theme.raised : transparent;
+    opacity: root.enabled ? 1 : 0.4;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-checked: root.on;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    if root.current: Rectangle {
+        x: -7px;
+        y: 9px;
+        width: 3px;
+        height: parent.height - 18px;
+        border-radius: 1.5px;
+        background: Theme.accent;
+    }
+    Icon {
+        name: root.icon;
+        width: 17px;
+        height: 17px;
+        tint: root.on ? Theme.accent : root.current || t.has-hover ? Theme.text : Theme.dim;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
 component TitleBar inherits Rectangle {
     in property <length> left-padding: 8px;
     // Pushes the content to the left; off when the content stretches itself.
@@ -2463,163 +2511,161 @@ export component AppWindow inherits Window {
                     vertical-alignment: center;
                     horizontal-stretch: 1;
                 }
-                // Round outlines; pin fills while the window stays on top.
-                HorizontalLayout {
-                    horizontal-stretch: 0;
-                    spacing: 6px;
+            }
+
+            // The side rail: clips and import at the top, then keep on top, the widget
+            // and settings at the bottom.
+            HorizontalLayout {
+                vertical-stretch: 1;
+                Rectangle {
+                    width: 52px;
                     VerticalLayout {
-                        alignment: center;
-                        IconBtn { size: 28px; round: true; outlined: true; icon-size: 12px; icon: "gear"; label: "Settings"; clicked => { root.go(3); } }
+                        padding-top: 8px;
+                        padding-bottom: 10px;
+                        spacing: 4px;
+                        HorizontalLayout { alignment: center; RailBtn { icon: "list"; label: "Clips"; current: true; clicked => { keys.focus(); } } }
+                        HorizontalLayout {
+                            alignment: center;
+                            RailBtn {
+                                icon: "file-plus";
+                                label: "Import audio files";
+                                tip: "Import audio";
+                                enabled: !root.recording;
+                                clicked => { root.import-files(); }
+                            }
+                        }
+                        Rectangle { vertical-stretch: 1; }
+                        HorizontalLayout {
+                            alignment: center;
+                            RailBtn {
+                                icon: "pushpin";
+                                label: "Keep on top";
+                                on: root.pinned;
+                                clicked => { root.pinned = !root.pinned; root.pinned-changed(root.pinned); }
+                            }
+                        }
+                        HorizontalLayout { alignment: center; RailBtn { icon: "pip"; label: "Small widget"; clicked => { root.compact-changed(true); } } }
+                        HorizontalLayout { alignment: center; RailBtn { icon: "cog"; label: "Settings"; clicked => { root.go(3); } } }
                     }
-                    VerticalLayout {
-                        alignment: center;
-                        IconBtn {
-                            size: 28px;
-                            round: true;
-                            outlined: !root.pinned;
-                            filled: root.pinned;
-                            icon-size: 12px;
-                            icon: "pin";
-                            label: "Keep on top";
-                            clicked => { root.pinned = !root.pinned; root.pinned-changed(root.pinned); }
+                    Rectangle { x: parent.width - 1px; width: 1px; background: Theme.line; }
+                }
+                body := FlexboxLayout {
+                    // Wide: the recorder beside the list. Otherwise above it.
+                    flex-direction: root.wide ? FlexboxLayoutDirection.row : FlexboxLayoutDirection.column;
+                    flex-wrap: no-wrap;
+                    alignment: stretch;
+                    cross-axis-alignment: stretch;
+                    vertical-stretch: 1;
+                    spacing: root.wide ? 20px : 0;
+                    padding-left: root.wide ? 18px : 0;
+                    padding-right: root.wide ? 6px : 0;
+                    padding-bottom: root.wide ? 16px : 0;
+                    HorizontalLayout {
+                        horizontal-stretch: 0;
+                        vertical-stretch: 0;
+                        min-width: root.wide ? 380px : 0;
+                        max-width: root.wide ? 380px : 100000px;
+                        padding-left: root.wide ? 0 : root.narrow ? 12px : 16px;
+                        padding-right: root.wide ? 0 : root.narrow ? 12px : 16px;
+                        padding-top: root.wide ? 4px : 0;
+                        RecorderCard {
+                            mode: root.wide ? 2 : root.tall && !root.narrow ? 1 : 0;
+                            recording: root.recording;
+                            paused: root.paused;
+                            device-label: root.device-label;
+                            elapsed: root.elapsed;
+                            elapsed-tenth: root.elapsed-tenth;
+                            live: root.live;
+                            record => { root.toggle-record(); keys.focus(); }
+                            pause => { root.toggle-pause(); keys.focus(); }
                         }
                     }
                     VerticalLayout {
-                        alignment: center;
-                        IconBtn { size: 28px; round: true; outlined: true; icon-size: 12px; icon: "widget"; label: "Small widget"; clicked => { root.compact-changed(true); } }
-                    }
-                }
-                Rectangle { width: 8px; }
-            }
+                        horizontal-stretch: 1;
+                        vertical-stretch: 1;
 
-            body := FlexboxLayout {
-                // Wide: the recorder beside the list. Otherwise above it.
-                flex-direction: root.wide ? FlexboxLayoutDirection.row : FlexboxLayoutDirection.column;
-                flex-wrap: no-wrap;
-                alignment: stretch;
-                cross-axis-alignment: stretch;
-                vertical-stretch: 1;
-                spacing: root.wide ? 20px : 0;
-                padding-left: root.wide ? 18px : 0;
-                padding-right: root.wide ? 6px : 0;
-                padding-bottom: root.wide ? 16px : 0;
+
                 HorizontalLayout {
-                    horizontal-stretch: 0;
-                    vertical-stretch: 0;
-                    min-width: root.wide ? 380px : 0;
-                    max-width: root.wide ? 380px : 100000px;
-                    padding-left: root.wide ? 0 : root.narrow ? 12px : 16px;
-                    padding-right: root.wide ? 0 : root.narrow ? 12px : 16px;
-                    padding-top: root.wide ? 4px : 0;
-                    RecorderCard {
-                        mode: root.wide ? 2 : root.tall && !root.narrow ? 1 : 0;
-                        recording: root.recording;
-                        paused: root.paused;
-                        device-label: root.device-label;
-                        elapsed: root.elapsed;
-                        elapsed-tenth: root.elapsed-tenth;
-                        live: root.live;
-                        record => { root.toggle-record(); keys.focus(); }
-                        pause => { root.toggle-pause(); keys.focus(); }
+                    padding-left: root.wide ? 10px : root.narrow ? 18px : 22px;
+                    padding-right: root.wide ? 14px : root.narrow ? 18px : 22px;
+                    padding-top: root.wide ? 6px : 18px;
+                    padding-bottom: 8px;
+                    spacing: 14px;
+                    Text {
+                        text: "Clips";
+                        color: Theme.text;
+                        font-size: 13px;
+                        font-weight: 800;
+                        vertical-alignment: center;
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    // Several clips picked: offer to merge them.
+                    if root.picked-count >= 2: Text {
+                        text: root.picked-count + " picked";
+                        color: Theme.accent;
+                        font-size: 13px;
+                        font-weight: 600;
+                        vertical-alignment: center;
+                    }
+                    if root.picked-count >= 2: VerticalLayout {
+                        alignment: center;
+                        Btn {
+                            text: "Merge";
+                            primary: true;
+                            height: 28px;
+                            font-size: 12px;
+                            clicked => { root.start-merge(); root.go(5); }
+                        }
+                    }
+                    if root.picked-count >= 2: VerticalLayout {
+                        alignment: center;
+                        Btn {
+                            text: "Clear";
+                            height: 28px;
+                            font-size: 12px;
+                            clicked => { root.pick(root.selected, false, false); keys.focus(); }
+                        }
                     }
                 }
-                VerticalLayout {
-                    horizontal-stretch: 1;
+
+                Scroller {
                     vertical-stretch: 1;
-
-
-            HorizontalLayout {
-                padding-left: root.wide ? 10px : root.narrow ? 18px : 22px;
-                padding-right: root.wide ? 14px : root.narrow ? 18px : 22px;
-                padding-top: root.wide ? 6px : 18px;
-                padding-bottom: 8px;
-                spacing: 14px;
-                Text {
-                    text: "Clips";
-                    color: Theme.text;
-                    font-size: 13px;
-                    font-weight: 800;
-                    vertical-alignment: center;
-                }
-                Rectangle { horizontal-stretch: 1; }
-                VerticalLayout {
-                    alignment: center;
-                    IconBtn {
-                        icon: "import";
-                        label: "Import audio files";
-                        tip: "Import audio";
-                        icon-size: 14px;
-                        size: 28px;
-                        enabled: !root.recording;
-                        clicked => { root.import-files(); }
+                    content-y <=> root.list-y;
+                    property <int> count: root.clips.length;
+                    init => { root.list-height = self.visible-height; root.clamp-list(); }
+                    changed visible-height => { root.list-height = self.visible-height; root.clamp-list(); }
+                    changed count => { root.clamp-list(); }
+                    VerticalLayout {
+                    alignment: start;
+                    for clip[i] in root.clips: HorizontalLayout {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        padding-bottom: 2px;
+                        ClipItem {
+                            item: clip;
+                            wave-width: root.narrow ? 0 : root.wide ? 160px : 84px;
+                            selected: i == root.selected;
+                            picked: root.picked[i];
+                            merge-count: root.picked[i] ? root.picked-count : 0;
+                            active: i == root.active-clip;
+                            playing: root.playing;
+                            progress: root.play-fraction;
+                            play => { root.play-clip(i); keys.focus(); }
+                            cue(f) => { root.cue-clip(i, f); keys.focus(); }
+                            play-at(f) => { root.play-clip-at(i, f); keys.focus(); }
+                            select(ctrl, shift) => { root.pick(i, ctrl, shift); keys.focus(); }
+                            merge => { root.start-merge(); root.go(5); }
+                            open => { root.open-clip(i); root.go(1); }
+                            rename => { root.ask-rename(i); }
+                            export(kind) => { root.selected = i; root.export-as(kind); keys.focus(); }
+                            delete => { root.ask-delete(i); }
+                        }
+                    }
                     }
                 }
-                // Several clips picked: offer to merge them.
-                if root.picked-count >= 2: Text {
-                    text: root.picked-count + " picked";
-                    color: Theme.accent;
-                    font-size: 13px;
-                    font-weight: 600;
-                    vertical-alignment: center;
-                }
-                if root.picked-count >= 2: VerticalLayout {
-                    alignment: center;
-                    Btn {
-                        text: "Merge";
-                        primary: true;
-                        height: 28px;
-                        font-size: 12px;
-                        clicked => { root.start-merge(); root.go(5); }
-                    }
-                }
-                if root.picked-count >= 2: VerticalLayout {
-                    alignment: center;
-                    Btn {
-                        text: "Clear";
-                        height: 28px;
-                        font-size: 12px;
-                        clicked => { root.pick(root.selected, false, false); keys.focus(); }
-                    }
-                }
-            }
-
-            Scroller {
-                vertical-stretch: 1;
-                content-y <=> root.list-y;
-                property <int> count: root.clips.length;
-                init => { root.list-height = self.visible-height; root.clamp-list(); }
-                changed visible-height => { root.list-height = self.visible-height; root.clamp-list(); }
-                changed count => { root.clamp-list(); }
-                VerticalLayout {
-                alignment: start;
-                for clip[i] in root.clips: HorizontalLayout {
-                    padding-left: 12px;
-                    padding-right: 12px;
-                    padding-bottom: 2px;
-                    ClipItem {
-                        item: clip;
-                        wave-width: root.narrow ? 0 : root.wide ? 160px : 84px;
-                        selected: i == root.selected;
-                        picked: root.picked[i];
-                        merge-count: root.picked[i] ? root.picked-count : 0;
-                        active: i == root.active-clip;
-                        playing: root.playing;
-                        progress: root.play-fraction;
-                        play => { root.play-clip(i); keys.focus(); }
-                        cue(f) => { root.cue-clip(i, f); keys.focus(); }
-                        play-at(f) => { root.play-clip-at(i, f); keys.focus(); }
-                        select(ctrl, shift) => { root.pick(i, ctrl, shift); keys.focus(); }
-                        merge => { root.start-merge(); root.go(5); }
-                        open => { root.open-clip(i); root.go(1); }
-                        rename => { root.ask-rename(i); }
-                        export(kind) => { root.selected = i; root.export-as(kind); keys.focus(); }
-                        delete => { root.ask-delete(i); }
-                    }
-                }
-                }
-            }
 
 
+                    }
                 }
             }
 

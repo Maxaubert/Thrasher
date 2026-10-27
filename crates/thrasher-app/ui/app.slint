@@ -557,40 +557,8 @@ component ExportChoices inherits VerticalLayout {
 
 // Height of ExportChoices.
 // The window's height, so a dropdown can open upwards when there is no room below.
-// Where the scrolling lists end, in window coordinates, so their rows can fade out
-// as they slide past an edge. `card-*` is the page with settings cards (settings, a
-// clip, merge), `list-*` the clip list; a Scroller with `fade` set fills them in.
-global Fade {
-    in-out property <length> card-top: -100000px;
-    in-out property <length> card-bottom: 100000px;
-    in-out property <length> list-top: -100000px;
-    in-out property <length> list-bottom: 100000px;
-    // How deep the fade at each edge is: up to `depth`, less near the start or end of a
-    // list so nothing fades before it has scrolled.
-    in-out property <length> card-top-fade;
-    in-out property <length> card-bottom-fade;
-    in-out property <length> list-top-fade;
-    in-out property <length> list-bottom-fade;
-    out property <length> depth: 80px;
-    // How visible a row at `y` with height `h` is: it fades out as its middle nears an
-    // edge. A tall block (a whole list) stays put, it would only go half see-through.
-    pure function amount(y: length, h: length, top: length, bottom: length, top-fade: length, bottom-fade: length) -> float {
-        if (h <= 0 || h > 120px) {
-            return 1;
-        }
-        return min(
-            top-fade > 0 ? clamp((y + h / 2 - top) / top-fade, 0, 1) : 1,
-            bottom-fade > 0 ? clamp((bottom - y - h / 2) / bottom-fade, 0, 1) : 1);
-    }
-    pure public function card(y: length, h: length) -> float {
-        return self.amount(y, h, self.card-top, self.card-bottom, self.card-top-fade, self.card-bottom-fade);
-    }
-    pure public function list(y: length, h: length) -> float {
-        return self.amount(y, h, self.list-top, self.list-bottom, self.list-top-fade, self.list-bottom-fade);
-    }
-}
-
 global Win {
+    in-out property <length> width: 520px;
     in-out property <length> height: 600px;
 }
 
@@ -1074,66 +1042,6 @@ component BackLink inherits Rectangle {
     }
 }
 
-// A scrolling area with a thin bar that only shows when there is more to see. It
-// widens under the mouse and can be dragged.
-component Scroller inherits Rectangle {
-    out property <length> visible-width <=> fl.width;
-    out property <length> visible-height <=> fl.height;
-    in-out property <length> content-height <=> fl.content-height;
-    in-out property <length> content-y <=> fl.content-y;
-    callback scrolled <=> fl.flicked;
-    // 1: its rows are settings cards, 2: the clip list (see Fade).
-    in property <int> fade;
-    property <length> abs-y: self.absolute-position.y;
-    property <length> scroll-y: fl.content-y;
-    function publish() {
-        if (root.fade == 1) {
-            Fade.card-top = root.abs-y;
-            Fade.card-bottom = root.abs-y + root.height;
-            Fade.card-top-fade = clamp(-fl.content-y, 0, Fade.depth);
-            Fade.card-bottom-fade = clamp(root.range + fl.content-y, 0, Fade.depth);
-        } else if (root.fade == 2) {
-            Fade.list-top = root.abs-y;
-            Fade.list-bottom = root.abs-y + root.height;
-            Fade.list-top-fade = clamp(-fl.content-y, 0, Fade.depth);
-            Fade.list-bottom-fade = clamp(root.range + fl.content-y, 0, Fade.depth);
-        }
-    }
-    init => { root.publish(); }
-    changed abs-y => { root.publish(); }
-    changed height => { root.publish(); }
-    changed scroll-y => { root.publish(); }
-    changed range => { root.publish(); }
-    property <length> range: fl.content-height - fl.height;
-    property <length> thumb-h: max(28px, fl.height * fl.height / max(fl.content-height, 1px));
-    horizontal-stretch: 1;
-    vertical-stretch: 1;
-    min-height: 50px;
-    fl := Flickable {
-        width: parent.width;
-        height: parent.height;
-        mouse-drag-pan-enabled: false;
-        @children
-    }
-    if root.range > 1px: Rectangle {
-        x: parent.width - self.width - 2px;
-        y: (-fl.content-y / root.range) * (fl.height - root.thumb-h);
-        width: drag.has-hover || drag.pressed ? 6px : 3px;
-        height: root.thumb-h;
-        border-radius: self.width / 2;
-        background: drag.pressed ? Theme.text.with-alpha(0.33) : drag.has-hover ? Theme.text.with-alpha(0.2) : Theme.text.with-alpha(0.11);
-        animate width, background { duration: 120ms; }
-        drag := TouchArea {
-            x: -6px;
-            width: parent.width + 8px;
-            moved => {
-                if (self.pressed) {
-                    fl.content-y = clamp(-(parent.y + self.mouse-y - self.pressed-y) / (fl.height - root.thumb-h) * root.range, -root.range, 0);
-                }
-            }
-        }
-    }
-}
 
 // The export button. A click opens a menu above it with every export (see
 // ExportChoices for what `export` gets).
@@ -1942,14 +1850,13 @@ component Card inherits VerticalLayout {
         font-weight: 800;
         letter-spacing: 1px;
         x: 8px;
-        opacity: Fade.card(self.absolute-position.y, self.height);
     }
     VerticalLayout {
         @children
     }
 }
 
-// A piece of a card that is not a CardRow: the card background, fading like a row.
+// A piece of a card that is not a CardRow, with the card background.
 // The first and last pieces of a card round its corners.
 component CardPart inherits Rectangle {
     in property <bool> first;
@@ -1959,7 +1866,6 @@ component CardPart inherits Rectangle {
     border-top-right-radius: root.first ? 14px : 0;
     border-bottom-left-radius: root.last ? 14px : 0;
     border-bottom-right-radius: root.last ? 14px : 0;
-    opacity: Fade.card(self.absolute-position.y, self.height);
 }
 
 // One line in a card: a label (and an optional note under it) and its control.
@@ -1973,7 +1879,6 @@ component CardRow inherits Rectangle {
     border-top-right-radius: root.first ? 14px : 0;
     border-bottom-left-radius: root.last ? 14px : 0;
     border-bottom-right-radius: root.last ? 14px : 0;
-    opacity: Fade.card(self.absolute-position.y, self.height);
     VerticalLayout {
     HorizontalLayout {
         min-height: 52px;
@@ -2186,6 +2091,86 @@ component WindowFx inherits Rectangle {
         }
         Stars { count: 40; size: 1px; speed: 2.5; }
         Stars { count: 14; size: 2px; speed: 5; }
+    }
+}
+
+// A scrolling area with a thin bar that only shows when there is more to see. It
+// widens under the mouse and can be dragged.
+component Scroller inherits Rectangle {
+    out property <length> visible-width <=> fl.width;
+    out property <length> visible-height <=> fl.height;
+    in-out property <length> content-height <=> fl.content-height;
+    in-out property <length> content-y <=> fl.content-y;
+    callback scrolled <=> fl.flicked;
+    // Its content fades out at an edge it scrolls past: strips there repaint the window
+    // background over it, more see-through the further in. Only for a list that sits on
+    // the window background.
+    in property <bool> fade;
+    property <length> top-depth: root.fade ? clamp(-fl.content-y, 0, 80px) : 0;
+    property <length> bottom-depth: root.fade ? clamp(root.range + fl.content-y, 0, 80px) : 0;
+    property <int> strips: 10;
+    property <length> range: fl.content-height - fl.height;
+    property <length> thumb-h: max(28px, fl.height * fl.height / max(fl.content-height, 1px));
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+    min-height: 50px;
+    fl := Flickable {
+        width: parent.width;
+        height: parent.height;
+        mouse-drag-pan-enabled: false;
+        @children
+    }
+    for i in root.top-depth > 0 ? root.strips : 0: Rectangle {
+        // Strip edges on whole device pixels, in window coordinates, so the strips
+        // meet without a seam and the background lines up with the real one.
+        property <length> from: round((root.absolute-position.y + i * root.top-depth / root.strips) / 1phx) * 1phx;
+        property <length> to: round((root.absolute-position.y + (i + 1) * root.top-depth / root.strips) / 1phx) * 1phx;
+        y: self.from - root.absolute-position.y;
+        height: self.to - self.from;
+        clip: true;
+        opacity: 1 - (i + 0.5) / root.strips;
+        Rectangle {
+            x: -round(root.absolute-position.x / 1phx) * 1phx;
+            y: -parent.from;
+            width: Win.width;
+            height: Win.height;
+            background: Theme.bg;
+            WindowFx { }
+        }
+    }
+    for i in root.bottom-depth > 0 ? root.strips : 0: Rectangle {
+        property <length> from: round((root.absolute-position.y + root.height - (i + 1) * root.bottom-depth / root.strips) / 1phx) * 1phx;
+        property <length> to: round((root.absolute-position.y + root.height - i * root.bottom-depth / root.strips) / 1phx) * 1phx;
+        y: self.from - root.absolute-position.y;
+        height: self.to - self.from;
+        clip: true;
+        opacity: 1 - (i + 0.5) / root.strips;
+        Rectangle {
+            x: -round(root.absolute-position.x / 1phx) * 1phx;
+            y: -parent.from;
+            width: Win.width;
+            height: Win.height;
+            background: Theme.bg;
+            WindowFx { }
+        }
+    }
+    if root.range > 1px: Rectangle {
+        x: parent.width - self.width - 2px;
+        y: (-fl.content-y / root.range) * (fl.height - root.thumb-h);
+        width: drag.has-hover || drag.pressed ? 6px : 3px;
+        height: root.thumb-h;
+        border-radius: self.width / 2;
+        background: drag.pressed ? Theme.text.with-alpha(0.33) : drag.has-hover ? Theme.text.with-alpha(0.2) : Theme.text.with-alpha(0.11);
+        animate width, background { duration: 120ms; }
+        drag := TouchArea {
+            x: -6px;
+            width: parent.width + 8px;
+            moved => {
+                if (self.pressed) {
+                    fl.content-y = clamp(-(parent.y + self.mouse-y - self.pressed-y) / (fl.height - root.thumb-h) * root.range, -root.range, 0);
+                }
+            }
+        }
     }
 }
 
@@ -3795,7 +3780,7 @@ export component AppWindow inherits Window {
 
                 if root.query != "": Scroller {
                     vertical-stretch: 1;
-                    fade: 2;
+                    fade: true;
                     VerticalLayout {
                         alignment: start;
                         padding-left: 12px;
@@ -3809,7 +3794,6 @@ export component AppWindow inherits Window {
                         }
                         for h[i] in root.hits: SearchRow {
                             hit: h;
-                            opacity: Fade.list(self.absolute-position.y, self.height);
                             show-project: root.search-all;
                             clicked => { root.open-hit(i); root.go(1); }
                         }
@@ -3817,7 +3801,7 @@ export component AppWindow inherits Window {
                 }
                 if root.query == "": Scroller {
                     vertical-stretch: 1;
-                    fade: 2;
+                    fade: true;
                     content-y <=> root.list-y;
                     property <int> count: root.clips.length;
                     init => { root.list-height = self.visible-height; root.clamp-list(); }
@@ -3832,7 +3816,6 @@ export component AppWindow inherits Window {
                         ClipItem {
                             item: clip;
                             window-h: root.height;
-                            opacity: Fade.list(self.absolute-position.y, self.height);
                             wave-width: root.narrow ? 0 : root.wide ? 160px : 84px;
                             selected: i == root.selected;
                             picked: root.picked[i];
@@ -4036,7 +4019,7 @@ export component AppWindow inherits Window {
             padding-right: root.wide ? 18px : 0;
             Scroller {
             vertical-stretch: 1;
-            fade: 1;
+            fade: true;
             min-width: root.wide ? 460px : 50px;
             max-width: root.wide ? 460px : 100000px;
             VerticalLayout {
@@ -4479,7 +4462,7 @@ export component AppWindow inherits Window {
             PageHeader { title: "Settings"; back => { root.go(root.settings-back); } }
             Scroller {
                 vertical-stretch: 1;
-                fade: 1;
+                fade: true;
                 VerticalLayout {
                     padding-left: 16px;
                     padding-right: 16px;
@@ -4851,7 +4834,7 @@ export component AppWindow inherits Window {
             PageHeader { title: "Merge clips"; note: root.merge-rows.length + " clips"; back => { root.go(0); } }
             Scroller {
                 vertical-stretch: 1;
-                fade: 1;
+                fade: true;
                 VerticalLayout {
                     alignment: start;
                     padding-left: 16px;
@@ -5280,7 +5263,8 @@ export component AppWindow inherits Window {
         border-color: Theme.border;
     }
 
-    init => { keys.focus(); Win.height = self.height; }
+    init => { keys.focus(); Win.width = self.width; Win.height = self.height; }
+    changed width => { Win.width = self.width; }
     changed height => { Win.height = self.height; }
 
     // Files dragged over the window: a drop imports them.

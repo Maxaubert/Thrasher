@@ -565,19 +565,28 @@ global Fade {
     in-out property <length> card-bottom: 100000px;
     in-out property <length> list-top: -100000px;
     in-out property <length> list-bottom: 100000px;
-    // How much of a row at `y` with height `h` is still inside the edges. A tall block
-    // (a whole list) stays put, it would only go half see-through.
-    pure function amount(y: length, h: length, top: length, bottom: length) -> float {
+    // How deep the fade at each edge is: up to `depth`, less near the start or end of a
+    // list so nothing fades before it has scrolled.
+    in-out property <length> card-top-fade;
+    in-out property <length> card-bottom-fade;
+    in-out property <length> list-top-fade;
+    in-out property <length> list-bottom-fade;
+    out property <length> depth: 80px;
+    // How visible a row at `y` with height `h` is: it fades out as its middle nears an
+    // edge. A tall block (a whole list) stays put, it would only go half see-through.
+    pure function amount(y: length, h: length, top: length, bottom: length, top-fade: length, bottom-fade: length) -> float {
         if (h <= 0 || h > 120px) {
             return 1;
         }
-        return clamp(min((y + h - top) / h, (bottom - y) / h), 0, 1);
+        return min(
+            top-fade > 0 ? clamp((y + h / 2 - top) / top-fade, 0, 1) : 1,
+            bottom-fade > 0 ? clamp((bottom - y - h / 2) / bottom-fade, 0, 1) : 1);
     }
     pure public function card(y: length, h: length) -> float {
-        return self.amount(y, h, self.card-top, self.card-bottom);
+        return self.amount(y, h, self.card-top, self.card-bottom, self.card-top-fade, self.card-bottom-fade);
     }
     pure public function list(y: length, h: length) -> float {
-        return self.amount(y, h, self.list-top, self.list-bottom);
+        return self.amount(y, h, self.list-top, self.list-bottom, self.list-top-fade, self.list-bottom-fade);
     }
 }
 
@@ -1076,18 +1085,25 @@ component Scroller inherits Rectangle {
     // 1: its rows are settings cards, 2: the clip list (see Fade).
     in property <int> fade;
     property <length> abs-y: self.absolute-position.y;
+    property <length> scroll-y: fl.content-y;
     function publish() {
         if (root.fade == 1) {
             Fade.card-top = root.abs-y;
             Fade.card-bottom = root.abs-y + root.height;
+            Fade.card-top-fade = clamp(-fl.content-y, 0, Fade.depth);
+            Fade.card-bottom-fade = clamp(root.range + fl.content-y, 0, Fade.depth);
         } else if (root.fade == 2) {
             Fade.list-top = root.abs-y;
             Fade.list-bottom = root.abs-y + root.height;
+            Fade.list-top-fade = clamp(-fl.content-y, 0, Fade.depth);
+            Fade.list-bottom-fade = clamp(root.range + fl.content-y, 0, Fade.depth);
         }
     }
     init => { root.publish(); }
     changed abs-y => { root.publish(); }
     changed height => { root.publish(); }
+    changed scroll-y => { root.publish(); }
+    changed range => { root.publish(); }
     property <length> range: fl.content-height - fl.height;
     property <length> thumb-h: max(28px, fl.height * fl.height / max(fl.content-height, 1px));
     horizontal-stretch: 1;

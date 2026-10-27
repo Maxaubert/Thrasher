@@ -2399,9 +2399,38 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_part_take_out(move |i| {
         parts_job(Box::new(move |lib: &Library, name: &str| {
             thrasher_core::merge::extract(lib, name, i as usize)
-                .map(|new| format!("Took {new} out as its own clip"))
-                .map_err(|e| format!("Could not take it out: {e}"))
+                .map(|new| format!("{new} is a clip again"))
+                .map_err(|e| format!("Could not remove it: {e}"))
         }))
+    });
+    // A part's name is only a label in the merged clip's sidecar; it names the clip
+    // the part becomes when it is removed.
+    ui.on_rename_part({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |i, new| {
+            let ui = weak.unwrap();
+            let a = app.borrow();
+            let new = new.trim();
+            let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
+                return;
+            };
+            if new.is_empty() {
+                return;
+            }
+            let path = a.library.sidecar_path(&name);
+            let result = Sidecar::load(&path).and_then(|mut sc| {
+                let part = sc
+                    .parts
+                    .get_mut(i as usize)
+                    .ok_or_else(|| std::io::Error::other("no such part"))?;
+                part.name = new.to_string();
+                sc.save(&path)
+            });
+            match result {
+                Ok(()) => a.show_parts(&ui),
+                Err(e) => ui.set_status(format!("Could not rename it: {e}").into()),
+            }
+        }
     });
     ui.on_parts_done({
         let (app, weak) = (app.clone(), ui.as_weak());

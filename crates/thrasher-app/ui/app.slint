@@ -1213,11 +1213,16 @@ component TitleBar inherits Rectangle {
 
 // A round back button and a large page title.
 // A list whose rows can be dragged into another order, or moved with their arrows.
-// `moved(from, to)` reports a move; `act(i)` the row's text button, if `action` names one.
+// `moved(from, to)` reports a move; `act(i)` the row's text button, if `action` names one,
+// or Remove in the row's menu.
 component OrderList inherits Rectangle {
     in property <[OrderRow]> rows;
-    // A text button on each row, like "Take out"; empty for none.
+    // A text button on each row; empty for none.
     in property <string> action;
+    // A three dot menu on each row instead, with Rename (`rename(i)`) and Remove (`act(i)`).
+    in property <bool> menu;
+    callback rename(int);
+    property <int> menu-row: -1;
     // An x on each row instead, that takes the row out of the list.
     in property <bool> removable;
     // A play button on each row; the row named `playing-name` shows pause.
@@ -1333,6 +1338,21 @@ component OrderList inherits Rectangle {
                     clicked => { root.act(i); }
                 }
             }
+            if root.menu: VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    icon: "dots";
+                    icon-size: 14px;
+                    size: 28px;
+                    label: "Options for " + r.name;
+                    tip: "Options";
+                    enabled: root.enabled;
+                    clicked => {
+                        root.menu-row = i;
+                        row-menu.show();
+                    }
+                }
+            }
             if root.action != "": VerticalLayout {
                 alignment: center;
                 Btn {
@@ -1351,6 +1371,34 @@ component OrderList inherits Rectangle {
             width: parent.width - 20px;
             height: 1px;
             background: Theme.divider;
+        }
+    }
+    // The row menu, under the row's dots.
+    row-menu := PopupWindow {
+        x: root.width - 8px - 160px;
+        y: (root.menu-row + 1) * root.row-h - 8px;
+        width: 160px;
+        height: 2 * 34px + 10px;
+        close-policy: close-on-click-outside;
+        Rectangle {
+            background: Theme.raised;
+            border-radius: 10px;
+            border-width: 1px;
+            border-color: Theme.edge;
+            drop-shadow-blur: 20px;
+            drop-shadow-offset-y: 6px;
+            drop-shadow-color: #00000099;
+            VerticalLayout {
+                padding: 5px;
+                MenuRow {
+                    text: "Rename";
+                    clicked => { root.rename(root.menu-row); row-menu.close(); }
+                }
+                MenuRow {
+                    text: "Remove";
+                    clicked => { root.act(root.menu-row); row-menu.close(); }
+                }
+            }
         }
     }
 }
@@ -3163,6 +3211,10 @@ export component AppWindow inherits Window {
     in property <bool> parts-busy;
     callback parts-move(int, int);
     callback part-take-out(int);
+    // Renames part i of the open merged clip.
+    callback rename-part(int, string);
+    // The part the rename dialog (6) is for.
+    property <int> dialog-part;
     // Reordering or taking out a part finished, with the status line.
     callback parts-done(string);
     // Asks for audio files and adds each as a clip; `imported` reports back.
@@ -3303,6 +3355,8 @@ export component AppWindow inherits Window {
             root.create-project(root.dialog-text);
         } else if (kind == 5) {
             root.rename-project(root.dialog-text);
+        } else if (kind == 6) {
+            root.rename-part(root.dialog-part, root.dialog-text);
         } else {
             root.selected = root.dialog-clip;
         }
@@ -4165,10 +4219,15 @@ export component AppWindow inherits Window {
                             padding: 4px;
                             OrderList {
                                 rows: root.parts;
-                                action: "Take out";
+                                menu: true;
                                 enabled: !root.parts-busy && !root.recording;
                                 moved(a, b) => { root.parts-move(a, b); }
                                 act(i) => { root.part-take-out(i); }
+                                rename(i) => {
+                                    root.dialog-part = i;
+                                    root.dialog-text = root.parts[i].name;
+                                    root.dialog = 6;
+                                }
                             }
                         }
                     }
@@ -5102,7 +5161,7 @@ export component AppWindow inherits Window {
                 spacing: 14px;
                 Text {
                     text: root.dialog == 1 ? "Rename clip" : root.dialog == 3 ? "Unsaved changes" : root.dialog == 4 ? "New project"
-                        : root.dialog == 5 ? "Rename project"
+                        : root.dialog == 5 ? "Rename project" : root.dialog == 6 ? "Rename part"
                         : root.delete-count > 1 ? "Delete " + root.delete-count + " clips?" : "Delete " + root.clips[root.dialog-clip].name + "?";
                     color: Theme.text;
                     font-size: 17px;
@@ -5140,7 +5199,7 @@ export component AppWindow inherits Window {
                     }
                     Btn {
                         primary: true;
-                        text: root.dialog == 1 || root.dialog == 5 ? "Rename" : root.dialog == 3 ? "Save" : root.dialog == 4 ? "Create" : "Delete";
+                        text: root.dialog == 1 || root.dialog == 5 || root.dialog == 6 ? "Rename" : root.dialog == 3 ? "Save" : root.dialog == 4 ? "Create" : "Delete";
                         enabled: (root.dialog != 1 && root.dialog < 4) || root.dialog-text != "";
                         clicked => { root.confirm-dialog(); }
                     }

@@ -722,6 +722,8 @@ component ClipItem inherits Rectangle {
     // Where the menu opens: under the dots, or where the right click was.
     property <length> menu-x;
     property <length> menu-y;
+    // The window's height, so the menu and its submenus stay inside it.
+    in property <length> window-h: 10000px;
     height: 52px;
     border-radius: 10px;
     background: root.picked ? Theme.picked : root.active || root.selected ? Theme.row : row-touch.has-hover ? Theme.row-hover : transparent;
@@ -875,15 +877,24 @@ component ClipItem inherits Rectangle {
     // The submenu opens to the right when there is room, else to the left.
     property <bool> sub-left: root.menu-x + self.main-w + 4px + self.sub-w > root.width;
     property <length> left-x: min(root.menu-x, root.width - self.main-w);
+    // The menu and the submenu are placed here so both fit in the window. Left to
+    // Slint, a popup that grows past the window's bottom gets pushed up as a whole,
+    // so the menu jumped when a submenu opened.
+    property <length> top-y: max(8px - root.absolute-position.y, min(root.menu-y, root.window-h - root.absolute-position.y - root.main-h - 8px));
+    property <length> room: root.window-h - root.absolute-position.y - root.top-y - 8px;
+    property <length> sub-fit: min(root.sub-row-y - 5px, root.room - root.sub-h);
+    // How far the popup starts above the menu, when the submenu needs that room.
+    property <length> lift: root.sub != 0 ? max(0px, min(-root.sub-fit, root.absolute-position.y + root.top-y - 8px)) : 0px;
+    property <length> sub-y: max(0px, root.sub-fit + root.lift);
     menu := PopupWindow {
         x: root.sub != 0 && root.sub-left ? root.left-x - root.sub-w - 4px : root.left-x;
-        y: root.menu-y;
+        y: root.top-y - root.lift;
         width: root.main-w + (root.sub != 0 ? root.sub-w + 4px : 0);
-        height: max(root.main-h, root.sub != 0 ? root.sub-row-y - 5px + root.sub-h : 0);
+        height: max(root.lift + root.main-h, root.sub != 0 ? root.sub-y + root.sub-h : 0);
         close-policy: close-on-click-outside;
         Rectangle {
             x: root.sub != 0 && root.sub-left ? root.sub-w + 4px : 0;
-            y: 0;
+            y: root.lift;
             width: root.main-w;
             height: root.main-h;
             background: Theme.raised;
@@ -943,7 +954,7 @@ component ClipItem inherits Rectangle {
         // The submenu, level with its row.
         if root.sub != 0: Rectangle {
             x: root.sub-left ? 0 : root.main-w + 4px;
-            y: root.sub-row-y - 5px;
+            y: root.sub-y;
             width: root.sub-w;
             height: root.sub-h;
             background: Theme.raised;
@@ -3351,6 +3362,7 @@ export component AppWindow inherits Window {
                         padding-bottom: 2px;
                         ClipItem {
                             item: clip;
+                            window-h: root.height;
                             wave-width: root.narrow ? 0 : root.wide ? 160px : 84px;
                             selected: i == root.selected;
                             picked: root.picked[i];

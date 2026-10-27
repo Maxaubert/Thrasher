@@ -4424,6 +4424,23 @@ export component AppWindow inherits Window {
                     horizontal-stretch: 1;
                     spacing: 18px;
                     Card {
+                        title: "APPEARANCE";
+                        CardRow {
+                            label: "Theme";
+                            last: true;
+                            VerticalLayout {
+                                alignment: center;
+                                Select {
+                                    label: "Theme";
+                                    model: Theme.names;
+                                    current-index: Theme.current;
+                                    selected(i) => { root.theme-changed(i); }
+                                }
+                            }
+                        }
+                    }
+
+                    Card {
                         title: "RECORDING";
                         CardRow {
                             label: "Microphone";
@@ -4462,21 +4479,34 @@ export component AppWindow inherits Window {
                             }
                         }
                         CardRow {
-                            label: "Clean voice on export";
+                            label: "Record hotkey";
                             last: true;
                             VerticalLayout {
                                 alignment: center;
-                                Toggle {
-                                    label: "Clean voice on export";
-                                    checked <=> root.clean-voice;
-                                    toggled(on) => { root.clean-voice-changed(on); }
+                                ShortcutBox {
+                                    label: "Record hotkey";
+                                    keys: root.hotkey-parts;
+                                    captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
+                                    cleared => { root.hotkey-accepted(""); }
+                                    done => { keys.focus(); }
+                                }
+                            }
+                            if root.hotkey-parts.length > 0: VerticalLayout {
+                                alignment: center;
+                                IconBtn {
+                                    size: 28px;
+                                    icon: "close";
+                                    icon-size: 11px;
+                                    label: "Clear the shortcut";
+                                    tip: "Clear shortcut";
+                                    clicked => { root.hotkey-accepted(""); }
                                 }
                             }
                         }
                     }
 
                     Card {
-                        title: "OUTPUT";
+                        title: "FILES";
                         CardRow {
                             label: "Folder";
                             Text {
@@ -4530,7 +4560,6 @@ export component AppWindow inherits Window {
                         Rectangle { height: 1px; background: Theme.divider; }
                         CardRow {
                             label: "Export format";
-                            last: true;
                             VerticalLayout {
                                 alignment: center;
                                 Select {
@@ -4538,6 +4567,18 @@ export component AppWindow inherits Window {
                                     model: ["FLAC", "WAV", "MP3"];
                                     current-index <=> root.export-format;
                                     selected(i) => { root.export-format-changed(i); }
+                                }
+                            }
+                        }
+                        CardRow {
+                            label: "Clean voice on export";
+                            last: true;
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Clean voice on export";
+                                    checked <=> root.clean-voice;
+                                    toggled(on) => { root.clean-voice-changed(on); }
                                 }
                             }
                         }
@@ -4677,31 +4718,7 @@ export component AppWindow inherits Window {
                     }
 
                     Card {
-                        title: "SHORTCUTS AND WINDOW";
-                        CardRow {
-                            label: "Record from any app";
-                            VerticalLayout {
-                                alignment: center;
-                                ShortcutBox {
-                                    label: "Record from any app";
-                                    keys: root.hotkey-parts;
-                                    captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
-                                    cleared => { root.hotkey-accepted(""); }
-                                    done => { keys.focus(); }
-                                }
-                            }
-                            if root.hotkey-parts.length > 0: VerticalLayout {
-                                alignment: center;
-                                IconBtn {
-                                    size: 28px;
-                                    icon: "close";
-                                    icon-size: 11px;
-                                    label: "Clear the shortcut";
-                                    tip: "Clear shortcut";
-                                    clicked => { root.hotkey-accepted(""); }
-                                }
-                            }
-                        }
+                        title: "WINDOW";
                         CardRow {
                             label: "Close button hides to tray";
                             VerticalLayout {
@@ -4710,18 +4727,6 @@ export component AppWindow inherits Window {
                                     label: "Close button hides to tray";
                                     checked <=> root.close-to-tray;
                                     toggled(on) => { root.close-to-tray-changed(on); }
-                                }
-                            }
-                        }
-                        CardRow {
-                            label: "Theme";
-                            VerticalLayout {
-                                alignment: center;
-                                Select {
-                                    label: "Theme";
-                                    model: Theme.names;
-                                    current-index: Theme.current;
-                                    selected(i) => { root.theme-changed(i); }
                                 }
                             }
                         }

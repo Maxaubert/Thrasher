@@ -352,7 +352,6 @@ press Recording to see how each one reacts).
 | Glass Graphite | Smoked dark glass, one teal glow | Glow drifts slowly |
 | Sumi Sakura | Ink black, faint 録音 and ensō on the recorder, square pink seal button | A few falling petals |
 | Sumi Kintsugi | Black lacquer, gold cracks across the recorder, gold accent | Slow shine along the cracks |
-| Aurora Band | Thin aurora line along the top of the window and the recorder | The line flows, faster while recording |
 | Ocean Lagoon | Turquoise water, see-through cards | Sun rays sway, small bubbles rise |
 | Space Nebula | Pink and teal gas clouds behind stars, pink accent | Clouds and stars drift |
 
@@ -367,12 +366,16 @@ The old colour themes (Volt, Glacier, Mint, Violet, Signal, Chalk) are removed (
   is the same clock in quarter seconds for the big glows.
 - The clock stops for Ember, in the widget, and while the window is hidden or minimised.
   It runs twice as fast while recording.
-- Each step repaints the window (software renderer), so each theme has its own step rate
-  (`EFFECT_FPS` in `main.rs`). CPU of one core at 520x700, measured on the test copy:
+- Aurora is removed and Sakura's highlighted clip is pink (Max, 2026-10-27).
+- Max found the first step rates (4 to 30 a second) choppy, so effects now step 60 times a
+  second. Slow drifts (glows, rays, stars) follow `Fx.slow`, which steps 20 times a
+  second, and the glows and Lagoon's water and rays are small images (`ui/fx`) scaled up:
+  the software renderer draws those far faster than gradients. CPU of one core at
+  520x700 on the test copy (32 threads, so under 1% of the whole CPU):
 
-  | Ember | Snow | Daylight | Graphite | Sakura | Kintsugi | Aurora | Lagoon | Nebula | Cyberpunk |
-  |---|---|---|---|---|---|---|---|---|---|
-  | 0.6% | ~12% | ~12% | 4% | 9% | 4% | 7% | 15% | 8% | 8% |
+  | Ember | Snow | Daylight | Graphite | Sakura | Kintsugi | Lagoon | Nebula | Cyberpunk |
+  |---|---|---|---|---|---|---|---|---|
+  | 0% | 21% | 18% | 8% | 16% | 14% | 30% | 12% | 12% |
 
 - 録音 is drawn from Noto Serif JP Black glyph outlines (OFL), since the app embeds no
   Japanese font.

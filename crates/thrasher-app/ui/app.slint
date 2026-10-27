@@ -189,7 +189,7 @@ struct Palette {
 // settings page switches it.
 export global Theme {
     in-out property <int> current: 0;
-    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Aurora", "Lagoon", "Nebula", "Cyberpunk"];
+    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Nebula", "Cyberpunk"];
     property <[Palette]> palettes: [
         // Ember
         { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618, card-line: #00000000 },
@@ -203,8 +203,6 @@ export global Theme {
         { bg: #0c0b0d, card: #141216, row: #1b181c, raised: #211f22, line: #1e1d1d, line-soft: #171617, edge: #333030, text: #efe7da, text2: #d4cdc1, muted: #99938c, dim: #7e7974, accent: #f4a3bd, accent-hover: #f6b1c7, on-accent: #2a0a14, wave: #494644, wave-dim: #3c3938, track: #2a2828, danger: #ff8f7a, hover: #252324, hover-soft: #201f1f, row-hover: #131213, picked: #2a1f24, popup: #211f22, popup-edge: #42403e, knob: #726e69, faint: #625f5b, fainter: #3e3b3a, rec-rest: #644550, divider: #1c1a1b, border: #232122, card-edge: #1e1d1d, footer: #110f11, press: #3f2c34, card-line: #00000000 },
         // Kintsugi
         { bg: #0a0a0a, card: #121212, row: #191818, raised: #1f1f1e, line: #1c1c1b, line-soft: #151514, edge: #31302d, text: #efe7da, text2: #d4ccc1, muted: #98938b, dim: #7c7872, accent: #e0bb62, accent-hover: #e5c57a, on-accent: #1a1406, wave: #484642, wave-dim: #3a3836, track: #282725, danger: #ff8f7a, hover: #232221, hover-soft: #1f1e1d, row-hover: #111110, picked: #262115, popup: #1f1f1e, popup-edge: #413f3c, knob: #716d68, faint: #615e59, fainter: #3c3b38, rec-rest: #5b4d2b, divider: #1a1919, border: #21201f, card-edge: #1c1c1b, footer: #0f0e0e, press: #39311d, card-line: #00000000 },
-        // Aurora
-        { bg: #060a0e, card: #0b1218, row: #12191f, raised: #181f25, line: #181c20, line-soft: #11161a, edge: #2c3135, text: #e6f1f4, text2: #cbd5d8, muted: #91999d, dim: #767e81, accent: #6cf5c2, accent-hover: #82f6cb, on-accent: #02140d, wave: #42484c, wave-dim: #353b3e, track: #23282c, danger: #ff8f7a, hover: #1f2327, hover-soft: #1a1f23, row-hover: #0d1115, picked: #132925, popup: #181f25, popup-edge: #3c4145, knob: #6b7276, faint: #5b6265, fainter: #373d41, rec-rest: #2d6352, divider: #161a1e, border: #1c2125, card-edge: #181c20, footer: #0a0f13, press: #1c3e36, card-line: #00000000 },
         // Lagoon
         { bg: #04222a, card: #08343e9e, row: #112f37, raised: #154049, line: #16333b, line-soft: #0f2d34, edge: #2a464e, text: #e4f7fb, text2: #c9dde2, muted: #8fa6ac, dim: #748c92, accent: #7ff5d8, accent-hover: #92f6de, on-accent: #03211b, wave: #405c62, wave-dim: #334f56, track: #213e45, danger: #ff8f7a, hover: #1d3941, hover-soft: #18353d, row-hover: #0b2830, picked: #143d41, popup: #154049, popup-edge: #3a555c, knob: #698288, faint: #597379, fainter: #355158, rec-rest: #33726c, divider: #143139, border: #1a373f, card-edge: #16333b, footer: #08262ee6, press: #1f5050, card-line: #ffffff14 },
         // Nebula
@@ -246,6 +244,9 @@ export global Theme {
     out property <color> footer: root.palettes[root.current].footer;  // now playing bar
     out property <color> press: root.palettes[root.current].press;  // pressed download button
     out property <color> card-line: root.palettes[root.current].card-line;  // recorder and toolbar outline
+    // The highlighted clip: Sakura tints it pink, the others keep it neutral.
+    out property <color> selected-row: root.current == 4 ? root.accent.mix(root.row, 0.1) : root.row;
+    out property <color> selected-edge: root.current == 4 ? root.accent.with-alpha(0.5) : root.edge;
     // Sakura and Kintsugi have a square seal for a record button.
     out property <bool> rec-square: root.current == 4 || root.current == 5;
     out property <string> mono: "JetBrains Mono";
@@ -255,8 +256,8 @@ export global Theme {
 // shows, faster while recording, and leaves it still otherwise.
 export global Fx {
     in property <float> t;
-    // The same clock in steps of a quarter second, for slow drifts: big glows
-    // redraw much of the window, so they move only when this steps.
+    // The same clock in steps of a twentieth of a second, for slow drifts (glows, rays,
+    // stars): they cover much of the window, so they redraw only when this steps.
     in property <float> slow;
 }
 
@@ -747,9 +748,9 @@ component ClipItem inherits Rectangle {
     in property <length> window-h: 10000px;
     height: 52px;
     border-radius: 10px;
-    background: root.picked ? Theme.picked : root.active || root.selected ? Theme.row : row-touch.has-hover ? Theme.row-hover : transparent;
+    background: root.picked ? Theme.picked : root.active || root.selected ? Theme.selected-row : row-touch.has-hover ? Theme.row-hover : transparent;
     border-width: root.selected || root.picked ? 1px : 0;
-    border-color: root.picked ? Theme.accent.with-alpha(0.33) : Theme.edge;
+    border-color: root.picked ? Theme.accent.with-alpha(0.33) : Theme.selected-edge;
     accessible-role: list-item;
     accessible-label: root.item.name + ", " + root.item.duration;
     accessible-item-selectable: true;
@@ -1058,6 +1059,17 @@ component Scroller inherits Rectangle {
         height: parent.height;
         mouse-drag-pan-enabled: false;
         @children
+    }
+    // Content fades out at an edge it scrolls past, instead of being cut off there.
+    if fl.content-y < 0: Rectangle {
+        y: 0;
+        height: min(32px, -fl.content-y);
+        background: @linear-gradient(180deg, Theme.bg 0%, Theme.bg.with-alpha(0) 100%);
+    }
+    if root.range > 1px && fl.content-y > -root.range + 1px: Rectangle {
+        y: parent.height - self.height;
+        height: min(32px, root.range + fl.content-y);
+        background: @linear-gradient(0deg, Theme.bg 0%, Theme.bg.with-alpha(0) 100%);
     }
     if root.range > 1px: Rectangle {
         x: parent.width - self.width - 2px;
@@ -1968,10 +1980,10 @@ component Meter inherits Rectangle {
 // Fx.t, which the app advances as often as each effect needs and stops when nothing
 // shows.
 
-// A soft round glow that fades out from its middle.
-component Glow inherits Rectangle {
-    in property <color> tint;
-    background: @radial-gradient(circle, root.tint 0%, root.tint.with-alpha(0) 70%);
+// A soft round glow that fades out from its middle. It is a small image scaled up:
+// the software renderer draws that far faster than a radial gradient each frame.
+component Glow inherits Image {
+    image-fit: fill;
 }
 
 // Falling flakes or petals over the whole area. Each one has its own size, speed
@@ -2036,23 +2048,6 @@ component Stars inherits Rectangle {
     }
 }
 
-// A thin line of aurora colours that flows sideways, with a soft glow under it.
-component AuroraBand inherits Rectangle {
-    height: 30px;
-    clip: true;
-    for layer[k] in [{ h: 28px, o: 0.07 }, { h: 10px, o: 0.16 }, { h: 2px, o: 1.0 }]: Rectangle {
-        y: 0;
-        height: layer.h;
-        opacity: layer.o;
-        clip: true;
-        Rectangle {
-            x: -Math.mod(Fx.t / 6, 1) * root.width;
-            width: root.width * 2;
-            background: @linear-gradient(90deg, #6cf5c2 0%, #59c8ff 16.6%, #a07bff 33.3%, #6cf5c2 50%, #59c8ff 66.6%, #a07bff 83.3%, #6cf5c2 100%);
-        }
-    }
-}
-
 // The window's effect, behind everything.
 component WindowFx inherits Rectangle {
     // Snow and Daylight: falling snow.
@@ -2063,14 +2058,14 @@ component WindowFx inherits Rectangle {
     // Graphite: two cool glows drifting slowly.
     if Theme.current == 3: Rectangle {
         Glow {
-            tint: #1fa3c98c;
+            source: @image-url("fx/glow-teal.png");
             width: 320px;
             height: 320px;
             x: parent.width - 250px + Math.sin(Fx.slow * 6deg) * 40px;
             y: -130px + Math.cos(Fx.slow * 5deg) * 30px;
         }
         Glow {
-            tint: #3a4bd85c;
+            source: @image-url("fx/glow-indigo.png");
             width: 260px;
             height: 260px;
             x: -110px + Math.cos(Fx.slow * 4deg) * 30px;
@@ -2085,47 +2080,42 @@ component WindowFx inherits Rectangle {
         speed: 32;
         sway: 36px;
     }
-    // Aurora: the band along the top of the window.
-    if Theme.current == 6: AuroraBand { y: 0; }
     // Lagoon: water lit from above, sun rays swaying, bubbles.
-    if Theme.current == 7: Rectangle {
-        background: @linear-gradient(180deg, #0c5560 0%, #04222a 65%);
-        for ray[k] in [{ x: 0.18, w: 40, s: 1.0 }, { x: 0.42, w: 26, s: 1.4 }, { x: 0.62, w: 50, s: 0.8 }, { x: 0.86, w: 30, s: 1.2 }]: Path {
-            property <float> w: parent.width / 1px;
-            property <float> h: parent.height / 1px;
-            property <float> top: ray.x * self.w;
-            property <float> swing: Math.sin(Fx.slow * ray.s * 12deg) * 40;
+    if Theme.current == 6: Rectangle {
+        Image {
             width: parent.width;
             height: parent.height;
-            viewbox-width: self.w;
-            viewbox-height: self.h;
-            fill: @linear-gradient(180deg, #c8ffff12 0%, #c8ffff00 80%);
-            MoveTo { x: parent.top - 6; y: -10; }
-            LineTo { x: parent.top + 6; y: -10; }
-            LineTo { x: parent.top + ray.w + parent.swing; y: parent.h * 0.75; }
-            LineTo { x: parent.top - ray.w * 0.4 + parent.swing; y: parent.h * 0.75; }
-            Close { }
+            image-fit: fill;
+            source: @image-url("fx/lagoon-water.png");
+        }
+        for ray[k] in [{ x: 0.18, w: 90, s: 1.0 }, { x: 0.42, w: 60, s: 1.4 }, { x: 0.62, w: 110, s: 0.8 }, { x: 0.86, w: 70, s: 1.2 }]: Image {
+            image-fit: fill;
+            source: @image-url("fx/lagoon-ray.png");
+            width: ray.w * 1px;
+            height: parent.height * 0.8;
+            x: parent.width * ray.x - self.width / 2 + Math.sin(Fx.slow * ray.s * 12deg) * 24px;
+            y: -10px;
         }
         Bubbles { count: 8; }
     }
     // Nebula: pink and teal clouds behind drifting stars.
-    if Theme.current == 8: Rectangle {
+    if Theme.current == 7: Rectangle {
         Glow {
-            tint: #c03bff66;
+            source: @image-url("fx/glow-violet.png");
             width: 340px;
             height: 340px;
             x: -120px + Math.sin(Fx.slow * 4deg) * 40px;
             y: -110px + Math.cos(Fx.slow * 3deg) * 30px;
         }
         Glow {
-            tint: #1fd0c055;
+            source: @image-url("fx/glow-aqua.png");
             width: 300px;
             height: 300px;
             x: parent.width - 200px + Math.cos(Fx.slow * 3.5deg) * 40px;
             y: parent.height * 0.25 + Math.sin(Fx.slow * 4deg) * 30px;
         }
         Glow {
-            tint: #ff5fb055;
+            source: @image-url("fx/glow-pink.png");
             width: 280px;
             height: 280px;
             x: parent.width * 0.1 + Math.sin(Fx.slow * 3deg) * 30px;
@@ -2190,15 +2180,25 @@ component Snake inherits Rectangle {
 component CardFx inherits Rectangle {
     in property <bool> recording;
     in property <length> radius: 14px;
-    // Snow and Daylight: a cap of snow along the top.
-    if Theme.current == 1 || Theme.current == 2: Path {
-        y: -1px;
-        width: parent.width;
-        height: 12px;
-        viewbox-width: 356;
-        viewbox-height: 12;
-        fill: Theme.current == 2 ? #f4f8fb : #e9f3fbeb;
-        commands: "M0 0H356V5C346 9 336 4 326 6S310 11 298 7 276 3 264 6 242 10 230 6 210 2 196 5 176 9 162 5 140 3 128 6 108 10 94 6 74 3 60 6 40 10 26 6 12 3 0 7Z";
+    // Snow and Daylight: a cap of snow along the whole top edge, round the corners too
+    // (the card clips it to its own shape). A band, then drifts hanging from it.
+    if Theme.current == 1 || Theme.current == 2: Rectangle {
+        property <color> snow: Theme.current == 2 ? #f4f8fb : #e9f3fbeb;
+        Rectangle {
+            y: 0;
+            height: 5px;
+            background: parent.snow;
+        }
+        for k in Math.ceil(root.width / 44px) + 1: Path {
+            x: k * 44px - 6px;
+            y: 4px;
+            width: 44px;
+            height: 7px;
+            viewbox-width: 44;
+            viewbox-height: 7;
+            fill: parent.snow;
+            commands: Math.mod(k, 2) == 0 ? "M0 0H44V1C38 6 30 1 22 4S6 5 0 1Z" : "M0 0H44V1C36 4 30 7 20 3S6 2 0 1Z";
+        }
     }
     // Sakura and Kintsugi: a faint ensō circle in the corner.
     if Theme.current == 4 || Theme.current == 5: Path {
@@ -2248,10 +2248,8 @@ component CardFx inherits Rectangle {
             commands: "M0 92L46 80L70 98L120 70L150 78L196 40L230 52L270 18L300 26L356 6";
         }
     }
-    // Aurora: the band along the top of the card.
-    if Theme.current == 6: AuroraBand { y: 0; }
     // Cyberpunk: the snake round the edge.
-    if Theme.current == 9: Snake { radius: root.radius; }
+    if Theme.current == 8: Snake { radius: root.radius; }
 }
 
 // The round record button: a mic, or a stop square while recording.

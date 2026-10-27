@@ -3549,6 +3549,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let _remember = remember_window(&ui, &app);
     let _drops = accept_drops(&ui, &app);
     let _cover = widget_when_hidden(&ui, &app);
+    let _fx = effect_clock(&ui);
     // Runs once the event loop has drawn the window.
     Timer::single_shot(Duration::ZERO, || {
         crate::log!("ready: window shown {} ms after start", log::uptime_ms())
@@ -3741,6 +3742,43 @@ fn accept_drops(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<Timer> {
             _ => {}
         }
         EventResult::Propagate
+    });
+    timer
+}
+
+/// Steps per second of each theme's effect, in the order of `Theme.names`. Every step
+/// repaints the window, so each theme runs only as smooth as its effect needs.
+const EFFECT_FPS: [f32; 10] = [0.0, 18.0, 18.0, 4.0, 20.0, 15.0, 20.0, 12.0, 4.0, 30.0];
+
+/// Advances `Fx.t`, the clock of the theme effects, twice as fast while recording. It
+/// stands still for Ember, in the widget and while the window is hidden or minimised,
+/// so nothing redraws for the effects then.
+fn effect_clock(ui: &AppWindow) -> Timer {
+    let timer = Timer::default();
+    let weak = ui.as_weak();
+    let mut last = std::time::Instant::now();
+    timer.start(TimerMode::Repeated, Duration::from_millis(16), move || {
+        let Some(ui) = weak.upgrade() else { return };
+        let window = ui.window();
+        let fps = usize::try_from(ui.global::<Theme>().get_current())
+            .ok()
+            .and_then(|i| EFFECT_FPS.get(i).copied())
+            .unwrap_or(0.0);
+        let now = std::time::Instant::now();
+        let dt = (now - last).as_secs_f32();
+        if fps == 0.0 || ui.get_compact() || !window.is_visible() || window.is_minimized() {
+            last = now;
+            return;
+        }
+        if dt < 1.0 / fps - 0.004 {
+            return;
+        }
+        last = now;
+        let fx = ui.global::<Fx>();
+        let speed = if ui.get_recording() { 2.0 } else { 1.0 };
+        let t = fx.get_t() + dt.min(0.3) * speed;
+        fx.set_t(t);
+        fx.set_slow((t * 4.0).floor() / 4.0);
     });
     timer
 }

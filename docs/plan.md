@@ -356,9 +356,25 @@ press Recording to see how each one reacts).
 | Ocean Lagoon | Turquoise water, see-through cards | Sun rays sway, small bubbles rise |
 | Space Nebula | Pink and teal gas clouds behind stars, pink accent | Clouds and stars drift |
 
-Notes for building:
-- Sumi must not use the orange red accent (Max, 2026-10-27).
-- Slint's software renderer has no backdrop blur, so Glass uses a pre-blurred backdrop
-  under translucent cards.
-- Still open: Cyberpunk (lines must move along the card and window edges), more
-  original themes, and what happens to the old colour themes. Round 3 mockups follow.
+| Cyberpunk | Still neon outlines on the recorder and toolbar | A red, green and blue snake runs round the recorder |
+
+The old colour themes (Volt, Glacier, Mint, Violet, Signal, Chalk) are removed (Max,
+2026-10-27). A saved old theme name falls back to Ember.
+
+**Built 2026-10-27:**
+- Each theme has one effect: on the window (`WindowFx`) and on the recorder card
+  (`CardFx`), in `app.slint`. They move with `Fx.t`, a clock the app advances; `Fx.slow`
+  is the same clock in quarter seconds for the big glows.
+- The clock stops for Ember, in the widget, and while the window is hidden or minimised.
+  It runs twice as fast while recording.
+- Each step repaints the window (software renderer), so each theme has its own step rate
+  (`EFFECT_FPS` in `main.rs`). CPU of one core at 520x700, measured on the test copy:
+
+  | Ember | Snow | Daylight | Graphite | Sakura | Kintsugi | Aurora | Lagoon | Nebula | Cyberpunk |
+  |---|---|---|---|---|---|---|---|---|---|
+  | 0.6% | ~12% | ~12% | 4% | 9% | 4% | 7% | 15% | 8% | 8% |
+
+- 録音 is drawn from Noto Serif JP Black glyph outlines (OFL), since the app embeds no
+  Japanese font.
+- Sumi must not use the orange red accent (Max, 2026-10-27). Slint's software renderer has
+  no backdrop blur, so the translucent cards sit over soft glows instead.

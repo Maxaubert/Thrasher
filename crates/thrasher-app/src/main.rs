@@ -224,6 +224,7 @@ impl Export {
         clean_voice: bool,
         english: bool,
         path: &std::path::Path,
+        progress: thrasher_core::export::Progress,
     ) -> std::io::Result<bool> {
         use thrasher_core::export::{ExportOptions, Format};
         let options = |format| ExportOptions {
@@ -234,11 +235,23 @@ impl Export {
         };
         match self {
             Export::Audio(format) => {
-                thrasher_core::export::export_clip_to(library, name, options(format), path)?;
+                thrasher_core::export::export_clip_progress(
+                    library,
+                    name,
+                    options(format),
+                    path,
+                    progress,
+                )?;
                 Ok(true)
             }
             Export::Project(format) => {
-                thrasher_core::export::export_project(library, name, options(format), path)?;
+                thrasher_core::export::export_project_progress(
+                    library,
+                    name,
+                    options(format),
+                    path,
+                    progress,
+                )?;
                 Ok(true)
             }
             Export::Subtitles(kind) if english => {
@@ -2637,11 +2650,19 @@ fn main() -> Result<(), slint::PlatformError> {
                 a.settings.export_dir = Some(dir.to_path_buf());
                 a.settings.save();
             }
-            ui.set_status(format!("Exporting {}...", short_path(&path)).into());
+            let shown = if project {
+                name.clone()
+            } else {
+                path.file_name()
+                    .map(|f| f.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| file.clone())
+            };
+            show_export(&ui, &shown);
             let weak = ui.as_weak();
             std::thread::spawn(move || {
                 let started = std::time::Instant::now();
-                let result = kind.write(&library, &name, clean_voice, english, &path);
+                let report = export_reporter(weak.clone());
+                let result = kind.write(&library, &name, clean_voice, english, &path, &report);
                 crate::log!(
                     "export {} as {} took {} ms: {:?}",
                     name,
@@ -2649,13 +2670,20 @@ fn main() -> Result<(), slint::PlatformError> {
                     crate::log::ms(started),
                     result.as_ref().err()
                 );
+                let ok = matches!(result, Ok(true));
                 let status = match result {
                     Ok(true) if project => format!("Exported {name} into {}", short_path(&path)),
                     Ok(true) => format!("Exported {}", short_path(&path)),
                     Ok(false) => "Transcribe this clip first".to_string(),
                     Err(e) => format!("Export failed: {e}"),
                 };
-                let _ = weak.upgrade_in_event_loop(move |ui| ui.set_status(status.into()));
+                let _ = weak.upgrade_in_event_loop(move |ui| {
+                    // The Export button or the strip shows a success; the status line only errors.
+                    if !ok {
+                        ui.set_status(status.into());
+                    }
+                    finish_export(&ui, ok);
+                });
             });
         }
     });
@@ -3421,21 +3449,30 @@ fn main() -> Result<(), slint::PlatformError> {
                 a.settings.export_dir = Some(parent.clone());
                 a.settings.save();
             }
-            ui.set_status(format!("Exporting {project}...").into());
+            show_export(&ui, &project);
             let weak = ui.as_weak();
             std::thread::spawn(move || {
                 let started = std::time::Instant::now();
-                let result = projects::export_all(&library, &project, options, &parent);
+                let report = export_reporter(weak.clone());
+                let result =
+                    projects::export_all_progress(&library, &project, options, &parent, &report);
                 crate::log!(
                     "export of project {project} took {} ms: {:?}",
                     crate::log::ms(started),
                     result.as_ref().err()
                 );
+                let ok = result.is_ok();
                 let status = match result {
                     Ok(dir) => format!("Exported {project} into {}", short_path(&dir)),
                     Err(e) => format!("Export failed: {e}"),
                 };
-                let _ = weak.upgrade_in_event_loop(move |ui| ui.set_status(status.into()));
+                let _ = weak.upgrade_in_event_loop(move |ui| {
+                    // The Export button or the strip shows a success; the status line only errors.
+                    if !ok {
+                        ui.set_status(status.into());
+                    }
+                    finish_export(&ui, ok);
+                });
             });
         }
     });
@@ -3773,6 +3810,36 @@ fn accept_drops(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<Timer> {
         EventResult::Propagate
     });
     timer
+}
+
+/// Starts showing the export of `name`, at 0%.
+fn show_export(ui: &AppWindow, name: &str) {
+    ui.set_export_name(name.into());
+    ui.set_export_progress(0.0);
+    ui.set_export_state(1);
+}
+
+/// Shows the check for a finished export, which hides itself; a failed one hides at
+/// once and leaves its error in the status line.
+fn finish_export(ui: &AppWindow, ok: bool) {
+    if ok {
+        ui.set_export_progress(1.0);
+    }
+    ui.set_export_state(if ok { 2 } else { 0 });
+}
+
+/// Passes an export's progress, from its thread, to the window, once per percent.
+fn export_reporter(weak: slint::Weak<AppWindow>) -> impl Fn(f32) {
+    let last = std::cell::Cell::new(-1);
+    move |f| {
+        let percent = (f.clamp(0.0, 1.0) * 100.0) as i32;
+        if percent != last.get() {
+            last.set(percent);
+            let _ = weak.upgrade_in_event_loop(move |ui| {
+                ui.set_export_progress(percent as f32 / 100.0);
+            });
+        }
+    }
 }
 
 /// Steps per second of each theme's effect, in the order of `Theme.names`. Every step

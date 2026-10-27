@@ -88,6 +88,22 @@ pub fn export_clip_to(
     options: ExportOptions,
     path: &Path,
 ) -> io::Result<()> {
+    export_clip_progress(library, name, options, path, &|_| {})
+}
+
+/// How far an export has come, from 0 to 1. Called now and then, from the export's
+/// own thread.
+pub type Progress<'a> = &'a dyn Fn(f32);
+
+/// Like [`export_clip_to`], reporting its progress.
+pub fn export_clip_progress(
+    library: &Library,
+    name: &str,
+    options: ExportOptions,
+    path: &Path,
+    progress: Progress,
+) -> io::Result<()> {
+    progress(0.0);
     let filter: Option<crate::player::MicFilter> = if options.clean_voice {
         Some(&crate::cleanup::clean_voice)
     } else {
@@ -96,15 +112,29 @@ pub fn export_clip_to(
     let mut buffer = crate::player::load_clip_with(library, name, filter)?;
     if let Ok(sc) = crate::sidecar::Sidecar::load(&library.sidecar_path(name)) {
         let voices = crate::voice::load_voices(library, name, &sc);
+        progress(0.3);
         buffer = crate::edit::plan(&sc, &voices, &buffer).render(&buffer);
     }
-    export_buffer(&buffer, path, options)
+    // Loading (and cleaning) is the first 40%, encoding the rest.
+    progress(0.4);
+    export_buffer_progress(&buffer, path, options, &|f| progress(0.4 + 0.6 * f))?;
+    progress(1.0);
+    Ok(())
 }
 
 pub fn export_buffer(buffer: &Buffer, path: &Path, options: ExportOptions) -> io::Result<()> {
+    export_buffer_progress(buffer, path, options, &|_| {})
+}
+
+fn export_buffer_progress(
+    buffer: &Buffer,
+    path: &Path,
+    options: ExportOptions,
+    progress: Progress,
+) -> io::Result<()> {
     if options.format == Format::Mp3 {
         let tmp = path.with_extension("part");
-        write_mp3(&tmp, buffer)?;
+        write_mp3(&tmp, buffer, progress)?;
         return std::fs::rename(&tmp, path);
     }
     if options.bits != 16 && options.bits != 24 {
@@ -114,6 +144,7 @@ pub fn export_buffer(buffer: &Buffer, path: &Path, options: ExportOptions) -> io
         ));
     }
     let ints = quantize(&buffer.samples, options.bits);
+    progress(0.2);
     let tmp = path.with_extension("part");
     match options.format {
         Format::Wav => write_pcm_wav(
@@ -192,6 +223,17 @@ pub fn export_project(
     options: ExportOptions,
     parent: &Path,
 ) -> io::Result<PathBuf> {
+    export_project_progress(library, name, options, parent, &|_| {})
+}
+
+/// Like [`export_project`], reporting its progress.
+pub fn export_project_progress(
+    library: &Library,
+    name: &str,
+    options: ExportOptions,
+    parent: &Path,
+    progress: Progress,
+) -> io::Result<PathBuf> {
     let mut dir = parent.join(name);
     let mut n = 2;
     while dir.exists() {
@@ -199,11 +241,13 @@ pub fn export_project(
         n += 1;
     }
     std::fs::create_dir_all(&dir)?;
-    export_clip_to(
+    // The audio is most of the work; the subtitle files the last 10%.
+    export_clip_progress(
         library,
         name,
         options,
         &dir.join(format!("{name}.{}", options.format.extension())),
+        &|f| progress(0.9 * f),
     )?;
     for kind in [
         Subtitles::Srt,
@@ -216,6 +260,7 @@ pub fn export_project(
             break;
         }
     }
+    progress(1.0);
     Ok(dir)
 }
 
@@ -326,7 +371,7 @@ fn write_flac(path: &Path, rate: u32, channels: u16, bits: u16, samples: &[i32])
 
 /// 192 kbit/s MP3 through LAME. Mono stays mono.
 #[cfg(feature = "mp3")]
-fn write_mp3(path: &Path, buffer: &Buffer) -> io::Result<()> {
+fn write_mp3(path: &Path, buffer: &Buffer, progress: Progress) -> io::Result<()> {
     use mp3lame_encoder::{Bitrate, Builder, FlushNoGap, InterleavedPcm, MonoPcm, Quality};
     let err = |e: &dyn std::fmt::Debug| io::Error::other(format!("MP3 encoder: {e:?}"));
     if buffer.channels > 2 {
@@ -342,7 +387,9 @@ fn write_mp3(path: &Path, buffer: &Buffer) -> io::Result<()> {
     let mut out = Vec::new();
     let frames_per_call = 1 << 16;
     let ch = buffer.channels as usize;
-    for chunk in buffer.samples.chunks(frames_per_call * ch) {
+    let chunks = buffer.samples.len().div_ceil(frames_per_call * ch).max(1);
+    for (i, chunk) in buffer.samples.chunks(frames_per_call * ch).enumerate() {
+        progress(i as f32 / chunks as f32);
         out.reserve(mp3lame_encoder::max_required_buffer_size(chunk.len() / ch));
         let r = if ch == 1 {
             enc.encode_to_vec(MonoPcm(chunk), &mut out)
@@ -358,7 +405,7 @@ fn write_mp3(path: &Path, buffer: &Buffer) -> io::Result<()> {
 }
 
 #[cfg(not(feature = "mp3"))]
-fn write_mp3(_: &Path, _: &Buffer) -> io::Result<()> {
+fn write_mp3(_: &Path, _: &Buffer, _: Progress) -> io::Result<()> {
     Err(io::Error::other(
         "this build has no MP3 encoder (build with the mp3 feature)",
     ))

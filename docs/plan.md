@@ -335,3 +335,30 @@ Max picked these after a brainstorm. Each item is its own PR, built in this orde
        and similar reads only the newest clip.
      - **Tested on the lecture:** Borealis answered in Norwegian in about 2 s, but it
        left out the [n] citations and answered only half of a two-part question.
+
+## 16. Themes with character (agreed 2026-10-27)
+
+The old colour-only themes (Volt, Glacier, Mint, Violet, Signal, Chalk) felt boring. Max
+wants themes that stand out from each other, some with subtle graphics or motion behind
+the recorder. Mockups: [docs/mockups/themes.html](mockups/themes.html) (open in a browser,
+press Recording to see how each one reacts).
+
+**Locked in by Max (2026-10-27).** Ember stays the default and unchanged.
+
+| Theme | Look | Motion |
+|---|---|---|
+| Snow Night | Ice blue on night slate, snow cap on the recorder card | Slow falling snow |
+| Snow Daylight | Light theme, white cards, blue accent | Grey blue snow |
+| Glass Graphite | Smoked dark glass, one teal glow | Glow drifts slowly |
+| Sumi Sakura | Ink black, faint 録音 and ensō on the recorder, square pink seal button | A few falling petals |
+| Sumi Kintsugi | Black lacquer, gold cracks across the recorder, gold accent | Slow shine along the cracks |
+| Aurora Band | Thin aurora line along the top of the window and the recorder | The line flows, faster while recording |
+| Ocean Lagoon | Turquoise water, see-through cards | Sun rays sway, small bubbles rise |
+| Space Nebula | Pink and teal gas clouds behind stars, pink accent | Clouds and stars drift |
+
+Notes for building:
+- Sumi must not use the orange red accent (Max, 2026-10-27).
+- Slint's software renderer has no backdrop blur, so Glass uses a pre-blurred backdrop
+  under translucent cards.
+- Still open: Cyberpunk (lines must move along the card and window edges), more
+  original themes, and what happens to the old colour themes. Round 3 mockups follow.

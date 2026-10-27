@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thrasher themes v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&family=Noto+Serif+JP:wght@700;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; background: #050505; color: #eee; font-family: 'Inter Tight', sans-serif; }
+main { max-width: 1340px; margin: 0 auto; padding: 40px 24px 90px; }
+h1 { font-size: 26px; font-weight: 800; margin: 0 0 6px; }
+.lead { color: #888; font-size: 14px; margin: 0 0 18px; max-width: 760px; line-height: 1.5; }
+.ctl { position: sticky; top: 0; z-index: 50; display: flex; gap: 8px; padding: 10px 0; background: #050505; margin-bottom: 20px; }
+.ctl button { font: 600 13px 'Inter Tight'; color: #ddd; background: #161616; border: 1px solid #2a2a2a; border-radius: 8px; height: 32px; padding: 0 14px; cursor: pointer; }
+.ctl button.on { background: #eee; color: #111; border-color: #eee; }
+.fam { margin: 0 0 56px; }
+.fam > h2 { font-size: 20px; font-weight: 800; margin: 0 0 2px; display: flex; align-items: center; gap: 10px; }
+.fam > h2 em { font-style: normal; font-family: 'JetBrains Mono'; font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: 5px; background: #1c1c1c; color: #9a9a9a; }
+.fam > h2 em.kept { background: #13301f; color: #6fe3a0; }
+.fam > h2 em.redo { background: #2c2410; color: #f0cd6a; }
+.fam > h2 em.mine { background: #1d1a33; color: #ab9cff; }
+.fam > p { margin: 0 0 18px; color: #777; font-size: 13px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, 380px); gap: 34px 26px; }
+.item h3 { margin: 0 0 3px; font-size: 15px; font-weight: 700; }
+.item h3 .tag { font-family: 'JetBrains Mono'; font-size: 12px; color: #8f8f8f; margin-right: 6px; }
+.item p { margin: 0 0 12px; font-size: 12.5px; color: #848484; line-height: 1.45; min-height: 54px; }
+svg { display: block; flex-shrink: 0; }
+button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+
+/* ---------- the window ---------- */
+.win {
+  --bg: #0b0909; --card: #150f0b; --row: #1a120c; --edge: #3a2b20; --border: #2a2019; --field: var(--bg);
+  --text: #f1ece8; --muted: #a39a93; --dim: #8a817a; --acc: #ff6a1a; --wave: #5a4436;
+  --track: #2b211a; --rec: #ff6a1a; --rec-on: #160a03; --foot: #110c09; --tenth: #4a3f37; --shadow: none;
+  position: relative; width: 380px; height: 540px; overflow: hidden; isolation: isolate;
+  background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px;
+  display: flex; flex-direction: column;
+}
+.fx { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.win > :not(.fx) { position: relative; z-index: 1; }
+.title { height: 36px; display: flex; align-items: center; padding: 0 10px 0 14px; gap: 4px; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+.title .sp { flex: 1; }
+.tb { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--dim); border-radius: 14px; }
+.card { background: var(--card); border-radius: 14px; position: relative; overflow: hidden; box-shadow: var(--shadow); flex-shrink: 0; }
+.card > .cfx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: inherit; }
+.card > :not(.cfx) { position: relative; }
+.rec { margin: 4px 12px 0; padding: 16px 18px 14px; }
+.state { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--muted); }
+.dot { width: 7px; height: 7px; border-radius: 4px; background: var(--dim); }
+.recrow { display: flex; align-items: center; margin-top: 4px; }
+.timer { flex: 1; font-family: 'JetBrains Mono'; font-size: 38px; font-weight: 500; letter-spacing: .02em; }
+.timer i { font-style: normal; color: var(--tenth); }
+.mic { width: 56px; height: 56px; border-radius: 28px; background: var(--rec); color: var(--rec-on); display: flex; align-items: center; justify-content: center; }
+.dev { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 12px; color: var(--muted); height: 14px; }
+.dev .lv { flex: 1; height: 2px; background-image: radial-gradient(circle, var(--track) 1px, transparent 1.2px); background-size: 5px 2px; }
+.bar { margin: 10px 12px 6px; padding: 7px; display: flex; align-items: center; gap: 8px; }
+.proj { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; padding: 0 6px 0 8px; height: 30px; }
+.search { flex: 1; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--field); display: flex; align-items: center; gap: 7px; padding: 0 10px; font-size: 12px; color: var(--dim); }
+.ib { width: 26px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--dim); }
+.rows { flex: 1; padding: 2px 12px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+.row { height: 54px; border-radius: 10px; display: flex; align-items: center; gap: 11px; padding: 0 8px; flex-shrink: 0; }
+.row:first-child { background: var(--row); }
+.pb { width: 32px; height: 32px; border-radius: 16px; border: 1px solid var(--edge); display: flex; align-items: center; justify-content: center; color: var(--text); }
+.wv { width: 74px; display: flex; gap: 1px; align-items: center; height: 24px; }
+.wv span { flex: 1; border-radius: 1px; background: var(--wave); }
+.nm { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.nm b { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nm s { text-decoration: none; font-size: 11px; color: var(--dim); }
+.du { font-family: 'JetBrains Mono'; font-size: 12px; color: var(--muted); }
+.foot { height: 58px; background: var(--foot); display: flex; align-items: center; gap: 12px; padding: 0 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.foot .fp { width: 36px; height: 36px; border-radius: 18px; background: var(--acc); opacity: .4; }
+.foot b { font-size: 13px; color: var(--muted); font-weight: 600; }
+.foot .tr { flex: 1; }
+
+.recording .state { color: var(--acc); }
+.recording .dot { background: var(--acc); animation: blink 1s steps(2) infinite; }
+.recording .dev .lv { background-image: none; display: flex; gap: 2px; align-items: center; height: 14px; }
+.recording .dev .lv span { flex: 1; background: var(--acc); border-radius: 1px; animation: lvl .5s ease-in-out infinite alternate; }
+@keyframes blink { 50% { opacity: .2 } }
+@keyframes lvl { from { height: 2px } to { height: 13px } }
+
+/* particles */
+.p { position: absolute; border-radius: 50%; }
+.p.fall { animation: fall var(--d) linear var(--dl) infinite; }
+.p.rise { animation: rise var(--d) linear var(--dl) infinite; }
+.p.wander { animation: wander var(--d) ease-in-out var(--dl) infinite, glow 3.2s ease-in-out var(--dl) infinite; }
+@keyframes fall { to { transform: translate(var(--dx), 580px) rotate(var(--r)); } }
+@keyframes rise { to { transform: translate(var(--dx), -580px); } }
+@keyframes wander { 0%,100% { transform: translate(0,0) } 33% { transform: translate(var(--dx), -22px) } 66% { transform: translate(calc(var(--dx) * -.6), 16px) } }
+@keyframes glow { 50% { opacity: .1 } }
+.recording .p.fall, .recording .p.rise { animation-duration: calc(var(--d) * .45); }
+
+/* ---------- SNOW ---------- */
+.snow { --bg: #0a0e13; --card: #111821; --row: #16202b; --edge: #2a3a4a; --border: #1a2530; --text: #eef4fa; --muted: #9db0c2; --dim: #7a8ea3; --acc: #a8dcff; --wave: #3a4f63; --track: #1d2a37; --rec: #eaf6ff; --rec-on: #0a1a2a; --foot: #0d1218; --tenth: #34475a; }
+.snow .fx { background: linear-gradient(#0d141c, #0a0e13 60%); }
+.flk { background: #fff; }
+.cap { position: absolute; left: 0; right: 0; top: -1px; height: 12px; color: #e9f3fb; opacity: .92; }
+.cap svg { width: 100%; height: 100%; }
+.snow .frost { position: absolute; inset: 0; background: radial-gradient(ellipse at 100% 100%, rgba(168,220,255,.08), transparent 55%); }
+.snow .mic { box-shadow: 0 0 0 6px rgba(168,220,255,.08); }
+.pines { --bg: #081210; --card: #0e1b19; --row: #132421; --edge: #24403a; --border: #15262a; --text: #eaf6f2; --muted: #93b3ab; --dim: #6f9189; --acc: #9fe8d8; --wave: #2f514a; --track: #1a2e2a; --rec: #e8fbf6; --rec-on: #07201a; --foot: #0b1614; --tenth: #2d4a44; }
+.pines .fx { background: radial-gradient(ellipse 100% 50% at 50% 0, #10241f, transparent); }
+.pines .trees { position: absolute; left: 0; right: 0; bottom: 0; height: 46px; color: #050c0a; opacity: .9; }
+.pines .trees svg { width: 100%; height: 100%; }
+.pines .moon { position: absolute; right: 96px; top: 14px; width: 26px; height: 26px; border-radius: 50%; background: #e8fbf6; opacity: .14; box-shadow: 0 0 30px 8px rgba(232,251,246,.12); }
+.day { --bg: #e9eff5; --card: #ffffff; --row: #f1f5f9; --edge: #cdd8e3; --border: #d4dee8; --field: #f3f6f9; --text: #15202c; --muted: #5b6b7c; --dim: #7c8b9b; --acc: #2f74d8; --wave: #b6c5d4; --track: #d8e1ea; --rec: #2f74d8; --rec-on: #fff; --foot: #f6f9fb; --tenth: #b2bfcc; --shadow: 0 4px 16px rgba(30,60,100,.08); }
+.day .fx { background: linear-gradient(#dfe8f1, #eef3f7 50%); }
+.day .flk { background: #9db3ca; }
+.day .cap { color: #f4f8fb; }
+
+/* ---------- GLASS ---------- */
+.glass { --bg: #10122a; --card: rgba(255,255,255,.08); --row: rgba(255,255,255,.1); --edge: rgba(255,255,255,.2); --border: rgba(255,255,255,.12); --field: rgba(0,0,0,.18); --text: #fff; --muted: rgba(255,255,255,.68); --dim: rgba(255,255,255,.52); --acc: #0a84ff; --wave: rgba(255,255,255,.32); --track: rgba(255,255,255,.16); --rec: #ff453a; --rec-on: #fff; --foot: rgba(20,22,40,.45); --tenth: rgba(255,255,255,.3); font-family: -apple-system, 'SF Pro Display', 'Inter Tight', sans-serif; }
+.glass .card, .glass .foot { backdrop-filter: blur(28px) saturate(170%); -webkit-backdrop-filter: blur(28px) saturate(170%); box-shadow: inset 0 1px 0 rgba(255,255,255,.25), inset 0 0 0 1px rgba(255,255,255,.1), 0 10px 30px rgba(0,0,0,.22); }
+.glass .rec { border-radius: 22px; } .glass .bar { border-radius: 16px; }
+.glass .search { border-color: transparent; border-radius: 10px; }
+.glass .pb { background: rgba(255,255,255,.12); border-color: transparent; }
+.glass .mic { box-shadow: 0 6px 18px rgba(255,69,58,.4), inset 0 1px 0 rgba(255,255,255,.4); }
+.glass .tb { background: rgba(255,255,255,.1); width: 24px; height: 24px; margin-left: 4px; }
+.glass.recording .state { color: #ff6b61; } .glass.recording .dot { background: #ff453a; }
+.glass .foot .fp { background: #fff; opacity: .25; }
+.blob { position: absolute; border-radius: 50%; filter: blur(50px); animation: float 18s ease-in-out infinite alternate; }
+@keyframes float { from { transform: translate(0,0) scale(1) } to { transform: translate(40px,30px) scale(1.15) } }
+.glight { --bg: #f2eff7; --card: rgba(255,255,255,.55); --row: rgba(255,255,255,.6); --edge: rgba(0,0,0,.1); --border: rgba(0,0,0,.07); --field: rgba(255,255,255,.6); --text: #1c1c22; --muted: rgba(28,28,34,.62); --dim: rgba(28,28,34,.45); --wave: rgba(28,28,34,.22); --track: rgba(0,0,0,.1); --foot: rgba(255,255,255,.5); --tenth: rgba(28,28,34,.25); }
+.glight .card, .glight .foot { box-shadow: inset 0 1px 0 rgba(255,255,255,.9), inset 0 0 0 1px rgba(255,255,255,.5), 0 10px 30px rgba(80,60,120,.12); }
+.glight .pb { background: rgba(255,255,255,.7); } .glight .tb { background: rgba(0,0,0,.05); }
+.glight .foot .fp { background: #000; opacity: .12; }
+.graph { --bg: #0a0b0d; --card: rgba(40,44,52,.38); --row: rgba(255,255,255,.06); --acc: #64d2ff; --rec: #64d2ff; --rec-on: #00202e; --foot: rgba(16,18,22,.6); }
+.graph .mic { box-shadow: 0 6px 22px rgba(100,210,255,.35), inset 0 1px 0 rgba(255,255,255,.5); }
+.graph.recording .state { color: #64d2ff; } .graph.recording .dot { background: #64d2ff; }
+
+/* ---------- SUMI ---------- */
+.sumi { --bg: #0c0b0d; --card: #141216; --row: #19161a; --edge: #3a3236; --border: #241f23; --text: #efe7da; --muted: #a69c90; --dim: #857b71; --wave: #55463f; --track: #2c2427; --foot: #100e11; --tenth: #4f453f; }
+.kanji { position: absolute; right: 86px; top: -10px; height: 240px; writing-mode: vertical-rl; font-family: 'Noto Serif JP'; font-weight: 900; font-size: 88px; line-height: 1; color: #efe7da; opacity: .06; }
+.enso { position: absolute; right: -30px; bottom: -46px; width: 170px; height: 170px; border-radius: 50%; border: 14px solid #efe7da; border-left-color: transparent; transform: rotate(-30deg); opacity: .035; }
+.sumi .mic { border-radius: 14px; box-shadow: inset 0 0 0 2px var(--ring), 0 0 0 4px var(--halo); }
+.sumi .dev .lv { height: 3px; background: linear-gradient(90deg, var(--track), transparent); border-radius: 3px; }
+.sumi .fx::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 100%, transparent 18px, rgba(239,231,218,.025) 19px, transparent 20px, transparent 26px, rgba(239,231,218,.025) 27px, transparent 28px) 0 0 / 40px 20px; -webkit-mask: linear-gradient(transparent 55%, #000); mask: linear-gradient(transparent 55%, #000); }
+.hanko { width: 14px; height: 14px; border-radius: 3px; background: var(--acc); color: var(--rec-on); font: 900 9px 'Noto Serif JP'; display: flex; align-items: center; justify-content: center; margin-right: 5px; }
+.recording .kanji { opacity: .1; color: var(--acc); transition: all .6s; }
+.indigo { --acc: #7d9bf0; --rec: #3d5bb8; --rec-on: #eef2ff; --ring: #7d9bf0; --halo: rgba(61,91,184,.16); }
+.sakura { --acc: #f4a3bd; --rec: #e889a8; --rec-on: #2a0a14; --ring: #ffc6d7; --halo: rgba(244,163,189,.14); }
+.petal { background: #f8b8cb; border-radius: 80% 0 80% 0; }
+.kin { --bg: #0a0a0a; --card: #121212; --row: #181816; --edge: #34302a; --border: #211f1b; --acc: #e0bb62; --rec: #1a1814; --rec-on: #e0bb62; --ring: #e0bb62; --halo: rgba(224,187,98,.1); --wave: #4a4436; }
+.crack { position: absolute; inset: 0; }
+.crack path { fill: none; stroke: #e0bb62; stroke-width: 1.4; stroke-linecap: round; filter: drop-shadow(0 0 3px rgba(224,187,98,.6)); opacity: .55; }
+.crack .shine { stroke: #fff6d8; stroke-width: 1.6; stroke-dasharray: 40 900; animation: shine 6s linear infinite; opacity: .8; }
+@keyframes shine { from { stroke-dashoffset: 940 } to { stroke-dashoffset: 0 } }
+
+/* ---------- AURORA ---------- */
+.aur { --bg: #04080f; --card: rgba(10,18,30,.5); --row: rgba(20,36,52,.5); --edge: #22384a; --border: #132030; --text: #e6f1f4; --muted: #8fa8b4; --dim: #6e8896; --acc: #5cf2b6; --wave: #2d4b56; --track: #18283a; --rec: #5cf2b6; --rec-on: #02140d; --foot: rgba(6,12,20,.9); --tenth: #2c4554; }
+.aur .card { backdrop-filter: blur(4px); }
+.aur .mic { box-shadow: 0 0 24px rgba(92,242,182,.3); }
+.curtain { position: absolute; left: -20%; right: -20%; top: -10px; height: 250px; mix-blend-mode: screen;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,0) 0 3px, rgba(255,255,255,.55) 4px, rgba(255,255,255,0) 6px 11px), linear-gradient(#c070ff 0%, #50f0b0 45%, rgba(80,240,176,0) 100%);
+  background-blend-mode: multiply; filter: blur(1.5px);
+  -webkit-mask: radial-gradient(ellipse 45% 38% at 30% 55%, #000 20%, transparent 70%), radial-gradient(ellipse 40% 34% at 72% 45%, #000 15%, transparent 70%); mask: radial-gradient(ellipse 45% 38% at 30% 55%, #000 20%, transparent 70%), radial-gradient(ellipse 40% 34% at 72% 45%, #000 15%, transparent 70%);
+  animation: sway 11s ease-in-out infinite alternate; opacity: .85; }
+.curtain.c2 { animation-duration: 15s; animation-delay: -5s; opacity: .35; filter: blur(3px) hue-rotate(40deg); }
+@keyframes sway { from { transform: translateX(-8%) skewX(-10deg) } to { transform: translateX(8%) skewX(12deg) } }
+.star { position: absolute; width: 2px; height: 2px; border-radius: 1px; background: #dff; animation: tw 3s ease-in-out infinite; }
+@keyframes tw { 50% { opacity: .15 } }
+.fjord { --card: #071019; } .band { --card: #0b1218; }
+.fjord .rec { padding-bottom: 54px; }
+.rib { position: absolute; left: -40%; width: 180%; border-radius: 50%; filter: blur(18px); mix-blend-mode: screen; }
+.fjord .rib.a { top: -20px; height: 70px; background: linear-gradient(90deg, transparent, #30f0a8 35%, #60d8ff 55%, transparent 80%); opacity: .5; animation: drift 13s ease-in-out infinite alternate; }
+.fjord .rib.b { top: 30px; height: 40px; background: linear-gradient(90deg, transparent 15%, #9b6bff 45%, #30f0a8 70%, transparent); opacity: .35; animation: drift 17s ease-in-out -6s infinite alternate-reverse; }
+@keyframes drift { from { transform: translateX(-12%) skewX(-12deg) scaleY(.8) } to { transform: translateX(12%) skewX(14deg) scaleY(1.25) } }
+.mount { position: absolute; left: 0; right: 0; bottom: 0; height: 70px; }
+.mount svg { width: 100%; height: 100%; }
+.band { --bg: #060a0e; --card: #0b1218; --row: #111b23; --border: #15212b; --acc: #6cf5c2; --rec: #0f1c24; --rec-on: #6cf5c2; }
+.band .mic { box-shadow: inset 0 0 0 1.5px #6cf5c2, 0 0 18px rgba(108,245,194,.25); }
+.flow { position: absolute; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #6cf5c2, #59c8ff, #a07bff, #6cf5c2) 0 0 / 200% 100%; animation: flow 6s linear infinite; }
+.flow.glowy { height: 40px; filter: blur(18px); opacity: .35; }
+@keyframes flow { to { background-position: 200% 0 } }
+.recording .flow { animation-duration: 2s; }
+
+/* ---------- NEON ---------- */
+.neon { --bg: #06070c; --card: #0b0d16; --row: #121522; --edge: #262c46; --border: #161a2c; --text: #eef2ff; --muted: #97a0c8; --dim: #6f78a2; --acc: #00e5ff; --wave: #2c3460; --track: #1b2038; --rec: #00e5ff; --rec-on: #001820; --foot: #090a12; --tenth: #333b62; }
+.neon .timer { text-shadow: 0 0 14px rgba(0,229,255,.45); }
+.neon .mic { box-shadow: 0 0 18px rgba(0,229,255,.5); }
+.circ { position: absolute; inset: 0; }
+.circ path { fill: none; stroke-width: 1.2; stroke-linejoin: round; }
+.circ .base { stroke: #1e2a44; }
+.circ .pulse { stroke: #00e5ff; stroke-width: 1.8; stroke-dasharray: 26 974; animation: pulse var(--d) linear var(--dl) infinite; filter: drop-shadow(0 0 4px #00e5ff); }
+.circ circle { fill: #0b0d16; stroke: #2a3a5c; stroke-width: 1.2; }
+@keyframes pulse { from { stroke-dashoffset: 1000 } to { stroke-dashoffset: 0 } }
+.recording .circ .pulse { animation-duration: calc(var(--d) * .4); }
+.synth { --bg: #0b0614; --card: #140a22; --row: #1c0f2e; --edge: #3a2357; --border: #22123a; --text: #fbefff; --muted: #c09ad8; --dim: #8f6daa; --acc: #ff3fa4; --wave: #4a2a6e; --track: #2a1840; --rec: #ff3fa4; --rec-on: #fff; --foot: rgba(14,7,24,.55); --tenth: #4c2f66; }
+.synth .timer { text-shadow: 0 0 12px rgba(255,63,164,.5); }
+.sun { position: absolute; right: 22px; bottom: -58px; width: 150px; height: 150px; border-radius: 50%; background: linear-gradient(#ffe066, #ff7ab8 55%, #b23cff); opacity: .35;
+  -webkit-mask: linear-gradient(#000 40%, transparent 40% 44%, #000 44% 54%, transparent 54% 59%, #000 59% 67%, transparent 67% 73%, #000 73%); mask: linear-gradient(#000 40%, transparent 40% 44%, #000 44% 54%, transparent 54% 59%, #000 59% 67%, transparent 67% 73%, #000 73%); }
+.floor { position: absolute; left: -50%; right: -50%; bottom: 0; height: 200px; transform: perspective(200px) rotateX(64deg); transform-origin: bottom;
+  background: linear-gradient(rgba(255,63,164,.3) 1px, transparent 1px) 0 0 / 100% 26px, linear-gradient(90deg, rgba(178,60,255,.28) 1px, transparent 1px) 0 0 / 26px 100%;
+  -webkit-mask: linear-gradient(transparent, #000 70%); mask: linear-gradient(transparent, #000 70%); animation: gridmove 2.2s linear infinite; opacity: .9; }
+@keyframes gridmove { to { background-position: 0 26px, 0 0; } }
+.rgbw { --bg: #050507; --card: #0b0b10; --row: #13131a; --edge: #2a2a38; --border: #17171f; --acc: #ffffff; --rec: #ffffff; --rec-on: #000; --wave: #34344a; }
+.rgbw .mic { box-shadow: 0 0 22px rgba(255,255,255,.3); }
+.waves { position: absolute; left: 0; top: 0; width: 200%; height: 100%; animation: slide 7s linear infinite; mix-blend-mode: screen; }
+.waves.w2 { animation-duration: 11s; } .waves.w3 { animation-duration: 5s; animation-direction: reverse; }
+.waves path { fill: none; stroke-width: 2; filter: drop-shadow(0 0 6px currentColor); }
+@keyframes slide { to { transform: translateX(-50%); } }
+.rgbw .card.rec .cfx { -webkit-mask: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent); mask: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent); }
+.recording .waves { animation-duration: 2.4s; }
+.snake { --bg: #040806; --card: #0a120c; --row: #0f1a12; --edge: #1f3a26; --border: #11201a; --text: #e7ffe9; --muted: #8fc49a; --dim: #66957a; --acc: #39ff7a; --wave: #1f4a2c; --track: #163020; --rec: #39ff7a; --rec-on: #01180a; --foot: #060c08; --tenth: #24452f; }
+.snake .timer { text-shadow: 0 0 10px rgba(57,255,122,.45); }
+.snakesvg { position: absolute; inset: 0; }
+.snakesvg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.snakesvg .trail { stroke: #39ff7a; stroke-width: 3; stroke-dasharray: 120 880; animation: pulse 9s linear infinite; filter: drop-shadow(0 0 5px #39ff7a); }
+.snakesvg .trail.t2 { stroke: #c2ff3a; animation-delay: -4.5s; stroke-dasharray: 70 930; }
+.snakesvg .ghost { stroke: #11281a; stroke-width: 3; }
+.snake .scan { position: absolute; inset: 0; background: repeating-linear-gradient(transparent 0 2px, rgba(0,0,0,.25) 2px 3px); }
+.recording .snakesvg .trail { animation-duration: 3.5s; }
+
+/* ---------- OCEAN ---------- */
+.ocean { --bg: #03101a; --card: rgba(6,28,42,.72); --row: rgba(10,40,58,.55); --edge: #1d4a60; --border: #0f2b3b; --text: #e4f7fb; --muted: #86b4c2; --dim: #62909f; --acc: #3fdbe6; --wave: #1f5266; --track: #10334a; --rec: #3fdbe6; --rec-on: #01161c; --foot: rgba(2,12,20,.92); --tenth: #22506a; }
+.ocean .fx { background: linear-gradient(#073049, #03101a 70%); }
+.caustic { position: absolute; inset: -40px; opacity: .22; mix-blend-mode: screen;
+  background: radial-gradient(ellipse 18px 9px at 30% 40%, #9ff 0, transparent 70%) 0 0 / 70px 46px, radial-gradient(ellipse 14px 8px at 70% 70%, #9ff 0, transparent 70%) 0 0 / 52px 38px;
+  animation: caus 9s linear infinite; filter: blur(2px); }
+.caustic.k2 { animation-duration: 13s; animation-direction: reverse; opacity: .15; }
+@keyframes caus { to { background-position: 70px 46px, -52px 38px; } }
+.bub { border: 1px solid rgba(180,250,255,.5); }
+.lagoon { --bg: #04222a; --card: rgba(8,52,62,.6); --row: rgba(14,70,80,.5); --edge: #2a6b76; --border: #144550; --acc: #7ff5d8; --rec: #7ff5d8; --rec-on: #03211b; --foot: rgba(3,26,32,.9); }
+.lagoon .fx { background: linear-gradient(#0c5560, #04222a 65%); }
+.rays { position: absolute; left: -10%; right: -10%; top: -20px; height: 420px; opacity: .2; mix-blend-mode: screen;
+  background: conic-gradient(from 160deg at 50% -10%, transparent 0deg, #bff 4deg, transparent 9deg, transparent 14deg, #bff 17deg, transparent 22deg, transparent 30deg, #bff 32deg, transparent 37deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000, transparent); mask: linear-gradient(#000, transparent); animation: rays 9s ease-in-out infinite alternate; filter: blur(3px); }
+@keyframes rays { from { transform: rotate(-4deg) } to { transform: rotate(5deg) } }
+
+/* ---------- TAPE ---------- */
+.tape { --bg: #120d09; --card: #1d150e; --row: #241a11; --edge: #4a3826; --border: #2c2016; --text: #f3e6cf; --muted: #bba58a; --dim: #937e66; --acc: #e9c46a; --wave: #5b4630; --track: #33261a; --rec: #c8453a; --rec-on: #fff1e0; --foot: #160f0a; --tenth: #5a4733; }
+.reels { position: absolute; right: 78px; top: 50%; transform: translateY(-50%); display: flex; gap: 8px; opacity: .16; color: #f3e6cf; }
+.reel { width: 38px; height: 38px; }
+.reel svg { width: 100%; height: 100%; }
+.recording .reel { animation: spin 2.6s linear infinite; }
+.recording .reels { opacity: .22; }
+@keyframes spin { to { transform: rotate(360deg) } }
+.tape .rec { background: linear-gradient(#22190f, #1a120b); box-shadow: inset 0 1px 0 rgba(255,230,190,.06); }
+.tape .label { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: linear-gradient(90deg, #c8453a 0 33%, #e9c46a 33% 66%, #5e9e8a 66%); opacity: .7; }
+.console { --bg: #0e0f10; --card: #1a1c1e; --row: #1f2124; --edge: #3a3d42; --border: #25272a; --text: #ecedee; --muted: #a2a6ab; --dim: #7d8288; --acc: #8cff6a; --wave: #43474d; --track: #2a2d31; --rec: #d33a2f; --rec-on: #fff; --foot: #111214; --tenth: #3b4a36; }
+.console .rec { background: repeating-linear-gradient(90deg, #1b1d1f 0 1px, #1e2022 1px 3px), #1c1e20; box-shadow: inset 0 1px 0 rgba(255,255,255,.07), inset 0 -1px 0 rgba(0,0,0,.4); }
+.console .timer { color: #b8ff9e; text-shadow: 0 0 10px rgba(140,255,106,.45); }
+.console .timer-box { position: absolute; left: 12px; top: 34px; width: 196px; height: 52px; border-radius: 6px; background: #0b100a; box-shadow: inset 0 2px 6px rgba(0,0,0,.6); }
+.screw { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #6a6e74, #2a2c30); }
+.screw::after { content: ''; position: absolute; left: 1px; right: 1px; top: 3px; height: 1px; background: #15171a; transform: rotate(40deg); }
+.console .mic { box-shadow: 0 3px 0 #7a1f18, inset 0 1px 0 rgba(255,255,255,.3); }
+
+/* ---------- FOREST ---------- */
+.forest { --bg: #060c08; --card: #0c160f; --row: #111e14; --edge: #25402c; --border: #13221a; --text: #eaf5e6; --muted: #9db89a; --dim: #789676; --acc: #cdf25e; --wave: #2d4a2f; --track: #18291c; --rec: #cdf25e; --rec-on: #142000; --foot: #080f0a; --tenth: #2c4630; }
+.ffly { background: #e8ff8a; box-shadow: 0 0 8px 3px rgba(205,242,94,.55); }
+.forest .mic { box-shadow: 0 0 22px rgba(205,242,94,.3); }
+.moss { --bg: #0a100c; --card: #111a13; --row: #162119; --acc: #7fd49a; --rec: #2c4a34; --rec-on: #b8f5c8; }
+.moss .mic { box-shadow: inset 0 0 0 1.5px #7fd49a; }
+.fern { position: absolute; color: #1b2e1f; }
+.fern svg { width: 100%; height: 100%; }
+.dew { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #7fd49a); opacity: .5; animation: glow 4s ease-in-out infinite; }
+
+/* ---------- SPACE ---------- */
+.space { --bg: #05040b; --card: rgba(14,12,28,.7); --row: rgba(26,22,48,.55); --edge: #2e2a52; --border: #17142c; --text: #efedff; --muted: #a7a2cf; --dim: #7e78ab; --acc: #b49cff; --wave: #36305e; --track: #1e1a38; --rec: #b49cff; --rec-on: #140a30; --foot: rgba(7,6,16,.92); --tenth: #39335f; }
+.stars { position: absolute; inset: -60px 0 0; animation: par var(--d) linear infinite; }
+@keyframes par { from { transform: translateY(0) } to { transform: translateY(60px) } }
+.stars i { position: absolute; border-radius: 50%; background: #fff; }
+.planet { position: absolute; right: -36px; bottom: -70px; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #6f5bd6, #251a60 60%, #0c0826); opacity: .55; }
+.ring { position: absolute; right: -100px; bottom: -14px; width: 280px; height: 50px; border-radius: 50%; border: 2px solid rgba(180,156,255,.35); transform: rotate(-14deg); }
+.nebula { --acc: #ff8adf; --rec: #ff8adf; --rec-on: #2a0420; }
+.cloud { position: absolute; border-radius: 50%; filter: blur(40px); opacity: .35; animation: float 22s ease-in-out infinite alternate; }
+
+/* ---------- PAPER ---------- */
+.paper { --bg: #f3eee4; --card: #fffdf8; --row: #f7f1e6; --edge: #d8cfbf; --border: #e2d9c9; --field: #f8f4ec; --text: #23201b; --muted: #6d665b; --dim: #8d8677; --acc: #2b4cc0; --wave: #c9bfae; --track: #e4dccd; --rec: #23201b; --rec-on: #fffdf8; --foot: #f8f4ec; --tenth: #c3baa9; --shadow: 0 1px 0 #e0d6c3, 0 6px 18px rgba(90,70,40,.08); font-family: 'Inter Tight', sans-serif; }
+.paper .rows { background: repeating-linear-gradient(transparent 0 55px, #dfe6f3 55px 56px); position: relative; }
+.paper .rows::before { content: ''; position: absolute; left: 6px; top: 0; bottom: 0; width: 1px; background: #f0b9b4; }
+.paper .row:first-child { background: rgba(43,76,192,.06); }
+.paper .timer { font-weight: 600; }
+.paper .mark { position: absolute; left: 14px; bottom: 6px; width: 120px; height: 10px; background: #ffe58a; opacity: .7; border-radius: 2px; transform: skewX(-12deg); }
+.grid-p { --bg: #f4f4f1; --card: #ffffff; --row: #eef4ef; --acc: #2f7a4f; --rec: #2f7a4f; --rec-on: #fff; --border: #e1e3dd; }
+.grid-p .fx { background: radial-gradient(circle, #c9cec6 1px, transparent 1.3px) 0 0 / 16px 16px; }
+.grid-p .rows { background: none; } .grid-p .rows::before { display: none; }
+.grid-p .row:first-child { background: rgba(47,122,79,.08); }
+
+@media (prefers-reduced-motion: reduce) { .win *, .win *::before, .win *::after { animation: none !important; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Themes, round two</h1>
+<p class="lead">Snow, Glass and Sumi kept, each with new versions (Sumi without the orange red). Aurora and Neon redone. Four new families of my own. Ember stays the default.</p>
+<div class="ctl"><button id="idle" class="on">Ready</button><button id="recb">Recording</button></div>
+<div id="out"></div>
+</main>
+<script>
+const P = {
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  min: '<path d="M6 12h12"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  down: '<path d="M6 9l6 6 6-6"/>', search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+  import: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M12 12v6M9 15h6"/>',
+  ask: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  pip: '<path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/><rect x="12" y="13" width="10" height="7" rx="2"/>',
+  dots: '<circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>',
+};
+const ic = (n, s = 15, sw = 2) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+const play = `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>`;
+const stop = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+const wave = (s, flat) => Array.from({ length: 24 }, (_, i) => `<span style="height:${flat ? 2 : Math.max(2, Math.round(2 + Math.abs(Math.sin(i * .31 + s) * Math.sin(i * .09 + 2 * s)) * 20))}px"></span>`).join('');
+const CLIPS = [['clip_001', 'Sat 05:48 · transcribed', '16:53', 1], ['Presentation about Max', 'Today 16:01 · transcribed', '0:08', 2], ['clip_006', 'Sat 06:05', '0:04', 0], ['Meeting notes', 'Today 07:20', '1:09:26', 3]];
+const R = (a, b) => a + Math.random() * (b - a);
+
+// particles: kind is fall, rise or wander
+const parts = (n, cls, kind, f) => Array.from({ length: n }, () => { const o = f(); return `<i class="p ${kind} ${cls}" style="left:${o.x}%;top:${o.y}%;width:${o.s}px;height:${o.h ?? o.s}px;opacity:${o.o};--dx:${o.dx || 0}px;--r:${o.r || 0}deg;--d:${o.d}s;--dl:${-R(0, o.d)}s"></i>`; }).join('');
+const snow = (n, sz = 3) => parts(n, 'flk', 'fall', () => ({ x: R(0, 100), y: -3, s: R(1.4, sz), o: R(.25, .85), dx: R(-40, 40), d: R(8, 16) }));
+const stars = (n, h = 45) => Array.from({ length: n }, () => `<div class="star" style="left:${R(0, 100)}%;top:${R(0, h)}%;animation-delay:${-R(0, 3)}s;opacity:${R(.3, .9)}"></div>`).join('');
+const cap = '<div class="cap"><svg viewBox="0 0 356 12" preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" d="M0 0H356V5C346 9 336 4 326 6S310 11 298 7 276 3 264 6 242 10 230 6 210 2 196 5 176 9 162 5 140 3 128 6 108 10 94 6 74 3 60 6 40 10 26 6 12 3 0 7Z"/></svg></div>';
+const blobs = cols => cols.map(([c, w, l, t, o, dl]) => `<div class="blob" style="width:${w}px;height:${w}px;left:${l}px;top:${t}px;background:${c};opacity:${o};animation-delay:${dl}s"></div>`).join('');
+const kanji = '<div class="kanji">録音</div><div class="enso"></div>';
+const sine = (w, h, amp, per, ph) => { let d = ''; for (let x = 0; x <= w; x += 4) d += (x ? 'L' : 'M') + x + ' ' + (h / 2 + amp * Math.sin(x / per * Math.PI * 2 + ph)).toFixed(1); return d; };
+const wavesSvg = ['#ff2d55', '#30ff8a', '#2d8bff'].map((c, i) => `<svg class="waves w${i + 1}" viewBox="0 0 712 130" preserveAspectRatio="none" style="color:${c}" aria-hidden="true"><path stroke="${c}" opacity=".55" d="${sine(712, 130, 22 + i * 6, 356 / (1 + i % 2), i * 1.7)}"/></svg>`).join('');
+const circuit = (() => {
+  const ps = ['M0 30H60L80 50H170L190 30H260', 'M356 20H300L280 40V70L262 88H200', 'M0 100H40L58 82H120L140 102H230L250 122', 'M356 110H320L300 90H262', 'M110 0V18L130 38H150'];
+  return `<svg class="circ" viewBox="0 0 356 140" preserveAspectRatio="none" aria-hidden="true">${ps.map(d => `<path class="base" d="${d}"/>`).join('')}${ps.map((d, i) => `<path class="pulse" pathLength="1000" d="${d}" style="--d:${4 + i * 1.3}s;--dl:${-i * 1.7}s"/>`).join('')}<circle cx="260" cy="30" r="3"/><circle cx="200" cy="88" r="3"/><circle cx="250" cy="122" r="3"/><circle cx="150" cy="38" r="3"/></svg>`;
+})();
+const snakeSvg = (() => { const d = 'M10 20H120V60H40V100H200V30H300V110H346'; return `<svg class="snakesvg" viewBox="0 0 356 130" preserveAspectRatio="none" aria-hidden="true"><path class="ghost" d="${d}"/><path class="trail" pathLength="1000" d="${d}"/><path class="trail t2" pathLength="1000" d="${d}"/></svg><div class="scan"></div>`; })();
+const reel = `<div class="reel"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="32" cy="32" r="8" fill="none" stroke="currentColor" stroke-width="3"/>${[0, 120, 240].map(a => `<path d="M32 32L${32 + 22 * Math.cos(a * Math.PI / 180)} ${32 + 22 * Math.sin(a * Math.PI / 180)}" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>`).join('')}</svg></div>`;
+const fern = (x, y, w, rot, flip) => `<div class="fern" style="left:${x}px;top:${y}px;width:${w}px;height:${w}px;transform:rotate(${rot}deg) scaleX(${flip ? -1 : 1})"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M10 95Q40 60 90 10" stroke="currentColor" stroke-width="3" fill="none"/>${Array.from({ length: 8 }, (_, i) => { const t = .12 + i * .1, px = 10 + 80 * t, py = 95 - 85 * t, l = 26 - i * 2.2; return `<path d="M${px} ${py}q${-l * .2} ${-l * .9} ${-l * .9} ${-l * .6}q${l * .5} ${l * .3} ${l * .9} ${l * .6}Z" fill="currentColor"/><path d="M${px} ${py}q${l * .9} ${l * .2} ${l * .7} ${l * .9}q${-l * .4} ${-l * .4} ${-l * .7} ${-l * .9}Z" fill="currentColor"/>`; }).join('')}</svg></div>`;
+const starLayer = (n, s, d) => `<div class="stars" style="--d:${d}s">${Array.from({ length: n }, () => `<i style="left:${R(0, 100)}%;top:${R(0, 100)}%;width:${s}px;height:${s}px;opacity:${R(.3, .9)}"></i>`).join('')}</div>`;
+
+const F = [
+  ['Snow', 'kept', 'Your pick, plus two more takes.', [
+    ['snow', 'Night', 'The one you liked. Ice blue on night slate, slow snow, a snow cap on the recorder.', () => snow(42), () => cap + '<div class="frost"></div>'],
+    ['snow pines', 'Pines', 'Dark spruce green with a pine forest along the bottom of the recorder and a faint moon. Same falling snow.', () => snow(36), () => cap + '<div class="moon"></div><div class="trees"><svg viewBox="0 0 356 46" preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" d="' + Array.from({ length: 18 }, (_, i) => { const x = i * 21 - 4, h = 18 + (i * 37 % 26); return `M${x} 46L${x + 10} ${46 - h}L${x + 20} 46Z`; }).join('') + '"/></svg></div>'],
+    ['snow day', 'Daylight', 'A light theme. Pale sky, white cards, blue accent and grey blue snow drifting down.', () => snow(36, 3.4), () => cap],
+  ]],
+  ['Glass', 'kept', 'Your pick, plus a light one and a dark one.', [
+    ['glass', 'Dusk', 'The one you liked. Frosted cards over blue, violet, pink and amber blobs.', () => '<div style="position:absolute;inset:0;background:#10122a"></div>' + blobs([['#3b5bff', 260, -60, -40, .9, 0], ['#c34bff', 240, 210, 90, .9, -6], ['#ff5f8f', 220, 60, 300, .7, -11]]), () => ''],
+    ['glass glight', 'Light', 'Like macOS in light mode. Milky glass on peach, lilac and sky blue.', () => '<div style="position:absolute;inset:0;background:#f2eff7"></div>' + blobs([['#9fc4ff', 240, -50, -30, .8, 0], ['#f3b8ff', 230, 200, 80, .75, -6], ['#ffd0a8', 220, 40, 290, .7, -11]]), () => ''],
+    ['glass graph', 'Graphite', 'Smoked dark glass with one cool teal glow. Calm, close to Apple Pro apps.', () => '<div style="position:absolute;inset:0;background:#0a0b0d"></div>' + blobs([['#1fa3c9', 280, 140, -80, .55, 0], ['#3a4bd8', 200, -80, 260, .35, -8]]), () => ''],
+  ]],
+  ['Sumi', 'kept', 'No orange. Three new accents on the same ink and paper look.', [
+    ['sumi indigo', 'Indigo', 'Ai-iro indigo, the dye of old Japanese work clothes. Indigo seal button and kanji glow.', () => '', () => kanji],
+    ['sumi sakura', 'Sakura', 'Cherry blossom pink. A few petals drift down over the window.', () => parts(14, 'petal', 'fall', () => ({ x: R(0, 100), y: -3, s: R(5, 9), h: R(4, 6), o: R(.35, .8), dx: R(-70, 70), r: R(180, 540), d: R(10, 18) })), () => kanji],
+    ['sumi kin', 'Kintsugi', 'Black lacquer with gold cracks across the recorder, like repaired pottery. A slow shine runs along them.', () => '', () => '<div class="enso"></div><svg class="crack" viewBox="0 0 356 130" preserveAspectRatio="none" aria-hidden="true"><path d="M0 92L46 80L70 98L120 70L150 78L196 40L230 52L270 18L300 26L356 6"/><path d="M150 78L168 112L160 130"/><path d="M230 52L248 84"/><path class="shine" pathLength="1000" d="M0 92L46 80L70 98L120 70L150 78L196 40L230 52L270 18L300 26L356 6"/></svg>'],
+  ]],
+  ['Aurora', 'redo', 'Three new takes on northern lights.', [
+    ['aur', 'Curtain', 'Real aurora shape: tall glowing rays that sway like a curtain, green fading to violet at the top.', () => stars(30) + '<div class="curtain"></div><div class="curtain c2"></div>', () => ''],
+    ['aur fjord', 'Fjord', 'The recorder becomes a window on a Norwegian fjord at night: mountains, aurora and stars.', () => '', () => stars(18, 60) + '<div class="rib a"></div><div class="rib b"></div><div class="mount"><svg viewBox="0 0 356 70" preserveAspectRatio="none" aria-hidden="true"><path fill="#0b1a26" d="M0 70V40L40 22L70 34L110 8L150 30L180 20L220 42L260 14L300 30L356 18V70Z"/><path fill="#040b12" d="M0 70V52L50 38L90 50L140 32L190 52L240 36L290 50L356 40V70Z"/></svg></div>'],
+    ['aur band', 'Band', 'Minimal. A thin aurora line flows along the top of the window and the recorder, with a soft glow.', () => '<div class="flow" style="top:0"></div><div class="flow glowy" style="top:-20px"></div>', () => '<div class="flow" style="top:0"></div><div class="flow glowy" style="top:-24px"></div>'],
+  ]],
+  ['Neon', 'redo', 'Four new takes on cyberpunk, with the moving lines you asked for.', [
+    ['neon', 'Circuit', 'Circuit board traces on the recorder with light pulses racing along them. Faster while recording.', () => '', () => circuit],
+    ['neon rgbw', 'RGB wave', 'Red, green and blue sine waves slide across the recorder and blend into white where they cross.', () => '', () => wavesSvg],
+    ['neon snake', 'Snake', 'A glowing snake line slithers through the recorder in right angles, like the old game. Scanlines on top.', () => '', () => snakeSvg],
+    ['neon synth', 'Synthwave', 'Eighties sunset. A striped sun behind the record button and a grid floor moving under the list.', () => '<div class="floor"></div>', () => '<div class="sun"></div>'],
+  ]],
+  ['Ocean', 'mine', 'Underwater, calm and slow.', [
+    ['ocean', 'Deep', 'Deep sea blue with light ripples moving over everything and small bubbles rising.', () => '<div class="caustic"></div><div class="caustic k2"></div>' + parts(16, 'bub', 'rise', () => ({ x: R(0, 100), y: 102, s: R(3, 8), o: R(.3, .7), dx: R(-20, 20), d: R(9, 18) })), () => ''],
+    ['ocean lagoon', 'Lagoon', 'Shallow turquoise water with sun rays swaying down from the top.', () => '<div class="rays"></div><div class="caustic k2"></div>' + parts(8, 'bub', 'rise', () => ({ x: R(0, 100), y: 102, s: R(3, 6), o: R(.3, .6), dx: R(-20, 20), d: R(10, 18) })), () => ''],
+  ]],
+  ['Studio', 'mine', 'Retro recording gear.', [
+    ['tape', 'Cassette', 'Warm brown and cream. Tape reels sit behind the timer and spin while you record. A label stripe under the card.', () => '', () => `<div class="reels">${reel}${reel}</div><div class="label"></div>`],
+    ['console', 'Console', 'Brushed metal panel with screws, a green LED timer and a red hardware record key.', () => '', () => '<div class="timer-box"></div><span class="screw" style="left:8px;top:8px"></span><span class="screw" style="right:8px;top:8px"></span><span class="screw" style="left:8px;bottom:8px"></span><span class="screw" style="right:8px;bottom:8px"></span>'],
+  ]],
+  ['Forest', 'mine', 'Quiet woods at night.', [
+    ['forest', 'Fireflies', 'Deep green night. Fireflies drift around slowly and blink. Lime accent.', () => parts(16, 'ffly', 'wander', () => ({ x: R(3, 97), y: R(5, 95), s: R(2.5, 4), o: R(.5, 1), dx: R(-30, 30), d: R(7, 14) })), () => ''],
+    ['forest moss', 'Moss', 'Still and soft. Fern leaves curl in from the recorder corners with drops of dew.', () => '', () => fern(-14, 48, 110, 0, false) + fern(270, -30, 100, 160, true) + '<div class="dew" style="left:62px;top:96px"></div><div class="dew" style="left:300px;top:30px;animation-delay:-2s"></div>'],
+  ]],
+  ['Space', 'mine', 'Out in orbit.', [
+    ['space', 'Orbit', 'Stars drift past in layers, a ringed planet rises behind the record button.', () => starLayer(40, 1, 24) + starLayer(18, 2, 12), () => '<div class="planet"></div><div class="ring"></div>'],
+    ['space nebula', 'Nebula', 'Pink and teal gas clouds drift slowly behind the stars.', () => `<div class="cloud" style="width:260px;height:200px;left:-60px;top:-30px;background:#c03bff"></div><div class="cloud" style="width:220px;height:200px;left:180px;top:140px;background:#1fd0c0;animation-delay:-8s"></div><div class="cloud" style="width:200px;height:160px;left:40px;top:340px;background:#ff5fb0;animation-delay:-14s"></div>` + starLayer(40, 1, 30) + starLayer(14, 2, 15), () => ''],
+  ]],
+  ['Paper', 'mine', 'Light themes for daytime, like a notebook.', [
+    ['paper', 'Notebook', 'Cream paper, ruled lines and a red margin under the list, ink blue accent, a highlighter swipe.', () => '', () => '<div class="mark"></div>'],
+    ['paper grid-p', 'Dot grid', 'Bullet journal dot grid, white cards and a green accent.', () => '', () => ''],
+  ]],
+];
+
+const win = (cls, fx, cfx) => `
+<div class="win ${cls}">
+  <div class="fx">${fx()}</div>
+  <div class="title">${cls.startsWith('sumi') ? '<span class="hanko">録</span>' : ''}<b>Thrasher</b><span class="sp"></span><span class="tb">${ic('gear', 14)}</span><span class="tb">${ic('min', 14)}</span><span class="tb">${ic('x', 14)}</span></div>
+  <div class="card rec"><div class="cfx">${cfx()}</div>
+    <div class="state"><span class="dot"></span><span class="st">READY</span></div>
+    <div class="recrow"><div class="timer"><span class="tm">00:00</span><i class="tt">.0</i></div><button class="mic" aria-label="Record">${ic('mic', 22)}</button></div>
+    <div class="dev"><span>Default microphone</span><span class="lv"></span></div>
+  </div>
+  <div class="card bar"><span class="proj">Inbox ${ic('down', 12)}</span><span class="search">${ic('search', 13)}Search</span><span class="ib">${ic('import', 14)}</span><span class="ib">${ic('ask', 14)}</span><span class="ib">${ic('pip', 14)}</span></div>
+  <div class="rows">${CLIPS.map(([a, b, c, s]) => `<div class="row"><span class="pb">${play}</span><div class="wv">${wave(s, s === 0)}</div><div class="nm"><b>${a}</b><s>${b}</s></div><span class="du">${c}</span><span style="color:var(--dim)">${ic('dots', 14)}</span></div>`).join('')}</div>
+  <div class="foot"><span class="fp"></span><div class="tr"><b>Nothing playing</b></div><span class="du">--:-- / --:--</span></div>
+</div>`;
+
+const LBL = { kept: 'KEPT', redo: 'REDONE', mine: 'NEW' };
+document.getElementById('out').innerHTML = F.map(([fam, k, d, vs]) => `
+<section class="fam"><h2>${fam}<em class="${k}">${LBL[k]}</em></h2><p>${d}</p><div class="grid">
+${vs.map(([cls, name, desc, fx, cfx]) => `<div class="item"><h3><span class="tag">${fam}</span>${name}</h3><p>${desc}</p>${win(cls, fx, cfx)}</div>`).join('')}
+</div></section>`).join('');
+
+let timer = null, t0 = 0;
+function setRec(on) {
+  document.getElementById('recb').classList.toggle('on', on);
+  document.getElementById('idle').classList.toggle('on', !on);
+  document.querySelectorAll('.win').forEach(w => {
+    w.classList.toggle('recording', on);
+    w.querySelector('.st').textContent = on ? 'RECORDING' : 'READY';
+    w.querySelector('.mic').innerHTML = on ? stop : ic('mic', 22);
+    w.querySelector('.dev .lv').innerHTML = on ? Array.from({ length: 26 }, () => `<span style="animation-delay:${-Math.random()}s;animation-duration:${.25 + Math.random() * .4}s"></span>`).join('') : '';
+  });
+  clearInterval(timer);
+  const set = (a, b) => { document.querySelectorAll('.tm').forEach(e => e.textContent = a); document.querySelectorAll('.tt').forEach(e => e.textContent = b); };
+  if (on) { t0 = performance.now(); timer = setInterval(() => { const s = (performance.now() - t0) / 1000; set(`${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`, '.' + Math.floor(s * 10 % 10)); }, 100); }
+  else set('00:00', '.0');
+}
+document.getElementById('recb').onclick = () => setRec(true);
+document.getElementById('idle').onclick = () => setRec(false);
+</script>
+</body>
+</html>

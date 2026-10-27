@@ -2256,8 +2256,8 @@ component CardFx inherits Rectangle {
     in property <bool> recording;
     in property <length> radius: 14px;
     // Snow and Daylight: a cap of snow along the whole top edge, round the corners too.
-    // A band that follows the card's round corners, then drifts hanging from it, kept
-    // off the corners (a clip here is square).
+    // A band that follows the card's round corners, then drifts hanging from it along
+    // the straight top (a clip here is square, so nothing may reach past the corners).
     if Theme.current == 1 || Theme.current == 2: Rectangle {
         property <color> snow: Theme.current == 2 ? #f4f8fb : #e9f3fbeb;
         property <float> w: root.width / 1px;
@@ -2274,21 +2274,19 @@ component CardFx inherits Rectangle {
             fill: parent.snow;
             commands: "M " + parent.x0 + " 5 A " + parent.r + " " + parent.r + " 0 0 1 " + parent.r + " 0 L " + (parent.w - parent.r) + " 0 A " + parent.r + " " + parent.r + " 0 0 1 " + (parent.w - parent.x0) + " 5 Z";
         }
-        Rectangle {
-            x: 5px;
-            width: root.width - 10px;
-            clip: true;
-            property <color> snow: parent.snow;
-            for k in Math.ceil(root.width / 44px) + 1: Path {
-                x: k * 44px - 11px;
-                y: 4px;
-                width: 44px;
-                height: 7px;
-                viewbox-width: 44;
-                viewbox-height: 7;
-                fill: parent.snow;
-                commands: Math.mod(k, 2) == 0 ? "M0 0H44V1C38 6 30 1 22 4S6 5 0 1Z" : "M0 0H44V1C36 4 30 7 20 3S6 2 0 1Z";
-            }
+        // Drifts fill exactly the straight part between the corners, a whole number of
+        // them, so they start and end thin instead of being cut.
+        property <int> drifts: Math.max(1, Math.round((self.w - 2 * self.r) / 44));
+        property <length> drift-w: (root.width - 2 * root.radius) / self.drifts;
+        for k in self.drifts: Path {
+            x: root.radius + k * parent.drift-w;
+            y: 4px;
+            width: parent.drift-w;
+            height: 7px * parent.drift-w / 44px;
+            viewbox-width: 44;
+            viewbox-height: 7;
+            fill: parent.snow;
+            commands: Math.mod(k, 2) == 0 ? "M0 0H44V1C38 6 30 1 22 4S6 5 0 1Z" : "M0 0H44V1C36 4 30 7 20 3S6 2 0 1Z";
         }
     }
     // Sakura and Kintsugi: a faint ensō circle in the corner.

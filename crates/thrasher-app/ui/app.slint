@@ -822,8 +822,29 @@ component ClipItem inherits Rectangle {
                             self.absolute-position.y - root.absolute-position.y + self.mouse-y);
                     }
                 }
-                clicked => { if (!self.picking) { root.cue(clamp(self.mouse-x / self.width, 0, 1)); } }
-                double-clicked => { root.play-at(clamp(self.mouse-x / self.width, 0, 1)); }
+                // Seeking is only for the highlighted clip: on another clip a click just
+                // highlights it, and the rest of a double-click there does nothing.
+                property <bool> fresh;
+                clicked => {
+                    if (!self.picking) {
+                        if (!root.selected && !root.active) {
+                            root.select(false, false);
+                            self.fresh = true;
+                        } else if (!self.fresh) {
+                            root.cue(clamp(self.mouse-x / self.width, 0, 1));
+                        }
+                    }
+                }
+                double-clicked => {
+                    if (!self.fresh) {
+                        root.play-at(clamp(self.mouse-x / self.width, 0, 1));
+                    }
+                }
+                Timer {
+                    interval: 500ms;
+                    running: parent.fresh;
+                    triggered => { parent.fresh = false; }
+                }
             }
         }
         VerticalLayout {

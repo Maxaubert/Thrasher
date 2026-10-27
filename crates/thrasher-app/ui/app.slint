@@ -181,28 +181,36 @@ struct Palette {
     card-edge: color,
     footer: color,
     press: color,
+    // Outline of the recorder and toolbar cards; transparent for none.
+    card-line: color,
 }
 
 // The colours. `current` picks one of the palettes, in the order of `names`; the
 // settings page switches it.
 export global Theme {
     in-out property <int> current: 0;
-    out property <[string]> names: ["Ember", "Volt", "Glacier", "Mint", "Violet", "Signal", "Chalk"];
+    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Aurora", "Lagoon", "Nebula", "Cyberpunk"];
     property <[Palette]> palettes: [
         // Ember
-        { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618 },
-        // Volt
-        { bg: #0a0a09, card: #12110e, row: #151411, raised: #1a1915, line: #1e1d19, line-soft: #181714, edge: #323028, text: #ededec, text2: #d2d1ce, muted: #a09f95, dim: #89877b, accent: #ffd426, accent-hover: #ffdd56, on-accent: #1a1400, wave: #4f4d41, wave-dim: #434136, track: #26251f, danger: #ff8f7a, hover: #22211c, hover-soft: #1f1e1a, row-hover: #0f0f0d, picked: #231e0c, popup: #1a1915, popup-edge: #3e3c32, knob: #79776c, faint: #69675e, fainter: #47453a, rec-rest: #625313, divider: #1d1c17, border: #25241e, card-edge: #1f1e1a, footer: #0e0e0c, press: #342c0e },
-        // Glacier
-        { bg: #07090c, card: #0c0f14, row: #0e1218, raised: #11161e, line: #141a23, line-soft: #10151c, edge: #202b3a, text: #ebecee, text2: #cbcfd5, muted: #8c98aa, dim: #6f7f95, accent: #4da3ff, accent-hover: #74b7ff, on-accent: #04101f, wave: #34455c, wave-dim: #2c3a4d, track: #19212c, danger: #ff8f7a, hover: #161e28, hover-soft: #151b24, row-hover: #0a0d12, picked: #0e1824, popup: #11161e, popup-edge: #283548, knob: #617084, faint: #546173, fainter: #2e3d53, rec-rest: #204063, divider: #131921, border: #18202b, card-edge: #151b24, footer: #090c11, press: #132335 },
-        // Mint
-        { bg: #080b0a, card: #0d1311, row: #101614, raised: #141b19, line: #17201d, line-soft: #121a17, edge: #26342f, text: #ebeeed, text2: #cdd3d1, muted: #92a49e, dim: #778d86, accent: #3ee8a8, accent-hover: #68edbb, on-accent: #03170f, wave: #3c544c, wave-dim: #334640, track: #1d2824, danger: #ff8f7a, hover: #1a2421, hover-soft: #18211e, row-hover: #0c100f, picked: #0d211a, popup: #141b19, popup-edge: #2f413b, knob: #687d76, faint: #5b6c66, fainter: #364b44, rec-rest: #1b5b43, divider: #161e1b, border: #1c2723, card-edge: #18211e, footer: #0b0f0e, press: #113125 },
-        // Violet
-        { bg: #08070c, card: #0e0c14, row: #110f17, raised: #15121d, line: #181522, line-soft: #14111b, edge: #282337, text: #ecebee, text2: #ceccd4, muted: #958fa7, dim: #7a7391, accent: #a98bff, accent-hover: #bca5ff, on-accent: #120a26, wave: #403858, wave-dim: #362f4a, track: #1f1b2a, danger: #ff8f7a, hover: #1c1826, hover-soft: #191623, row-hover: #0c0b11, picked: #181424, popup: #15121d, popup-edge: #322c44, knob: #6c6580, faint: #5d5770, fainter: #39324f, rec-rest: #423763, divider: #171420, border: #1e1a29, card-edge: #191623, footer: #0c0a10, press: #231d35 },
-        // Signal
-        { bg: #0b0809, card: #120e0f, row: #161011, raised: #1b1415, line: #1f1819, line-soft: #191314, edge: #332729, text: #edecec, text2: #d2cece, muted: #a39396, dim: #8c787c, accent: #ff4060, accent-hover: #ff6a83, on-accent: #1f0309, wave: #523e41, wave-dim: #453437, track: #271e1f, danger: #ff8f7a, hover: #231b1c, hover-soft: #20191a, row-hover: #100c0d, picked: #230e12, popup: #1b1415, popup-edge: #403033, knob: #7b6a6d, faint: #6b5c5e, fainter: #4a373a, rec-rest: #631c28, divider: #1e1618, border: #261d1e, card-edge: #20191a, footer: #0f0b0c, press: #341218 },
-        // Chalk
-        { bg: #0a0a0a, card: #101010, row: #131313, raised: #181818, line: #1c1c1c, line-soft: #161616, edge: #2d2d2d, text: #ececec, text2: #d0d0d0, muted: #9b9b9b, dim: #828282, accent: #f2f2f2, accent-hover: #f5f5f5, on-accent: #0a0a0a, wave: #484848, wave-dim: #3d3d3d, track: #232323, danger: #ff8f7a, hover: #1f1f1f, hover-soft: #1c1c1c, row-hover: #0e0e0e, picked: #212121, popup: #181818, popup-edge: #383838, knob: #727272, faint: #646464, fainter: #404040, rec-rest: #5e5e5e, divider: #1a1a1a, border: #222222, card-edge: #1c1c1c, footer: #0d0d0d, press: #313131 },
+        { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618, card-line: #00000000 },
+        // Snow
+        { bg: #0a0e13, card: #111821, row: #181f28, raised: #1e252e, line: #1c2025, line-soft: #151a1f, edge: #31353a, text: #eef4fa, text2: #d3d8de, muted: #979da2, dim: #7c8186, accent: #a8dcff, accent-hover: #b5e1ff, on-accent: #061422, wave: #484c51, wave-dim: #3a3e44, track: #282c31, danger: #ff8f7a, hover: #23272c, hover-soft: #1f2328, row-hover: #11151a, picked: #1f2932, popup: #1e252e, popup-edge: #41454a, knob: #71767b, faint: #61656b, fainter: #3c4146, rec-rest: #465c6d, divider: #1a1e23, border: #21252a, card-edge: #1c2025, footer: #0f1318, press: #2d3b47, card-line: #00000000 },
+        // Daylight
+        { bg: #e9eff5, card: #ffffff, row: #f8f8f9, raised: #f1f2f2, line: #d8dee5, line-soft: #dee5eb, edge: #c5ccd3, text: #15202c, text2: #2e3944, muted: #666f78, dim: #7f8890, accent: #2f74d8, accent-hover: #2863b8, on-accent: #ffffff, wave: #b0b7bf, wave-dim: #bcc4cb, track: #cdd4db, danger: #c8402c, hover: #d2d8df, hover-soft: #d6dce3, row-hover: #e3e9ef, picked: #d1dff1, popup: #f1f2f2, popup-edge: #b6bdc5, knob: #8a929b, faint: #98a0a9, fainter: #bac1c9, rec-rest: #a2c0ea, divider: #dae1e7, border: #d4dae1, card-edge: #d8dee5, footer: #e5ebf1, press: #c0d4ef, card-line: #d4dee8 },
+        // Graphite
+        { bg: #0a0b0d, card: #282c346b, row: #18191b, raised: #343840, line: #1d1e20, line-soft: #161719, edge: #313335, text: #f2f4f7, text2: #d6d8db, muted: #9a9b9e, dim: #7e8082, accent: #64d2ff, accent-hover: #7bd9ff, on-accent: #00202e, wave: #494a4c, wave-dim: #3b3c3e, track: #28292b, danger: #ff8f7a, hover: #242527, hover-soft: #1f2022, row-hover: #111214, picked: #16252c, popup: #343840, popup-edge: #424345, knob: #727476, faint: #626466, fainter: #3d3e40, rec-rest: #2c5769, divider: #1a1b1d, border: #212224, card-edge: #1d1e20, footer: #0f1012d9, press: #1e3742, card-line: #ffffff1c },
+        // Sakura
+        { bg: #0c0b0d, card: #141216, row: #1b181c, raised: #211f22, line: #1e1d1d, line-soft: #171617, edge: #333030, text: #efe7da, text2: #d4cdc1, muted: #99938c, dim: #7e7974, accent: #f4a3bd, accent-hover: #f6b1c7, on-accent: #2a0a14, wave: #494644, wave-dim: #3c3938, track: #2a2828, danger: #ff8f7a, hover: #252324, hover-soft: #201f1f, row-hover: #131213, picked: #2a1f24, popup: #211f22, popup-edge: #42403e, knob: #726e69, faint: #625f5b, fainter: #3e3b3a, rec-rest: #644550, divider: #1c1a1b, border: #232122, card-edge: #1e1d1d, footer: #110f11, press: #3f2c34, card-line: #00000000 },
+        // Kintsugi
+        { bg: #0a0a0a, card: #121212, row: #191818, raised: #1f1f1e, line: #1c1c1b, line-soft: #151514, edge: #31302d, text: #efe7da, text2: #d4ccc1, muted: #98938b, dim: #7c7872, accent: #e0bb62, accent-hover: #e5c57a, on-accent: #1a1406, wave: #484642, wave-dim: #3a3836, track: #282725, danger: #ff8f7a, hover: #232221, hover-soft: #1f1e1d, row-hover: #111110, picked: #262115, popup: #1f1f1e, popup-edge: #413f3c, knob: #716d68, faint: #615e59, fainter: #3c3b38, rec-rest: #5b4d2b, divider: #1a1919, border: #21201f, card-edge: #1c1c1b, footer: #0f0e0e, press: #39311d, card-line: #00000000 },
+        // Aurora
+        { bg: #060a0e, card: #0b1218, row: #12191f, raised: #181f25, line: #181c20, line-soft: #11161a, edge: #2c3135, text: #e6f1f4, text2: #cbd5d8, muted: #91999d, dim: #767e81, accent: #6cf5c2, accent-hover: #82f6cb, on-accent: #02140d, wave: #42484c, wave-dim: #353b3e, track: #23282c, danger: #ff8f7a, hover: #1f2327, hover-soft: #1a1f23, row-hover: #0d1115, picked: #132925, popup: #181f25, popup-edge: #3c4145, knob: #6b7276, faint: #5b6265, fainter: #373d41, rec-rest: #2d6352, divider: #161a1e, border: #1c2125, card-edge: #181c20, footer: #0a0f13, press: #1c3e36, card-line: #00000000 },
+        // Lagoon
+        { bg: #04222a, card: #08343e9e, row: #112f37, raised: #154049, line: #16333b, line-soft: #0f2d34, edge: #2a464e, text: #e4f7fb, text2: #c9dde2, muted: #8fa6ac, dim: #748c92, accent: #7ff5d8, accent-hover: #92f6de, on-accent: #03211b, wave: #405c62, wave-dim: #334f56, track: #213e45, danger: #ff8f7a, hover: #1d3941, hover-soft: #18353d, row-hover: #0b2830, picked: #143d41, popup: #154049, popup-edge: #3a555c, knob: #698288, faint: #597379, fainter: #355158, rec-rest: #33726c, divider: #143139, border: #1a373f, card-edge: #16333b, footer: #08262ee6, press: #1f5050, card-line: #ffffff14 },
+        // Nebula
+        { bg: #05040b, card: #0e0c1cb2, row: #13121a, raised: #1c1a2a, line: #18171f, line-soft: #111017, edge: #2d2c34, text: #efedff, text2: #d3d1e2, muted: #9694a2, dim: #7a7885, accent: #ff8adf, accent-hover: #ff9ce4, on-accent: #2a0420, wave: #44434d, wave-dim: #36353e, track: #23222b, danger: #ff8f7a, hover: #1f1e26, hover-soft: #1a1921, row-hover: #0c0b12, picked: #261527, popup: #1c1a2a, popup-edge: #3d3c46, knob: #6e6d79, faint: #5e5d68, fainter: #383741, rec-rest: #64375c, divider: #15141c, border: #1c1b23, card-edge: #18171f, footer: #0a0910e6, press: #3c213a, card-line: #ffffff10 },
+        // Cyberpunk
+        { bg: #05060b, card: #0a0c15, row: #11131c, raised: #181a23, line: #18191f, line-soft: #111217, edge: #2d2e34, text: #eef2ff, text2: #d2d6e2, muted: #9598a2, dim: #7a7c85, accent: #ffffff, accent-hover: #ffffff, on-accent: #05050a, wave: #44464d, wave-dim: #36383e, track: #23252b, danger: #ff8f7a, hover: #1f2026, hover-soft: #1a1b21, row-hover: #0c0d12, picked: #26262b, popup: #181a23, popup-edge: #3d3f46, knob: #6e7079, faint: #5e6068, fainter: #383a41, rec-rest: #646568, divider: #15171c, border: #1c1e23, card-edge: #18191f, footer: #0a0b10, press: #3c3d41, card-line: #30304a },
     ];
     out property <color> bg: root.palettes[root.current].bg;
     out property <color> card: root.palettes[root.current].card;
@@ -237,7 +245,19 @@ export global Theme {
     out property <color> card-edge: root.palettes[root.current].card-edge;  // transcript card outline
     out property <color> footer: root.palettes[root.current].footer;  // now playing bar
     out property <color> press: root.palettes[root.current].press;  // pressed download button
+    out property <color> card-line: root.palettes[root.current].card-line;  // recorder and toolbar outline
+    // Sakura and Kintsugi have a square seal for a record button.
+    out property <bool> rec-square: root.current == 4 || root.current == 5;
     out property <string> mono: "JetBrains Mono";
+}
+
+// The clock of the theme effects, in seconds. The app advances it while an effect
+// shows, faster while recording, and leaves it still otherwise.
+export global Fx {
+    in property <float> t;
+    // The same clock in steps of a quarter second, for slow drifts: big glows
+    // redraw much of the window, so they move only when this steps.
+    in property <float> slow;
 }
 
 // Line icons on a 24 unit grid, drawn as paths so they never depend on fonts.
@@ -365,10 +385,11 @@ component IconBtn inherits Rectangle {
     in property <bool> active;
     in property <color> tint: filled ? Theme.on-accent : active ? Theme.accent : Theme.dim;
     in property <bool> enabled: true;
+    in property <length> radius: round ? size / 2 : 7px;
     callback clicked;
     width: size;
     height: size;
-    border-radius: round ? size / 2 : 7px;
+    border-radius: radius;
     background: filled ? (t.has-hover ? Theme.accent-hover : Theme.accent) : t.has-hover && enabled ? Theme.raised : transparent;
     border-width: outlined ? 1px : 0;
     border-color: Theme.edge;
@@ -1872,11 +1893,304 @@ component Meter inherits Rectangle {
     }
 }
 
+// ---------- Theme effects ----------
+// The themes after Ember each have one effect: on the window behind everything
+// (WindowFx) and on the recorder card behind its content (CardFx). They move with
+// Fx.t, which the app advances as often as each effect needs and stops when nothing
+// shows.
+
+// A soft round glow that fades out from its middle.
+component Glow inherits Rectangle {
+    in property <color> tint;
+    background: @radial-gradient(circle, root.tint 0%, root.tint.with-alpha(0) 70%);
+}
+
+// Falling flakes or petals over the whole area. Each one has its own size, speed
+// and sway, from its index.
+component Fall inherits Rectangle {
+    in property <int> count: 40;
+    in property <color> tint: #ffffff;
+    in property <float> speed: 50;
+    in property <length> sway: 14px;
+    in property <bool> petals;
+    for i in root.count: Rectangle {
+        property <float> r1: Math.mod(i * 37 + 11, 97) / 97;
+        property <float> r2: Math.mod(i * 61 + 7, 89) / 89;
+        property <float> r3: Math.mod(i * 17 + 3, 83) / 83;
+        property <float> h: root.height / 1px + 20;
+        width: root.petals ? (6 + self.r3 * 4) * 1px : (1.5 + self.r3 * 2.5) * 1px;
+        height: root.petals ? self.width * 0.65 : self.width;
+        border-radius: root.petals ? 0 : self.width / 2;
+        border-top-left-radius: root.petals ? self.height : self.width / 2;
+        border-bottom-right-radius: root.petals ? self.height : self.width / 2;
+        background: root.tint;
+        opacity: 0.25 + self.r3 * 0.6;
+        x: self.r1 * root.width + Math.sin((Fx.t * 0.5 + i) * 1rad) * root.sway;
+        y: (Math.mod(Fx.t * root.speed * (0.6 + self.r2 * 0.8) + self.r2 * self.h, self.h) - 10) * 1px;
+        transform-rotation: root.petals ? (Fx.t * 50 + i * 47) * 1deg : 0deg;
+    }
+}
+
+// Rising bubbles.
+component Bubbles inherits Rectangle {
+    in property <int> count: 8;
+    for i in root.count: Rectangle {
+        property <float> r1: Math.mod(i * 41 + 5, 97) / 97;
+        property <float> r2: Math.mod(i * 23 + 13, 89) / 89;
+        property <float> h: root.height / 1px + 20;
+        width: (3 + self.r2 * 4) * 1px;
+        height: self.width;
+        border-radius: self.width / 2;
+        border-width: 1px;
+        border-color: #b4faff80;
+        opacity: 0.6;
+        x: self.r1 * root.width + Math.sin((Fx.t * 0.8 + i * 2) * 1rad) * 6px;
+        y: root.height - Math.mod(Fx.t * (22 + self.r2 * 20) + self.r1 * self.h, self.h) * 1px;
+    }
+}
+
+// Stars drifting slowly down.
+component Stars inherits Rectangle {
+    in property <int> count: 40;
+    in property <length> size: 1px;
+    in property <float> speed: 2.5;
+    for i in root.count: Rectangle {
+        property <float> r1: Math.mod(i * 53 + 3, 97) / 97;
+        property <float> r2: Math.mod(i * 29 + 17, 89) / 89;
+        width: root.size;
+        height: root.size;
+        border-radius: root.size / 2;
+        background: #ffffff;
+        opacity: 0.3 + self.r2 * 0.6;
+        x: self.r1 * root.width;
+        y: Math.mod(self.r2 * root.height / 1px + Fx.slow * root.speed, root.height / 1px) * 1px;
+    }
+}
+
+// A thin line of aurora colours that flows sideways, with a soft glow under it.
+component AuroraBand inherits Rectangle {
+    height: 30px;
+    clip: true;
+    for layer[k] in [{ h: 28px, o: 0.07 }, { h: 10px, o: 0.16 }, { h: 2px, o: 1.0 }]: Rectangle {
+        y: 0;
+        height: layer.h;
+        opacity: layer.o;
+        clip: true;
+        Rectangle {
+            x: -Math.mod(Fx.t / 6, 1) * root.width;
+            width: root.width * 2;
+            background: @linear-gradient(90deg, #6cf5c2 0%, #59c8ff 16.6%, #a07bff 33.3%, #6cf5c2 50%, #59c8ff 66.6%, #a07bff 83.3%, #6cf5c2 100%);
+        }
+    }
+}
+
+// The window's effect, behind everything.
+component WindowFx inherits Rectangle {
+    // Snow and Daylight: falling snow.
+    if Theme.current == 1 || Theme.current == 2: Fall {
+        count: 36;
+        tint: Theme.current == 2 ? #9db3ca : #ffffff;
+    }
+    // Graphite: two cool glows drifting slowly.
+    if Theme.current == 3: Rectangle {
+        Glow {
+            tint: #1fa3c98c;
+            width: 320px;
+            height: 320px;
+            x: parent.width - 250px + Math.sin(Fx.slow * 6deg) * 40px;
+            y: -130px + Math.cos(Fx.slow * 5deg) * 30px;
+        }
+        Glow {
+            tint: #3a4bd85c;
+            width: 260px;
+            height: 260px;
+            x: -110px + Math.cos(Fx.slow * 4deg) * 30px;
+            y: parent.height * 0.45 + Math.sin(Fx.slow * 5deg) * 30px;
+        }
+    }
+    // Sakura: a few petals drifting down.
+    if Theme.current == 4: Fall {
+        count: 14;
+        petals: true;
+        tint: #f8b8cb;
+        speed: 32;
+        sway: 36px;
+    }
+    // Aurora: the band along the top of the window.
+    if Theme.current == 6: AuroraBand { y: 0; }
+    // Lagoon: water lit from above, sun rays swaying, bubbles.
+    if Theme.current == 7: Rectangle {
+        background: @linear-gradient(180deg, #0c5560 0%, #04222a 65%);
+        for ray[k] in [{ x: 0.18, w: 40, s: 1.0 }, { x: 0.42, w: 26, s: 1.4 }, { x: 0.62, w: 50, s: 0.8 }, { x: 0.86, w: 30, s: 1.2 }]: Path {
+            property <float> w: parent.width / 1px;
+            property <float> h: parent.height / 1px;
+            property <float> top: ray.x * self.w;
+            property <float> swing: Math.sin(Fx.slow * ray.s * 12deg) * 40;
+            width: parent.width;
+            height: parent.height;
+            viewbox-width: self.w;
+            viewbox-height: self.h;
+            fill: @linear-gradient(180deg, #c8ffff12 0%, #c8ffff00 80%);
+            MoveTo { x: parent.top - 6; y: -10; }
+            LineTo { x: parent.top + 6; y: -10; }
+            LineTo { x: parent.top + ray.w + parent.swing; y: parent.h * 0.75; }
+            LineTo { x: parent.top - ray.w * 0.4 + parent.swing; y: parent.h * 0.75; }
+            Close { }
+        }
+        Bubbles { count: 8; }
+    }
+    // Nebula: pink and teal clouds behind drifting stars.
+    if Theme.current == 8: Rectangle {
+        Glow {
+            tint: #c03bff66;
+            width: 340px;
+            height: 340px;
+            x: -120px + Math.sin(Fx.slow * 4deg) * 40px;
+            y: -110px + Math.cos(Fx.slow * 3deg) * 30px;
+        }
+        Glow {
+            tint: #1fd0c055;
+            width: 300px;
+            height: 300px;
+            x: parent.width - 200px + Math.cos(Fx.slow * 3.5deg) * 40px;
+            y: parent.height * 0.25 + Math.sin(Fx.slow * 4deg) * 30px;
+        }
+        Glow {
+            tint: #ff5fb055;
+            width: 280px;
+            height: 280px;
+            x: parent.width * 0.1 + Math.sin(Fx.slow * 3deg) * 30px;
+            y: parent.height * 0.62 + Math.cos(Fx.slow * 4.5deg) * 30px;
+        }
+        Stars { count: 40; size: 1px; speed: 2.5; }
+        Stars { count: 14; size: 2px; speed: 5; }
+    }
+}
+
+struct FxPoint { x: length, y: length }
+
+// Cyberpunk: a red, green and blue snake of light running round the card's edge.
+component Snake inherits Rectangle {
+    in property <length> radius: 14px;
+    // The inset outline the snake follows, in pixels.
+    property <float> w: self.width / 1px - 2;
+    property <float> h: self.height / 1px - 2;
+    property <float> r: self.radius / 1px;
+    property <float> top: self.w - 2 * self.r;
+    property <float> side: self.h - 2 * self.r;
+    property <float> arc: 3.14159 * self.r / 2;
+    property <float> perim: 2 * self.top + 2 * self.side + 4 * self.arc;
+    // A lap every six seconds.
+    property <float> head: Fx.t * self.perim / 6;
+    pure function at(d0: float) -> FxPoint {
+        if (self.perim <= 0) { return { x: 0, y: 0 }; }
+        // From the top left, clockwise: top, corner, right, corner, bottom, corner, left, corner.
+        if (Math.mod(d0, self.perim) < self.top) { return { x: (1 + self.r + Math.mod(d0, self.perim)) * 1px, y: 1px }; }
+        if (Math.mod(d0, self.perim) < self.top + self.arc) { return self.corner(self.w - self.r, self.r, -90 + (Math.mod(d0, self.perim) - self.top) / self.arc * 90); }
+        if (Math.mod(d0, self.perim) < self.top + self.arc + self.side) { return { x: (1 + self.w) * 1px, y: (1 + self.r + Math.mod(d0, self.perim) - self.top - self.arc) * 1px }; }
+        if (Math.mod(d0, self.perim) < self.top + 2 * self.arc + self.side) { return self.corner(self.w - self.r, self.h - self.r, (Math.mod(d0, self.perim) - self.top - self.arc - self.side) / self.arc * 90); }
+        if (Math.mod(d0, self.perim) < 2 * self.top + 2 * self.arc + self.side) { return { x: (1 + self.w - self.r - (Math.mod(d0, self.perim) - self.top - 2 * self.arc - self.side)) * 1px, y: (1 + self.h) * 1px }; }
+        if (Math.mod(d0, self.perim) < 2 * self.top + 3 * self.arc + self.side) { return self.corner(self.r, self.h - self.r, 90 + (Math.mod(d0, self.perim) - 2 * self.top - 2 * self.arc - self.side) / self.arc * 90); }
+        if (Math.mod(d0, self.perim) < 2 * self.top + 3 * self.arc + 2 * self.side) { return { x: 1px, y: (1 + self.h - self.r - (Math.mod(d0, self.perim) - 2 * self.top - 3 * self.arc - self.side)) * 1px }; }
+        return self.corner(self.r, self.r, 180 + (Math.mod(d0, self.perim) - 2 * self.top - 3 * self.arc - 2 * self.side) / self.arc * 90);
+    }
+    pure function corner(cx: float, cy: float, deg: float) -> FxPoint {
+        return { x: (1 + cx + self.r * Math.cos(deg * 1deg)) * 1px, y: (1 + cy + self.r * Math.sin(deg * 1deg)) * 1px };
+    }
+    for i in 48: Rectangle {
+        property <FxPoint> p: root.at(root.head + root.perim * 2 - i * 4.3);
+        property <color> c: i < 16 ? #ff2d55 : i < 32 ? #30ff8a : #2d8bff;
+        x: self.p.x - 4.5px;
+        y: self.p.y - 4.5px;
+        width: 9px;
+        height: 9px;
+        Rectangle {
+            border-radius: 4.5px;
+            background: @radial-gradient(circle, parent.c.with-alpha(0.45) 0%, parent.c.with-alpha(0) 70%);
+        }
+        Rectangle {
+            width: 2.4px;
+            height: 2.4px;
+            border-radius: 1.2px;
+            background: parent.c;
+        }
+    }
+}
+
+// The recorder card's effect, behind its content.
+component CardFx inherits Rectangle {
+    in property <bool> recording;
+    in property <length> radius: 14px;
+    // Snow and Daylight: a cap of snow along the top.
+    if Theme.current == 1 || Theme.current == 2: Path {
+        y: -1px;
+        width: parent.width;
+        height: 12px;
+        viewbox-width: 356;
+        viewbox-height: 12;
+        fill: Theme.current == 2 ? #f4f8fb : #e9f3fbeb;
+        commands: "M0 0H356V5C346 9 336 4 326 6S310 11 298 7 276 3 264 6 242 10 230 6 210 2 196 5 176 9 162 5 140 3 128 6 108 10 94 6 74 3 60 6 40 10 26 6 12 3 0 7Z";
+    }
+    // Sakura and Kintsugi: a faint ensō circle in the corner.
+    if Theme.current == 4 || Theme.current == 5: Path {
+        x: parent.width - 140px;
+        y: parent.height - 124px;
+        width: 170px;
+        height: 170px;
+        viewbox-width: 170;
+        viewbox-height: 170;
+        stroke: #efe7da;
+        stroke-width: 14px;
+        opacity: 0.035;
+        commands: "M 129 26 A 78 78 0 1 1 46 17";
+    }
+    // Sakura: 録音 (recording) written faintly behind the timer.
+    if Theme.current == 4: Path {
+        x: parent.width - 86px - 88px;
+        y: -10px;
+        width: 88px;
+        height: 176px;
+        viewbox-width: 1000;
+        viewbox-height: 2000;
+        fill: root.recording ? Theme.accent : #efe7da;
+        opacity: root.recording ? 0.1 : 0.06;
+        commands: "M449 459 440 464C463 505 482 565 479 619C576 710 704 520 449 459ZM319 533C313 603 303 687 295 739L310 745C348 705 385 647 416 595C438 595 450 586 454 573ZM68 535 55 538C67 595 73 671 62 736C134 826 252 668 68 535ZM831 445C826 478 813 538 799 589C781 550 767 505 757 452V423H960C973 423 983 418 985 407C960 370 908 312 908 312L868 387V134C886 130 898 123 904 116L787 28L726 90H466L475 118H736V240H491L500 268H736V395H417L425 423H620V628C514 704 408 776 362 802L474 918C485 911 490 896 489 882L525 825V829C565 836 580 852 589 872C599 892 602 925 603 969C738 959 757 897 757 807V529C772 721 799 828 875 924C890 855 931 801 984 785L987 775C924 747 861 701 815 620C863 592 916 557 943 535C964 540 977 531 981 523ZM620 658V804C620 814 616 820 603 820L530 816C569 753 598 699 620 658ZM22 825 111 964C122 960 132 950 136 937C283 849 378 783 439 735L437 725L285 764V499H415C429 499 439 494 442 483C407 445 345 387 345 387L290 471H285V350H389C403 350 413 345 416 334C380 297 317 242 317 242L261 322H121C182 264 232 196 265 132C295 172 318 217 328 247C416 315 540 147 285 101C308 99 318 91 322 79L154 26C137 129 79 298 7 397L16 404C49 384 80 360 108 334L113 350H169V471H40L48 499H169V792C106 807 54 819 22 825ZM350 1727H652V1867H350ZM350 1699V1564H652V1699ZM205 1536V1974H226C287 1974 350 1942 350 1928V1895H652V1969H678C734 1969 804 1933 805 1922V1590C827 1585 840 1575 847 1567L710 1461L641 1536H358L205 1477ZM255 1189 247 1193C272 1244 296 1311 297 1375C312 1388 326 1396 341 1400H40L48 1428H941C955 1428 967 1423 970 1412C919 1367 833 1301 833 1301L758 1400H590C654 1354 723 1297 766 1256C789 1257 800 1249 804 1237L640 1187H905C919 1187 931 1182 933 1171C884 1128 801 1064 801 1064L728 1159H570V1067C595 1063 601 1054 602 1042L420 1028V1159H76L84 1187H619C605 1249 581 1335 557 1400H381C458 1379 482 1238 255 1189Z";
+    }
+    // Kintsugi: gold cracks across the card, with a slow shine running along them.
+    if Theme.current == 5: Rectangle {
+        property <float> p: Math.mod(Fx.t / 6, 1.4) - 0.2;
+        for layer[k] in [{ w: 5px, o: 0.07 }, { w: 1.2px, o: 0.42 }]: Path {
+            width: parent.width;
+            height: parent.height;
+            viewbox-width: 356;
+            viewbox-height: 130;
+            stroke: #e0bb62;
+            stroke-width: layer.w;
+            opacity: layer.o;
+            commands: "M0 92L46 80L70 98L120 70L150 78L196 40L230 52L270 18L300 26L356 6M150 78L168 112L160 130M230 52L248 84";
+        }
+        Path {
+            width: parent.width;
+            height: parent.height;
+            viewbox-width: 356;
+            viewbox-height: 130;
+            stroke: @linear-gradient(90deg, #fff6d800 0%, #fff6d800 Math.max(0, parent.p - 0.06) * 100%, #fff6d8 Math.max(0, Math.min(1, parent.p)) * 100%, #fff6d800 Math.min(1, parent.p + 0.06) * 100%, #fff6d800 100%);
+            stroke-width: 1.8px;
+            commands: "M0 92L46 80L70 98L120 70L150 78L196 40L230 52L270 18L300 26L356 6";
+        }
+    }
+    // Aurora: the band along the top of the card.
+    if Theme.current == 6: AuroraBand { y: 0; }
+    // Cyberpunk: the snake round the edge.
+    if Theme.current == 9: Snake { radius: root.radius; }
+}
+
 // The round record button: a mic, or a stop square while recording.
 component RecordButton inherits IconBtn {
     in property <bool> recording;
     size: 56px;
     round: true;
+    radius: Theme.rec-square ? self.size * 0.26 : self.size / 2;
     filled: true;
     icon: root.recording ? "stop" : "mic";
     icon-size: root.recording ? 18px : 24px;
@@ -1899,7 +2213,14 @@ component RecorderCard inherits Rectangle {
     callback pause();
     background: Theme.card;
     border-radius: root.mode == 2 ? 18px : 14px;
+    border-width: 1px;
+    border-color: Theme.card-line;
+    clip: true;
     vertical-stretch: root.mode == 2 ? 1 : 0;
+    CardFx {
+        recording: root.recording;
+        radius: root.border-radius;
+    }
     VerticalLayout {
     // Narrow: time and status on the left, round buttons on the right, level below.
     if root.mode == 0: VerticalLayout {
@@ -2637,6 +2958,7 @@ export component AppWindow inherits Window {
     // Only the widget stays on top.
     always-on-top: compact;
     no-frame: true;
+    if !compact: WindowFx { }
 
     // Window size classes. A size never adds or removes options; it only rearranges
     // them (docs/plan.md section 14).
@@ -3223,6 +3545,8 @@ export component AppWindow inherits Window {
                     Rectangle {
                         background: Theme.card;
                         border-radius: 14px;
+                        border-width: 1px;
+                        border-color: Theme.card-line;
                         HorizontalLayout {
                             padding-top: 8px;
                             padding-bottom: 8px;

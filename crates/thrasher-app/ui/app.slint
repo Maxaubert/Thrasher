@@ -557,6 +557,30 @@ component ExportChoices inherits VerticalLayout {
 
 // Height of ExportChoices.
 // The window's height, so a dropdown can open upwards when there is no room below.
+// Where the scrolling lists end, in window coordinates, so their rows can fade out
+// as they slide past an edge. `card-*` is the page with settings cards (settings, a
+// clip, merge), `list-*` the clip list; a Scroller with `fade` set fills them in.
+global Fade {
+    in-out property <length> card-top: -100000px;
+    in-out property <length> card-bottom: 100000px;
+    in-out property <length> list-top: -100000px;
+    in-out property <length> list-bottom: 100000px;
+    // How much of a row at `y` with height `h` is still inside the edges. A tall block
+    // (a whole list) stays put, it would only go half see-through.
+    pure function amount(y: length, h: length, top: length, bottom: length) -> float {
+        if (h <= 0 || h > 120px) {
+            return 1;
+        }
+        return clamp(min((y + h - top) / h, (bottom - y) / h), 0, 1);
+    }
+    pure public function card(y: length, h: length) -> float {
+        return self.amount(y, h, self.card-top, self.card-bottom);
+    }
+    pure public function list(y: length, h: length) -> float {
+        return self.amount(y, h, self.list-top, self.list-bottom);
+    }
+}
+
 global Win {
     in-out property <length> height: 600px;
 }
@@ -1049,6 +1073,21 @@ component Scroller inherits Rectangle {
     in-out property <length> content-height <=> fl.content-height;
     in-out property <length> content-y <=> fl.content-y;
     callback scrolled <=> fl.flicked;
+    // 1: its rows are settings cards, 2: the clip list (see Fade).
+    in property <int> fade;
+    property <length> abs-y: self.absolute-position.y;
+    function publish() {
+        if (root.fade == 1) {
+            Fade.card-top = root.abs-y;
+            Fade.card-bottom = root.abs-y + root.height;
+        } else if (root.fade == 2) {
+            Fade.list-top = root.abs-y;
+            Fade.list-bottom = root.abs-y + root.height;
+        }
+    }
+    init => { root.publish(); }
+    changed abs-y => { root.publish(); }
+    changed height => { root.publish(); }
     property <length> range: fl.content-height - fl.height;
     property <length> thumb-h: max(28px, fl.height * fl.height / max(fl.content-height, 1px));
     horizontal-stretch: 1;
@@ -1059,17 +1098,6 @@ component Scroller inherits Rectangle {
         height: parent.height;
         mouse-drag-pan-enabled: false;
         @children
-    }
-    // Content fades out at an edge it scrolls past, instead of being cut off there.
-    if fl.content-y < 0: Rectangle {
-        y: 0;
-        height: min(32px, -fl.content-y);
-        background: @linear-gradient(180deg, Theme.bg 0%, Theme.bg.with-alpha(0) 100%);
-    }
-    if root.range > 1px && fl.content-y > -root.range + 1px: Rectangle {
-        y: parent.height - self.height;
-        height: min(32px, root.range + fl.content-y);
-        background: @linear-gradient(0deg, Theme.bg 0%, Theme.bg.with-alpha(0) 100%);
     }
     if root.range > 1px: Rectangle {
         x: parent.width - self.width - 2px;
@@ -1898,21 +1926,39 @@ component Card inherits VerticalLayout {
         font-weight: 800;
         letter-spacing: 1px;
         x: 8px;
+        opacity: Fade.card(self.absolute-position.y, self.height);
     }
-    Rectangle {
-        background: Theme.card;
-        border-radius: 14px;
-        VerticalLayout {
-            @children
-        }
+    VerticalLayout {
+        @children
     }
 }
 
+// A piece of a card that is not a CardRow: the card background, fading like a row.
+// The first and last pieces of a card round its corners.
+component CardPart inherits Rectangle {
+    in property <bool> first;
+    in property <bool> last;
+    background: Theme.card;
+    border-top-left-radius: root.first ? 14px : 0;
+    border-top-right-radius: root.first ? 14px : 0;
+    border-bottom-left-radius: root.last ? 14px : 0;
+    border-bottom-right-radius: root.last ? 14px : 0;
+    opacity: Fade.card(self.absolute-position.y, self.height);
+}
+
 // One line in a card: a label (and an optional note under it) and its control.
-component CardRow inherits VerticalLayout {
+component CardRow inherits Rectangle {
     in property <string> label;
     in property <string> note;
+    in property <bool> first;
     in property <bool> last;
+    background: Theme.card;
+    border-top-left-radius: root.first ? 14px : 0;
+    border-top-right-radius: root.first ? 14px : 0;
+    border-bottom-left-radius: root.last ? 14px : 0;
+    border-bottom-right-radius: root.last ? 14px : 0;
+    opacity: Fade.card(self.absolute-position.y, self.height);
+    VerticalLayout {
     HorizontalLayout {
         min-height: 52px;
         padding-left: 16px;
@@ -1934,6 +1980,7 @@ component CardRow inherits VerticalLayout {
         }
     }
     if !root.last: Rectangle { height: 1px; background: Theme.divider; }
+    }
 }
 
 // A filter chip on the model page.
@@ -3732,6 +3779,7 @@ export component AppWindow inherits Window {
 
                 if root.query != "": Scroller {
                     vertical-stretch: 1;
+                    fade: 2;
                     VerticalLayout {
                         alignment: start;
                         padding-left: 12px;
@@ -3745,6 +3793,7 @@ export component AppWindow inherits Window {
                         }
                         for h[i] in root.hits: SearchRow {
                             hit: h;
+                            opacity: Fade.list(self.absolute-position.y, self.height);
                             show-project: root.search-all;
                             clicked => { root.open-hit(i); root.go(1); }
                         }
@@ -3752,6 +3801,7 @@ export component AppWindow inherits Window {
                 }
                 if root.query == "": Scroller {
                     vertical-stretch: 1;
+                    fade: 2;
                     content-y <=> root.list-y;
                     property <int> count: root.clips.length;
                     init => { root.list-height = self.visible-height; root.clamp-list(); }
@@ -3766,6 +3816,7 @@ export component AppWindow inherits Window {
                         ClipItem {
                             item: clip;
                             window-h: root.height;
+                            opacity: Fade.list(self.absolute-position.y, self.height);
                             wave-width: root.narrow ? 0 : root.wide ? 160px : 84px;
                             selected: i == root.selected;
                             picked: root.picked[i];
@@ -3969,6 +4020,7 @@ export component AppWindow inherits Window {
             padding-right: root.wide ? 18px : 0;
             Scroller {
             vertical-stretch: 1;
+            fade: 1;
             min-width: root.wide ? 460px : 50px;
             max-width: root.wide ? 460px : 100000px;
             VerticalLayout {
@@ -4292,6 +4344,9 @@ export component AppWindow inherits Window {
                     padding-bottom: 18px;
                     Card {
                         title: root.parts-busy ? "PARTS  ·  WORKING..." : "PARTS";
+                        CardPart {
+                            first: true;
+                            last: true;
                         VerticalLayout {
                             padding: 4px;
                             OrderList {
@@ -4307,11 +4362,13 @@ export component AppWindow inherits Window {
                                 }
                             }
                         }
+                        }
                     }
                 }
                 Card {
                     title: "OPTIONS";
                     CardRow {
+                        first: true;
                         label: "Clean voice on export";
                         note: "Less noise";
                         last: true;
@@ -4406,6 +4463,7 @@ export component AppWindow inherits Window {
             PageHeader { title: "Settings"; back => { root.go(root.settings-back); } }
             Scroller {
                 vertical-stretch: 1;
+                fade: 1;
                 VerticalLayout {
                     padding-left: 16px;
                     padding-right: 16px;
@@ -4426,6 +4484,7 @@ export component AppWindow inherits Window {
                     Card {
                         title: "APPEARANCE";
                         CardRow {
+                            first: true;
                             label: "Theme";
                             last: true;
                             VerticalLayout {
@@ -4443,6 +4502,7 @@ export component AppWindow inherits Window {
                     Card {
                         title: "RECORDING";
                         CardRow {
+                            first: true;
                             label: "Microphone";
                             VerticalLayout {
                                 alignment: center;
@@ -4508,6 +4568,7 @@ export component AppWindow inherits Window {
                     Card {
                         title: "FILES";
                         CardRow {
+                            first: true;
                             label: "Folder";
                             Text {
                                 text: root.folder;
@@ -4534,6 +4595,7 @@ export component AppWindow inherits Window {
                                 Btn { text: "Change"; height: 32px; font-size: 12px; enabled: !root.recording; clicked => { root.change-folder(); } }
                             }
                         }
+                        CardPart {
                         VerticalLayout {
                             padding-left: 16px;
                             padding-right: 16px;
@@ -4557,7 +4619,8 @@ export component AppWindow inherits Window {
                                 overflow: elide;
                             }
                         }
-                        Rectangle { height: 1px; background: Theme.divider; }
+                        }
+                        CardPart { height: 1px; Rectangle { background: Theme.divider; } }
                         CardRow {
                             label: "Export format";
                             VerticalLayout {
@@ -4590,8 +4653,9 @@ export component AppWindow inherits Window {
                     spacing: 18px;
                     Card {
                         title: "TRANSCRIPTION";
-                        if !root.can-transcribe: CardRow { label: "Not in this build"; last: true; }
+                        if !root.can-transcribe: CardRow { label: "Not in this build"; first: true; last: true; }
                         if root.can-transcribe: CardRow {
+                            first: true;
                             label: "Language";
                             VerticalLayout {
                                 alignment: center;
@@ -4658,6 +4722,7 @@ export component AppWindow inherits Window {
                     if root.can-ai: Card {
                         title: "AI";
                         CardRow {
+                            first: true;
                             label: "Model";
                             VerticalLayout {
                                 alignment: center;
@@ -4707,6 +4772,7 @@ export component AppWindow inherits Window {
                     Card {
                         title: "YOUR VOICE";
                         CardRow {
+                            first: true;
                             label: "Voice engine";
                             Text { text: "OmniVoice"; color: Theme.text2; font-size: 13px; vertical-alignment: center; }
                         }
@@ -4720,6 +4786,7 @@ export component AppWindow inherits Window {
                     Card {
                         title: "WINDOW";
                         CardRow {
+                            first: true;
                             label: "Close button hides to tray";
                             VerticalLayout {
                                 alignment: center;
@@ -4768,6 +4835,7 @@ export component AppWindow inherits Window {
             PageHeader { title: "Merge clips"; note: root.merge-rows.length + " clips"; back => { root.go(0); } }
             Scroller {
                 vertical-stretch: 1;
+                fade: 1;
                 VerticalLayout {
                     alignment: start;
                     padding-left: 16px;
@@ -4777,6 +4845,9 @@ export component AppWindow inherits Window {
                     spacing: 18px;
                     Card {
                         title: "ORDER";
+                        CardPart {
+                            first: true;
+                            last: true;
                         VerticalLayout {
                             padding: 4px;
                             OrderList {
@@ -4790,10 +4861,12 @@ export component AppWindow inherits Window {
                                 play(i) => { root.merge-play(i); }
                             }
                         }
+                        }
                     }
                     Card {
                         title: "NEW CLIP";
                         CardRow {
+                            first: true;
                             label: "Name";
                             last: true;
                             TextField {

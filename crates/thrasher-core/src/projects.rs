@@ -4,7 +4,7 @@
 //! existed never move. Every other project is a subfolder marked with a
 //! `.thrasher-project` file, so other folders the user keeps there are not shown.
 
-use crate::export::{ExportOptions, export_project};
+use crate::export::ExportOptions;
 use crate::library::{Library, LibraryError, valid_name};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -100,6 +100,17 @@ pub fn export_all(
     options: ExportOptions,
     parent: &Path,
 ) -> io::Result<PathBuf> {
+    export_all_progress(library, project, options, parent, &|_| {})
+}
+
+/// Like [`export_all`], reporting its progress from 0 to 1.
+pub fn export_all_progress(
+    library: &Library,
+    project: &str,
+    options: ExportOptions,
+    parent: &Path,
+    progress: crate::export::Progress,
+) -> io::Result<PathBuf> {
     let mut out = parent.join(project);
     let mut n = 2;
     while out.exists() {
@@ -107,9 +118,14 @@ pub fn export_all(
         n += 1;
     }
     std::fs::create_dir_all(&out)?;
-    for clip in library.list()? {
-        export_project(library, &clip.name, options, &out)?;
+    let clips = library.list()?;
+    let n = clips.len().max(1) as f32;
+    for (i, clip) in clips.iter().enumerate() {
+        crate::export::export_project_progress(library, &clip.name, options, &out, &|f| {
+            progress((i as f32 + f) / n)
+        })?;
     }
+    progress(1.0);
     Ok(out)
 }
 

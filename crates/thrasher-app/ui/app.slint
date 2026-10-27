@@ -1063,32 +1063,52 @@ component Scroller inherits Rectangle {
 component ExportButton inherits Rectangle {
     in property <int> format;
     in property <bool> subtitles;
+    // 1 while exporting, filling with `progress`; 2 for a moment when done.
+    in property <int> state;
+    in property <float> progress;
     callback export(int);
     function choose(kind: int) {
         popup.close();
         root.export(kind);
     }
     height: 36px;
-    width: label.preferred-width + 60px;
+    width: max(label.preferred-width + 60px, 128px);
     border-radius: 9px;
-    background: t.has-hover ? Theme.accent-hover : Theme.accent;
+    clip: true;
+    background: root.state == 1 ? Theme.raised : t.has-hover ? Theme.accent-hover : Theme.accent;
     accessible-role: button;
-    accessible-label: "Export";
+    accessible-label: root.state == 1 ? "Exporting " + round(root.progress * 100) + "%" : "Export";
     accessible-expandable: true;
     accessible-action-default => { popup.show(); }
     accessible-action-expand => { popup.show(); }
+    if root.state == 1: Rectangle {
+        x: 0;
+        width: parent.width * clamp(root.progress, 0, 1);
+        background: Theme.accent.with-alpha(0.35);
+        animate width { duration: 150ms; }
+    }
     HorizontalLayout {
         padding-left: 18px;
         padding-right: 14px;
         spacing: 10px;
+        alignment: root.state == 0 ? LayoutAlignment.stretch : LayoutAlignment.center;
+        if root.state == 2: Icon {
+            name: "check";
+            tint: Theme.on-accent;
+            width: 13px;
+            height: 13px;
+            y: (parent.height - self.height) / 2;
+            stroke-width: 2.5px;
+        }
         label := Text {
-            text: "Export";
-            color: Theme.on-accent;
+            text: root.state == 1 ? round(root.progress * 100) + "%" : root.state == 2 ? "Done" : "Export";
+            color: root.state == 1 ? Theme.text : Theme.on-accent;
+            font-family: root.state == 1 ? Theme.mono : "Inter Tight";
             font-size: 13px;
             font-weight: 800;
             vertical-alignment: center;
         }
-        Icon {
+        if root.state == 0: Icon {
             name: "up";
             tint: Theme.on-accent;
             width: 13px;
@@ -1098,6 +1118,7 @@ component ExportButton inherits Rectangle {
         }
     }
     t := TouchArea {
+        enabled: root.state == 0;
         mouse-cursor: pointer;
         clicked => { popup.show(); }
     }
@@ -2817,6 +2838,12 @@ export component AppWindow inherits Window {
     callback change-folder();
     // See ExportButton for the kinds.
     callback export-as(int);
+    // Export progress: 0 none, 1 exporting (export-progress, 0 to 1), 2 done. The
+    // Export button fills as it goes; on the clips page a strip above the player shows it.
+    in-out property <int> export-state;
+    in property <float> export-progress;
+    // What is being exported, a file or folder name.
+    in property <string> export-name;
     // Clip i at a point of its length (0..1): cue puts it there without playing,
     // play-clip-at plays from there.
     callback cue-clip(int, float);
@@ -3392,6 +3419,58 @@ export component AppWindow inherits Window {
                 }
             }
 
+            // An export from the clip menu or the project menu: what it is, how far
+            // along, and a check when done. It takes its own room above the player.
+            if root.export-state != 0: Rectangle {
+                vertical-stretch: 0;
+                height: 34px;
+                background: Theme.footer;
+                Rectangle { y: 0; height: 1px; background: Theme.line; }
+                HorizontalLayout {
+                    padding-left: root.narrow ? 12px : 16px;
+                    padding-right: root.narrow ? 14px : 20px;
+                    spacing: 10px;
+                    if root.export-state == 2: Icon {
+                        name: "check";
+                        tint: Theme.accent;
+                        width: 12px;
+                        height: 12px;
+                        y: (parent.height - self.height) / 2;
+                    }
+                    Text {
+                        text: (root.export-state == 2 ? "Exported " : "Exporting ") + root.export-name;
+                        color: Theme.text2;
+                        font-size: 12px;
+                        vertical-alignment: center;
+                        overflow: elide;
+                        horizontal-stretch: 1;
+                    }
+                    if root.export-state == 1: Rectangle {
+                        width: 120px;
+                        height: 4px;
+                        y: (parent.height - self.height) / 2;
+                        border-radius: 2px;
+                        background: Theme.track;
+                        Rectangle {
+                            x: 0;
+                            width: parent.width * clamp(root.export-progress, 0, 1);
+                            border-radius: 2px;
+                            background: Theme.accent;
+                            animate width { duration: 150ms; }
+                        }
+                    }
+                    if root.export-state == 1: Text {
+                        text: round(root.export-progress * 100) + "%";
+                        color: Theme.muted;
+                        font-family: Theme.mono;
+                        font-size: 11px;
+                        vertical-alignment: center;
+                        width: 34px;
+                        horizontal-alignment: right;
+                    }
+                }
+            }
+
             // Now playing: the clip in the player, else the highlighted one, else
             // nothing yet. The page's footer, across the whole window.
             now := Rectangle {
@@ -3920,6 +3999,8 @@ export component AppWindow inherits Window {
                 ExportButton {
                     format: root.export-format;
                     subtitles: root.transcript != "";
+                    state: root.export-state;
+                    progress: root.export-progress;
                     export(kind) => { root.export-as(kind); keys.focus(); }
                 }
             }
@@ -4823,6 +4904,13 @@ export component AppWindow inherits Window {
                 }
             }
         }
+    }
+
+    // A finished export shows its check for a moment.
+    Timer {
+        interval: 2500ms;
+        running: root.export-state == 2;
+        triggered => { root.export-state = 0; }
     }
 
     // The tooltip, below the hovered button (above it near the bottom edge), kept

@@ -206,7 +206,7 @@ export global Theme {
         // Lagoon
         { bg: #04222a, card: #08343e9e, row: #112f37, raised: #154049, line: #16333b, line-soft: #0f2d34, edge: #2a464e, text: #e4f7fb, text2: #c9dde2, muted: #8fa6ac, dim: #748c92, accent: #7ff5d8, accent-hover: #92f6de, on-accent: #03211b, wave: #405c62, wave-dim: #334f56, track: #213e45, danger: #ff8f7a, hover: #1d3941, hover-soft: #18353d, row-hover: #0b2830, picked: #143d41, popup: #154049, popup-edge: #3a555c, knob: #698288, faint: #597379, fainter: #355158, rec-rest: #33726c, divider: #143139, border: #1a373f, card-edge: #16333b, footer: #08262ee6, press: #1f5050, card-line: #ffffff14 },
         // Nebula
-        { bg: #05040b, card: #0e0c1cb2, row: #13121a, raised: #1c1a2a, line: #18171f, line-soft: #111017, edge: #2d2c34, text: #efedff, text2: #d3d1e2, muted: #9694a2, dim: #7a7885, accent: #ff8adf, accent-hover: #ff9ce4, on-accent: #2a0420, wave: #44434d, wave-dim: #36353e, track: #23222b, danger: #ff8f7a, hover: #1f1e26, hover-soft: #1a1921, row-hover: #0c0b12, picked: #261527, popup: #1c1a2a, popup-edge: #3d3c46, knob: #6e6d79, faint: #5e5d68, fainter: #383741, rec-rest: #64375c, divider: #15141c, border: #1c1b23, card-edge: #18171f, footer: #0a0910e6, press: #3c213a, card-line: #ffffff10 },
+        { bg: #05040b, card: #b9b0ff10, row: #ffffff0a, raised: #ffffff12, line: #ffffff12, line-soft: #ffffff0a, edge: #ffffff24, text: #efedff, text2: #d3d1e2, muted: #9694a2, dim: #7a7885, accent: #ff8adf, accent-hover: #ff9ce4, on-accent: #2a0420, wave: #44434d, wave-dim: #36353e, track: #ffffff16, danger: #ff8f7a, hover: #ffffff17, hover-soft: #ffffff10, row-hover: #ffffff08, picked: #261527, popup: #1c1a2a, popup-edge: #3d3c46, knob: #6e6d79, faint: #5e5d68, fainter: #383741, rec-rest: #64375c, divider: #ffffff0c, border: #ffffff14, card-edge: #ffffff12, footer: #08070f99, press: #3c213a, card-line: #ffffff1c },
         // Cyberpunk
         { bg: #05060b, card: #0a0c15, row: #11131c, raised: #181a23, line: #18191f, line-soft: #111217, edge: #2d2e34, text: #eef2ff, text2: #d2d6e2, muted: #9598a2, dim: #7a7c85, accent: #ffffff, accent-hover: #ffffff, on-accent: #05050a, wave: #44464d, wave-dim: #36383e, track: #23252b, danger: #ff8f7a, hover: #1f2026, hover-soft: #1a1b21, row-hover: #0c0d12, picked: #26262b, popup: #181a23, popup-edge: #3d3f46, knob: #6e7079, faint: #5e6068, fainter: #383a41, rec-rest: #646568, divider: #15171c, border: #1c1e23, card-edge: #18191f, footer: #0a0b10, press: #3c3d41, card-line: #30304a },
     ];
@@ -249,6 +249,8 @@ export global Theme {
     out property <color> selected-edge: root.current == 4 ? root.accent.with-alpha(0.5) : root.edge;
     // Sakura and Kintsugi have a square seal for a record button.
     out property <bool> rec-square: root.current == 4 || root.current == 5;
+    // Text fields: sunk into the window colour, see-through on Nebula's glass.
+    out property <color> field: root.current == 7 ? #0000004d : root.bg;
     out property <string> mono: "JetBrains Mono";
 }
 
@@ -678,7 +680,7 @@ component ProjectPicker inherits Rectangle {
         height: root.shown-rows * 34px + 9px + (root.current > 0 ? 4 : 2) * 34px + 10px;
         close-policy: close-on-click-outside;
         Rectangle {
-            background: Theme.raised;
+            background: Theme.popup;
             border-radius: 10px;
             border-width: 1px;
             border-color: Theme.edge;
@@ -920,7 +922,7 @@ component ClipItem inherits Rectangle {
             y: root.lift;
             width: root.main-w;
             height: root.main-h;
-            background: Theme.raised;
+            background: Theme.popup;
             border-radius: 10px;
             border-width: 1px;
             border-color: Theme.edge;
@@ -1116,7 +1118,7 @@ component ExportButton inherits Rectangle {
         height: 10px + ExportSize.audio + (root.subtitles ? ExportSize.transcript : 0);
         close-policy: close-on-click-outside;
         Rectangle {
-            background: Theme.raised;
+            background: Theme.popup;
             border-radius: 10px;
             border-width: 1px;
             border-color: Theme.edge;
@@ -1366,7 +1368,7 @@ component OrderList inherits Rectangle {
         height: 2 * 34px + 10px;
         close-policy: close-on-click-outside;
         Rectangle {
-            background: Theme.raised;
+            background: Theme.popup;
             border-radius: 10px;
             border-width: 1px;
             border-color: Theme.edge;
@@ -1502,7 +1504,7 @@ component Select inherits Rectangle {
         height: root.list-height;
         close-policy: close-on-click-outside;
         Rectangle {
-            background: Theme.raised;
+            background: Theme.popup;
             border-radius: 10px;
             border-width: 1px;
             border-color: Theme.edge;
@@ -1596,7 +1598,7 @@ component TextField inherits Rectangle {
     }
     height: 36px;
     border-radius: 8px;
-    background: Theme.bg;
+    background: Theme.field;
     border-width: 1px;
     border-color: invalid ? Theme.danger : input.has-focus ? Theme.accent : Theme.edge;
     opacity: enabled ? 1 : 0.45;
@@ -2666,7 +2668,7 @@ component TranscriptCard inherits Rectangle {
                         height: 5px + 40px + 34px + min(root.langs.length, 7) * 34px + 5px;
                         close-policy: close-on-click-outside;
                         Rectangle {
-                            background: Theme.raised;
+                            background: Theme.popup;
                             border-radius: 10px;
                             border-width: 1px;
                             border-color: Theme.edge;

@@ -2412,9 +2412,38 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_part_take_out(move |i| {
         parts_job(Box::new(move |lib: &Library, name: &str| {
             thrasher_core::merge::extract(lib, name, i as usize)
-                .map(|new| format!("Took {new} out as its own clip"))
-                .map_err(|e| format!("Could not take it out: {e}"))
+                .map(|new| format!("{new} is a clip again"))
+                .map_err(|e| format!("Could not remove it: {e}"))
         }))
+    });
+    // A part's name is only a label in the merged clip's sidecar; it names the clip
+    // the part becomes when it is removed.
+    ui.on_rename_part({
+        let (app, weak) = (app.clone(), ui.as_weak());
+        move |i, new| {
+            let ui = weak.unwrap();
+            let a = app.borrow();
+            let new = new.trim();
+            let Some(name) = a.selected(&ui).map(|c| c.name.clone()) else {
+                return;
+            };
+            if new.is_empty() {
+                return;
+            }
+            let path = a.library.sidecar_path(&name);
+            let result = Sidecar::load(&path).and_then(|mut sc| {
+                let part = sc
+                    .parts
+                    .get_mut(i as usize)
+                    .ok_or_else(|| std::io::Error::other("no such part"))?;
+                part.name = new.to_string();
+                sc.save(&path)
+            });
+            match result {
+                Ok(()) => a.show_parts(&ui),
+                Err(e) => ui.set_status(format!("Could not rename it: {e}").into()),
+            }
+        }
     });
     ui.on_parts_done({
         let (app, weak) = (app.clone(), ui.as_weak());
@@ -3586,6 +3615,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let _remember = remember_window(&ui, &app);
     let _drops = accept_drops(&ui, &app);
     let _cover = widget_when_hidden(&ui, &app);
+    let _fx = effect_clock(&ui);
     // Runs once the event loop has drawn the window.
     Timer::single_shot(Duration::ZERO, || {
         crate::log!("ready: window shown {} ms after start", log::uptime_ms())
@@ -3782,15 +3812,15 @@ fn accept_drops(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<Timer> {
     timer
 }
 
-/// Opens the export popup for `name` at 0%.
+/// Starts showing the export of `name`, at 0%.
 fn show_export(ui: &AppWindow, name: &str) {
     ui.set_export_name(name.into());
     ui.set_export_progress(0.0);
     ui.set_export_state(1);
 }
 
-/// Shows the check for a finished export, which hides itself; a failed one closes the
-/// popup and leaves its error in the status line.
+/// Shows the check for a finished export, which hides itself; a failed one hides at
+/// once and leaves its error in the status line.
 fn finish_export(ui: &AppWindow, ok: bool) {
     if ok {
         ui.set_export_progress(1.0);
@@ -3798,7 +3828,7 @@ fn finish_export(ui: &AppWindow, ok: bool) {
     ui.set_export_state(if ok { 2 } else { 0 });
 }
 
-/// Passes an export's progress, from its thread, to the popup, once per percent.
+/// Passes an export's progress, from its thread, to the window, once per percent.
 fn export_reporter(weak: slint::Weak<AppWindow>) -> impl Fn(f32) {
     let last = std::cell::Cell::new(-1);
     move |f| {
@@ -3810,6 +3840,43 @@ fn export_reporter(weak: slint::Weak<AppWindow>) -> impl Fn(f32) {
             });
         }
     }
+}
+
+/// Steps per second of each theme's effect, in the order of `Theme.names`. Every step
+/// repaints the window, so each theme runs only as smooth as its effect needs.
+const EFFECT_FPS: [f32; 10] = [0.0, 18.0, 18.0, 4.0, 20.0, 15.0, 20.0, 12.0, 4.0, 30.0];
+
+/// Advances `Fx.t`, the clock of the theme effects, twice as fast while recording. It
+/// stands still for Ember, in the widget and while the window is hidden or minimised,
+/// so nothing redraws for the effects then.
+fn effect_clock(ui: &AppWindow) -> Timer {
+    let timer = Timer::default();
+    let weak = ui.as_weak();
+    let mut last = std::time::Instant::now();
+    timer.start(TimerMode::Repeated, Duration::from_millis(16), move || {
+        let Some(ui) = weak.upgrade() else { return };
+        let window = ui.window();
+        let fps = usize::try_from(ui.global::<Theme>().get_current())
+            .ok()
+            .and_then(|i| EFFECT_FPS.get(i).copied())
+            .unwrap_or(0.0);
+        let now = std::time::Instant::now();
+        let dt = (now - last).as_secs_f32();
+        if fps == 0.0 || ui.get_compact() || !window.is_visible() || window.is_minimized() {
+            last = now;
+            return;
+        }
+        if dt < 1.0 / fps - 0.004 {
+            return;
+        }
+        last = now;
+        let fx = ui.global::<Fx>();
+        let speed = if ui.get_recording() { 2.0 } else { 1.0 };
+        let t = fx.get_t() + dt.min(0.3) * speed;
+        fx.set_t(t);
+        fx.set_slow((t * 4.0).floor() / 4.0);
+    });
+    timer
 }
 
 /// While recording, the window turns into the widget when it is minimised or when

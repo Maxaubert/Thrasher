@@ -3743,7 +3743,8 @@ export component AppWindow inherits Window {
                         border-radius: 14px;
                         border-width: 1px;
                         border-color: Theme.card-line;
-                        if Theme.current == 1 || Theme.current == 2: SnowCap {
+                        // Only beside the big recorder; in portrait just the recorder has snow.
+                        if root.wide && (Theme.current == 1 || Theme.current == 2): SnowCap {
                             radius: 14px;
                             scale: 0.6;
                             seed: 19;

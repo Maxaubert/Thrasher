@@ -1,6 +1,6 @@
 # Device themes: spec and implementation plan
 
-Status: draft for approval, 2026-10-28. Owner: Max Aubert.
+Status: approved by Max 2026-10-28 (full device look on every page, Tape Deck pilot). Owner: Max Aubert.
 
 ## 1. What and why
 
@@ -37,9 +37,9 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
 
 - **Main page:** built as in the mockup, in portrait and wide: title bar, recorder, toolbar,
   clip rows, footer player.
-- **Other pages** (clip page, settings, merge, dialogs, menus): the theme's colours, fonts
-  and panel style, on the current layout. They are not redesigned per theme.
-- **Widget mode:** the theme's colours only.
+- **Other pages** (clip page, settings, merge, dialogs, menus, widget): the full device
+  look too (Max, 2026-10-28). Each theme gets mockups of these pages first, in the browser,
+  for Max to pick from, before they are built.
 - **Behaviour is shared.** Clicks, keys, tooltips, accessibility names, scrolling, drag,
   and the recording and playback state all come from one place. A theme only decides how
   things look and where they sit.
@@ -107,13 +107,15 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
    buttons), a needle meter and spinning reels, so it proves the whole pipeline: art cut
    from the mockup, frame strips, fonts, budgets. Max reviews it in the app before the rest
    are built.
-3. **Theme gallery** in settings.
-4. **The other 14 skins,** built in parallel in separate worktrees, one PR each, in this
+3. **Tape Deck, other pages:** browser mockups of the clip page, settings, merge, menus,
+   dialogs and the widget in the Tape Deck look. Max picks, then they are built.
+4. **Theme gallery** in settings.
+5. **The other 14 skins,** main page first, then their other pages (mockups first, in batches), built in parallel in separate worktrees, one PR each, in this
    order:
    - easier first: Phosphor, Desktop 95, Comic Book, Spatial Glass, Car Dashboard
    - then: Pocket, Quest Menu, Brick Phone, Answering Machine, Pocket Synth, Fighter Select
    - heaviest last: Cozy Cabin, Pinball, Phonograph
-5. **Docs:** update `docs/plan.md` section 16 and the building notes.
+6. **Docs:** update `docs/plan.md` section 16 and the building notes.
 
 ### Checks for each skin PR
 

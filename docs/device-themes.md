@@ -66,6 +66,20 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
 - First step: move the classic look into `ui/skins/classic.slint` with **no visible
   change**. The headless screenshots before and after must match.
 
+**Built in step 1 (2026-10-28):**
+- `ui/common.slint` holds every shared struct, global and widget (Slint forbids circular
+  imports, so a skin file cannot import from `app.slint`). `app.slint` keeps `Tray` and
+  `AppWindow` and re-exports what Rust uses.
+- The `Main` global holds the main page's state and actions. AppWindow's properties link
+  to it (`<=>`), so Rust sets them as before. The main page's callbacks are declared on
+  `Main` and Rust handles them with `ui.global::<Main>().on_...`: Slint 1.18 still allows
+  aliasing a global's callback from a component, but warns that it is deprecated.
+- `ui/skins/classic.slint` exports `MainPage` (imported as `ClassicMain`) with the
+  regions `Title`, `Recorder`, `Toolbar`, `Row` and `Player`. MainPage takes the size
+  classes (`narrow`, `wide`, `tall`) and four window actions (`go`, `ask-rename`,
+  `ask-delete`, `refocus`), since a global cannot reach AppWindow's functions or focus.
+- `Theme.skin` comes from `Theme.skins`, one per palette (0 classic).
+
 ### Art
 
 - **Chrome and textures** (walnut, leatherette, brass, bezels, pixel frames) become small

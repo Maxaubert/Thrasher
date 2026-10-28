@@ -1,0 +1,504 @@
+// The classic main page, the look of the eight colour themes: the title bar, the
+// recorder card, the toolbar card, the clip rows and the now playing footer. Narrow,
+// portrait, tall and wide windows only rearrange it (docs/plan.md section 14).
+//
+// A skin is one file like this: its own version of the five regions and a MainPage
+// that lays them out. The state and the actions come from the Main global; MainPage
+// takes only the window's size classes and the few actions that belong to the window
+// (changing page, the rename and delete questions, keyboard focus).
+
+import { Theme, Win, Main, Tour, Icon, IconBtn, TitleBar, RecorderCard, ProjectPicker, TextField, Scroller, SearchRow, ClipItem, SnowCap, ClipRow } from "../common.slint";
+
+// The title bar: the app's name and Settings; minimise and close come with it.
+component Title inherits TitleBar {
+    callback go(int);
+    height: 38px;
+    left-padding: 18px;
+    fill: false;
+    minimize => { Main.minimize-window(); }
+    close => { Main.close-window(); }
+    Text {
+        text: "Thrasher";
+        color: Theme.muted;
+        font-size: 12px;
+        font-weight: 600;
+        vertical-alignment: center;
+        horizontal-stretch: 1;
+    }
+    VerticalLayout {
+        alignment: center;
+        IconBtn { icon: "cog"; icon-size: 15px; label: "Settings"; clicked => { root.go(3); } }
+    }
+    Rectangle { width: 4px; }
+}
+
+// The recorder card, above the list or (wide) beside it.
+component Recorder inherits HorizontalLayout {
+    in property <bool> narrow;
+    in property <bool> wide;
+    in property <bool> tall;
+    callback refocus();
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    min-width: root.wide ? 380px : 0;
+    max-width: root.wide ? 380px : 100000px;
+    padding-left: root.wide ? 0 : root.narrow ? 12px : 16px;
+    padding-right: root.wide ? 0 : root.narrow ? 12px : 16px;
+    padding-top: root.wide ? 4px : 0;
+    RecorderCard {
+        mode: root.wide ? 2 : root.tall && !root.narrow ? 1 : 0;
+        recording: Main.recording;
+        paused: Main.paused;
+        device-label: Main.device-label;
+        elapsed: Main.elapsed;
+        elapsed-tenth: Main.elapsed-tenth;
+        live: Main.live;
+        record => { Main.toggle-record(); root.refocus(); }
+        pause => { Main.toggle-pause(); root.refocus(); }
+    }
+}
+
+// The list's toolbar, on a card like the recorder's, lined up with it: the project,
+// the search field and Import, Ask and the widget.
+component Toolbar inherits HorizontalLayout {
+    in property <bool> narrow;
+    in property <bool> wide;
+    callback go(int);
+    callback refocus();
+    padding-left: root.wide || root.narrow ? 12px : 16px;
+    padding-right: root.wide || root.narrow ? 12px : 16px;
+    padding-top: root.wide ? 4px : 12px;
+    padding-bottom: 8px;
+    Rectangle {
+        background: Theme.card;
+        border-radius: 14px;
+        border-width: 1px;
+        border-color: Theme.card-line;
+        property <length> at-x: Win.width > 0 && Win.height > 0 ? self.absolute-position.x : self.absolute-position.x;
+        property <length> at-y: Win.width > 0 && Win.height > 0 ? self.absolute-position.y : self.absolute-position.y;
+        function tour() {
+            Tour.tool = { x: self.at-x / 1px, y: self.at-y / 1px, w: self.width / 1px, h: self.height / 1px, r: 14, on: true };
+        }
+        init => { self.tour(); }
+        changed at-x => { self.tour(); }
+        changed at-y => { self.tour(); }
+        changed width => { self.tour(); }
+        changed height => { self.tour(); }
+        // Only beside the big recorder; in portrait just the recorder has snow.
+        if root.wide && (Theme.current == 1 || Theme.current == 2): SnowCap {
+            radius: 14px;
+            scale: 0.6;
+            seed: 19;
+        }
+        HorizontalLayout {
+            padding-top: 8px;
+            padding-bottom: 8px;
+            padding-left: 8px;
+            padding-right: 8px;
+            spacing: 10px;
+            VerticalLayout {
+                alignment: center;
+                ProjectPicker {
+                    projects: Main.projects;
+                    current: Main.project;
+                    enabled: !Main.recording;
+                    has-clips: Main.clips.length > 0;
+                    choose(i) => { Main.choose-project(i); root.refocus(); }
+                    create => { Main.dialog-text = ""; Main.dialog = 4; }
+                    rename => { Main.dialog-text = Main.projects[Main.project]; Main.dialog = 5; }
+                    delete => { Main.delete-project(); root.refocus(); }
+                    export => { Main.export-project(); root.refocus(); }
+                }
+            }
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                TextField {
+                    height: 32px;
+                    icon: "search";
+                    placeholder: "Search";
+                    label: "Search clips";
+                    takes-escape: true;
+                    focus-ticket: Main.search-ticket;
+                    text <=> Main.query;
+                    edited(t) => { Main.search(t, Main.search-all); }
+                    escaped => { Main.query = ""; Main.search("", Main.search-all); root.refocus(); }
+                    accepted => { if (Main.hits.length > 0) { Main.open-hit(0); root.go(1); } }
+                }
+            }
+            // Search every project instead of this one.
+            if Main.query != "" && Main.projects.length > 1: VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: all-text.preferred-width + 18px;
+                    height: 26px;
+                    border-radius: 13px;
+                    border-width: 1px;
+                    border-color: Main.search-all ? Theme.accent.with-alpha(0.5) : Theme.edge;
+                    background: Main.search-all ? Theme.accent.with-alpha(0.08) : transparent;
+                    accessible-role: checkbox;
+                    accessible-label: "Search all projects";
+                    accessible-checked: Main.search-all;
+                    accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+                    all-text := Text {
+                        x: 9px;
+                        y: (parent.height - self.height) / 2;
+                        text: "All projects";
+                        color: Main.search-all ? Theme.accent : Theme.muted;
+                        font-size: 11px;
+                        font-weight: 600;
+                    }
+                    TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+                    }
+                }
+            }
+            // Import, Ask and the widget, after the search field.
+            HorizontalLayout {
+                horizontal-stretch: 0;
+                spacing: 2px;
+                VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        icon: "file-plus";
+                        icon-size: 15px;
+                        label: "Import audio or video";
+                        tip: "Import";
+                        enabled: !Main.recording;
+                        clicked => { Main.import-files(); }
+                    }
+                }
+                if Main.can-ai: VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        icon: "message";
+                        icon-size: 15px;
+                        label: "Ask your clips";
+                        tip: "Ask";
+                        clicked => { root.go(6); }
+                    }
+                }
+                VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        icon: "pip";
+                        icon-size: 15px;
+                        label: "Small widget";
+                        tip: "Widget";
+                        clicked => { Main.compact-changed(true); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// One clip in the list. The highlighted one tells the Cyberpunk tour where it is.
+component Row inherits HorizontalLayout {
+    in property <int> index;
+    in property <ClipRow> item;
+    in property <length> wave-width;
+    // The window's height, so the row's menu can open upwards near the bottom.
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-bottom: 2px;
+    ClipItem {
+        item: root.item;
+        window-h: root.window-h;
+        property <bool> me: root.index == Main.selected;
+        property <length> at-x: Win.width > 0 && Win.height > 0 ? self.absolute-position.x : self.absolute-position.x;
+        property <length> at-y: Main.list-y < 1px && Win.width > 0 && Win.height > 0 ? self.absolute-position.y : self.absolute-position.y;
+        function tour() {
+            if (self.me) {
+                Tour.sel = { x: self.at-x / 1px, y: self.at-y / 1px, w: self.width / 1px, h: self.height / 1px, r: 10, on: true };
+            }
+        }
+        init => { self.tour(); }
+        changed me => { self.tour(); }
+        changed at-x => { self.tour(); }
+        changed at-y => { self.tour(); }
+        changed width => { self.tour(); }
+        wave-width: root.wave-width;
+        selected: root.index == Main.selected;
+        picked: Main.picked[root.index];
+        merge-count: Main.picked[root.index] ? Main.picked-count : 0;
+        active: root.index == Main.active-clip;
+        playing: Main.playing;
+        progress: Main.play-fraction;
+        play => { Main.play-clip(root.index); root.refocus(); }
+        cue(f) => { Main.cue-clip(root.index, f); root.refocus(); }
+        play-at(f) => { Main.play-clip-at(root.index, f); root.refocus(); }
+        select(ctrl, shift) => { Main.pick(root.index, ctrl, shift); root.refocus(); }
+        merge => { Main.start-merge(); root.go(5); }
+        open => { Main.open-clip(root.index); root.go(1); }
+        rename => { root.ask-rename(root.index); }
+        export(kind) => { Main.selected = root.index; Main.export-as(kind); root.refocus(); }
+        delete => { root.ask-delete(root.index); }
+        projects: Main.projects;
+        project: Main.project;
+        move-to(p) => { Main.move-clip(root.index, p); root.refocus(); }
+    }
+}
+
+// Now playing: the clip in the player, else the highlighted one, else nothing yet.
+// The page's footer, across the whole window.
+component Player inherits Rectangle {
+    in property <bool> narrow;
+    callback refocus();
+    property <length> at-y: Win.width > 0 && Win.height > 0 ? self.absolute-position.y : self.absolute-position.y;
+    init => { Tour.foot = self.at-y / 1px; }
+    changed at-y => { Tour.foot = self.at-y / 1px; }
+    property <int> shown: Main.active-clip >= 0 && Main.active-clip < Main.clips.length ? Main.active-clip
+        : Main.selected >= 0 && Main.selected < Main.clips.length ? Main.selected : -1;
+    property <bool> is-active: self.shown >= 0 && self.shown == Main.active-clip;
+    vertical-stretch: 0;
+    background: Theme.footer;
+    height: 64px;
+    Rectangle { y: 0; height: 1px; background: Theme.line; }
+    HorizontalLayout {
+        padding-left: root.narrow ? 12px : 16px;
+        padding-right: root.narrow ? 14px : 20px;
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            IconBtn {
+                size: 40px;
+                round: true;
+                filled: true;
+                enabled: root.shown >= 0;
+                icon: root.is-active && Main.playing ? "pause" : "play";
+                icon-size: 13px;
+                label: root.is-active && Main.playing ? "Pause" : "Play";
+                clicked => { Main.play-clip(root.shown); root.refocus(); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 8px;
+            horizontal-stretch: 1;
+            HorizontalLayout {
+                spacing: 10px;
+                Text {
+                    text: root.shown >= 0 ? Main.clips[root.shown].name : "Nothing playing";
+                    color: root.shown >= 0 ? Theme.text : Theme.dim;
+                    font-size: 13px;
+                    font-weight: 700;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+                Text {
+                    text: root.shown < 0 ? "--:-- / --:--"
+                        : (root.is-active ? Main.play-position : "0:00") + " / " + Main.clips[root.shown].duration;
+                    color: Theme.muted;
+                    font-family: Theme.mono;
+                    font-size: 12px;
+                }
+            }
+            Rectangle {
+                height: 4px;
+                border-radius: 2px;
+                background: Theme.track;
+                Rectangle {
+                    x: 0;
+                    width: parent.width * (root.is-active ? clamp(Main.play-fraction, 0, 1) : 0);
+                    border-radius: 2px;
+                    background: Theme.accent;
+                }
+                // Click to jump; taller than the line so it is easy to hit.
+                TouchArea {
+                    y: -8px;
+                    height: parent.height + 16px;
+                    enabled: root.shown >= 0;
+                    mouse-cursor: pointer;
+                    clicked => {
+                        Main.selected = root.shown;
+                        Main.seek-fraction(self.mouse-x / self.width);
+                        root.refocus();
+                    }
+                }
+            }
+        }
+    }
+}
+
+// The main page: the title bar on top, the recorder above the list (wide: beside
+// it), then the export strip and the footer.
+export component MainPage inherits VerticalLayout {
+    // The window's size classes, as AppWindow works them out.
+    in property <bool> narrow;
+    in property <bool> wide;
+    in property <bool> tall;
+    // Opens page p (see AppWindow.page).
+    callback go(int);
+    // The rename and delete questions for clip i.
+    callback ask-rename(int);
+    callback ask-delete(int);
+    // Gives the keyboard back to the window's shortcuts.
+    callback refocus();
+
+    Title { go(p) => { root.go(p); } }
+
+    HorizontalLayout {
+        vertical-stretch: 1;
+        FlexboxLayout {
+            // Wide: the recorder beside the list. Otherwise above it.
+            flex-direction: root.wide ? FlexboxLayoutDirection.row : FlexboxLayoutDirection.column;
+            flex-wrap: no-wrap;
+            alignment: stretch;
+            cross-axis-alignment: stretch;
+            vertical-stretch: 1;
+            spacing: root.wide ? 20px : 0;
+            padding-left: root.wide ? 18px : 0;
+            padding-right: root.wide ? 6px : 0;
+            padding-bottom: root.wide ? 16px : 0;
+            Recorder {
+                narrow: root.narrow;
+                wide: root.wide;
+                tall: root.tall;
+                refocus => { root.refocus(); }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                vertical-stretch: 1;
+                Toolbar {
+                    narrow: root.narrow;
+                    wide: root.wide;
+                    go(p) => { root.go(p); }
+                    refocus => { root.refocus(); }
+                }
+                if Main.query != "": Scroller {
+                    vertical-stretch: 1;
+                    fade: true;
+                    VerticalLayout {
+                        alignment: start;
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        spacing: 2px;
+                        if Main.hits.length == 0: Text {
+                            text: "No matches";
+                            color: Theme.dim;
+                            font-size: 13px;
+                            horizontal-alignment: center;
+                        }
+                        for h[i] in Main.hits: SearchRow {
+                            hit: h;
+                            show-project: Main.search-all;
+                            clicked => { Main.open-hit(i); root.go(1); }
+                        }
+                    }
+                }
+                if Main.query == "": Scroller {
+                    vertical-stretch: 1;
+                    fade: true;
+                    content-y <=> Main.list-y;
+                    property <int> count: Main.clips.length;
+                    init => { Main.list-height = self.visible-height; Main.clamp-list(); }
+                    changed visible-height => { Main.list-height = self.visible-height; Main.clamp-list(); }
+                    changed count => { Main.clamp-list(); }
+                    VerticalLayout {
+                        alignment: start;
+                        for clip[i] in Main.clips: Row {
+                            index: i;
+                            item: clip;
+                            wave-width: root.narrow ? 0 : root.wide ? 160px : 84px;
+                            window-h: root.height;
+                            go(p) => { root.go(p); }
+                            ask-rename(n) => { root.ask-rename(n); }
+                            ask-delete(n) => { root.ask-delete(n); }
+                            refocus => { root.refocus(); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // An export from the clip menu or the project menu: what it is, how far
+    // along, and a check when done. It takes its own room above the player.
+    if Main.export-state != 0: Rectangle {
+        vertical-stretch: 0;
+        height: 34px;
+        background: Theme.footer;
+        Rectangle { y: 0; height: 1px; background: Theme.line; }
+        HorizontalLayout {
+            padding-left: root.narrow ? 12px : 16px;
+            padding-right: root.narrow ? 14px : 20px;
+            spacing: 10px;
+            if Main.export-state == 2: Icon {
+                name: "check";
+                tint: Theme.accent;
+                width: 12px;
+                height: 12px;
+                y: (parent.height - self.height) / 2;
+            }
+            Text {
+                text: (Main.export-state == 2 ? "Exported " : "Exporting ") + Main.export-name;
+                color: Theme.text2;
+                font-size: 12px;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if Main.export-state == 1: Rectangle {
+                width: 120px;
+                height: 4px;
+                y: (parent.height - self.height) / 2;
+                border-radius: 2px;
+                background: Theme.track;
+                Rectangle {
+                    x: 0;
+                    width: parent.width * clamp(Main.export-progress, 0, 1);
+                    border-radius: 2px;
+                    background: Theme.accent;
+                    animate width { duration: 150ms; }
+                }
+            }
+            if Main.export-state == 1: Text {
+                text: round(Main.export-progress * 100) + "%";
+                color: Theme.muted;
+                font-family: Theme.mono;
+                font-size: 11px;
+                vertical-alignment: center;
+                width: 34px;
+                horizontal-alignment: right;
+            }
+        }
+    }
+
+    Player {
+        narrow: root.narrow;
+        refocus => { root.refocus(); }
+    }
+
+    // Messages float just above the footer, so nothing moves when they come
+    // and go.
+    Rectangle {
+        height: 0;
+        if Main.status != "": Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: -64px - self.height - 8px;
+            width: min(msg.preferred-width + 24px, parent.width - 32px);
+            height: 28px;
+            border-radius: 14px;
+            background: Theme.popup.with-alpha(0.95);
+            border-width: 1px;
+            border-color: Theme.popup-edge;
+            msg := Text {
+                text: Main.status;
+                color: Theme.text2;
+                font-size: 12px;
+                overflow: elide;
+                x: 12px;
+                width: parent.width - 24px;
+                vertical-alignment: center;
+                horizontal-alignment: center;
+            }
+        }
+    }
+}

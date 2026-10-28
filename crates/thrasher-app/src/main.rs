@@ -1589,7 +1589,7 @@ impl Hotkey {
         let id = hotkey.id();
         GlobalHotKeyEvent::set_event_handler(Some(move |e: GlobalHotKeyEvent| {
             if e.id() == id && e.state() == HotKeyState::Pressed {
-                let _ = weak.upgrade_in_event_loop(|ui| ui.invoke_toggle_record());
+                let _ = weak.upgrade_in_event_loop(|ui| ui.global::<Main>().invoke_toggle_record());
             }
         }));
         true
@@ -1845,7 +1845,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_toggle_record({
+    ui.global::<Main>().on_toggle_record({
         let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
         move || {
             let ui = weak.unwrap();
@@ -1859,7 +1859,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_toggle_pause({
+    ui.global::<Main>().on_toggle_pause({
         let (app, weak) = (app.clone(), ui.as_weak());
         move || {
             let ui = weak.unwrap();
@@ -1874,7 +1874,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_play_clip({
+    ui.global::<Main>().on_play_clip({
         let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
         move |i| {
             let ui = weak.unwrap();
@@ -1891,7 +1891,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_open_clip({
+    ui.global::<Main>().on_open_clip({
         let weak = ui.as_weak();
         move |i| {
             let ui = weak.unwrap();
@@ -1901,7 +1901,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_cue_clip({
+    ui.global::<Main>().on_cue_clip({
         let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
         move |i, f| {
             let ui = weak.unwrap();
@@ -1915,7 +1915,7 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         }
     });
-    ui.on_play_clip_at({
+    ui.global::<Main>().on_play_clip_at({
         let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
         move |i, f| {
             let ui = weak.unwrap();
@@ -1980,7 +1980,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_seek_fraction({
+    ui.global::<Main>().on_seek_fraction({
         let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
         move |f| {
             let ui = weak.unwrap();
@@ -2153,7 +2153,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_compact_changed({
+    ui.global::<Main>().on_compact_changed({
         let (app, weak) = (app.clone(), ui.as_weak());
         move |on| {
             let ui = weak.unwrap();
@@ -2187,7 +2187,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_import_files({
+    ui.global::<Main>().on_import_files({
         let (app, weak) = (app.clone(), ui.as_weak());
         move || {
             let ui = weak.unwrap();
@@ -2224,7 +2224,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_pick({
+    ui.global::<Main>().on_pick({
         let (app, weak) = (app.clone(), ui.as_weak());
         move |i, ctrl, shift| {
             let ui = weak.unwrap();
@@ -2257,7 +2257,7 @@ fn main() -> Result<(), slint::PlatformError> {
             .collect();
         ui.set_merge_rows(ModelRc::new(VecModel::from(rows)));
     };
-    ui.on_start_merge({
+    ui.global::<Main>().on_start_merge({
         let (app, weak) = (app.clone(), ui.as_weak());
         move || {
             let ui = weak.unwrap();
@@ -2331,7 +2331,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 a.clips.iter().position(|c| &c.name == name)
             };
             if let Some(k) = index {
-                ui.invoke_play_clip(k as i32);
+                ui.global::<Main>().invoke_play_clip(k as i32);
             }
         }
     });
@@ -2616,7 +2616,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_export_as({
+    ui.global::<Main>().on_export_as({
         let (app, weak) = (app.clone(), ui.as_weak());
         move |kind| {
             let ui = weak.unwrap();
@@ -3300,12 +3300,12 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_search({
+    ui.global::<Main>().on_search({
         let (app, weak) = (app.clone(), ui.as_weak());
         move |query, all| app.borrow_mut().search(&weak.unwrap(), &query, all)
     });
 
-    ui.on_open_hit({
+    ui.global::<Main>().on_open_hit({
         let (app, weak, ensure) = (app.clone(), ui.as_weak(), ensure_timer.clone());
         move |i| {
             let ui = weak.unwrap();
@@ -3329,7 +3329,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_choose_project({
+    ui.global::<Main>().on_choose_project({
         let (app, weak) = (app.clone(), ui.as_weak());
         move |i| {
             let ui = weak.unwrap();
@@ -3375,7 +3375,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_delete_project({
+    ui.global::<Main>().on_delete_project({
         let (app, weak) = (app.clone(), ui.as_weak());
         move || {
             let ui = weak.unwrap();
@@ -3394,7 +3394,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_move_clip({
+    ui.global::<Main>().on_move_clip({
         let (app, weak) = (app.clone(), ui.as_weak());
         move |i, p| {
             let ui = weak.unwrap();
@@ -3429,7 +3429,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.on_export_project({
+    ui.global::<Main>().on_export_project({
         let (app, weak) = (app.clone(), ui.as_weak());
         move || {
             let ui = weak.unwrap();
@@ -3539,13 +3539,13 @@ fn main() -> Result<(), slint::PlatformError> {
         tray.set_image(dot_image(32, false));
         tray.on_toggle_record({
             let weak = ui.as_weak();
-            move || weak.unwrap().invoke_toggle_record()
+            move || weak.unwrap().global::<Main>().invoke_toggle_record()
         });
         tray.on_show_window({
             let weak = ui.as_weak();
             move || {
                 let ui = weak.unwrap();
-                ui.invoke_compact_changed(false);
+                ui.global::<Main>().invoke_compact_changed(false);
                 let _ = ui.show();
             }
         });
@@ -3553,7 +3553,7 @@ fn main() -> Result<(), slint::PlatformError> {
             let weak = ui.as_weak();
             move || {
                 let ui = weak.unwrap();
-                ui.invoke_compact_changed(true);
+                ui.global::<Main>().invoke_compact_changed(true);
                 let _ = ui.show();
             }
         });
@@ -3609,11 +3609,11 @@ fn main() -> Result<(), slint::PlatformError> {
             });
         }
     });
-    ui.on_minimize_window({
+    ui.global::<Main>().on_minimize_window({
         let weak = ui.as_weak();
         move || weak.unwrap().window().set_minimized(true)
     });
-    ui.on_close_window({
+    ui.global::<Main>().on_close_window({
         let has_tray = tray.is_some();
         let (app, weak) = (app.clone(), ui.as_weak());
         move || {
@@ -3806,7 +3806,7 @@ fn accept_drops(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Rc<Timer> {
                 if ui.get_compact() && app.borrow().auto_widget && !cursor_over(&ui) =>
             {
                 crate::log!("back to the window from the widget");
-                ui.invoke_compact_changed(false);
+                ui.global::<Main>().invoke_compact_changed(false);
             }
             WindowEvent::HoveredFile(_) => ui.set_dropping(true),
             WindowEvent::HoveredFileCancelled => ui.set_dropping(false),
@@ -3930,7 +3930,7 @@ fn widget_when_hidden(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
         if minimised {
             ui.window().set_minimized(false);
         }
-        ui.invoke_compact_changed(true);
+        ui.global::<Main>().invoke_compact_changed(true);
         app.borrow_mut().auto_widget = true;
     });
     timer

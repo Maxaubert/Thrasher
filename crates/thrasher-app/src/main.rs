@@ -4,6 +4,7 @@
 mod ask;
 mod log;
 mod settings;
+mod snow;
 mod startup;
 mod transcription;
 mod voice;
@@ -1626,6 +1627,10 @@ fn main() -> Result<(), slint::PlatformError> {
 
     let t = std::time::Instant::now();
     let ui = AppWindow::new()?;
+    // The snow on the cards (Snow and Daylight themes): Slint asks for the paths.
+    let snow = ui.global::<Snow>();
+    snow.on_body(|w, r, scale, seed| snow::cap(w, r, scale, seed as u64).body.into());
+    snow.on_under(|w, r, scale, seed| snow::cap(w, r, scale, seed as u64).under.into());
     crate::log!("window built in {} ms", log::ms(t));
     let recovered = library.recover().unwrap_or_default();
     thrasher_core::merge::clean_leftovers(&library);

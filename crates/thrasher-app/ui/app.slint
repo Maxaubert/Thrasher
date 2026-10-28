@@ -2255,62 +2255,6 @@ component Snake inherits Rectangle {
 component CardFx inherits Rectangle {
     in property <bool> recording;
     in property <length> radius: 14px;
-    // Snow and Daylight: a cap of snow along the whole top edge, round the corners too.
-    // A band that follows the card's round corners, then drifts hanging from it along
-    // the straight top (a clip here is square, so nothing may reach past the corners).
-    if Theme.current == 1 || Theme.current == 2: Rectangle {
-        // Solid, so where the band and the drifts overlap it does not show twice.
-        property <color> snow: Theme.current == 2 ? #f4f8fb : #d8e2ea;
-        property <float> w: root.width / 1px;
-        property <float> r: root.radius / 1px;
-        // Where the round corner meets the band's lower edge, 5px down.
-        property <float> x0: self.r - Math.sqrt(Math.max(0, self.r * self.r - (self.r - 5) * (self.r - 5)));
-        Path {
-            x: 0;
-            y: 0;
-            width: root.width;
-            height: 5px;
-            viewbox-width: parent.w;
-            viewbox-height: 5;
-            fill: parent.snow;
-            commands: "M " + parent.x0 + " 5 A " + parent.r + " " + parent.r + " 0 0 1 " + parent.r + " 0 L " + (parent.w - parent.r) + " 0 A " + parent.r + " " + parent.r + " 0 0 1 " + (parent.w - parent.x0) + " 5 Z";
-        }
-        // Drifts fill exactly the straight part between the corners, so they start and
-        // end thin instead of being cut. Uneven, like real snow: a run of twelve with
-        // their own widths (s and w, in units), depths (d, px) and shapes, repeated.
-        property <[{ s: float, w: float, d: float, two: bool }]> run: [
-            { s: 0.0, w: 1.4, d: 6, two: false },
-            { s: 1.4, w: 0.7, d: 3, two: true },
-            { s: 2.1, w: 1.0, d: 4.5, two: false },
-            { s: 3.1, w: 1.8, d: 8, two: false },
-            { s: 4.9, w: 0.6, d: 2.5, two: true },
-            { s: 5.5, w: 1.2, d: 5, two: false },
-            { s: 6.7, w: 0.9, d: 3.5, two: true },
-            { s: 7.6, w: 1.5, d: 7, two: false },
-            { s: 9.1, w: 0.8, d: 3, two: true },
-            { s: 9.9, w: 1.1, d: 5.5, two: false },
-            { s: 11.0, w: 0.5, d: 2, two: true },
-            { s: 11.5, w: 1.3, d: 6, two: false }
-        ];
-        property <int> runs: Math.max(1, Math.round((self.w - 2 * self.r) / (12.8 * 44)));
-        property <float> unit: (self.w - 2 * self.r) / (self.runs * 12.8);
-        for k in self.runs * 12: Path {
-            property <{ s: float, w: float, d: float, two: bool }> drift: parent.run[Math.mod(k, 12)];
-            // Pixels to viewbox units, which scale with the width.
-            property <float> f: 44 / (self.drift.w * parent.unit);
-            property <float> deep: self.f * (1 + self.drift.d);
-            x: root.radius + (Math.floor(k / 12) * 12.8 + self.drift.s) * parent.unit * 1px;
-            y: 4px;
-            width: self.drift.w * parent.unit * 1px;
-            height: 12px;
-            viewbox-width: 44;
-            viewbox-height: 44 * 12px / self.width;
-            fill: parent.snow;
-            commands: self.drift.two
-                ? "M0 0H44V" + self.f + "C40 " + self.deep + " 28 " + self.deep + " 22 " + (self.f * (1 + self.drift.d * 0.3)) + "S4 " + self.deep + " 0 " + self.f + "Z"
-                : "M0 0H44V" + self.f + "C34 " + self.deep + " 12 " + self.deep + " 0 " + self.f + "Z";
-        }
-    }
     // Sakura and Kintsugi: a faint ensō circle in the corner.
     if Theme.current == 4 || Theme.current == 5: Path {
         property <length> size: max(170px, min(parent.width, parent.height) * 0.5);
@@ -2389,6 +2333,52 @@ component RecordButton inherits IconBtn {
 // The recorder: status, time, live level and the record buttons. Mode 0 is a narrow
 // window (one line, a round Record button), 1 the default, 2 a wide window (a tall
 // panel beside the clip list).
+// The snow on a card's top, worked out in Rust (src/snow.rs): Slint cannot build a
+// path in a loop. Arguments: card width and corner radius in px, scale, seed.
+export global Snow {
+    pure callback body(float, float, float, int) -> string;
+    pure callback under(float, float, float, int) -> string;
+}
+
+// Snow resting on a card (Snow and Daylight): it follows the card's top edge and round
+// corners and reaches above and beside it, so the card must not clip it. The same
+// seed gives a card the same snow every time.
+component SnowCap inherits Rectangle {
+    in property <length> radius: 14px;
+    in property <float> scale: 1;
+    in property <int> seed: 1;
+    // Room around the card for the snow, in px.
+    property <length> pad: 24px;
+    property <float> w: root.width / 1px;
+    property <float> r: root.radius / 1px;
+    Path {
+        x: -root.pad;
+        y: -root.pad;
+        width: root.width + 2 * root.pad;
+        height: root.pad + 60px;
+        viewbox-x: -root.pad / 1px;
+        viewbox-y: -root.pad / 1px;
+        viewbox-width: self.width / 1px;
+        viewbox-height: self.height / 1px;
+        fill: Theme.current == 2
+            ? @linear-gradient(180deg, #ffffff 17%, #f3f7fb 45%, #dde7f1 60%)
+            : @linear-gradient(180deg, #ffffff 17%, #f1f6fb 45%, #e2ecf6 60%);
+        commands: Snow.body(root.w, root.r, root.scale, root.seed);
+    }
+    Path {
+        x: -root.pad;
+        y: -root.pad;
+        width: root.width + 2 * root.pad;
+        height: root.pad + 60px;
+        viewbox-x: -root.pad / 1px;
+        viewbox-y: -root.pad / 1px;
+        viewbox-width: self.width / 1px;
+        viewbox-height: self.height / 1px;
+        fill: Theme.current == 2 ? #c6d5e5 : #d3e2f1;
+        commands: Snow.under(root.w, root.r, root.scale, root.seed);
+    }
+}
+
 component RecorderCard inherits Rectangle {
     in property <int> mode: 1;
     in property <bool> recording;
@@ -2403,11 +2393,17 @@ component RecorderCard inherits Rectangle {
     border-radius: root.mode == 2 ? 18px : 14px;
     border-width: 1px;
     border-color: Theme.card-line;
-    clip: true;
+    // The snow rests on top of the card and reaches past its edge.
+    clip: Theme.current != 1 && Theme.current != 2;
     vertical-stretch: root.mode == 2 ? 1 : 0;
     CardFx {
         recording: root.recording;
         radius: root.border-radius;
+    }
+    if Theme.current == 1 || Theme.current == 2: SnowCap {
+        radius: root.border-radius;
+        scale: root.mode == 2 ? 1.5 : 1;
+        seed: 7;
     }
     VerticalLayout {
     // Narrow: time and status on the left, round buttons on the right, level below.
@@ -3747,6 +3743,11 @@ export component AppWindow inherits Window {
                         border-radius: 14px;
                         border-width: 1px;
                         border-color: Theme.card-line;
+                        if Theme.current == 1 || Theme.current == 2: SnowCap {
+                            radius: 14px;
+                            scale: 0.6;
+                            seed: 19;
+                        }
                         HorizontalLayout {
                             padding-top: 8px;
                             padding-bottom: 8px;

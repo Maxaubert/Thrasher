@@ -1,7 +1,8 @@
 //! The route the Cyberpunk snakes run on the main page: round the recorder card,
 //! through the gap to the toolbar card, round the highlighted clip, out to the window
 //! frame and back into the recorder. Each box is lapped once from where the snakes
-//! come in to where they leave; the stretches across the gaps are tunnels.
+//! come in to where they leave; the stretches across the gaps are tunnels, and they
+//! only leave a box straight on from a side, never across the middle of an edge.
 //!
 //! Slint asks for it (`Tour.route`) with the boxes in window px, and only again when
 //! one of them moves.
@@ -25,9 +26,6 @@ impl Rect {
     }
     fn right(&self) -> f32 {
         self.x + self.w
-    }
-    fn mid_y(&self) -> f32 {
-        self.y + self.h / 2.0
     }
 
     /// The outline, every STEP px, clockwise from the left end of the top edge.
@@ -102,37 +100,53 @@ pub fn route(
     };
     // 0 recorder, 1 toolbar, 2 highlighted row, 3 frame.
     let boxes = [rec, tool, sel.unwrap_or(tool), frame];
-    // Tunnels: (from box, point on it) to (to box, point on it).
+    // Tunnels: (from box, point on it) to (to box, point on it). Every box is run
+    // clockwise, so a snake only hops where it is already heading that way: straight on
+    // off the end of a side (down a right side, up a left side, along a top edge), into
+    // the matching side of the next box.
     let mut links: Vec<Link> = Vec::new();
     if !wide {
-        let x = rec.x + rec.w * 0.5;
-        links.push((0, (x, rec.bottom()), 1, (x, tool.y)));
-        match sel {
-            Some(s) => {
-                let x = tool.x + tool.w * 0.7;
-                links.push((1, (x, tool.bottom()), 2, (x, s.y)));
-                links.push((2, (s.x, s.mid_y()), 3, (frame.x, s.mid_y())));
-            }
-            None => links.push((1, (tool.x, tool.mid_y()), 3, (frame.x, tool.mid_y()))),
-        }
-        let x = rec.x + rec.w * 0.25;
-        links.push((3, (x, frame.y), 0, (x, rec.y)));
+        // Down the recorder's right side and on into the toolbar's.
+        links.push((
+            0,
+            (rec.right(), rec.bottom() - rec.r),
+            1,
+            (tool.right(), tool.y + tool.r),
+        ));
     } else {
-        let y = tool.mid_y();
-        links.push((0, (rec.right(), y), 1, (tool.x, y)));
-        match sel {
-            Some(s) => {
-                let x = tool.x + tool.w * 0.4;
-                links.push((1, (x, tool.bottom()), 2, (x, s.y)));
-                links.push((2, (s.right(), s.mid_y()), 3, (frame.right(), s.mid_y())));
-            }
-            None => {
-                let x = tool.x + tool.w * 0.7;
-                links.push((1, (x, tool.y), 3, (x, frame.y)));
-            }
-        }
-        links.push((3, (frame.x, rec.mid_y()), 0, (rec.x, rec.mid_y())));
+        // Along the recorder's top and on along the toolbar's, beside it.
+        links.push((
+            0,
+            (rec.right() - rec.r, rec.y),
+            1,
+            (tool.x + tool.r, tool.y),
+        ));
     }
+    // Down the right sides: toolbar, then the highlighted row, then a step across into
+    // the window frame's right side, still heading down.
+    let last = match sel {
+        Some(s) => {
+            links.push((
+                1,
+                (tool.right(), tool.bottom() - tool.r),
+                2,
+                (s.right(), s.y + s.r),
+            ));
+            (2, s)
+        }
+        None => (1, tool),
+    };
+    let (i, b) = last;
+    let y = b.bottom() - b.r;
+    links.push((i, (b.right(), y), 3, (frame.right(), y + 10.0)));
+    // Round the frame and up its left side, then a step across into the recorder's
+    // left side, still heading up.
+    let y = if wide {
+        rec.y + rec.h * 0.6
+    } else {
+        rec.bottom() - rec.r - 2.0
+    };
+    links.push((3, (frame.x, y + 10.0), 0, (rec.x, y)));
 
     let outlines: Vec<Vec<(f32, f32)>> = boxes.iter().map(Rect::outline).collect();
     let mut out = Vec::new();
@@ -208,6 +222,40 @@ mod tests {
             "the route closes"
         );
         assert!(r.iter().any(|p| p.tunnel) && r.iter().any(|p| !p.tunnel));
+    }
+
+    #[test]
+    fn hops_leave_from_the_sides() {
+        // In portrait every tunnel starts on a left or right side of a box, where the
+        // snake is already heading up or down, never across the middle of an edge.
+        let (rec, tool, sel) = (
+            bx(12.0, 40.0, 560.0, 130.0),
+            bx(12.0, 186.0, 560.0, 52.0),
+            bx(24.0, 300.0, 536.0, 52.0),
+        );
+        let r = route(rec, tool, Some(sel), 585.0, 788.0, false);
+        let sides = [
+            rec.x,
+            rec.right(),
+            tool.x,
+            tool.right(),
+            sel.x,
+            sel.right(),
+            4.0,
+            581.0,
+        ];
+        let starts: Vec<&Point> = r
+            .windows(2)
+            .filter(|w| !w[0].tunnel && w[1].tunnel)
+            .map(|w| &w[1])
+            .collect();
+        assert_eq!(starts.len(), 4);
+        for p in starts {
+            assert!(
+                sides.iter().any(|x| (p.x - x).abs() < 2.5),
+                "tunnel from the middle of an edge at {p:?}"
+            );
+        }
     }
 
     #[test]

@@ -471,7 +471,8 @@ impl App {
                 let secs = sc
                     .as_ref()
                     .map_or(c.duration, |sc| edited_secs(&self.library, c, sc));
-                let mut meta = when(c.created);
+                let made = when(c.created);
+                let mut meta = made.clone();
                 if sc.as_ref().is_some_and(|s| !s.words.is_empty()) {
                     meta.push_str(" · transcribed");
                 }
@@ -482,6 +483,7 @@ impl App {
                     name: c.name.clone().into(),
                     duration: fmt_time(secs).into(),
                     meta: meta.into(),
+                    when: made.into(),
                     has_system: c.has_system,
                     transcribed: sc.as_ref().is_some_and(|s| !s.words.is_empty()),
                     wave: self.row_wave(c),
@@ -3873,7 +3875,11 @@ fn export_reporter(weak: slint::Weak<AppWindow>) -> impl Fn(f32) {
 }
 
 /// Steps per second of each theme's effect, in the order of `Theme.names`; 0 for none.
-const EFFECT_FPS: [f32; 8] = [0.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0];
+const EFFECT_FPS: [f32; 9] = [0.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 0.0];
+
+/// Steps per second of motion that runs only while recording (not paused), such as the
+/// Tape Deck reels; the clock stands still otherwise, so a still page costs nothing.
+const RECORDING_FPS: [f32; 9] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0];
 
 /// Advances `Fx.t`, the clock of the theme effects, twice as fast while recording. It
 /// stands still for Ember, in the widget and while the window is hidden or minimised,
@@ -3885,10 +3891,12 @@ fn effect_clock(ui: &AppWindow) -> Timer {
     timer.start(TimerMode::Repeated, Duration::from_millis(16), move || {
         let Some(ui) = weak.upgrade() else { return };
         let window = ui.window();
-        let fps = usize::try_from(ui.global::<Theme>().get_current())
-            .ok()
-            .and_then(|i| EFFECT_FPS.get(i).copied())
-            .unwrap_or(0.0);
+        let theme = usize::try_from(ui.global::<Theme>().get_current()).ok();
+        let rate = |table: &[f32]| theme.and_then(|i| table.get(i).copied()).unwrap_or(0.0);
+        let mut fps = rate(&EFFECT_FPS);
+        if ui.get_recording() && !ui.get_paused() {
+            fps = fps.max(rate(&RECORDING_FPS));
+        }
         let now = std::time::Instant::now();
         let dt = (now - last).as_secs_f32();
         if fps == 0.0 || ui.get_compact() || !window.is_visible() || window.is_minimized() {
@@ -3911,8 +3919,13 @@ fn effect_clock(ui: &AppWindow) -> Timer {
 /// While recording, the window turns into the widget when it is minimised or when
 /// another window covers it (maximised, or over most of it), so the recording stays in
 /// sight. A window beside another one, without focus, stays as it is.
+/// `THRASHER_TEST_KEEP_WINDOW` turns this off for automated checks of the recording
+/// page, whose window sits behind the others on purpose.
 fn widget_when_hidden(ui: &AppWindow, app: &Rc<RefCell<App>>) -> Timer {
     let timer = Timer::default();
+    if std::env::var_os("THRASHER_TEST_KEEP_WINDOW").is_some() {
+        return timer;
+    }
     let (weak, app) = (ui.as_weak(), app.clone());
     timer.start(TimerMode::Repeated, Duration::from_millis(400), move || {
         let Some(ui) = weak.upgrade() else { return };

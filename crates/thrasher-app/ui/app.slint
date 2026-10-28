@@ -11,12 +11,18 @@ import "./fonts/InterTight-500.ttf";
 import "./fonts/InterTight-600.ttf";
 import "./fonts/InterTight-800.ttf";
 import "./fonts/JetBrainsMono-500.ttf";
+import "./fonts/JetBrainsMono-700.ttf";
+import "./fonts/Caveat-500.ttf";
+import "./fonts/Caveat-700.ttf";
+import "./fonts/Oswald-500.ttf";
+import "./fonts/Oswald-600.ttf";
 import {
     ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Tips, Theme, Fx, Main, Win, Tour, TourPoint, Snow,
     Icon, Tip, Btn, IconBtn, Toggle, Wave, BackLink, ExportButton, ResizeEdge, TitleBar, OrderList, PageHeader, Select,
     TextField, SourceRow, ShortcutBox, Card, CardPart, CardRow, Chip, Meter, WindowFx, Scroller, TourSnake, TranscriptCard,
 } from "common.slint";
 import { MainPage as ClassicMain } from "skins/classic.slint";
+import { MainPage as TapeMain } from "skins/tape.slint";
 // What the app reaches from Rust.
 export { ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Theme, Fx, Main, Tour, Snow }
 
@@ -334,10 +340,10 @@ export component AppWindow inherits Window {
     function move-selection(delta: int) {
         if (clips.length == 0) { return; }
         selected = clamp(selected < 0 ? clips.length - 1 : selected + delta, 0, clips.length - 1);
-        if (selected * 54px < -list-y) {
-            list-y = -(selected * 54px);
-        } else if ((selected + 1) * 54px > -list-y + list-height) {
-            list-y = -((selected + 1) * 54px - list-height);
+        if (selected * Main.row-h < -list-y) {
+            list-y = -(selected * Main.row-h);
+        } else if ((selected + 1) * Main.row-h > -list-y + list-height) {
+            list-y = -((selected + 1) * Main.row-h - list-height);
         }
     }
 
@@ -567,6 +573,15 @@ export component AppWindow inherits Window {
         // ---------- Clips (main) ----------
         // The theme's skin builds it (ui/skins); the state and actions are in Main.
         if !compact && page == 0 && Theme.skin == 0: ClassicMain {
+            narrow: root.narrow;
+            wide: root.wide;
+            tall: root.tall;
+            go(p) => { root.go(p); }
+            ask-rename(i) => { root.ask-rename(i); }
+            ask-delete(i) => { root.ask-delete(i); }
+            refocus => { keys.focus(); }
+        }
+        if !compact && page == 0 && Theme.skin == 1: TapeMain {
             narrow: root.narrow;
             wide: root.wide;
             tall: root.tall;

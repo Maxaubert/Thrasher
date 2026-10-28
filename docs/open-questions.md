@@ -69,3 +69,7 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
     Steps are 0.75, 1.0, 1.25, 1.5 and 2.0. Other steps wanted?
 18. **The widget** got the same Ember style as a pill: record button, live level bars,
     timer, open-window and hide buttons. Not designed in the mockups yet.
+19. **Exe size of the device skins** (2026-10-28, Tape Deck pilot). One skin's main page
+    adds about 2.2 MB (1.7 MB of it code Slint generates), so 15 skins would be 25 to 30 MB
+    against the 15 MB budget in `docs/device-themes.md`. Share more parts between skins,
+    or raise the budget?

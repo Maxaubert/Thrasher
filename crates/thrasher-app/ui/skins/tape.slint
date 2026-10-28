@@ -1,0 +1,1458 @@
+// The Tape Deck main page: a 1970s cassette deck in walnut and brushed aluminium
+// (docs/mockups/device-themes/tape.html). The recorder is a cassette window with reels,
+// a VU meter and a tape counter; Import, Ask and the widget are piano keys beside REC;
+// the clips are hand-lettered tape spines on a shelf. Portrait windows stack the deck
+// above the shelf, wide ones put the deck on the left like a hardware unit.
+//
+// Textures and fixed art are PNGs in tape/ (1x and 2x), cut from the mockup with
+// headless Edge; everything that moves or reacts is drawn here. The reels step through
+// a strip of frames on the Fx clock, which runs only while recording.
+
+import { Theme, Fx, Win, Main, Tips, Icon, ProjectMenu, TextField, Scroller, SearchRow, ClipMenu, WaveSeek, ClipRow } from "../common.slint";
+
+// The deck's colours, from the mockup.
+global Deck {
+    out property <color> cream: #efe3c8;
+    out property <color> cream2: #e2d3b2;
+    out property <color> ink: #2a1c12;
+    out property <color> ink-soft: #6b5644;
+    out property <color> alu-ink: #3b342c;
+    out property <color> red: #c9331f;
+    out property <color> amber: #f2a64a;
+    out property <color> chassis: #22170f;
+    out property <color> chassis2: #1a120c;
+    out property <color> slot: #120c08;
+    // The colour bands of the tape spines, in turn.
+    out property <[color]> bands: [#c9331f, #d99a2b, #3f7c74, #7a4a2a, #2f5a8a];
+    out property <brush> key-face: @linear-gradient(180deg, #ece7dc 0%, #c9c1b2 78%, #8f8778 78%, #6f685b 100%);
+    out property <brush> rec-face: @linear-gradient(180deg, #e2543a 0%, #c9331f 40%, #a72614 78%, #6e170b 78%, #55120a 100%);
+    out property <brush> rec-down: @linear-gradient(180deg, #c9452d 0%, #b22c18 40%, #921f10 82%, #6e170b 82%, #55120a 100%);
+}
+
+// Walnut: the title bar and the footer.
+component Walnut inherits Rectangle {
+    property <bool> hi: 1phx < 0.7px;
+    background: @linear-gradient(180deg, #714427 0%, #4c2b17 60%, #3d2212 100%);
+    Image {
+        width: 100%;
+        height: 100%;
+        source: root.hi ? @image-url("tape/walnut@2x.png") : @image-url("tape/walnut.png");
+        horizontal-tiling: repeat;
+        vertical-tiling: repeat;
+        horizontal-alignment: left;
+        vertical-alignment: top;
+    }
+    @children
+}
+
+// Brushed aluminium: the deck's faceplate.
+component Alu inherits Rectangle {
+    property <bool> hi: 1phx < 0.7px;
+    background: @linear-gradient(180deg, #dcd6ca 0%, #bdb5a7 70%, #a9a193 100%);
+    Image {
+        width: 100%;
+        height: 100%;
+        source: root.hi ? @image-url("tape/alu@2x.png") : @image-url("tape/alu.png");
+        horizontal-tiling: repeat;
+        vertical-tiling: repeat;
+        horizontal-alignment: left;
+        vertical-alignment: top;
+    }
+    // The bevel catching the light along the top.
+    Rectangle { y: 0; height: 1px; background: #ffffff80; }
+    @children
+}
+
+component Screw inherits Image {
+    width: 7px;
+    height: 7px;
+    source: @image-url("tape/screw@2x.png");
+    image-fit: fill;
+}
+
+// A well sunk into the faceplate: dark inside, shaded at the top, a light edge below.
+component Well inherits Rectangle {
+    in property <color> fill: #120c08;
+    in property <length> radius: 5px;
+    in property <length> pad: 5px;
+    Rectangle { y: 1px; border-radius: root.radius; background: #ffffff99; }
+    Rectangle { border-radius: root.radius; background: root.fill; }
+    Rectangle {
+        x: root.radius;
+        y: 0;
+        width: parent.width - 2 * root.radius;
+        height: min(6px, parent.height / 3);
+        background: @linear-gradient(180deg, #000000c0 0%, #00000000 100%);
+    }
+    Rectangle {
+        x: root.pad;
+        y: root.pad;
+        width: parent.width - 2 * root.pad;
+        height: parent.height - 2 * root.pad;
+        @children
+    }
+}
+
+// A small button on walnut: Settings, minimise and close.
+component WoodBtn inherits Rectangle {
+    in property <string> icon;
+    in property <string> label;
+    in property <string> tip: label;
+    in property <length> icon-size: 15px;
+    callback clicked;
+    width: 28px;
+    height: 26px;
+    border-radius: 4px;
+    background: t.has-hover ? #00000040 : transparent;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Icon {
+        name: root.icon;
+        tint: t.has-hover ? #fff3dc : #ecd9b5;
+        width: root.icon-size;
+        height: root.icon-size;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The title bar: a brass name plate on walnut, Settings, minimise and close.
+component Title inherits Walnut {
+    callback go(int);
+    height: 38px;
+    Rectangle { y: parent.height - 1px; height: 1px; background: #1a0f08; }
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 8px;
+        spacing: 6px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                height: 22px;
+                width: plate.preferred-width;
+                background: @linear-gradient(180deg, #e3c58a 0%, #b48c4b 100%);
+                border-radius: 3px;
+                Rectangle { y: 0; height: 1px; background: #f6e2b4; }
+                Rectangle { y: parent.height; height: 1px; background: #00000066; }
+                plate := HorizontalLayout {
+                    padding-left: 8px;
+                    padding-right: 10px;
+                    spacing: 8px;
+                    alignment: start;
+                    VerticalLayout {
+                        alignment: center;
+                        Screw { }
+                    }
+                    Text {
+                        text: "THRASHER";
+                        color: #3a2610;
+                        font-family: "Oswald";
+                        font-size: 13px;
+                        font-weight: 600;
+                        letter-spacing: 3.6px;
+                        vertical-alignment: center;
+                    }
+                    Text {
+                        text: "STEREO";
+                        color: #3a2610b3;
+                        font-family: "Oswald";
+                        font-size: 9px;
+                        font-weight: 500;
+                        letter-spacing: 1.6px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+        Rectangle { horizontal-stretch: 1; }
+        VerticalLayout {
+            alignment: center;
+            WoodBtn { icon: "cog"; label: "Settings"; clicked => { root.go(3); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            WoodBtn { icon: "minimize"; label: "Minimize"; icon-size: 13px; clicked => { Main.minimize-window(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            WoodBtn { icon: "close"; label: "Close"; icon-size: 13px; clicked => { Main.close-window(); } }
+        }
+    }
+}
+
+// The cassette in its window, the art kept to its shape and centred. The hubs turn
+// while recording; the label carries the microphone's name.
+component Cassette inherits Rectangle {
+    property <bool> hi: 1phx < 0.7px;
+    // The art is 280 by 100 units.
+    property <float> s: min(root.width / 280px, root.height / 100px);
+    property <bool> turning: Main.recording && !Main.paused;
+    // A frame of the hub strip: 8 frames turn a hub through 60 degrees, its repeat.
+    // The take-up reel on the right turns faster than the full one on the left.
+    property <int> left-frame: root.turning ? Math.mod(floor(Fx.t * 4), 8) : 0;
+    property <int> right-frame: root.turning ? Math.mod(floor(Fx.t * 5.7), 8) : 0;
+    property <int> frame-px: root.hi ? 88 : 44;
+    art := Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: 280px * root.s;
+        height: 100px * root.s;
+        Image {
+            width: 100%;
+            height: 100%;
+            source: root.hi ? @image-url("tape/cassette@2x.png") : @image-url("tape/cassette.png");
+            image-fit: fill;
+        }
+        Image {
+            x: (96 - 17) * 1px * root.s;
+            y: (46.5 - 17) * 1px * root.s;
+            width: 34px * root.s;
+            height: 34px * root.s;
+            source: root.hi ? @image-url("tape/reels@2x.png") : @image-url("tape/reels.png");
+            source-clip-x: root.left-frame * root.frame-px;
+            source-clip-y: 0;
+            source-clip-width: root.frame-px;
+            source-clip-height: root.frame-px;
+            image-fit: fill;
+        }
+        Image {
+            x: (184 - 17) * 1px * root.s;
+            y: (46.5 - 17) * 1px * root.s;
+            width: 34px * root.s;
+            height: 34px * root.s;
+            source: root.hi ? @image-url("tape/reels@2x.png") : @image-url("tape/reels.png");
+            source-clip-x: root.right-frame * root.frame-px;
+            source-clip-y: 0;
+            source-clip-width: root.frame-px;
+            source-clip-height: root.frame-px;
+            image-fit: fill;
+        }
+        Text {
+            x: 20px * root.s;
+            y: 74.5px * root.s;
+            width: 240px * root.s;
+            height: 13px * root.s;
+            text: Main.device-label;
+            color: #e9dfcb;
+            font-family: "Caveat";
+            font-weight: 700;
+            font-size: 13px * root.s;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+}
+
+// The VU meter: the needle follows the input level while recording and rests left of
+// -20 otherwise. The face and the glass over the needle are PNGs; the needle is a line
+// whose end comes from the angle.
+component Vu inherits Rectangle {
+    property <bool> hi: 1phx < 0.7px;
+    property <float> s: min(root.width / 160px, root.height / 92px);
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;
+    // The level above the floor of the live bars, in decibels; 0 VU sits 6 dB under full.
+    property <float> v: max(root.level - 0.06, 0) / 0.94;
+    property <float> vu: root.v > 0.0001 ? 20 * Math.log(root.v, 10) + 6 : -40;
+    // The scale runs from -48 degrees at -20 to +24 at 0; -54 is the stop.
+    property <angle> needle: clamp(-48 + (root.vu + 20) * 3.6, -54, 52) * 1deg;
+    animate needle { duration: 110ms; }
+    face := Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: 160px * root.s;
+        height: 92px * root.s;
+        Image {
+            width: 100%;
+            height: 100%;
+            source: root.hi ? @image-url("tape/vu-face@2x.png") : @image-url("tape/vu-face.png");
+            image-fit: fill;
+        }
+        Path {
+            width: 100%;
+            height: 100%;
+            viewbox-width: 160;
+            viewbox-height: 92;
+            stroke: #1a100a;
+            stroke-width: max(1px, 1.3px * root.s);
+            stroke-line-cap: round;
+            commands: "M " + (80 + 20 * sin(root.needle)) + " " + (104 - 20 * cos(root.needle))
+                + " L " + (80 + 82 * sin(root.needle)) + " " + (104 - 82 * cos(root.needle));
+        }
+        Image {
+            width: 100%;
+            height: 100%;
+            source: root.hi ? @image-url("tape/vu-over@2x.png") : @image-url("tape/vu-over.png");
+            image-fit: fill;
+        }
+    }
+}
+
+// The tape counter's figures, each on its own dark drum, ":" and "." narrower between.
+// The text is drawn whole in every drum and clipped, since a string cannot be split.
+component Digits inherits Rectangle {
+    in property <string> text;
+    in property <length> size: 15px;
+    in property <length> cell: 11px;
+    in property <length> sep: 5px;
+    property <int> count: root.text == "" ? 0 : root.text.character-count;
+    // JetBrains Mono's characters are 0.6 em wide.
+    property <length> advance: root.size * 0.6;
+    // Counted from the end, every third character from the second is a separator:
+    // "00:00.0", "1:02:03.4".
+    property <int> m: root.count - 2;
+    function is-sep(i: int) -> bool {
+        return i <= root.m && Math.mod(root.m - i, 3) == 0;
+    }
+    function seps-before(i: int) -> int {
+        return i > root.m ? floor(root.m / 3) + 1 : floor(root.m / 3) - floor((root.m - i) / 3);
+    }
+    function at(i: int) -> length {
+        return (i - root.seps-before(i)) * root.cell + root.seps-before(i) * root.sep + i * 1px;
+    }
+    width: root.at(root.count) - 1px;
+    accessible-role: AccessibleRole.text;
+    accessible-label: root.text;
+    for i in root.count: Rectangle {
+        x: root.at(i);
+        width: root.is-sep(i) ? root.sep : root.cell;
+        background: root.is-sep(i) ? transparent : @linear-gradient(180deg, #0c0907 0%, #2c231c 50%, #0c0907 100%);
+        // A window one character wide, so the neighbours stay hidden.
+        Rectangle {
+            width: min(root.advance, parent.width);
+            clip: true;
+            Text {
+                x: (parent.width - root.advance) / 2 - i * root.advance;
+                width: root.count * root.advance + 2px;
+                height: parent.height;
+                text: root.text;
+                color: root.is-sep(i) ? #8d7d6a : #f4ead6;
+                font-family: Theme.mono;
+                font-size: root.size;
+                font-weight: root.is-sep(i) ? 500 : 700;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+    }
+}
+
+// The lamp and the word over the counter.
+component Status inherits HorizontalLayout {
+    property <bool> hi: 1phx < 0.7px;
+    spacing: 4px;
+    alignment: start;
+    Rectangle {
+        width: 15px;
+        height: 15px;
+        Image {
+            x: -3px;
+            y: -3px;
+            width: 21px;
+            height: 21px;
+            source: root.hi ? @image-url("tape/led@2x.png") : @image-url("tape/led.png");
+            image-fit: fill;
+        }
+    }
+    Text {
+        text: Main.recording ? (Main.paused ? "PAUSED" : "RECORDING") : "READY";
+        color: #3b342c;
+        font-family: "Oswald";
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 2.2px;
+        vertical-alignment: center;
+    }
+}
+
+// The engraved label over a part of the faceplate.
+component Engraved inherits Text {
+    color: #3b342c;
+    font-family: "Oswald";
+    font-size: 8.5px;
+    font-weight: 500;
+    letter-spacing: 2px;
+}
+
+// The counter: the lamp on top, then the engraved label and the figures.
+component Counter inherits VerticalLayout {
+    in property <bool> big;
+    alignment: space-between;
+    padding-top: root.big ? 2px : 4px;
+    padding-bottom: root.big ? 2px : 4px;
+    Status { }
+    VerticalLayout {
+        spacing: root.big ? 5px : 2px;
+        Engraved { text: root.big ? "TAPE COUNTER" : "COUNTER"; }
+        HorizontalLayout {
+            alignment: start;
+            Well {
+                fill: #1b1410;
+                radius: 3px;
+                pad: 3px;
+                width: digits.width + 6px;
+                height: (root.big ? 30px : 20px) + 6px;
+                digits := Digits {
+                    height: root.big ? 30px : 20px;
+                    text: Main.elapsed + Main.elapsed-tenth;
+                    size: root.big ? 20px : 15px;
+                    cell: root.big ? 16px : 11px;
+                    sep: root.big ? 7px : 5px;
+                }
+            }
+        }
+    }
+    if !root.big: Rectangle { height: 0; }
+}
+
+// A piano key. REC is the red one; it stays down while recording.
+component Key inherits Rectangle {
+    in property <string> icon;
+    in property <string> text;
+    in property <string> label;
+    in property <string> tip: label;
+    in property <bool> rec;
+    in property <bool> latched;
+    in property <bool> enabled: true;
+    in property <bool> big;
+    callback clicked;
+    property <bool> down: (t.pressed && t.has-hover && root.enabled) || root.latched;
+    // The bed shares its width out by stretch alone.
+    min-width: 1px;
+    preferred-width: 1px;
+    horizontal-stretch: 1;
+    property <length> icon-size: root.rec ? (root.big ? 26px : 22px) : (root.big ? 20px : 17px);
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    face := Rectangle {
+        y: root.down ? 2px : 0;
+        height: parent.height - (root.down ? 2px : 0);
+        background: root.rec ? (root.latched ? Deck.rec-down : Deck.rec-face) : Deck.key-face;
+        opacity: root.enabled ? 1 : 0.55;
+        Rectangle { y: 0; height: 1px; background: root.rec ? #ff9a7f : #ffffff; }
+        if t.has-hover && root.enabled && !root.down: Rectangle { background: #ffffff12; }
+        VerticalLayout {
+            height: parent.height * 0.78;
+            y: 0;
+            alignment: center;
+            spacing: root.rec ? 5px : 4px;
+            HorizontalLayout {
+                alignment: center;
+                Icon {
+                    name: root.icon;
+                    tint: root.rec ? #fff3e6 : #3a3129;
+                    width: root.icon-size;
+                    height: root.icon-size;
+                }
+            }
+            Text {
+                text: root.text;
+                color: root.rec ? #fff3e6 : #3a3129;
+                font-family: "Oswald";
+                font-size: root.rec ? (root.big ? 12px : 10.5px) : (root.big ? 9px : 8px);
+                font-weight: root.rec ? 600 : 500;
+                letter-spacing: root.rec ? 3.2px : 1.6px;
+                horizontal-alignment: center;
+                // The key says it already.
+                accessible-role: none;
+            }
+        }
+        // The REC key's lamp, bright while recording.
+        if root.rec: Rectangle {
+            x: parent.width - 13px;
+            y: 6px;
+            width: 6px;
+            height: 6px;
+            border-radius: 3px;
+            background: root.latched ? #ffffff : #ffd8c8;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The key bed: REC, then Import (Pause while recording), Ask and the widget.
+component Keys inherits Rectangle {
+    in property <bool> big;
+    callback go(int);
+    callback refocus();
+    Rectangle { y: 1px; border-radius: 4px; background: #ffffff99; }
+    Rectangle { border-radius: 4px; background: #0f0a06; }
+    HorizontalLayout {
+        padding: 3px;
+        spacing: 3px;
+        Key {
+            // REC is 2.1 keys wide.
+            horizontal-stretch: 2.1;
+            rec: true;
+            big: root.big;
+            latched: Main.recording;
+            icon: Main.recording ? "stop" : "mic";
+            text: Main.recording ? "STOP" : "REC";
+            label: Main.recording ? "Stop and save" : "Record";
+            tip: Main.recording ? "Stop" : "Record";
+            clicked => { Main.toggle-record(); root.refocus(); }
+        }
+        if !Main.recording: Key {
+            big: root.big;
+            icon: "import";
+            text: "IMPORT";
+            label: "Import audio or video";
+            tip: "Import";
+            clicked => { Main.import-files(); }
+        }
+        if Main.recording: Key {
+            big: root.big;
+            latched: Main.paused;
+            icon: Main.paused ? "play" : "pause";
+            text: Main.paused ? "RESUME" : "PAUSE";
+            label: Main.paused ? "Resume" : "Pause";
+            clicked => { Main.toggle-pause(); root.refocus(); }
+        }
+        if Main.can-ai: Key {
+            big: root.big;
+            icon: "message";
+            text: "ASK";
+            label: "Ask your clips";
+            tip: "Ask";
+            clicked => { root.go(6); }
+        }
+        Key {
+            big: root.big;
+            icon: "pip";
+            text: "WIDGET";
+            label: "Small widget";
+            tip: "Widget";
+            clicked => { Main.compact-changed(true); }
+        }
+    }
+}
+
+// The deck in a portrait window: the cassette and the counter, then the VU meter and
+// the keys. A tall window gets a bigger deck.
+component DeckFront inherits Alu {
+    in property <bool> tall;
+    callback go(int);
+    callback refocus();
+    // A wider window gets a taller cassette, up to the tall window's.
+    property <length> top-h: root.tall ? 118px : clamp(96px + (root.width - 420px) * 0.08, 96px, 112px);
+    property <length> low-h: root.tall ? 90px : 74px;
+    height: 10px + root.top-h + 8px + root.low-h + 10px + 2px;
+    Rectangle { y: parent.height - 2px; height: 2px; background: #0f0a06; }
+    VerticalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-top: 10px;
+        padding-bottom: 12px;
+        spacing: 8px;
+        HorizontalLayout {
+            height: root.top-h;
+            spacing: 8px;
+            Well {
+                radius: 6px;
+                pad: 5px;
+                horizontal-stretch: 1;
+                Cassette { }
+            }
+            Counter { width: 100px; }
+        }
+        HorizontalLayout {
+            height: root.low-h;
+            spacing: 8px;
+            Well {
+                width: root.low-h * 128 / 74;
+                fill: #2a1d13;
+                radius: 5px;
+                pad: 4px;
+                Vu { }
+            }
+            Keys {
+                horizontal-stretch: 1;
+                go(p) => { root.go(p); }
+                refocus => { root.refocus(); }
+            }
+        }
+    }
+}
+
+// The deck in a wide window, on the left like a hardware unit: the cassette, the VU
+// meter and the counter, the keys, then the input dial and the speaker grille. The
+// cassette gives up height first when the window is short.
+component DeckSide inherits Alu {
+    callback go(int);
+    callback refocus();
+    property <bool> hi: 1phx < 0.7px;
+    property <length> inner: root.height - 32px;
+    property <length> mid-h: 112px;
+    property <length> keys-h: 86px;
+    property <length> cass-h: clamp(root.inner - root.mid-h - root.keys-h - 36px, 70px, 158px);
+    // The input row takes what is left, up to 130px, and sits at the bottom.
+    property <length> input-h: clamp(root.inner - root.cass-h - root.mid-h - root.keys-h - 36px, 0px, 130px);
+    width: 400px;
+    Rectangle { x: parent.width - 2px; width: 2px; background: #0f0a06; }
+    Screw { x: 6px; y: 6px; }
+    Screw { x: parent.width - 15px; y: 6px; }
+    Screw { x: 6px; y: parent.height - 13px; }
+    Screw { x: parent.width - 15px; y: parent.height - 13px; }
+    Well {
+        x: 18px;
+        y: 16px;
+        width: parent.width - 38px;
+        height: root.cass-h;
+        radius: 6px;
+        pad: 5px;
+        Cassette { }
+    }
+    HorizontalLayout {
+        x: 18px;
+        y: 16px + root.cass-h + 12px;
+        width: parent.width - 38px;
+        height: root.mid-h;
+        spacing: 12px;
+        Well {
+            width: 196px;
+            fill: #2a1d13;
+            radius: 5px;
+            pad: 4px;
+            Vu { }
+        }
+        Counter { big: true; horizontal-stretch: 1; }
+    }
+    Keys {
+        x: 18px;
+        y: 16px + root.cass-h + 12px + root.mid-h + 12px;
+        width: parent.width - 38px;
+        height: root.keys-h;
+        big: true;
+        go(p) => { root.go(p); }
+        refocus => { root.refocus(); }
+    }
+    if root.input-h >= 50px: HorizontalLayout {
+        x: 18px;
+        y: parent.height - 16px - root.input-h;
+        width: parent.width - 38px;
+        height: root.input-h;
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            Image {
+                width: 52px;
+                height: 52px;
+                source: root.hi ? @image-url("tape/dial@2x.png") : @image-url("tape/dial.png");
+                image-fit: fill;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 3px;
+            max-width: 190px;
+            Engraved { text: "INPUT"; }
+            Text {
+                text: Main.device-label;
+                color: Deck.ink;
+                font-family: "Caveat";
+                font-weight: 700;
+                font-size: 22px;
+                overflow: elide;
+            }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            border-radius: 4px;
+            opacity: 0.55;
+            Image {
+                width: 100%;
+                height: 100%;
+                source: root.hi ? @image-url("tape/grille@2x.png") : @image-url("tape/grille.png");
+                horizontal-tiling: repeat;
+                vertical-tiling: repeat;
+                horizontal-alignment: left;
+                vertical-alignment: top;
+            }
+        }
+    }
+}
+
+// The project picker as a Dymo label strip. ProjectMenu holds what it offers.
+component Dymo inherits Rectangle {
+    in property <bool> big;
+    callback refocus();
+    property <bool> enabled: !Main.recording;
+    width: row.preferred-width;
+    height: root.big ? 30px : 26px;
+    border-radius: 3px;
+    background: t.has-hover && root.enabled ? @linear-gradient(180deg, #2a2a2d 0%, #141416 100%) : @linear-gradient(180deg, #1b1b1d 0%, #0b0b0c 100%);
+    opacity: root.enabled ? 1 : 0.6;
+    accessible-role: combobox;
+    accessible-label: "Project";
+    accessible-value: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+    accessible-expandable: true;
+    accessible-action-default => { if (root.enabled) { menu.show(); } }
+    accessible-action-expand => { if (root.enabled) { menu.show(); } }
+    Rectangle { y: 0; height: 1px; x: 1px; width: parent.width - 2px; background: #3a3a3e; }
+    Rectangle { y: parent.height; height: 1px; background: #00000099; }
+    row := HorizontalLayout {
+        padding-left: 11px;
+        padding-right: 9px;
+        spacing: 7px;
+        Text {
+            text: (Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "").to-uppercase();
+            color: #f5f1e8;
+            font-family: Theme.mono;
+            font-size: root.big ? 13px : 12px;
+            font-weight: 700;
+            letter-spacing: root.big ? 3.1px : 2.9px;
+            vertical-alignment: center;
+            max-width: 220px;
+            overflow: elide;
+        }
+        Icon {
+            name: "down";
+            tint: #f5f1e8;
+            width: 12px;
+            height: 12px;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { menu.show(); }
+    }
+    menu := ProjectMenu {
+        width: parent.width;
+        height: parent.height;
+        projects: Main.projects;
+        current: Main.project;
+        has-clips: Main.clips.length > 0;
+        choose(i) => { Main.choose-project(i); root.refocus(); }
+        create => { Main.dialog-text = ""; Main.dialog = 4; }
+        rename => { Main.dialog-text = Main.projects[Main.project]; Main.dialog = 5; }
+        delete => { Main.delete-project(); root.refocus(); }
+        export => { Main.export-project(); root.refocus(); }
+    }
+}
+
+// The shelf's toolbar: the Dymo project label and the search slot.
+component Toolbar inherits Rectangle {
+    in property <bool> big;
+    callback go(int);
+    callback refocus();
+    height: root.big ? 54px : 42px;
+    background: Deck.chassis2;
+    Rectangle { y: parent.height - 1px; height: 1px; background: #0d0805; }
+    HorizontalLayout {
+        padding-left: root.big ? 18px : 12px;
+        padding-right: root.big ? 18px : 12px;
+        spacing: root.big ? 10px : 8px;
+        VerticalLayout {
+            alignment: center;
+            Dymo { big: root.big; refocus => { root.refocus(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            TextField {
+                height: root.big ? 30px : 26px;
+                radius: root.big ? 15px : 13px;
+                fill: Deck.slot;
+                rest-edge: #2a1c12;
+                ink: #efe3c8;
+                hint: #9a8670;
+                font-size: 12px;
+                family: "Oswald";
+                side: 10px;
+                icon: "search";
+                placeholder: "Search";
+                label: "Search clips";
+                takes-escape: true;
+                focus-ticket: Main.search-ticket;
+                text <=> Main.query;
+                edited(t) => { Main.search(t, Main.search-all); }
+                escaped => { Main.query = ""; Main.search("", Main.search-all); root.refocus(); }
+                accepted => { if (Main.hits.length > 0) { Main.open-hit(0); root.go(1); } }
+            }
+        }
+        // Search every project instead of this one.
+        if Main.query != "" && Main.projects.length > 1: VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: all-text.preferred-width + 18px;
+                height: 24px;
+                border-radius: 3px;
+                background: Main.search-all ? Deck.cream : #2a1c12;
+                accessible-role: checkbox;
+                accessible-label: "Search all projects";
+                accessible-checked: Main.search-all;
+                accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+                all-text := Text {
+                    x: 9px;
+                    y: (parent.height - self.height) / 2;
+                    text: "ALL PROJECTS";
+                    color: Main.search-all ? Deck.ink : #b9a585;
+                    font-family: "Oswald";
+                    font-size: 10px;
+                    font-weight: 600;
+                    letter-spacing: 1.2px;
+                }
+                TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+                }
+            }
+        }
+    }
+}
+
+// A clip's small waveform as thin bars, about one per 3px.
+component Bars inherits Rectangle {
+    in property <[float]> values;
+    in property <float> progress: -1;
+    property <int> n: max(1, floor(root.width / 3px));
+    for i in root.n: Rectangle {
+        property <float> v: root.values.length > 0 ? root.values[floor(i * root.values.length / root.n)] : 0.06;
+        x: i * 3px;
+        width: 1.6px;
+        height: max(2px, self.v * root.height);
+        y: (root.height - self.height) / 2;
+        border-radius: 0.8px;
+        background: (i + 0.5) / root.n <= root.progress ? Deck.red : #5d4634;
+    }
+}
+
+// The round knob that plays a clip; amber on the highlighted one.
+component Knob inherits Rectangle {
+    in property <bool> lit;
+    in property <bool> pause;
+    in property <string> label;
+    in property <string> tip;
+    callback clicked;
+    property <bool> hi: 1phx < 0.7px;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    // The art is 36 square around a 32 knob, its shadow below.
+    Image {
+        x: -root.width / 16;
+        y: -root.width / 32;
+        width: root.width * 36 / 32;
+        height: root.width * 36 / 32;
+        source: root.lit ? (root.hi ? @image-url("tape/knob-sel@2x.png") : @image-url("tape/knob-sel.png"))
+            : (root.hi ? @image-url("tape/knob@2x.png") : @image-url("tape/knob.png"));
+        image-fit: fill;
+    }
+    if t.has-hover: Rectangle { border-radius: root.width / 2; background: #ffffff1f; }
+    Icon {
+        x: (parent.width - self.width) / 2 + (root.pause ? 0 : 1px);
+        y: (parent.height - self.height) / 2 + (t.pressed ? 1px : 0);
+        name: root.pause ? "pause" : "play";
+        tint: root.lit ? #2a1406 : #2a1c12;
+        width: root.width * 0.4;
+        height: root.width * 0.4;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// One clip on the shelf: the play knob and a hand-lettered tape spine with its colour
+// band, when it was made, the waveform, the length and the menu. The highlighted spine
+// slides out with an amber edge.
+component Row inherits Rectangle {
+    in property <int> index;
+    in property <ClipRow> item;
+    in property <bool> big;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    property <bool> selected: root.index == Main.selected;
+    property <bool> picked: Main.picked[root.index];
+    property <bool> active: root.index == Main.active-clip;
+    property <bool> out: root.selected || root.picked;
+    property <bool> hi: 1phx < 0.7px;
+    property <length> knob-d: root.big ? 32px : 26px;
+    property <length> spine-h: root.big ? 40px : 30px;
+    property <length> band-w: root.big ? 30px : 22px;
+    property <length> wave-w: root.big ? 70px : 40px;
+    height: root.big ? 50px : 34px;
+    accessible-role: list-item;
+    accessible-label: root.item.name + ", " + root.item.duration;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected || root.picked;
+    accessible-action-default => { root.select(false, false); }
+    function select(ctrl: bool, shift: bool) {
+        Main.pick(root.index, ctrl, shift);
+        root.refocus();
+    }
+    // The shelf board under the tape.
+    Rectangle { y: parent.height - 1px; height: 1px; background: #0000002e; }
+    row-touch := TouchArea {
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                root.select(e.modifiers.control, e.modifiers.shift);
+            }
+            // On release: the press that closes an open menu is used up by that menu.
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                menu.show-at(self.mouse-x, self.mouse-y);
+            }
+        }
+        // Opens just this clip, even out of several picked.
+        double-clicked => { root.select(false, false); Main.open-clip(root.index); root.go(1); }
+    }
+    Knob {
+        x: 0;
+        y: (root.height - 1px - self.height) / 2;
+        width: root.knob-d;
+        height: root.knob-d;
+        lit: root.out || root.active;
+        pause: root.active && Main.playing;
+        label: (root.active && Main.playing ? "Pause " : "Play ") + root.item.name;
+        tip: root.active && Main.playing ? "Pause" : "Play";
+        clicked => { Main.play-clip(root.index); root.refocus(); }
+    }
+    spine := Rectangle {
+        x: root.knob-d + (root.big ? 10px : 7px) + (root.out ? 6px : 0);
+        y: (root.height - 1px - self.height) / 2;
+        width: root.width - root.knob-d - (root.big ? 10px : 7px) - (root.out ? 6px : 0);
+        height: root.spine-h;
+        // The amber edge and the shadow of the spine pulled out.
+        if root.out: Rectangle {
+            x: -1px;
+            y: 3px;
+            width: parent.width + 2px;
+            height: parent.height + 3px;
+            border-radius: 5px;
+            background: #00000059;
+        }
+        if root.out: Rectangle {
+            x: -2px;
+            y: -2px;
+            width: parent.width + 4px;
+            height: parent.height + 4px;
+            border-radius: 5px;
+            background: root.selected ? Deck.amber : Deck.amber.with-alpha(0.55);
+        }
+        if !root.out: Rectangle { y: 1px; border-radius: 3px; background: #00000099; }
+        Rectangle {
+            border-radius: 3px;
+            background: root.out ? #f8ecd2 : #e8dbbd;
+        }
+        Rectangle {
+            x: 2px;
+            width: parent.width - 4px;
+            background: root.out ? @linear-gradient(180deg, #fff6e2 0%, #f1e2c1 100%) : @linear-gradient(180deg, #efe3c8 0%, #e2d3b2 100%);
+        }
+        Image {
+            x: 2px;
+            width: parent.width - 4px;
+            height: 100%;
+            source: root.hi ? @image-url("tape/spine@2x.png") : @image-url("tape/spine.png");
+            horizontal-tiling: repeat;
+            vertical-tiling: repeat;
+            horizontal-alignment: left;
+            vertical-alignment: top;
+        }
+        Rectangle { y: 0; x: 2px; width: parent.width - 4px; height: 1px; background: #ffffff99; }
+        // The colour band and its shadow line.
+        Rectangle {
+            x: 0;
+            width: root.band-w * 0.7;
+            border-top-left-radius: 3px;
+            border-bottom-left-radius: 3px;
+            background: Deck.bands[Math.mod(root.index, 5)];
+        }
+        Rectangle {
+            x: root.band-w * 0.7;
+            width: root.band-w * 0.04 + 0.5px;
+            background: #00000026;
+        }
+        // Name and when, side by side (portrait) or stacked (wide).
+        property <length> txt-x: root.band-w + 8px;
+        property <length> right-w: root.wave-w + (root.big ? 14px : 8px) + (root.big ? 60px : 46px) + (root.big ? 14px : 8px) + 20px + 4px;
+        property <length> txt-w: max(0px, self.width - self.txt-x - self.right-w);
+        name := Text {
+            x: spine.txt-x;
+            // Caveat stands tall: a box of one em keeps the name and the line under it close.
+            y: root.big ? 1px : (spine.height - self.height) / 2 - 1px;
+            height: root.big ? 23px : 19px;
+            vertical-alignment: center;
+            width: min(self.preferred-width, root.big ? spine.txt-w : max(0px, spine.txt-w - sub.preferred-width - 8px));
+            text: root.item.name;
+            color: #24170e;
+            font-family: "Caveat";
+            font-weight: 700;
+            font-size: root.big ? 23px : 19px;
+            overflow: elide;
+        }
+        sub := HorizontalLayout {
+            x: root.big ? spine.txt-x : name.x + name.width + 8px;
+            y: root.big ? 25px : (spine.height - 12px) / 2 + 1px;
+            width: self.preferred-width;
+            height: 12px;
+            spacing: 5px;
+            alignment: start;
+            Text {
+                text: root.item.when.to-uppercase();
+                color: root.active ? Deck.red : Deck.ink-soft;
+                font-family: "Oswald";
+                font-size: 9.5px;
+                font-weight: 500;
+                letter-spacing: 0.95px;
+                vertical-alignment: center;
+            }
+            // Transcribed: a red stamp when there is room, else a red dot.
+            if root.item.transcribed && !root.big: VerticalLayout {
+                alignment: center;
+                Rectangle { width: 8px; height: 8px; border-radius: 4px; background: Deck.red; }
+            }
+            if root.item.transcribed && root.big: VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: stamp.preferred-width + 6px;
+                    height: 11px;
+                    border-width: 1px;
+                    border-color: Deck.red;
+                    border-radius: 2px;
+                    stamp := Text {
+                        text: "TRANSCRIBED";
+                        color: Deck.red;
+                        font-family: "Oswald";
+                        font-size: 8px;
+                        font-weight: 500;
+                        letter-spacing: 0.96px;
+                        vertical-alignment: center;
+                        horizontal-alignment: center;
+                    }
+                }
+            }
+        }
+        // The waveform: a click on the highlighted clip moves its start, a double
+        // click plays from there.
+        Rectangle {
+            x: spine.width - spine.right-w + 4px;
+            y: (spine.height - self.height) / 2;
+            width: root.wave-w;
+            height: root.big ? 26px : 22px;
+            Bars {
+                height: root.big ? 22px : 16px;
+                values: root.item.wave;
+                progress: root.active ? Main.play-fraction : -1;
+            }
+            WaveSeek {
+                selected: root.selected;
+                active: root.active;
+                select(ctrl, shift) => { root.select(ctrl, shift); }
+                cue(f) => { Main.cue-clip(root.index, f); root.refocus(); }
+                play-at(f) => { Main.play-clip-at(root.index, f); root.refocus(); }
+                menu(x, y) => { menu.show-at(x - root.absolute-position.x, y - root.absolute-position.y); }
+            }
+        }
+        Text {
+            x: spine.width - 24px - (root.big ? 8px : 4px) - self.width;
+            width: root.big ? 60px : 46px;
+            height: spine.height;
+            text: root.item.duration;
+            color: #3e2c1e;
+            font-family: Theme.mono;
+            font-size: root.big ? 12px : 11px;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+        }
+        // The three-dot menu: manage, rename, export, delete.
+        Rectangle {
+            x: spine.width - 24px;
+            y: (spine.height - self.height) / 2;
+            width: 20px;
+            height: 24px;
+            border-radius: 3px;
+            background: dots.has-hover ? #0000001a : transparent;
+            accessible-role: button;
+            accessible-label: "Menu for " + root.item.name;
+            accessible-action-default => { root.open-menu(); }
+            Icon {
+                name: "dots";
+                tint: dots.has-hover ? Deck.ink : Deck.ink-soft;
+                width: 14px;
+                height: 14px;
+            }
+            property <bool> hovering: dots.has-hover;
+            changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
+            dots := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Tips.hide(); root.open-menu(); }
+            }
+        }
+    }
+    function open-menu() {
+        menu.show-at(root.width - 8px - 210px, (root.height + 24px) / 2 + 4px);
+    }
+    menu := ClipMenu {
+        width: parent.width;
+        height: parent.height;
+        item: root.item;
+        merge-count: root.picked ? Main.picked-count : 0;
+        projects: Main.projects;
+        project: Main.project;
+        window-h: root.window-h;
+        merge => { Main.start-merge(); root.go(5); }
+        open => { Main.open-clip(root.index); root.go(1); }
+        rename => { root.ask-rename(root.index); }
+        export(kind) => { Main.selected = root.index; Main.export-as(kind); root.refocus(); }
+        delete => { root.ask-delete(root.index); }
+        move-to(p) => { Main.move-clip(root.index, p); root.refocus(); }
+    }
+}
+
+// The shelf: the clips, or the search results while there is a query.
+component Shelf inherits VerticalLayout {
+    in property <bool> big;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    vertical-stretch: 1;
+    if Main.query != "": Scroller {
+        vertical-stretch: 1;
+        fade: true;
+        VerticalLayout {
+            alignment: start;
+            padding-top: 6px;
+            padding-left: 12px;
+            padding-right: 12px;
+            spacing: 2px;
+            if Main.hits.length == 0: Text {
+                text: "No matches";
+                color: #9a8670;
+                font-family: "Caveat";
+                font-weight: 700;
+                font-size: 20px;
+                horizontal-alignment: center;
+            }
+            for h[i] in Main.hits: SearchRow {
+                hit: h;
+                show-project: Main.search-all;
+                clicked => { Main.open-hit(i); root.go(1); }
+            }
+        }
+    }
+    if Main.query == "": Scroller {
+        vertical-stretch: 1;
+        fade: true;
+        content-y <=> Main.list-y;
+        property <int> count: Main.clips.length;
+        init => { Main.list-height = self.visible-height; Main.clamp-list(); }
+        changed visible-height => { Main.list-height = self.visible-height; Main.clamp-list(); }
+        changed count => { Main.clamp-list(); }
+        VerticalLayout {
+            alignment: start;
+            padding-top: root.big ? 10px : 3px;
+            padding-bottom: root.big ? 6px : 2px;
+            padding-left: root.big ? 14px : 8px;
+            padding-right: root.big ? 22px : 16px;
+            if Main.clips.length == 0: Text {
+                text: "No tapes yet";
+                color: #9a8670;
+                font-family: "Caveat";
+                font-weight: 700;
+                font-size: 22px;
+                horizontal-alignment: center;
+            }
+            for clip[i] in Main.clips: Row {
+                index: i;
+                item: clip;
+                big: root.big;
+                window-h: root.window-h;
+                go(p) => { root.go(p); }
+                ask-rename(n) => { root.ask-rename(n); }
+                ask-delete(n) => { root.ask-delete(n); }
+                refocus => { root.refocus(); }
+            }
+        }
+    }
+}
+
+// Now playing, on walnut: a key that plays, the clip's name, the time and the slot of
+// a slider whose brass thumb shows where it is. A click in the slot jumps there.
+component Player inherits Walnut {
+    callback refocus();
+    property <int> shown: Main.active-clip >= 0 && Main.active-clip < Main.clips.length ? Main.active-clip
+        : Main.selected >= 0 && Main.selected < Main.clips.length ? Main.selected : -1;
+    property <bool> is-active: self.shown >= 0 && self.shown == Main.active-clip;
+    property <float> at: root.is-active ? clamp(Main.play-fraction, 0, 1) : 0;
+    vertical-stretch: 0;
+    height: 54px;
+    Rectangle { y: 0; height: 1px; background: #0d0805; }
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 38px;
+                height: 32px;
+                property <bool> down: pk.pressed && pk.has-hover;
+                accessible-role: button;
+                accessible-label: root.is-active && Main.playing ? "Pause" : "Play";
+                accessible-action-default => { if (root.shown >= 0) { Main.play-clip(root.shown); } }
+                Rectangle { y: 1px; background: #000000aa; }
+                Rectangle {
+                    y: parent.down ? 1px : 0;
+                    background: @linear-gradient(180deg, #ece7dc 0%, #c9c1b2 76%, #8f8778 76%, #6f685b 100%);
+                    opacity: root.shown >= 0 ? 1 : 0.6;
+                    Rectangle { y: 0; height: 1px; background: #ffffff; }
+                    if pk.has-hover && root.shown >= 0: Rectangle { background: #ffffff12; }
+                    Icon {
+                        y: (parent.height * 0.76 - self.height) / 2 + 1px;
+                        name: root.is-active && Main.playing ? "pause" : "play";
+                        tint: #3a3129;
+                        width: 13px;
+                        height: 13px;
+                    }
+                }
+                property <bool> hovering: pk.has-hover;
+                changed hovering => { Tips.hover(self.hovering, root.is-active && Main.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+                pk := TouchArea {
+                    enabled: root.shown >= 0;
+                    mouse-cursor: pointer;
+                    clicked => { Tips.hide(); Main.play-clip(root.shown); root.refocus(); }
+                }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 5px;
+            horizontal-stretch: 1;
+            HorizontalLayout {
+                spacing: 10px;
+                Text {
+                    text: root.shown >= 0 ? Main.clips[root.shown].name : "Nothing playing";
+                    color: #f0deba;
+                    font-family: "Caveat";
+                    font-weight: 500;
+                    font-size: 19px;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                    vertical-alignment: center;
+                }
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: time.preferred-width + 12px;
+                        height: 17px;
+                        border-radius: 2px;
+                        background: Deck.slot;
+                        Rectangle { y: 0; height: 1px; background: #000000; }
+                        time := Text {
+                            text: root.shown < 0 ? "--:-- / --:--"
+                                : (root.is-active ? Main.play-position : "0:00") + " / " + Main.clips[root.shown].duration;
+                            color: #e8cf9f;
+                            font-family: Theme.mono;
+                            font-size: 11px;
+                            vertical-alignment: center;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+            }
+            Rectangle {
+                height: 6px;
+                Rectangle { y: 1px; border-radius: 3px; background: #ffdcaa26; }
+                Rectangle { border-radius: 3px; background: Deck.slot; }
+                Rectangle { x: 3px; y: 0; width: parent.width - 6px; height: 1px; background: #000000; }
+                Rectangle {
+                    x: 0;
+                    width: (parent.width - 6px) * root.at + 3px;
+                    border-radius: 3px;
+                    background: root.is-active ? Deck.amber.with-alpha(0.35) : transparent;
+                }
+                Rectangle {
+                    x: (parent.width - 6px) * root.at;
+                    y: -3px;
+                    width: 6px;
+                    height: 12px;
+                    border-radius: 1px;
+                    background: @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%);
+                }
+                // Click to jump; taller than the slot so it is easy to hit.
+                TouchArea {
+                    y: -8px;
+                    height: parent.height + 16px;
+                    enabled: root.shown >= 0;
+                    mouse-cursor: pointer;
+                    clicked => {
+                        Main.selected = root.shown;
+                        Main.seek-fraction(self.mouse-x / self.width);
+                        root.refocus();
+                    }
+                }
+            }
+        }
+    }
+}
+
+// The main page. Portrait: the title bar, the deck, the toolbar, the shelf and the
+// footer, top to bottom. Wide: the deck on the left, the toolbar and the shelf on the
+// right, between the title bar and the footer.
+export component MainPage inherits VerticalLayout {
+    // The window's size classes, as AppWindow works them out.
+    in property <bool> narrow;
+    in property <bool> wide;
+    in property <bool> tall;
+    // Opens page p (see AppWindow.page).
+    callback go(int);
+    // The rename and delete questions for clip i.
+    callback ask-rename(int);
+    callback ask-delete(int);
+    // Gives the keyboard back to the window's shortcuts.
+    callback refocus();
+
+    property <length> pitch: root.wide ? 50px : 34px;
+    init => { Main.row-h = root.pitch; }
+    changed pitch => { Main.row-h = root.pitch; Main.clamp-list(); }
+
+    Title { go(p) => { root.go(p); } }
+
+    if !root.wide: DeckFront {
+        tall: root.tall;
+        go(p) => { root.go(p); }
+        refocus => { root.refocus(); }
+    }
+    if !root.wide: Toolbar {
+        go(p) => { root.go(p); }
+        refocus => { root.refocus(); }
+    }
+    if !root.wide: Shelf {
+        window-h: root.height;
+        go(p) => { root.go(p); }
+        ask-rename(n) => { root.ask-rename(n); }
+        ask-delete(n) => { root.ask-delete(n); }
+        refocus => { root.refocus(); }
+    }
+    if root.wide: HorizontalLayout {
+        vertical-stretch: 1;
+        DeckSide {
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            Toolbar {
+                big: true;
+                go(p) => { root.go(p); }
+                refocus => { root.refocus(); }
+            }
+            Shelf {
+                big: true;
+                window-h: root.height;
+                go(p) => { root.go(p); }
+                ask-rename(n) => { root.ask-rename(n); }
+                ask-delete(n) => { root.ask-delete(n); }
+                refocus => { root.refocus(); }
+            }
+        }
+    }
+
+    // An export from the clip menu or the project menu: what it is, how far along,
+    // and a check when done. It takes its own room above the player.
+    if Main.export-state != 0: Rectangle {
+        vertical-stretch: 0;
+        height: 30px;
+        background: Deck.chassis2;
+        Rectangle { y: 0; height: 1px; background: #0d0805; }
+        HorizontalLayout {
+            padding-left: 14px;
+            padding-right: 14px;
+            spacing: 10px;
+            if Main.export-state == 2: Icon {
+                name: "check";
+                tint: Deck.amber;
+                width: 12px;
+                height: 12px;
+                y: (parent.height - self.height) / 2;
+            }
+            Text {
+                text: (Main.export-state == 2 ? "Exported " : "Exporting ") + Main.export-name;
+                color: #e2d3b2;
+                font-family: "Oswald";
+                font-size: 12px;
+                letter-spacing: 0.5px;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if Main.export-state == 1: Rectangle {
+                width: 120px;
+                height: 6px;
+                y: (parent.height - self.height) / 2;
+                border-radius: 3px;
+                background: Deck.slot;
+                Rectangle {
+                    x: 0;
+                    width: parent.width * clamp(Main.export-progress, 0, 1);
+                    border-radius: 3px;
+                    background: Deck.amber;
+                    animate width { duration: 150ms; }
+                }
+            }
+            if Main.export-state == 1: Text {
+                text: round(Main.export-progress * 100) + "%";
+                color: #b9a585;
+                font-family: Theme.mono;
+                font-size: 11px;
+                vertical-alignment: center;
+                width: 34px;
+                horizontal-alignment: right;
+            }
+        }
+    }
+
+    Player { refocus => { root.refocus(); } }
+
+    // Messages float just above the footer on a strip of Dymo tape, so nothing moves
+    // when they come and go.
+    Rectangle {
+        height: 0;
+        if Main.status != "": Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: -54px - self.height - 8px;
+            width: min(msg.preferred-width + 24px, parent.width - 32px);
+            height: 26px;
+            border-radius: 3px;
+            background: #141416f2;
+            Rectangle { y: 0; height: 1px; x: 1px; width: parent.width - 2px; background: #3a3a3e; }
+            msg := Text {
+                text: Main.status;
+                color: #f5f1e8;
+                font-size: 12px;
+                overflow: elide;
+                x: 12px;
+                width: parent.width - 24px;
+                vertical-alignment: center;
+                horizontal-alignment: center;
+            }
+        }
+    }
+}

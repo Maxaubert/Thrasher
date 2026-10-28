@@ -123,7 +123,7 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
   1100x700 (Ember 22.8%).
 - Working set idle 42.3 MB vs Ember 38.6 MB (+3.7); wide 49.9 vs 47.6 MB (+2.3).
 - Exe +2.19 MB: fonts 0.34 MB, art 0.14 MB, generated code about 1.7 MB. At that rate
-  15 skins pass the 15 MB budget, so later skins must share more code (see section 6).
+  15 skins land near 25 to 30 MB, inside the 35 MB budget (Max, 2026-10-28).
 
 ### Art
 
@@ -148,7 +148,8 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
   520x700 (Lagoon, the busiest today, uses 30%).
 - **Memory:** idle memory grows by at most 10 MB over Ember with the skin active. Skins that
   are not active load nothing.
-- **Exe size:** grows by at most 15 MB in all.
+- **Exe size:** grows by at most 35 MB in all (raised from 15 MB by Max, 2026-10-28,
+  after the pilot).
 
 ## 4. Theme picker
 
@@ -195,5 +196,4 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
 - **Size of the work:** 15 skins is a lot. The pilot shows the real cost per skin before the
   rest start.
 - **Exe size** (pilot, 2026-10-28): Slint generates about 1.7 MB of code per skin main
-  page, so 15 skins would reach 25 to 30 MB against the 15 MB budget. Options: share more
-  parts between skins, or raise the budget. A decision for Max.
+  page, so 15 skins would reach 25 to 30 MB. Max raised the budget to 35 MB (2026-10-28).

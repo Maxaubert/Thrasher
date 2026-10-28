@@ -73,3 +73,4 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
     adds about 2.2 MB (1.7 MB of it code Slint generates), so 15 skins would be 25 to 30 MB
     against the 15 MB budget in `docs/device-themes.md`. Share more parts between skins,
     or raise the budget?
+    **Answered 2026-10-28:** raise it to 35 MB.

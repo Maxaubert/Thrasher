@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thrasher Phosphor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050a06;
+  --bg2:#08120a;
+  --ph:#4dff7a;        /* phosphor */
+  --ph-hi:#b6ffc8;     /* hot phosphor */
+  --ph-mid:#2fbf55;
+  --ph-dim:#1f7a38;
+  --ph-faint:#123d1d;
+  --line:#16462a;
+  --amber:#ffb84d;
+  --glow:0 0 3px rgba(77,255,122,.55);
+  --mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --crt:"VT323", "IBM Plex Mono", monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0b0d0b;color:#cfe9d4;font-family:var(--mono);padding:28px 16px 40px;min-height:100vh}
+.page-head{max-width:1440px;margin:0 auto 22px;display:flex;gap:40px;align-items:flex-end;flex-wrap:wrap}
+.page-head h1{font-family:var(--crt);font-weight:400;font-size:54px;line-height:.9;color:var(--ph);text-shadow:var(--glow);letter-spacing:1px}
+.page-head h1 small{display:block;font-family:var(--mono);font-size:12px;color:var(--ph-dim);letter-spacing:3px;text-shadow:none;margin-bottom:6px}
+.page-head p{color:#9fc8a8;font-size:13px;max-width:360px;line-height:1.5}
+.page-head ul{list-style:none;font-size:12px;color:#8fb898;line-height:1.7}
+.page-head li::before{content:"> ";color:var(--ph)}
+.stage{max-width:1440px;margin:0 auto;display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.stage>div{flex:none;width:min-content}
+.cap{font-size:11px;color:#6f9a79;margin-top:8px;letter-spacing:.5px}
+.cap b{color:var(--ph-mid);font-weight:500}
+
+/* ---------- window ---------- */
+.win{position:relative;height:620px;background:var(--bg);border:1px solid #1b4d2b;border-radius:6px;overflow:hidden;
+  display:flex;flex-direction:column;color:var(--ph);font-family:var(--mono);font-size:13px;
+  box-shadow:0 0 0 1px #000, 0 18px 50px rgba(0,0,0,.6)}
+.win.portrait{width:400px}
+.win.wide{width:1000px}
+/* CRT vignette and scanlines: two static layers, cheap to redraw */
+.win::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:5;
+  background:repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.22) 2px 3px)}
+.win::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:6;
+  background:radial-gradient(ellipse at 50% 45%, rgba(77,255,122,.05), rgba(0,0,0,0) 60%, rgba(0,0,0,.35) 100%)}
+.g{text-shadow:var(--glow)}
+.dim{color:var(--ph-dim)}
+.mid{color:var(--ph-mid)}
+.key{color:var(--ph-hi);text-shadow:var(--glow)}
+.key i{font-style:normal;color:var(--ph-dim)}
+
+/* title bar */
+.tb{height:34px;display:flex;align-items:center;padding:0 10px 0 12px;border-bottom:1px dashed var(--line);flex:none;gap:10px}
+.tb .name{font-family:var(--crt);font-size:24px;letter-spacing:2px;color:var(--ph-hi);text-shadow:var(--glow)}
+.tb .ver{font-size:10px;color:var(--ph-dim);letter-spacing:1px}
+.tb .sp{flex:1}
+.tb .k{font-size:12px;color:var(--ph-mid);padding:2px 4px;border-radius:2px;cursor:default}
+.tb .k:hover{background:var(--ph);color:var(--bg)}
+.tb .k.x:hover{background:var(--amber)}
+
+/* recorder status block */
+.rec{flex:none;padding:12px 14px 12px;border-bottom:1px dashed var(--line)}
+.rec .hdr{font-size:10px;color:var(--ph-dim);letter-spacing:2px;white-space:pre;overflow:hidden}
+.rec .row{display:flex;align-items:baseline;gap:10px;white-space:nowrap}
+.status{font-size:13px;letter-spacing:2px;color:var(--ph-hi);text-shadow:var(--glow)}
+.dot{display:inline-block;width:8px;height:8px;background:var(--ph);box-shadow:0 0 6px var(--ph);margin-right:7px;vertical-align:1px}
+.timer{font-family:var(--crt);color:var(--ph-hi);text-shadow:0 0 4px rgba(77,255,122,.7);line-height:.85}
+.lbl{font-size:10px;color:var(--ph-dim);letter-spacing:2px;width:34px;flex:none}
+.meter{font-size:13px;letter-spacing:0;white-space:pre}
+.meter .on{color:var(--ph);text-shadow:var(--glow)}
+.meter .hot{color:var(--amber);text-shadow:0 0 3px rgba(255,184,77,.6)}
+.meter .off{color:var(--ph-faint)}
+.db{font-size:11px;color:var(--ph-mid);width:44px;text-align:right}
+.recbtn{display:flex;align-items:center;justify-content:center;gap:12px;border:1px solid var(--ph);color:var(--ph-hi);
+  background:rgba(77,255,122,.06);font-family:var(--crt);font-size:30px;letter-spacing:4px;text-shadow:var(--glow);
+  box-shadow:inset 0 0 0 3px var(--bg), inset 0 0 0 4px var(--ph-dim);cursor:default;user-select:none}
+.recbtn .mic{width:18px;height:18px}
+.recbtn small{font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--ph-dim);text-shadow:none}
+.recbtn:hover{background:var(--ph);color:var(--bg);text-shadow:none}
+.recbtn:hover small{color:var(--bg2)}
+
+/* clip list */
+.list{flex:1;overflow:hidden;padding:6px 0}
+.lh{display:flex;font-size:10px;color:var(--ph-dim);letter-spacing:2px;padding:2px 14px 6px;white-space:nowrap}
+.clip{display:grid;grid-template-columns:30px 76px 1fr auto 26px;align-items:center;column-gap:8px;padding:5px 14px;height:46px;cursor:default}
+.clip .pl{color:var(--ph-mid)}
+.clip .wv{display:flex;align-items:flex-end;gap:1px;height:16px;overflow:hidden}
+.clip .wv b{flex:none;width:6px;background:var(--ph-mid);box-shadow:0 0 3px rgba(77,255,122,.35)}
+.clip.sel .wv b{background:var(--bg)!important;box-shadow:none}
+.wide .clip .wv{height:20px}
+.clip .nm{font-size:13px;color:var(--ph-hi);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clip .sub{font-size:10.5px;color:var(--ph-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.clip .sub .t{color:var(--ph-mid)}
+.clip .len{font-size:12px;color:var(--ph);text-align:right;white-space:nowrap}
+.clip .mn{color:var(--ph-dim);text-align:right}
+.clip:hover{background:rgba(77,255,122,.07)}
+.clip.sel{background:var(--ph);box-shadow:0 0 10px rgba(77,255,122,.35)}
+.clip.sel *{color:var(--bg)!important;text-shadow:none!important}
+.clip.sel .sub{opacity:.8}
+
+/* prompt line (toolbar moved to bottom) */
+.prompt{flex:none;height:38px;display:flex;align-items:center;gap:10px;padding:0 12px;border-top:1px solid var(--ph-dim);
+  background:var(--bg2);white-space:nowrap}
+.proj{color:var(--ph-hi);text-shadow:var(--glow);cursor:default}
+.proj .arr{color:var(--ph-dim)}
+.ps{color:var(--ph-dim)}
+.search{flex:1;min-width:0;display:flex;align-items:center;gap:2px;color:var(--ph-dim);overflow:hidden}
+.cursor{display:inline-block;width:8px;height:15px;background:var(--ph);box-shadow:0 0 5px var(--ph);animation:blink 1.06s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.keys{display:flex;gap:8px}
+.keys .key{font-size:12px;padding:2px 3px;border-radius:2px}
+.keys .key:hover{background:var(--ph);color:var(--bg);text-shadow:none}
+.keys .key:hover i{color:var(--bg2)}
+
+/* footer player */
+.foot{flex:none;height:44px;display:flex;align-items:center;gap:10px;padding:0 12px;border-top:1px dashed var(--line);white-space:nowrap}
+.foot .pbtn{color:var(--ph-hi);text-shadow:var(--glow)}
+.foot .np{color:var(--ph-dim);font-size:12px;flex:none}
+.foot .bar{flex:1;min-width:0;color:var(--ph-faint);font-size:12px;overflow:hidden;white-space:pre;letter-spacing:-1px}
+.foot .tm{color:var(--ph-mid);font-size:12px}
+
+/* ---- portrait specifics ---- */
+.portrait .timer{font-size:56px}
+.portrait .recbtn{height:50px;margin-top:12px}
+.portrait .rec .top{display:flex;justify-content:space-between;align-items:flex-end;margin:8px 0 8px}
+
+/* ---- wide specifics ---- */
+.wide .body{flex:1;display:flex;min-height:0}
+.wide .rec{width:400px;flex:none;border-bottom:none;border-right:1px dashed var(--line);padding:18px 22px;display:flex;flex-direction:column}
+.wide .timer{font-size:108px;margin:16px 0 6px}
+.wide .scope{display:flex;align-items:flex-end;gap:2px;height:84px;margin:18px 0 8px;padding:0 0 2px;border-bottom:1px solid var(--ph-dim);
+  background:repeating-linear-gradient(to top, rgba(77,255,122,.09) 0 1px, transparent 1px 14px)}
+.wide .scope b{flex:1;background:var(--ph);box-shadow:0 0 4px rgba(77,255,122,.45)}
+.wide .scope b.hot{background:linear-gradient(to bottom,var(--amber) 0 14px,var(--ph) 14px)}
+.wide .recbtn{height:76px;margin-top:auto;font-size:40px}
+.wide .list{padding-top:12px}
+.wide .clip{grid-template-columns:30px 120px 1fr 110px 80px 26px;height:48px;padding:5px 18px}
+.wide .lh{padding:2px 18px 8px}
+.wide .prompt{height:40px}
+.info{font-size:10px;color:var(--ph-dim);letter-spacing:1px;line-height:1.7;white-space:pre}
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <h1><small>THRASHER THEME 0x07</small>PHOSPHOR</h1>
+  <p>A green CRT terminal. The recorder is a status readout and you drive the app from a prompt line.</p>
+  <ul>
+    <li>Icons become bracketed keys like [i] [?] [w]</li>
+    <li>Toolbar moves to the bottom as a command prompt</li>
+    <li>Meter and waveforms drawn with block characters</li>
+    <li>Selected row is inverted video</li>
+  </ul>
+</header>
+
+<main class="stage">
+  <!-- ================= PORTRAIT ================= -->
+  <div>
+    <div class="win portrait" id="p">
+      <div class="tb">
+        <span class="name">THRASHER</span><span class="ver">v1.4 tty0</span>
+        <span class="sp"></span>
+        <span class="k" title="Settings">[s]et</span>
+        <span class="k" title="Minimise">[_]</span>
+        <span class="k x" title="Close">[x]</span>
+      </div>
+
+      <section class="rec">
+        <div class="hdr">-- REC ------------------------------------------</div>
+        <div class="top">
+          <div>
+            <div class="status"><span class="dot"></span>READY</div>
+            <div class="row" style="margin-top:6px"><span class="lbl">IN</span><span class="mid">Default microphone</span></div>
+          </div>
+          <div class="timer">00:00.0</div>
+        </div>
+        <div class="row"><span class="lbl">LVL</span><span class="meter" data-meter="22"></span><span class="db" data-db>-18 dB</span></div>
+        <div class="recbtn"><svg class="mic" viewBox="0 0 16 16" fill="currentColor" shape-rendering="crispEdges"><rect x="6" y="1" width="4" height="8"/><rect x="5" y="2" width="1" height="6"/><rect x="10" y="2" width="1" height="6"/><rect x="3" y="6" width="1" height="3"/><rect x="12" y="6" width="1" height="3"/><rect x="4" y="9" width="1" height="1"/><rect x="11" y="9" width="1" height="1"/><rect x="5" y="10" width="6" height="1"/><rect x="7" y="11" width="2" height="3"/><rect x="5" y="14" width="6" height="1"/></svg>REC<small>[space]</small></div>
+      </section>
+
+      <section class="list">
+        <div class="lh"><span style="flex:1">CLIPS 8</span><span>LEN</span></div>
+        <div data-clips></div>
+      </section>
+
+      <div class="prompt">
+        <span class="proj">~/Inbox<span class="arr">&#9662;</span></span>
+        <span class="ps">$</span>
+        <span class="search">Search<span class="cursor"></span></span>
+        <span class="keys">
+          <span class="key" title="Import file">[i]</span>
+          <span class="key" title="Ask">[?]</span>
+          <span class="key" title="Widget mode">[w]</span>
+        </span>
+      </div>
+      <div class="foot">
+        <span class="pbtn">[&gt;]</span>
+        <span class="np">Nothing playing</span>
+        <span class="bar" data-bar="18"></span>
+        <span class="tm">--:-- / --:--</span>
+      </div>
+    </div>
+    <div class="cap"><b>400 x 620</b> toolbar now a prompt line above the footer. Icons are keys</div>
+  </div>
+
+  <!-- ================= WIDE ================= -->
+  <div>
+    <div class="win wide" id="w">
+      <div class="tb">
+        <span class="name">THRASHER</span><span class="ver">v1.4 tty0</span>
+        <span class="sp"></span>
+        <span class="k" title="Settings">[s]etup</span>
+        <span class="k" title="Minimise">[_]</span>
+        <span class="k x" title="Close">[x]</span>
+      </div>
+      <div class="body">
+        <section class="rec">
+          <div class="hdr">-- REC ---------------------------------------</div>
+          <div class="status" style="margin-top:14px"><span class="dot"></span>READY</div>
+          <div class="timer">00:00.0</div>
+          <div class="row"><span class="lbl">IN</span><span class="mid">Default microphone</span></div>
+          <div class="row" style="margin-top:8px"><span class="lbl">LVL</span><span class="meter" data-meter="28"></span><span class="db" data-db>-18 dB</span></div>
+          <div class="scope" data-scope></div>
+          <div class="info">48 kHz  MONO  WAV     DISK 214 GB FREE</div>
+          <div class="recbtn"><svg class="mic" viewBox="0 0 16 16" fill="currentColor" shape-rendering="crispEdges" style="width:24px;height:24px"><rect x="6" y="1" width="4" height="8"/><rect x="5" y="2" width="1" height="6"/><rect x="10" y="2" width="1" height="6"/><rect x="3" y="6" width="1" height="3"/><rect x="12" y="6" width="1" height="3"/><rect x="4" y="9" width="1" height="1"/><rect x="11" y="9" width="1" height="1"/><rect x="5" y="10" width="6" height="1"/><rect x="7" y="11" width="2" height="3"/><rect x="5" y="14" width="6" height="1"/></svg>RECORD<small>[space]</small></div>
+        </section>
+        <section class="list">
+          <div class="lh"><span style="width:38px"></span><span style="width:128px">WAVE</span><span style="flex:1">NAME</span><span style="width:118px">DATE</span><span style="width:80px;text-align:right">LEN</span><span style="width:34px"></span></div>
+          <div data-clips="wide"></div>
+        </section>
+      </div>
+      <div class="prompt">
+        <span class="proj">~/Inbox<span class="arr">&#9662;</span></span>
+        <span class="ps">$ grep</span>
+        <span class="search">Search<span class="cursor"></span></span>
+        <span class="keys">
+          <span class="key">[i]<i>mport</i></span>
+          <span class="key">[?]<i>ask</i></span>
+          <span class="key">[w]<i>idget</i></span>
+        </span>
+      </div>
+      <div class="foot">
+        <span class="pbtn">[&gt;]</span>
+        <span class="np">Nothing playing</span>
+        <span class="bar" data-bar="80"></span>
+        <span class="tm">--:-- / --:--</span>
+      </div>
+    </div>
+    <div class="cap"><b>1000 x 620</b> status block left with a live scope. Prompt spans the full width</div>
+  </div>
+</main>
+
+<script>
+const STILL = location.search.includes('still');
+const clips = [
+  ['clip_001','Sat 05:48',true,'16:53',11],
+  ['clip_005','Sat 05:48',false,'2:03',23],
+  ['clip_006','Sat 06:05',false,'0:04',5],
+  ['clip_100','Sat 09:34',true,'1:09:26',41],
+  ['Screen recording','Yesterday 07:20',false,'0:03',7],
+  ['Meeting','Yesterday 07:20',false,'0:02',13],
+  ['Meeting (2)','Today 10:03',false,'0:02',17],
+  ['Presentasjon','Today 10:25',true,'0:27',29],
+];
+const BLK = ' ▁▂▃▄▅▆▇█';
+function rnd(seed){let s=seed*9301+49297;return()=>{s=(s*9301+49297)%233280;return s/233280}}
+function wave(seed,n,h){const r=rnd(seed);let o='';for(let i=0;i<n;i++){const env=Math.sin(Math.PI*(i+.5)/n)*.6+.4;const q=1+Math.floor(r()*env*7.99);o+=`<b style="height:${Math.round(q/8*h)}px"></b>`}return o}
+document.querySelectorAll('[data-clips]').forEach(host=>{
+  const wide = host.dataset.clips==='wide';
+  host.innerHTML = clips.map((c,i)=>{
+    const sub = wide ? (c[2]?'<span class="t">transcribed</span>':'') : `${c[1]}${c[2]?' <span class="t">· transcribed</span>':''}`;
+    return `<div class="clip${i===1?' sel':''}">
+      <span class="pl">[&gt;]</span>
+      <span class="wv">${wave(c[4], wide?17:11, wide?20:16)}</span>
+      <div style="min-width:0"><div class="nm">${c[0]}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>
+      ${wide?`<span class="sub" style="margin:0">${c[1]}</span>`:''}
+      <span class="len">${c[3]}</span>
+      <span class="mn">[:]</span>
+    </div>`}).join('');
+});
+document.querySelectorAll('[data-bar]').forEach(b=>{b.textContent='░'.repeat(+b.dataset.bar)});
+
+const meters=[...document.querySelectorAll('[data-meter]')];
+const dbs=[...document.querySelectorAll('[data-db]')];
+const scope=document.querySelector('[data-scope]');
+const SW=40, SH=6;
+const hist=new Array(SW).fill(0).map((_,i)=>.25+.35*Math.abs(Math.sin(i*.45))*Math.abs(Math.sin(i*.13+1)));
+let lvl=.55, t=0;
+function drawMeter(el,v){
+  const n=+el.dataset.meter, on=Math.round(v*n), hotAt=Math.round(n*.8);
+  let s='<span class="dim">[</span>';
+  for(let i=0;i<n;i++){
+    if(i<on) s+= i>=hotAt?'<span class="hot">█</span>':'<span class="on">█</span>';
+    else s+='<span class="off">░</span>';
+  }
+  el.innerHTML=s+'<span class="dim">]</span>';
+}
+function drawScope(){
+  if(!scope) return;
+  scope.innerHTML=hist.map(v=>{const q=Math.max(1,Math.round(v*48));return `<b class="${v>.82?'hot':''}" style="height:${q/48*80}px"></b>`}).join('');
+}
+function frame(){
+  t++;
+  lvl += (Math.random()-.5)*.18; lvl = Math.max(.18, Math.min(.88, lvl));
+  if(t%3===0){hist.shift();hist.push(Math.max(.05,Math.min(1,lvl+(Math.random()-.5)*.3)))}
+  meters.forEach(m=>drawMeter(m,lvl));
+  const db=Math.round(-48+lvl*44);
+  dbs.forEach(d=>d.textContent=db+' dB');
+  drawScope();
+}
+frame();
+if(!STILL){ let last=0; (function loop(ts){ if(ts-last>70){frame();last=ts} requestAnimationFrame(loop) })(0); }
+else { document.querySelectorAll('.cursor').forEach(c=>c.style.animation='none'); }
+</script>
+</body>
+</html>

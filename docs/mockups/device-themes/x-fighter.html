@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fighter Select</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#07070d; --bg:#0d0b16; --panel:#15122a; --panel2:#1d1838;
+  --line:#2c2650; --text:#f2eefc; --dim:#9a92bf; --faint:#5e578a;
+  --p1:#ff2d4a; --p1d:#9c0f25; --gold:#ffcc1f; --gold2:#ff8a00; --cyan:#27e0ff;
+  --disp:'Anton', Impact, sans-serif; --body:'Chakra Petch', 'Segoe UI', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0910;color:var(--text);font-family:var(--body);padding:22px 18px 30px;min-height:100vh}
+.head{display:flex;gap:40px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
+.head h1{font-family:var(--disp);font-size:38px;letter-spacing:1px;font-style:normal;transform:skewX(-10deg);line-height:1;
+  background:linear-gradient(180deg,#fff 0%,var(--gold) 55%,var(--gold2) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(3px 3px 0 var(--p1d))}
+.head p{color:var(--dim);font-size:14px;margin-top:6px}
+.head ul{list-style:none;display:grid;grid-template-columns:auto auto;gap:4px 28px;font-size:12.5px;color:#cfc8ea}
+.head li::before{content:"";display:inline-block;width:8px;height:8px;background:var(--p1);transform:skewX(-20deg);margin-right:8px}
+.cap{font-size:11px;letter-spacing:2px;color:var(--faint);text-transform:uppercase;margin-bottom:7px;font-weight:600}
+.row{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+
+/* ===== window ===== */
+.win{position:relative;background:var(--bg);border:1px solid #2a2445;overflow:hidden;display:flex;flex-direction:column;
+  box-shadow:0 20px 50px rgba(0,0,0,.55)}
+.win::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background:repeating-linear-gradient(115deg,transparent 0 38px,rgba(255,255,255,.018) 38px 40px)}
+.tb{height:34px;display:flex;align-items:center;padding:0 6px 0 12px;background:linear-gradient(90deg,#1a1430,#0d0b16 70%);
+  border-bottom:2px solid var(--p1);position:relative;z-index:1;flex:none}
+.logo{font-family:var(--disp);font-size:17px;letter-spacing:1.5px;transform:skewX(-10deg);color:#fff}
+.logo b{color:var(--p1);font-weight:400}
+.ins{margin-left:10px;font-size:10px;letter-spacing:2.5px;color:var(--gold);font-weight:700}
+.tbb{margin-left:auto;display:flex;gap:4px}
+.tbtn{width:30px;height:24px;display:grid;place-items:center;color:var(--dim);transform:skewX(-14deg);background:#1b1733;border:1px solid #2e2850}
+.tbtn svg{transform:skewX(14deg)}
+.tbtn.x:hover{background:var(--p1)}
+
+/* ===== HUD (recorder) ===== */
+.hud{position:relative;z-index:1;flex:none;padding:10px 12px 12px;background:
+  linear-gradient(180deg,rgba(255,45,74,.10),transparent 70%), #110e20;border-bottom:1px solid var(--line)}
+.p1tag{display:inline-block;font-family:var(--disp);font-size:13px;color:#fff;background:var(--p1);padding:0 7px;transform:skewX(-14deg);letter-spacing:1px}
+.dev{font-weight:700;font-size:13px;letter-spacing:.3px;color:#fff;margin-left:6px}
+.hp{position:relative;height:18px;transform:skewX(-24deg);background:#2a0a12;border:2px solid #000;outline:1px solid #4d3a64;overflow:hidden}
+.hp .fill{position:absolute;inset:0 auto 0 0;width:64%;background:linear-gradient(180deg,#fff27a 0,var(--gold) 35%,var(--gold2) 100%);transition:width .08s linear}
+.hp .lag{position:absolute;inset:0 auto 0 0;width:72%;background:#ff4d5e}
+.hp .ticks{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 10px,rgba(0,0,0,.45) 10px 12px)}
+.hp .gloss{position:absolute;left:0;right:0;top:0;height:40%;background:rgba(255,255,255,.28)}
+.hpl{display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:2px;color:var(--dim);font-weight:700;margin-top:4px}
+.clock{position:relative;text-align:center}
+.clock .face{font-family:var(--disp);color:#fff;line-height:1;letter-spacing:1px;
+  text-shadow:2px 2px 0 var(--p1d),0 0 1px #000}
+.clock .lbl{font-size:9px;letter-spacing:3px;color:var(--gold);font-weight:700}
+.ready{display:inline-flex;align-items:center;gap:6px;font-family:var(--disp);letter-spacing:2px;color:var(--gold);transform:skewX(-10deg)}
+.ready i{width:8px;height:8px;border-radius:50%;background:#3dff7a;box-shadow:0 0 0 2px #0b3d1d}
+.rec{position:relative;display:grid;place-items:center;cursor:pointer}
+.rec .dia{position:absolute;transform:rotate(45deg);background:linear-gradient(135deg,#ff5a6e,var(--p1) 45%,#a3001a);
+  border:3px solid #000;outline:2px solid var(--gold);box-shadow:inset 0 -6px 0 rgba(0,0,0,.25),inset 0 4px 0 rgba(255,255,255,.25)}
+.rec svg{position:relative}
+.rec .rl{position:absolute;font-family:var(--disp);letter-spacing:2px;color:#fff;font-size:12px;bottom:-4px;
+  background:#000;padding:0 6px;transform:skewX(-12deg)}
+
+/* ===== toolbar ===== */
+.tool{position:relative;z-index:1;flex:none;display:flex;gap:6px;align-items:center;padding:8px 12px;background:#0f0c1d;border-bottom:1px solid var(--line)}
+.stage{display:flex;align-items:center;gap:7px;height:30px;padding:0 10px;background:var(--panel2);border:1px solid #3a3266;transform:skewX(-14deg);flex:none}
+.stage>*{transform:skewX(14deg)}
+.stage .k{font-size:9px;letter-spacing:2px;color:var(--gold);font-weight:700}
+.stage .v{font-weight:700;font-size:13px}
+.search{flex:1;min-width:0;display:flex;align-items:center;gap:7px;height:30px;padding:0 10px;background:#07060e;border:1px solid #2f2856;transform:skewX(-14deg)}
+.search>*{transform:skewX(14deg)}
+.search span{color:var(--faint);font-size:12.5px;font-weight:600}
+.ib{flex:none;height:30px;display:flex;align-items:center;gap:5px;padding:0 9px;background:var(--panel2);border:1px solid #3a3266;transform:skewX(-14deg);color:#e9e4ff}
+.ib>*{transform:skewX(14deg)}
+.ib em{font-style:normal;font-family:var(--disp);font-size:12px;letter-spacing:1.5px}
+.ib .btn{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;color:#000;font-family:var(--body)}
+
+/* ===== select grid ===== */
+.sel{position:relative;z-index:1;flex:1;min-height:0;display:flex;flex-direction:column;padding:8px 12px 10px;
+  background:radial-gradient(120% 80% at 50% 0%,#221a44 0%,#0d0b16 70%)}
+.selh{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.selh .t{font-family:var(--disp);font-size:15px;letter-spacing:2px;transform:skewX(-10deg);color:#fff}
+.selh .t b{color:var(--gold);font-weight:400}
+.selh .bar{flex:1;height:2px;background:linear-gradient(90deg,var(--p1),transparent)}
+.selh .n{font-size:9.5px;letter-spacing:2px;color:var(--dim);font-weight:700}
+.grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:9px 8px}
+.tile{position:relative;min-width:0;display:flex;flex-direction:column;background:#000;border:2px solid #000;outline:1px solid #3a3266;min-height:0}
+.port{position:relative;flex:1;min-height:0;overflow:hidden}
+.port svg.fig{position:absolute;left:50%;bottom:-6%;height:112%;transform:translateX(-50%)}
+.port .num{position:absolute;right:4px;bottom:2px;font-family:var(--disp);font-size:22px;color:rgba(255,255,255,.12);line-height:1}
+.tx{position:absolute;left:0;top:6px;font-size:8px;font-weight:700;letter-spacing:1.2px;color:#000;background:var(--cyan);padding:1px 6px 1px 4px;
+  clip-path:polygon(0 0,100% 0,88% 100%,0 100%)}
+.play{position:absolute;left:4px;bottom:4px;width:22px;height:22px;display:grid;place-items:center;background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.35);transform:skewX(-12deg)}
+.play svg{transform:skewX(12deg)}
+.nmr{display:flex;align-items:center;gap:4px}.nmr .nm{flex:1;min-width:0}.dots{flex:none;width:12px;height:16px;display:grid;place-items:center;opacity:.8}
+.plate{flex:none;padding:4px 6px 5px;background:linear-gradient(180deg,#221c40,#16122c);border-top:2px solid #000}
+.nm{font-weight:700;font-size:12.5px;color:#fff;line-height:1.1;overflow-wrap:anywhere}
+.port-w .nm{font-size:11.5px;letter-spacing:-.2px}.port-w .dots{width:8px}
+.sub{font-size:9.5px;color:var(--dim);font-weight:600;white-space:nowrap;line-height:1.3}
+.wl{display:flex;align-items:center;gap:5px;margin-top:2px}
+.wl svg{flex:1;min-width:0;height:12px}
+.len{font-family:var(--body);font-weight:700;font-size:10.5px;color:var(--gold);letter-spacing:.3px}
+.tile.on{outline:3px solid var(--p1);outline-offset:0}
+.tile.on .plate{background:linear-gradient(180deg,#5a0f22,#2a0712)}
+.cursor{position:absolute;inset:-7px;pointer-events:none;animation:blink 1.1s steps(1) infinite}
+.cursor i{position:absolute;width:12px;height:12px;border:3px solid var(--gold)}
+.cursor i:nth-child(1){left:0;top:0;border-right:0;border-bottom:0}
+.cursor i:nth-child(2){right:0;top:0;border-left:0;border-bottom:0}
+.cursor i:nth-child(3){left:0;bottom:0;border-right:0;border-top:0}
+.cursor i:nth-child(4){right:0;bottom:0;border-left:0;border-top:0}
+.p1c{position:absolute;top:-11px;left:50%;transform:translateX(-50%) skewX(-12deg);font-family:var(--disp);font-size:11px;letter-spacing:1px;
+  background:var(--p1);color:#fff;padding:0 6px;border:2px solid #000;z-index:2}
+@keyframes blink{50%{opacity:.35}}
+
+/* ===== footer (replay) ===== */
+.foot{position:relative;z-index:1;flex:none;display:flex;align-items:center;gap:10px;padding:8px 12px;background:#0b0915;border-top:2px solid #2c2650}
+.fp{width:34px;height:30px;flex:none;display:grid;place-items:center;background:var(--gold);color:#000;transform:skewX(-14deg);border:2px solid #000}
+.fp svg{transform:skewX(14deg)}
+.fmid{flex:1;min-width:0}
+.ftop{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.ftop .np{font-weight:600;font-size:12.5px;color:var(--dim)}
+.ftop .np b{font-family:var(--disp);font-weight:400;color:var(--gold);letter-spacing:1.5px;margin-right:7px;font-size:11px}
+.ftop .tm{font-weight:700;font-size:11.5px;color:#cfc8ea;letter-spacing:.5px}
+.sup{position:relative;height:9px;background:#120a24;border:2px solid #000;outline:1px solid #3a3266;transform:skewX(-24deg);overflow:hidden}
+.sup::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 24.6%,#000 24.6% 25%)}
+.lv{font-family:var(--disp);font-size:11px;color:var(--cyan);letter-spacing:1px;flex:none}
+
+/* ===== wide specifics ===== */
+.wide .body{flex:1;min-height:0;display:flex;position:relative;z-index:1}
+.wide .hud{width:400px;flex:none;border-bottom:0;border-right:2px solid #000;box-shadow:1px 0 0 var(--line);display:flex;flex-direction:column;padding:16px 20px 18px;overflow:hidden}
+.wide .right{flex:1;min-width:0;display:flex;flex-direction:column}
+.stagebg{position:absolute;inset:0;pointer-events:none;
+  background:
+   linear-gradient(180deg,transparent 55%,rgba(0,0,0,.7) 100%),
+   radial-gradient(70% 45% at 50% 62%,rgba(255,45,74,.28),transparent 70%),
+   repeating-linear-gradient(0deg,transparent 0 22px,rgba(39,224,255,.05) 22px 23px)}
+.floor{position:absolute;left:-10%;right:-10%;bottom:0;height:120px;pointer-events:none;
+  background:repeating-linear-gradient(90deg,rgba(255,204,31,.12) 0 2px,transparent 2px 46px);transform:perspective(200px) rotateX(55deg);transform-origin:bottom}
+.vs{position:absolute;right:-6px;top:150px;font-family:var(--disp);font-size:150px;line-height:1;color:rgba(255,255,255,.04);transform:skewX(-12deg);pointer-events:none}
+.still .cursor{animation:none}
+</style>
+</head>
+<body>
+<div class="head">
+  <div>
+    <h1>FIGHTER SELECT</h1>
+    <p>Your recorder is a fighting game select screen and every clip is a fighter</p>
+  </div>
+  <ul>
+    <li>Each clip is a fighter tile with a name plate</li>
+    <li>Level is the P1 health bar and timer the round clock</li>
+    <li>Blinking P1 cursor marks the selected clip</li>
+    <li>FIGHT records, Stage picks the project, Replay plays</li>
+  </ul>
+</div>
+<div class="row">
+  <div>
+    <div class="cap" style="max-width:400px">Portrait 400 x 620 · HUD on top</div>
+    <div id="pw"></div>
+  </div>
+  <div>
+    <div class="cap">Wide 1000 x 620 · fight stage on the left · select grid on the right</div>
+    <div id="ww"></div>
+  </div>
+</div>
+
+<script>
+const STILL = location.search.includes('still');
+if (STILL) document.documentElement.classList.add('still');
+
+const clips = [
+  ['clip_001','Sat 05:48',true,'16:53'],
+  ['clip_005','Sat 05:48',false,'2:03'],
+  ['clip_006','Sat 06:05',false,'0:04'],
+  ['clip_100','Sat 09:34',true,'1:09:26'],
+  ['Screen recording','Yesterday 07:20',false,'0:03'],
+  ['Meeting','Yesterday 07:20',false,'0:02'],
+  ['Meeting (2)','Today 10:03',false,'0:02'],
+  ['Presentasjon','Today 10:25',true,'0:27'],
+];
+// tile backdrop [top, bottom, figure accent]
+const pal = [
+  ['#3b1a6e','#120626','#b98cff'],
+  ['#7a0f22','#1d0308','#ff8a96'],
+  ['#0b4a5c','#031419','#6ff0ff'],
+  ['#6a4a05','#1a1002','#ffd86b'],
+  ['#163a8a','#050d22','#8fb4ff'],
+  ['#0f5a2c','#03160b','#7dffa8'],
+  ['#5c1458','#160414','#ff8af2'],
+  ['#7a3a08','#1e0d02','#ffb36b'],
+];
+// abstract poses: [head, neck, hip, arm1[3], arm2[3], leg1[2], leg2[2], width]
+const poses = [
+  {h:[52,20],n:[50,31],p:[48,58],a:[[50,34],[35,44],[40,30]],b:[[50,34],[64,42],[73,31]],l:[[36,76],[28,96]],r:[[61,77],[70,96]],w:9,x:'band'},
+  {h:[38,23],n:[41,33],p:[46,59],a:[[42,36],[29,45],[24,35]],b:[[42,36],[56,32],[63,24]],l:[[44,78],[40,97]],r:[[68,49],[90,33]],w:9,x:'tail'},
+  {h:[35,25],n:[40,34],p:[50,59],a:[[40,37],[61,37],[86,35]],b:[[40,37],[31,50],[41,45]],l:[[36,77],[27,97]],r:[[63,77],[72,97]],w:9,x:'none'},
+  {h:[50,29],n:[50,40],p:[50,65],a:[[50,43],[29,52],[25,39]],b:[[50,43],[71,52],[75,39]],l:[[33,80],[29,97]],r:[[67,80],[71,97]],w:13,x:'horn'},
+  {h:[56,22],n:[53,32],p:[47,58],a:[[53,35],[38,30],[30,18]],b:[[53,35],[66,46],[60,56]],l:[[38,77],[34,97]],r:[[58,78],[66,97]],w:8,x:'scarf'},
+  {h:[44,24],n:[46,34],p:[50,60],a:[[46,37],[60,46],[78,46]],b:[[46,37],[34,48],[26,58]],l:[[38,78],[24,92]],r:[[64,74],[74,97]],w:10,x:'band'},
+  {h:[50,18],n:[50,29],p:[50,57],a:[[50,32],[38,22],[46,10]],b:[[50,32],[62,22],[54,10]],l:[[40,77],[38,97]],r:[[60,77],[62,97]],w:8,x:'tail'},
+  {h:[48,23],n:[48,33],p:[49,60],a:[[48,36],[34,46],[22,42]],b:[[48,36],[62,46],[74,40]],l:[[37,79],[33,97]],r:[[60,79],[66,97]],w:10,x:'horn'},
+];
+function fig(i, accent, gid){
+  const q = poses[i], s = (a,b)=>`M${a[0]} ${a[1]}L${b[0]} ${b[1]}`;
+  const limbs = [
+    `M${q.a[0]}L${q.a[1]}L${q.a[2]}`, `M${q.b[0]}L${q.b[1]}L${q.b[2]}`,
+    `M${q.p}L${q.l[0]}L${q.l[1]}`, `M${q.p}L${q.r[0]}L${q.r[1]}`
+  ].map(d=>d.replace(/,/g,' '));
+  let extra = '';
+  const [hx,hy] = q.h;
+  if (q.x==='band') extra = `<path d="M${hx-3} ${hy-3}Q${hx-14} ${hy-6} ${hx-20} ${hy+2}M${hx-3} ${hy-2}Q${hx-12} ${hy+2} ${hx-17} ${hy+9}" stroke="${accent}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+  if (q.x==='tail') extra = `<path d="M${hx+4} ${hy-6}Q${hx+18} ${hy-4} ${hx+16} ${hy+16}" stroke="#000" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+  if (q.x==='horn') extra = `<path d="M${hx-6} ${hy-6}L${hx-11} ${hy-16}L${hx-2} ${hy-8}ZM${hx+6} ${hy-6}L${hx+11} ${hy-16}L${hx+2} ${hy-8}Z" fill="#000"/>`;
+  if (q.x==='scarf') extra = `<path d="M${q.n[0]-2} ${q.n[1]}Q${q.n[0]+16} ${q.n[1]-2} ${q.n[0]+26} ${q.n[1]+6}L${q.n[0]+20} ${q.n[1]+10}Q${q.n[0]+10} ${q.n[1]+4} ${q.n[0]} ${q.n[1]+3}Z" fill="${accent}"/>`;
+  return `<svg class="fig" viewBox="0 0 100 100" preserveAspectRatio="xMidYMax meet">
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000"/><stop offset="1" stop-color="#14101f"/></linearGradient></defs>
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <g stroke="${accent}" stroke-width="${q.w+3}" opacity=".55">
+        <path d="${s(q.n,q.p)}" stroke-width="${q.w+8}"/>${limbs.map(d=>`<path d="${d}"/>`).join('')}
+      </g>
+      <g stroke="url(#${gid})" stroke-width="${q.w}">
+        <path d="${s(q.n,q.p)}" stroke-width="${q.w+5}"/>${limbs.map(d=>`<path d="${d}"/>`).join('')}
+      </g>
+    </g>
+    <circle cx="${hx}" cy="${hy}" r="${q.w*0.9+2.5}" fill="${accent}" opacity=".55"/>
+    <circle cx="${hx}" cy="${hy}" r="${q.w*0.9+1}" fill="#05040a"/>
+    <path d="M${hx-2} ${hy-1}h5" stroke="${accent}" stroke-width="1.6" stroke-linecap="round"/>
+    ${extra}
+  </svg>`;
+}
+function wave(seed, n, col){
+  let x = seed*9301+49297, out='';
+  const w = 100/n;
+  for (let i=0;i<n;i++){ x=(x*9301+49297)%233280; const h = 2+ (x/233280)*10*(0.5+0.5*Math.sin(i*0.7+seed));
+    out += `<rect x="${(i*w).toFixed(2)}" y="${(6-h/2).toFixed(2)}" width="${(w*0.55).toFixed(2)}" height="${h.toFixed(2)}"/>`; }
+  return `<svg viewBox="0 0 100 12" preserveAspectRatio="none" fill="${col}">${out}</svg>`;
+}
+const I = {
+  gear:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>`,
+  min:`<svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M4 18h16"/></svg>`,
+  x:`<svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M5 5l14 14M19 5L5 19"/></svg>`,
+  mic:(s,c)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2.4" stroke-linecap="round"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="${c}"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5M8 21.5h8"/></svg>`,
+  imp:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"><path d="M12 3v11M7 9l5 5 5-5M4 15v5h16v-5"/></svg>`,
+  ask:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="miter"><path d="M3 4h18v12H10l-5 4v-4H3z"/></svg>`,
+  wid:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="4" width="18" height="16"/><path d="M3 9h18"/><rect x="12" y="12" width="6" height="5" fill="currentColor" stroke="none"/></svg>`,
+  srch:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9a92bf" stroke-width="2.6"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg>`,
+  down:`<svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 2h10L5 8z" fill="#ffcc1f"/></svg>`,
+  play:(s,c)=>`<svg width="${s}" height="${s}" viewBox="0 0 12 12"><path d="M2.5 1.5l8 4.5-8 4.5z" fill="${c}"/></svg>`,
+  dots:`<svg width="4" height="14" viewBox="0 0 4 14" fill="#fff"><rect x="0.5" y="0.5" width="3" height="3"/><rect x="0.5" y="5.5" width="3" height="3"/><rect x="0.5" y="10.5" width="3" height="3"/></svg>`,
+};
+function titlebar(){
+  return `<div class="tb"><div class="logo">THRASH<b>ER</b></div><div class="ins">SELECT YOUR CLIP</div>
+  <div class="tbb"><div class="tbtn" title="Options">${I.gear}</div><div class="tbtn">${I.min}</div><div class="tbtn x">${I.x}</div></div></div>`;
+}
+function toolbar(wide){
+  const lab = wide;
+  return `<div class="tool">
+    <div class="stage"><span class="k">STAGE</span><span class="v">Inbox</span>${I.down}</div>
+    <div class="search">${I.srch}<span>Search</span></div>
+    <div class="ib" title="Import">${I.imp}${lab?'<em>IMPORT</em>':''}</div>
+    <div class="ib" title="Ask">${I.ask}${lab?'<em>ASK</em>':''}</div>
+    <div class="ib" title="Widget">${I.wid}${lab?'<em>WIDGET</em>':''}</div>
+  </div>`;
+}
+function grid(id){
+  return `<div class="sel">
+    <div class="selh"><div class="t">CLIP <b>SELECT</b></div><div class="bar"></div><div class="n">8 FIGHTERS</div></div>
+    <div class="grid">${clips.map((c,i)=>{
+      const p = pal[i];
+      return `<div class="tile${i===1?' on':''}">
+        ${i===1?'<div class="cursor"><i></i><i></i><i></i><i></i></div><div class="p1c">P1</div>':''}
+        <div class="port" style="background:linear-gradient(160deg,${p[0]} 0%,${p[1]} 85%)">
+          <div class="num">${String(i+1).padStart(2,'0')}</div>
+          ${fig(i,p[2],id+'g'+i)}
+          ${c[2]?'<div class="tx">TRANSCRIBED</div>':''}
+          <div class="play">${I.play(10,'#fff')}</div>
+        </div>
+        <div class="plate">
+          <div class="nm">${c[0]}</div>
+          <div class="sub">${c[1]}</div>
+          <div class="wl">${wave(i+1,18,i===1?'#ff8a96':'#6d64a3')}<span class="len">${c[3]}</span><div class="dots">${I.dots}</div></div>
+        </div>
+      </div>`}).join('')}</div>
+  </div>`;
+}
+function footer(){
+  return `<div class="foot"><div class="fp">${I.play(12,'#000')}</div>
+    <div class="fmid"><div class="ftop"><span class="np"><b>REPLAY</b>Nothing playing</span><span class="tm">--:-- / --:--</span></div>
+    <div class="sup"></div></div><div class="lv">LV 0</div></div>`;
+}
+function hpBar(){ return `<div class="hp"><div class="lag"></div><div class="fill"></div><div class="ticks"></div><div class="gloss"></div></div>`; }
+
+// portrait
+document.getElementById('pw').innerHTML = `<div class="win port-w" style="width:400px;height:620px">
+  ${titlebar()}
+  <div class="hud">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;margin-bottom:6px"><span class="p1tag">P1</span><span class="dev">Default microphone</span></div>
+        ${hpBar()}
+        <div class="hpl"><span>INPUT</span><span>-12 DB</span></div>
+      </div>
+      <div class="rec" style="width:78px;height:78px">
+        <div class="dia" style="width:52px;height:52px"></div>${I.mic(26,'#fff')}<div class="rl">FIGHT</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+      <div class="ready" style="font-size:18px"><i></i>READY</div>
+      <div class="clock" style="display:flex;align-items:baseline;gap:8px"><span class="lbl">ROUND</span><span class="face" style="font-size:34px">00:00.0</span></div>
+    </div>
+  </div>
+  ${toolbar(false)}
+  ${grid('p')}
+  ${footer()}
+</div>`;
+
+// wide
+document.getElementById('ww').innerHTML = `<div class="win wide" style="width:1000px;height:620px">
+  ${titlebar()}
+  <div class="body">
+    <div class="hud">
+      <div class="stagebg"></div><div class="floor"></div><div class="vs">VS</div>
+      <div style="position:relative;display:flex;align-items:center;margin-bottom:7px"><span class="p1tag" style="font-size:15px">P1</span><span class="dev" style="font-size:15px">Default microphone</span></div>
+      <div style="position:relative">${hpBar()}</div>
+      <div class="hpl" style="position:relative"><span>INPUT LEVEL</span><span>-12 DB</span></div>
+      <div class="clock" style="position:relative;margin-top:18px">
+        <div class="lbl">ROUND CLOCK</div>
+        <div class="face" style="font-size:76px;margin-top:2px">00:00.0</div>
+        <div class="ready" style="font-size:24px;margin-top:6px"><i></i>READY</div>
+      </div>
+      <div style="position:relative;flex:1;display:flex;align-items:flex-end;justify-content:space-between;padding:0 6px">
+        <div style="width:120px;height:150px;position:relative">${fig(0,'#ff2d4a','wbig').replace('class="fig"','class="fig" style="position:absolute;left:0;bottom:0;height:150px"')}</div>
+        <div class="rec" style="width:150px;height:150px;margin-bottom:4px">
+          <div class="dia" style="width:96px;height:96px"></div>${I.mic(46,'#fff')}<div class="rl" style="font-size:16px;bottom:2px">FIGHT</div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      ${toolbar(true)}
+      ${grid('w')}
+    </div>
+  </div>
+  ${footer()}
+</div>`;
+
+// meter: health bar jumps with input
+const fills = [...document.querySelectorAll('.hp .fill')], lags = [...document.querySelectorAll('.hp .lag')];
+let lagv = 72;
+function tick(t){
+  const v = 45 + 28*Math.abs(Math.sin(t/310)) + 10*Math.sin(t/97);
+  lagv = Math.max(v, lagv - 0.6);
+  fills.forEach(f=>f.style.width = v.toFixed(1)+'%');
+  lags.forEach(f=>f.style.width = lagv.toFixed(1)+'%');
+}
+if (!STILL){ setInterval(()=>tick(performance.now()), 50); }
+</script>
+</body>
+</html>

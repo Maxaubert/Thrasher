@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desktop 95</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --face:#c0c0c0; --hi:#ffffff; --lt:#dfdfdf; --sh:#808080; --dk:#0a0a0a;
+  --navy:#0a1f7a; --title1:#0a1f7a; --title2:#2f8fd6;
+  --desk:#127170; --scope:#3cff6a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111;color:#e8e8e8;font-family:'Pixelify Sans',system-ui,sans-serif;padding:24px 24px 40px;-webkit-font-smoothing:none;font-smooth:never}
+.head{display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;margin-bottom:22px}
+.head h1{font-size:44px;font-weight:700;letter-spacing:1px;line-height:1;color:#fff;text-shadow:3px 3px 0 #0a1f7a}
+.head .kick{font-size:12px;letter-spacing:3px;color:#5fd3cf;margin-bottom:6px}
+.head .idea{font-size:15px;color:#cfcfcf;margin-top:8px;max-width:380px;line-height:1.35}
+.head ul{list-style:none;font-size:13px;color:#cfcfcf;line-height:1.75;columns:2;column-gap:36px;max-width:900px;padding-top:4px}
+.head li::before{content:"";display:inline-block;width:6px;height:6px;background:#2f8fd6;margin-right:9px;vertical-align:2px}
+.stage{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.cap{font-size:12px;color:#8fb8b6;margin-top:10px;letter-spacing:.5px;max-width:1000px}
+.cap b{color:#fff;font-weight:600}
+
+/* bevels */
+.raised{background:var(--face);box-shadow:inset -1px -1px var(--dk),inset 1px 1px var(--hi),inset -2px -2px var(--sh),inset 2px 2px var(--lt)}
+.sunken{box-shadow:inset -1px -1px var(--hi),inset 1px 1px var(--sh),inset -2px -2px var(--lt),inset 2px 2px var(--dk)}
+.thin-sunk{box-shadow:inset -1px -1px var(--hi),inset 1px 1px var(--sh)}
+.btn{background:var(--face);box-shadow:inset -1px -1px var(--dk),inset 1px 1px var(--hi),inset -2px -2px var(--sh),inset 2px 2px var(--lt);display:inline-flex;align-items:center;justify-content:center;color:#000;cursor:default;user-select:none}
+.btn:active,.btn.down{box-shadow:inset -1px -1px var(--hi),inset 1px 1px var(--dk),inset -2px -2px var(--lt),inset 2px 2px var(--sh)}
+.btn:active>*{transform:translate(1px,1px)}
+svg{display:block}
+
+/* outer app window */
+.win{position:relative;padding:3px;color:#000;font-size:13px}
+.win.p{width:400px;height:620px}
+.win.w{width:1000px;height:620px}
+.tb{height:22px;display:flex;align-items:center;gap:5px;padding:0 3px 0 4px;color:#fff;font-weight:700;font-size:14px;letter-spacing:.3px;
+  background:linear-gradient(90deg,var(--title1),var(--title2))}
+.tb .name{flex:1;display:flex;align-items:baseline;gap:8px}
+.tb .name small{font-weight:400;font-size:11px;color:#bcd6f5}
+.tb .tbtn{width:18px;height:16px}
+.tb .gap{width:3px}
+.desk{position:absolute;left:3px;right:3px;top:27px;bottom:3px;background-color:var(--desk);
+  background-image:radial-gradient(rgba(0,0,0,.13) 1px,transparent 1.2px);background-size:4px 4px;overflow:hidden}
+
+/* inner windows */
+.iwin{position:absolute;padding:3px;display:flex;flex-direction:column}
+.ititle{height:18px;flex:none;display:flex;align-items:center;gap:5px;padding:0 4px;color:#fff;font-weight:700;font-size:12.5px;
+  background:linear-gradient(90deg,var(--title1),var(--title2))}
+.ititle.off{background:linear-gradient(90deg,#7b7b7b,#b4b4b4);color:#e4e4e4}
+.ititle .sp{flex:1}
+.ititle .hint{font-weight:400;font-size:11px;opacity:.85}
+
+/* recorder */
+.rbody{flex:1;display:flex;flex-direction:column;gap:6px;padding:6px 4px 4px}
+.rowA{display:flex;gap:6px;height:24px}
+.field{display:flex;align-items:center;gap:6px;padding:0 8px;background:var(--face)}
+.status{flex:1;font-weight:600;letter-spacing:1px;font-size:13px}
+.timer{background:#000;color:var(--scope);font-family:'VT323',monospace;font-size:24px;padding:0 10px 0 10px;min-width:104px;justify-content:flex-end;line-height:1}
+.scopebox{background:#000;padding:2px;position:relative}
+.scopebox canvas{display:block;width:100%;height:100%}
+.scopebox .tag{position:absolute;left:8px;top:5px;font-family:'VT323',monospace;font-size:14px;color:#1d9c3f;letter-spacing:1px}
+.scopebox .tag.r{left:auto;right:8px}
+.rowC{display:flex;gap:6px;flex:1;min-height:0}
+fieldset{flex:1;border:none;box-shadow:inset -1px -1px var(--hi),inset 1px 1px var(--sh),inset -2px -2px var(--sh),inset 2px 2px var(--hi);
+  padding:12px 8px 7px;position:relative;display:flex;flex-direction:column;gap:6px;justify-content:center}
+legend{position:absolute;top:-7px;left:8px;background:var(--face);padding:0 4px;font-size:12px}
+legend u,.rec u,.uline u{text-decoration:underline;text-underline-offset:2px}
+.level{height:14px;background:#000;padding:3px;display:flex;gap:1px}
+.level i{flex:1;background:#0d3a18}
+.level i.on{background:#3cff6a}
+.level i.y.on{background:#ffe14d}
+.level i.r.on{background:#ff4a2a}
+.level i.y{background:#3a3410}.level i.r{background:#3a1208}
+.combo{height:21px;background:#fff;display:flex;align-items:center;padding:2px 2px 2px 5px;gap:5px;font-size:12.5px}
+.combo .txt{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.combo .arr{width:16px;height:17px;flex:none}
+.rec{width:74px;flex:none;flex-direction:column;gap:5px;font-weight:700;font-size:14px}
+.rec .lbl{display:flex;align-items:center;gap:5px}
+
+/* desktop icons */
+.dicons{position:absolute;display:flex;gap:6px}
+.dicon{width:72px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff;font-size:12.5px;text-align:center;cursor:default}
+.dicon .ic{padding:2px}
+.dicon span{padding:1px 4px;background:var(--desk)}
+.dicon:hover span{background:var(--navy);outline:1px dotted #fff}
+
+/* explorer */
+.tools{display:flex;gap:6px;padding:5px 2px 5px;flex:none;align-items:center}
+.tools .combo{width:118px}
+.search{flex:1;height:21px;background:#fff;display:flex;align-items:center;gap:6px;padding:0 6px;color:#7a7a7a;font-size:12.5px}
+.list{flex:1;background:#fff;padding:2px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.hdr,.row{display:grid;align-items:center}
+.hdr{height:18px;flex:none}
+.hdr .btn{height:18px;justify-content:flex-start;padding:0 6px;font-size:12px}
+.hdr .btn.num{justify-content:flex-end}
+.row{font-size:13px;padding-right:2px}
+.row .pl{width:16px;height:16px;margin-left:3px}
+.row .nm{display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;padding-left:4px}
+.row .nm .t{overflow:hidden;text-overflow:ellipsis}
+.row .md{color:#333;white-space:nowrap;padding-left:6px;font-size:12.5px}
+.row .ty{color:#333;white-space:nowrap;padding-left:6px;font-size:12.5px}
+.row .ln{text-align:right;padding-right:6px;font-variant-numeric:tabular-nums}
+.row .mn{width:14px;height:16px;justify-self:end;margin-right:2px}
+.row .wv{padding-left:6px}
+.row.sel{background:var(--navy);color:#fff;outline:1px dotted #ffe14d;outline-offset:-1px}
+.row.sel .md,.row.sel .ty{color:#fff}
+.sbar{display:flex;gap:3px;padding-top:3px;flex:none}
+.sbar div{height:19px;display:flex;align-items:center;padding:0 7px;font-size:12px}
+.sbar div:first-child{flex:1}
+
+/* taskbar */
+.task{position:absolute;left:0;right:0;bottom:0;height:30px;background:var(--face);box-shadow:inset 0 1px var(--lt),inset 0 2px var(--hi);
+  display:flex;align-items:center;gap:4px;padding:3px 3px 1px}
+.task .play{height:23px;padding:0 9px 0 7px;gap:6px;font-weight:700;font-size:14px}
+.task .sep{width:2px;height:22px;box-shadow:inset 1px 0 var(--sh),inset -1px 0 var(--hi)}
+.task .job{height:23px;justify-content:flex-start;gap:6px;padding:0 8px;font-size:12.5px;white-space:nowrap;overflow:hidden;
+  background-image:repeating-conic-gradient(#fff 0 25%,var(--face) 0 50%);background-size:2px 2px}
+.task .job span{background:var(--face);padding:0 2px}
+.track{flex:1;height:23px;position:relative;display:flex;align-items:center;padding:0 8px}
+.track .groove{flex:1;height:4px;box-shadow:inset -1px -1px var(--hi),inset 1px 1px var(--sh),inset -2px -2px var(--lt),inset 2px 2px var(--dk)}
+.track .thumb{position:absolute;left:6px;top:3px;width:11px;height:18px}
+.tray{height:23px;display:flex;align-items:center;gap:6px;padding:0 8px;font-size:12.5px;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <div>
+    <div class="kick">THRASHER THEME</div>
+    <h1>Desktop 95</h1>
+    <div class="idea">The app becomes a tiny mid 90s desktop. Grey bevels, a blue title bar, a sound recorder with a green scope.</div>
+  </div>
+  <ul>
+    <li>The window holds a teal desktop with two windows and a taskbar</li>
+    <li>Sound Recorder window: green scope, LED level, big Rec key</li>
+    <li>Import Ask and Widget are desktop icons, the gear sits in the title bar</li>
+    <li>Clips are a file list with columns, the taskbar is the player</li>
+  </ul>
+</div>
+
+<div class="stage">
+  <div>
+    <div class="win p raised" id="P"></div>
+    <div class="cap" style="width:400px"><b>Portrait 400 x 620</b> &nbsp; Recorder window top left, desktop icons on the right, Inbox file window below, taskbar at the bottom</div>
+  </div>
+  <div>
+    <div class="win w raised" id="W"></div>
+    <div class="cap" style="width:1000px"><b>Wide 1000 x 620</b> &nbsp; Recorder window left with the icons under it, Inbox file window right with Type and Wave columns</div>
+  </div>
+</div>
+
+<script>
+/* ---------- pixel icons ---------- */
+const PAL={k:'#000',w:'#fff',g:'#c0c0c0',G:'#808080',b:'#1c3fa8',B:'#5f86e0',y:'#ffe14d',Y:'#c9a200',r:'#e0201b',d:'#8a0d0a',
+  e:'#3cff6a',n:'#0a1f7a',o:'#ff8a1a',O:'#ffd27a'};
+function px(rows,s,map){
+  const h=rows.length,w=Math.max(...rows.map(r=>r.length));let out='';
+  rows.forEach((r,y)=>{let x=0;while(x<r.length){const c=r[x];if(c==='.'){x++;continue}let e=x;while(e<r.length&&r[e]===c)e++;
+    const col=(map&&map[c])||PAL[c];out+=`<rect x="${x}" y="${y}" width="${e-x}" height="1" fill="${col}"/>`;x=e}});
+  return `<svg width="${w*s}" height="${h*s}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges">${out}</svg>`;
+}
+const I={
+floppy:["kkkkkkkkkkkkkkk.","kbbggggggggbbbk.","kbbggkkggggbbbk.","kbbggkkggggbbbk.","kbbggggggggbbbk.","kbbbbbbbbbbbbbk.","kbbbbbbbbbbbbbk.",
+  "kbwwwwwwwwwwwbk.","kbwwwwwrwwwwwbk.","kbwwwwwrwwwwwbk.","kbwwwrrrrrwwwbk.","kbwwwwrrrwwwwbk.","kbwwwwwrwwwwwbk.","kbwwwwwwwwwwwbk.","kkkkkkkkkkkkkkk."],
+balloon:["................","..kkkkkkkkkkkk..",".kyyyyyyyyyyyyk.","kyyyyyyyyyyyyyyk","kyyyyyyyyyyyyyyk","kyykkyykkyykkyyk","kyykkyykkyykkyyk","kyyyyyyyyyyyyyyk",
+  ".kYYYYYYYYYYYYk.","..kkkkyykkkkkk..",".....kyk........","....kyk.........","...kk..........."],
+widget:["kkkkkkkkkkkkkkkk","knnnnnnnnnnnnwwk","knnnnnnnnnnnnwwk","kkkkkkkkkkkkkkkk","kggggggggggggggk","kgkkkkkkkkkkkkgk","kgkkkkkkekkkkkgk","kgkkekkeeekekkgk",
+  "kgkeeeeeeeeeeegk","kgkkekkeeekekkgk","kgkkkkkkekkkkkgk","kgkkkkkkkkkkkkgk","kggggggggggggggk","kkkkkkkkkkkkkkkk"],
+wave:["kkkkkkkkkk...","kwwwwwwwwkk..","kwwwwwwwwkwk.","kwwwwwwwwkkkk","kwwwwwwwwwwwk","kwwwwwbwwwwwk","kwwbwwbwbwwwk","kwbbbbbbbbbwk",
+  "kwwbwwbwbwwwk","kwwwwwbwwwwwk","kwwwwwwwwwwwk","kwwwwwwwwwwwk","kkkkkkkkkkkkk"],
+note:["kkkkkkkkkk","kwwwwwwwwk","kwbbbbbbwk","kwwwwwwwwk","kwbbbbbwwk","kwwwwwwwwk","kwbbbbbbwk","kwwwwwwwwk","kwbbbwwwwk","kwwwwwwwwk","kkkkkkkkkk"],
+folder:[".kkkk...........","kOOOOk..........","kyyyyykkkkkkkkk.","kyOOOOOOOOOOOOk.","kyyyyyyyyyyyyyk.","kyyyyyyyyyyyyyk.","kyyyyyyyyyyyyyk.",
+  "kyyyyyyyyyyyyyk.","kyyyyyyyyyyyyyk.","kYYYYYYYYYYYYYk.","kkkkkkkkkkkkkkk."],
+mic:["..kkkk..",".kGggGk.",".kGwgGk.",".kGwgGk.",".kGggGk.","k.kkkk.k","k......k",".k....k.","..kkkk..","...kk...","..kkkk.."],
+dot:["....rrrr....","..rrrrrrrr..",".rrwwrrrrrr.",".rwwrrrrrrr.","rrwrrrrrrrrr","rrrrrrrrrrrr","rrrrrrrrrrrd","rrrrrrrrrrrd",
+  ".rrrrrrrrrd.",".rrrrrrrrdd.","..rddddddd..","....dddd...."],
+gdot:[".ee.","eeee","eeee",".ee."],
+gear:["....kk....",".k.kkkk.k.","..kkkkkk..",".kkk..kkk.","kkk....kkk","kkk....kkk",".kkk..kkk.","..kkkkkk..",".k.kkkk.k.","....kk...."],
+min:["......","......","......","......","......","......","kkkkkk","kkkkkk"],
+close:["kk....kk",".kk..kk.","..kkkk..","...kk...","..kkkk..",".kk..kk.","kk....kk"],
+play:["k...","kk..","kkk.","kkkk","kkk.","kk..","k..."],
+bigplay:["k....","kk...","kkk..","kkkk.","kkkkk","kkkk.","kkk..","kk...","k...."],
+dots:["kk","kk","..","..","kk","kk","..","..","kk","kk"],
+arrow:["kkkkkkk",".kkkkk.","..kkk..","...k..."],
+mag:[".kkkk.....","k....k....","k....k....","k....k....","k....k....",".kkkk.....",".....kk...","......kk..",".......kk.","........kk"],
+spk:["...kk....","..kgk..k.","kkggk.k.k","kgggk.k.k","kgggk.k.k","kkggk.k.k","..kgk..k.","...kk...."],
+thumb:["wwwwwwwwwwk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk",
+  "wggggggggGk",".wggggggGk.","..wggggGk..","...wggGk...","....wGk....",".....k....."],
+};
+function logo(s){const hs=[4,8,12,7,10,5,3];const H=12,W=hs.length*2-1;const rows=[];
+  for(let y=0;y<H;y++){let r='';for(let x=0;x<W;x++){if(x%2){r+='.';continue}const h=hs[x/2],top=Math.floor((H-h)/2);r+=(y>=top&&y<top+h)?(y<top+2?'O':'o'):'.'}rows.push(r)}
+  return px(rows,s)}
+function minwave(seed,color){let r='';let v=seed;const n=18;for(let i=0;i<n;i++){v=(v*9301+49297)%233280;const h=2+Math.round((v/233280)*8);r+=`<rect x="${i*2}" y="${(12-h)/2}" width="1" height="${h}" fill="${color}"/>`}
+  return `<svg width="${n*2*2}" height="24" viewBox="0 0 ${n*2} 12" shape-rendering="crispEdges">${r}</svg>`.replace('height="24"','height="14"').replace(`width="${n*4}"`,`width="${n*2*1.5}"`)}
+
+const CLIPS=[["clip_001","Sat 05:48",1,"16:53"],["clip_005","Sat 05:48",0,"2:03"],["clip_006","Sat 06:05",0,"0:04"],["clip_100","Sat 09:34",1,"1:09:26"],
+  ["Screen recording","Yesterday 07:20",0,"0:03"],["Meeting","Yesterday 07:20",0,"0:02"],["Meeting (2)","Today 10:03",0,"0:02"],["Presentasjon","Today 10:25",1,"0:27"]];
+
+function titleBar(){return `<div class="tb">${logo(1)}<div class="name">Thrasher<small>Sound Recorder 95</small></div>
+  <div class="btn tbtn" title="Settings">${px(I.gear,1)}</div><div class="btn tbtn" title="Minimise">${px(I.min,1)}</div><div class="gap"></div><div class="btn tbtn" title="Close">${px(I.close,1)}</div></div>`}
+
+function recorder(wide){
+  const segs=wide?30:22;let lv='';for(let i=0;i<segs;i++){const c=i>=segs-2?'r':i>=segs-6?'y':'';lv+=`<i class="${c}"></i>`}
+  return `<div class="ititle">${px(I.mic,1)}Sound Recorder<span class="sp"></span><span class="hint">${wide?'48 kHz mono':''}</span></div>
+  <div class="rbody">
+    <div class="rowA" style="${wide?'height:34px':''}">
+      <div class="field sunken status">${px(I.gdot,2)}READY</div>
+      <div class="field sunken timer" style="${wide?'font-size:34px;min-width:150px':''}">00:00.0</div>
+    </div>
+    <div class="scopebox sunken" style="height:${wide?166:70}px"><canvas class="scope"></canvas><span class="tag">SCOPE</span><span class="tag r">${wide?'IN 1':''}</span></div>
+    <div class="rowC">
+      <fieldset><legend><u>I</u>nput</legend>
+        <div class="level sunken" data-segs="${segs}" style="${wide?'height:18px':''}">${lv}</div>
+        <div class="combo sunken">${px(I.mic,1)}<span class="txt">Default microphone</span><span class="btn arr">${px(I.arrow,1)}</span></div>
+        ${wide?'<div class="uline" style="font-size:12px;color:#333;display:flex;justify-content:space-between;padding:0 2px"><span>-60</span><span>-40</span><span>-20</span><span>-6</span><span>0 dB</span></div>':''}
+      </fieldset>
+      <div class="btn rec" style="${wide?'width:112px':''}" title="Record">${px(I.dot,wide?4:3)}<span class="lbl"><span><u>R</u>ec</span></span></div>
+    </div>
+  </div>`}
+
+function icons(){return `
+  <div class="dicon" title="Import file"><div class="ic">${px(I.floppy,2)}</div><span>Import</span></div>
+  <div class="dicon" title="Ask"><div class="ic">${px(I.balloon,2)}</div><span>Ask</span></div>
+  <div class="dicon" title="Widget mode"><div class="ic">${px(I.widget,2)}</div><span>Widget</span></div>`}
+
+function explorer(wide){
+  const cols=wide?'24px 22px 1fr 122px 104px 66px 66px 20px':'24px 20px 1fr 104px 58px 20px';
+  const rowH=wide?32:26;
+  let hdr=wide?`<div class="btn" style="grid-column:1/4">Name</div><div class="btn">Modified</div><div class="btn">Type</div><div class="btn">Wave</div><div class="btn num">Length</div><div class="btn"></div>`
+              :`<div class="btn" style="grid-column:1/4">Name</div><div class="btn">Modified</div><div class="btn num">Length</div><div class="btn"></div>`;
+  let rows='';CLIPS.forEach((c,i)=>{const sel=i===1;
+    const note=c[2]?`<span title="Transcribed">${px(I.note,1)}</span>`:'';
+    rows+=`<div class="row${sel?' sel':''}" style="grid-template-columns:${cols};height:${rowH}px">
+      <div class="btn pl" title="Play">${px(I.play,1)}</div>
+      <div>${px(I.wave,1)}</div>
+      <div class="nm"><span class="t">${c[0]}</span>${wide?'':note}</div>
+      <div class="md">${c[1]}</div>
+      ${wide?`<div class="ty">${c[2]?'Wave + text':'Wave sound'}</div><div class="wv">${minwave(i*37+11,sel?'#ffffff':'#0a1f7a')}</div>`:''}
+      <div class="ln">${c[3]}</div>
+      <div class="btn mn" title="More">${px(I.dots,1)}</div></div>`});
+  return `<div class="ititle off">${px(I.folder,1)}Inbox<span class="sp"></span></div>
+  <div class="tools">
+    <div class="combo sunken">${px(I.folder,1)}<span class="txt">Inbox</span><span class="btn arr">${px(I.arrow,1)}</span></div>
+    <div class="search sunken">${px(I.mag,1)}Search</div>
+  </div>
+  <div class="list sunken">
+    <div class="hdr" style="grid-template-columns:${cols}">${hdr}</div>
+    ${rows}
+  </div>
+  <div class="sbar"><div class="thin-sunk">8 clips${wide?' &nbsp; 3 transcribed':''}</div><div class="thin-sunk">${wide?'clip_005 selected':'1 selected'}</div></div>`}
+
+function taskbar(wide){return `<div class="task">
+  <div class="btn play" title="Play">${px(I.bigplay,2).replace('width="10"','width="8"').replace('height="18"','height="14"')}Play</div>
+  <div class="sep"></div>
+  <div class="btn down job" style="width:${wide?240:116}px">${px(I.spk,1)}<span>Nothing playing</span></div>
+  <div class="track"><div class="groove"></div><div class="thumb">${px(I.thumb,1)}</div></div>
+  <div class="tray thin-sunk">${wide?logo(1):''}--:-- / --:--</div></div>`}
+
+document.getElementById('P').innerHTML=titleBar()+`<div class="desk">
+  <div class="iwin raised" style="left:6px;top:6px;width:302px;height:200px">${recorder(false)}</div>
+  <div class="dicons" style="left:314px;top:10px;flex-direction:column;gap:10px">${icons()}</div>
+  <div class="iwin raised" style="left:6px;top:213px;right:6px;bottom:36px">${explorer(false)}</div>
+  ${taskbar(false)}</div>`;
+document.getElementById('W').innerHTML=titleBar()+`<div class="desk">
+  <div class="iwin raised" style="left:8px;top:8px;width:394px;height:384px">${recorder(true)}</div>
+  <div class="dicons" style="left:14px;top:410px;gap:22px">${icons()}</div>
+  <div class="iwin raised" style="left:414px;top:8px;right:8px;height:476px">${explorer(true)}</div>
+  ${taskbar(true)}</div>`;
+
+/* ---------- scope + level ---------- */
+const still=location.search.includes('still');
+const scopes=[...document.querySelectorAll('canvas.scope')].map(c=>{const r=c.getBoundingClientRect();c.width=Math.round(r.width);c.height=Math.round(r.height);return c});
+const levels=[...document.querySelectorAll('.level')];
+function frame(t){
+  const lvl=0.5+0.28*Math.sin(t*0.0021)+0.14*Math.sin(t*0.0093+1.3);
+  scopes.forEach(c=>{const g=c.getContext('2d'),W=c.width,H=c.height;
+    g.fillStyle='#000';g.fillRect(0,0,W,H);
+    g.fillStyle='#0b3417';
+    for(let x=0;x<W;x+=16)g.fillRect(x,0,1,H);
+    for(let y=Math.round(H/2)%12;y<H;y+=12)g.fillRect(0,y,W,1);
+    g.fillStyle='#145a26';g.fillRect(0,Math.round(H/2),W,1);
+    const amp=H*0.38*lvl;
+    const path=()=>{g.beginPath();for(let x=0;x<=W;x+=2){const p=x/W;
+      const env=Math.sin(p*Math.PI);
+      const y=H/2+amp*env*(0.6*Math.sin(p*31+t*0.011)+0.3*Math.sin(p*83-t*0.017)+0.15*Math.sin(p*190+t*0.03));
+      x?g.lineTo(x,y):g.moveTo(x,y)}};
+    g.lineJoin='round';
+    path();g.strokeStyle='rgba(60,255,106,.22)';g.lineWidth=5;g.stroke();
+    path();g.strokeStyle='#3cff6a';g.lineWidth=1.6;g.stroke();
+  });
+  levels.forEach(l=>{const n=+l.dataset.segs,on=Math.round(n*Math.min(.95,lvl));[...l.children].forEach((s,i)=>s.classList.toggle('on',i<on))});
+}
+if(still){frame(1800)}else{(function loop(t){frame(t);setTimeout(()=>requestAnimationFrame(loop),66)})(0)}
+</script>
+</body>
+</html>

@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quest Menu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --p:3px;              /* the one pixel unit */
+  --ink:#0a0b1a;
+  --win:#1c2b92;
+  --win-hi:#2335a6;
+  --win-lo:#15206f;
+  --sel:#3049c9;
+  --white:#f4f1e6;
+  --grey:#8d93b8;
+  --dim:#5f679e;
+  --gold:#ffd23f;
+  --hp:#4cd66b;
+  --mp:#56a8ff;
+  --red:#e5432f;
+  --page:#07081a;
+  --frame:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='7' shape-rendering='crispEdges'%3E%3Cpath fill='%230a0b1a' d='M1 0h5v1H1zM0 1h1v5H0zM6 1h1v5H6zM1 6h5v1H1z'/%3E%3Cpath fill='%23f4f1e6' d='M1 1h5v5H1z'/%3E%3Cpath fill='%238d93b8' d='M2 2h3v3H2z'/%3E%3Cpath fill='%231c2b92' d='M3 3h1v1H3z'/%3E%3C/svg%3E");
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--page)}
+body{
+  color:var(--white);
+  font-family:"Pixelify Sans",system-ui,sans-serif;
+  padding:24px 16px 40px;
+  min-height:100vh;
+  background-color:var(--page);
+  background-image:
+    linear-gradient(45deg,#0c0e24 25%,transparent 25%,transparent 75%,#0c0e24 75%),
+    linear-gradient(45deg,#0c0e24 25%,transparent 25%,transparent 75%,#0c0e24 75%);
+  background-size:6px 6px;
+  background-position:0 0,3px 3px;
+}
+svg.px{display:block;shape-rendering:crispEdges}
+
+/* page heading */
+.head{max-width:1440px;margin:0 auto 20px;display:flex;gap:40px;align-items:flex-end;flex-wrap:wrap}
+.head h1{font-family:Silkscreen;font-weight:700;font-size:32px;letter-spacing:1px;color:var(--gold);line-height:1;text-shadow:3px 3px 0 #7a4b00}
+.head .idea{font-size:17px;color:var(--white);margin-top:8px}
+.head ul{list-style:none;font-size:15px;color:var(--grey);display:grid;grid-template-columns:auto auto;gap:4px 28px}
+.head li::before{content:"";display:inline-block;width:6px;height:6px;background:var(--gold);margin:0 9px 2px 0}
+
+.stage{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;align-items:flex-start}
+.cap{font-family:Silkscreen;font-size:12px;color:var(--dim);margin:0 0 8px 3px}
+
+/* app shell */
+.app{
+  background:var(--ink);
+  position:relative;
+  display:flex;flex-direction:column;gap:6px;
+  padding:0 6px 6px;
+  box-shadow:0 0 0 3px #22264a, 9px 9px 0 0 #000;
+  overflow:hidden;
+}
+.portrait{width:400px;height:620px}
+.wide{width:1000px;height:620px}
+
+/* RPG window */
+.win{
+  border:9px solid transparent;
+  border-image:var(--frame) 3 / 9px stretch;
+  background:
+    linear-gradient(var(--win-hi) 0 6px, #1f2f9b 6px 12px, var(--win) 12px calc(100% - 9px), var(--win-lo) calc(100% - 9px));
+  background-clip:padding-box;
+  position:relative;
+}
+.label{font-family:Silkscreen;font-size:11px;letter-spacing:.5px;color:var(--gold);line-height:1}
+
+/* title bar */
+.titlebar{height:36px;flex:none;display:flex;align-items:center;gap:9px;padding:0 3px}
+.titlebar .brand{font-family:Silkscreen;font-weight:700;font-size:16px;letter-spacing:1px;color:var(--white)}
+.titlebar .lvl{font-family:Silkscreen;font-size:11px;color:var(--dim);margin-left:2px}
+.titlebar .sp{flex:1}
+.tb{width:27px;height:27px;display:grid;place-items:center}
+.tb.close:hover{background:var(--red)}
+
+/* pixel button */
+.pbtn{
+  width:27px;height:27px;flex:none;display:grid;place-items:center;
+  background:var(--win-lo);
+  clip-path:polygon(3px 0,calc(100% - 3px) 0,100% 3px,100% calc(100% - 3px),calc(100% - 3px) 100%,3px 100%,0 calc(100% - 3px),0 3px);
+  box-shadow:inset 0 0 0 3px var(--ink);
+}
+
+/* recorder card */
+.card{display:flex;gap:12px;padding:6px 6px 6px 6px;align-items:center}
+.sprite{
+  flex:none;display:grid;place-items:center;
+  background:var(--win-lo);
+  box-shadow:inset 0 0 0 3px var(--ink), inset 0 0 0 6px var(--grey);
+  clip-path:polygon(3px 0,calc(100% - 3px) 0,100% 3px,100% calc(100% - 3px),calc(100% - 3px) 100%,3px 100%,0 calc(100% - 3px),0 3px);
+}
+.info{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.name{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status{display:flex;align-items:center;gap:6px;font-family:Silkscreen;font-size:12px;color:var(--hp)}
+.status .dot{width:6px;height:6px;background:var(--hp);box-shadow:0 0 0 3px #0f3d1e}
+.status .k{color:var(--grey)}
+.timer{font-family:Silkscreen;font-size:28px;line-height:1;letter-spacing:1px;color:var(--white);text-shadow:3px 3px 0 var(--ink)}
+.meterrow{display:flex;align-items:center;gap:6px}
+.meter{
+  flex:1;height:15px;background:var(--ink);display:flex;gap:3px;padding:3px;
+  box-shadow:0 0 0 3px var(--grey);
+  margin:3px;
+}
+.meter i{flex:1;background:#151d5c}
+.meter i.on{background:var(--hp)}
+.meter i.on.w{background:var(--gold)}
+.meter i.on.h{background:var(--red)}
+.db{font-family:Silkscreen;font-size:11px;color:var(--grey);width:60px;text-align:right;white-space:nowrap}
+
+.recbox{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px}
+.recbox .label{color:var(--white)}
+
+/* toolbar + command list */
+.row2{display:flex;gap:6px;flex:none}
+.tools{flex:1;display:flex;flex-direction:column;gap:6px;padding:3px}
+.picker{display:flex;align-items:center;gap:8px;height:24px;padding:0 6px}
+.picker .lab{font-family:Silkscreen;font-size:11px;color:var(--gold)}
+.picker .val{font-size:15px;font-weight:500;flex:1}
+.field{
+  height:27px;display:flex;align-items:center;gap:8px;padding:0 9px;
+  background:var(--ink);
+  box-shadow:inset 0 0 0 3px #2a3486;
+  clip-path:polygon(3px 0,calc(100% - 3px) 0,100% 3px,100% calc(100% - 3px),calc(100% - 3px) 100%,3px 100%,0 calc(100% - 3px),0 3px);
+  color:var(--dim);font-size:14px;
+}
+.field .caret{width:3px;height:15px;background:var(--grey);margin-left:-4px}
+.cmds{flex:none;padding:3px 6px}
+.cmds .ttl{margin:0 0 6px 0}
+.cmd{display:flex;align-items:center;gap:8px;height:21px;font-size:14px}
+.cmd + .cmd{margin-top:3px}
+
+/* clip list */
+.list{flex:1;min-height:0;padding:0 3px 0 0;overflow:hidden}
+.listhead{display:flex;justify-content:space-between;padding:0 6px 6px 30px}
+.listhead .label{color:var(--grey)}
+.row{display:flex;align-items:center;gap:8px;height:29px;padding:0 6px 0 30px;position:relative}
+.row .wave{flex:none}
+.row .meta{flex:1;min-width:0;line-height:1.05}
+.row .nm{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .sub{font-size:11px;color:var(--grey);white-space:nowrap}
+.row .sub b{font-weight:400;color:var(--mp)}
+.row .len{font-family:Silkscreen;font-size:11px;color:var(--white);text-align:right;min-width:48px}
+.row .more{width:15px;display:grid;place-items:center}
+.row.sel{background:var(--sel);box-shadow:inset 0 3px 0 #4462e6, inset 0 -3px 0 #22379f}
+.row.sel .sub{color:#c9cdf0}
+.row.sel .len{color:var(--gold)}
+.cursor{position:absolute;left:3px;top:50%;transform:translateY(-50%);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{visibility:hidden}}
+html.still .cursor{animation:none}
+
+/* footer player */
+.footer{flex:none;padding:0 6px}
+.fline{display:flex;align-items:center;gap:9px}
+.fline .np{flex:1;font-size:14px;color:var(--grey)}
+.fline .tm{font-family:Silkscreen;font-size:11px;color:var(--grey)}
+.prog{height:12px;background:var(--ink);box-shadow:0 0 0 3px var(--dim);margin:3px;padding:3px}
+.prog i{display:block;height:100%;width:0;background:var(--gold)}
+.exp{font-family:Silkscreen;font-size:11px;color:var(--gold)}
+
+/* wide layout */
+.wbody{flex:1;min-height:0;display:grid;grid-template-columns:400px 1fr;gap:6px}
+.lcol,.rcol{display:flex;flex-direction:column;gap:6px;min-height:0}
+.bigcard{flex:1;display:flex;flex-direction:column;padding:6px 12px}
+.party{display:flex;gap:15px;align-items:center}
+.party .info{gap:8px}
+.party .name{font-size:18px}
+.bigtimer{font-family:Silkscreen;font-size:52px;line-height:1;letter-spacing:2px;text-align:center;margin:20px 0 14px;text-shadow:3px 3px 0 var(--ink)}
+.stats{display:flex;flex-direction:column;gap:9px}
+.bigrec{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px}
+.bigrec .label{font-size:12px;color:var(--white)}
+.bigrec .hint{font-family:Silkscreen;font-size:11px;color:var(--dim)}
+.wcmds{flex:none;display:flex;padding:3px 3px;gap:0}
+.wcmds .ttl{writing-mode:vertical-rl;transform:rotate(180deg);margin-right:12px;align-self:center}
+.wcmds .cmd{flex:1;margin:0;height:27px;justify-content:center;gap:9px;font-size:15px}
+.wcmds .cmd + .cmd{margin:0;border-left:3px solid #2a3aa8}
+.wtools{flex:none;flex-direction:row;align-items:center;padding:3px 6px;gap:12px}
+.wtools .picker{padding:0;width:150px;flex:none}
+.wtools .field{flex:1}
+.wide .row{height:42px;gap:14px;padding-left:36px}
+.wide .listhead{padding:6px 12px 6px 36px}
+.wide .cursor{left:6px}
+.wide .row .nm{font-size:15px}
+.wide .row .sub{font-size:12px;margin-top:2px}
+.wide .row .len{min-width:64px;font-size:12px}
+.wide .footer .fline{gap:14px}
+.wide .footer .prog{flex:1;margin:3px 6px}
+</style>
+</head>
+<body>
+
+<header class="head">
+  <div>
+    <h1>Quest Menu</h1>
+    <p class="idea">Your recorder as a party member in a retro role playing menu</p>
+  </div>
+  <ul>
+    <li>Every panel is a blue menu window with a double pixel frame</li>
+    <li>A blinking glove cursor marks the selected clip</li>
+    <li>Recorder is a character card with a mic sprite and an IN bar</li>
+    <li>Toolbar icons become a small command menu</li>
+  </ul>
+</header>
+
+<main class="stage">
+  <section>
+    <p class="cap" style="width:400px">Portrait 400 x 620 · commands beside search</p>
+    <div class="app portrait" id="portrait"></div>
+  </section>
+  <section>
+    <p class="cap">Wide 1000 x 620 · command menu docks under the character card</p>
+    <div class="app wide" id="wide"></div>
+  </section>
+</main>
+
+<script>
+const STILL = location.search.includes('still');
+if (STILL) document.documentElement.classList.add('still');
+
+const P = 3; // pixel unit
+const COL = {
+  K:'#0a0b1a', W:'#f4f1e6', G:'#8d93b8', D:'#5f679e', d:'#3a4280',
+  Y:'#ffd23f', y:'#b8860b', R:'#e5432f', r:'#8f1f1a', L:'#ff8a6a',
+  g:'#4cd66b', B:'#56a8ff', S:'#c9cdf0'
+};
+
+// pixel maps; '#' uses the fallback colour
+const ICONS = {
+  gear:['..#.#..','.#####.','###.###','##...##','###.###','.#####.','..#.#..'],
+  min:['.......','.......','.......','.......','.......','#######','#######'],
+  close:['##...##','.##.##.','..###..','...#...','..###..','.##.##.','##...##'],
+  play:['#....','###..','#####','###..','#....'],
+  dots:['#','.','#','.','#'],
+  imp:['...#...','...#...','.#.#.#.','..###..','#..#..#','#.....#','#######'],
+  ask:['.#####.','#.....#','#.#.#.#','#.....#','.#####.','.##....','.#.....'],
+  widget:['#######','#######','#.....#','#.###.#','#.###.#','#.....#','#######'],
+  search:['.###...','#...#..','#...#..','#...#..','.####..','....##.','.....##'],
+  down:['#####','.###.','..#..'],
+  hand:['.KKK....','KWWWKKKK','KWWWWWWK','KWWWKKK.','KWWWWK..','.KKKK...'],
+  note:['..##','..#.','..#.','###.','##..'],
+  mic:[
+    '...KKKK...',
+    '..KWWGGK..',
+    '..KWDGDK..',
+    '..KWGGGK..',
+    '..KWDGDK..',
+    'K.KGGGDK.K',
+    'K.KGDDDK.K',
+    'K..KKKK..K',
+    '.K......K.',
+    '..KKKKKK..',
+    '....KK....',
+    '....KK....',
+    '..KYYYYK..',
+    '..KKKKKK..'
+  ]
+};
+
+function pixSVG(map, color, p = P) {
+  const h = map.length, w = map[0].length;
+  let r = '';
+  for (let y = 0; y < h; y++) {
+    const row = map[y];
+    let x = 0;
+    while (x < w) {
+      const c = row[x];
+      if (c === '.') { x++; continue; }
+      let n = 1;
+      while (x + n < w && row[x + n] === c) n++;
+      const fill = c === '#' ? color : COL[c];
+      r += `<rect x="${x}" y="${y}" width="${n}" height="1" fill="${fill}"/>`;
+      x += n;
+    }
+  }
+  return `<svg class="px" width="${w * p}" height="${h * p}" viewBox="0 0 ${w} ${h}">${r}</svg>`;
+}
+const ic = (name, color = COL.W, p = P) => pixSVG(ICONS[name], color, p);
+
+// stepped round record button with a mic glyph
+function recButton(N) {
+  const c = (N - 1) / 2, R = N / 2 - 0.25;
+  const g = [];
+  for (let y = 0; y < N; y++) {
+    let row = '';
+    for (let x = 0; x < N; x++) {
+      const d = Math.hypot(x - c, y - c);
+      if (d > R) row += '.';
+      else if (d > R - 1.15) row += 'K';
+      else {
+        const diag = (x - c) + (y - c);
+        if (d > R - 3.2 && diag < -R * 0.75) row += 'L';
+        else if (d > R - 3.2 && diag > R * 0.75) row += 'r';
+        else row += 'R';
+      }
+    }
+    g.push(row.split(''));
+  }
+  const glyph = ['..WWW..','..WWW..','..WWW..','W.WWW.W','W.....W','.W...W.','..WWW..','...W...','.WWWWW.'];
+  const scale = N >= 24 ? 2 : 1;
+  const gw = 7 * scale, gh = 9 * scale;
+  const ox = Math.round((N - gw) / 2), oy = Math.round((N - gh) / 2);
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+    if (glyph[Math.floor(y / scale)][Math.floor(x / scale)] === 'W') g[oy + y][ox + x] = 'W';
+  }
+  // drop shadow row under the button
+  return pixSVG(g.map(r => r.join('')), COL.R);
+}
+
+function meter(id, n) {
+  let s = `<div class="meter" id="${id}">`;
+  for (let i = 0; i < n; i++) {
+    const cls = i >= n - 2 ? 'h' : i >= n - 6 ? 'w' : '';
+    s += `<i class="${cls}"></i>`;
+  }
+  return s + '</div>';
+}
+
+// tiny pixel waveform from a seed
+function wave(seed, cols, maxH, color) {
+  let x = seed * 9301 + 49297;
+  const rnd = () => (x = (x * 9301 + 49297) % 233280) / 233280;
+  const h = maxH;
+  let r = '';
+  for (let i = 0; i < cols; i++) {
+    const env = 0.35 + 0.65 * Math.abs(Math.sin(i * 0.55 + seed));
+    let v = Math.max(1, Math.round(rnd() * env * h));
+    if (v % 2 !== h % 2) v = Math.min(h, v + 1);
+    const y = (h - v) / 2;
+    r += `<rect x="${i * 2}" y="${y}" width="1" height="${v}" fill="${color}"/>`;
+  }
+  return `<svg class="px wave" width="${(cols * 2 - 1) * P}" height="${h * P}" viewBox="0 0 ${cols * 2 - 1} ${h}">${r}</svg>`;
+}
+
+const CLIPS = [
+  ['clip_001', 'Sat 05:48', true, '16:53'],
+  ['clip_005', 'Sat 05:48', false, '2:03'],
+  ['clip_006', 'Sat 06:05', false, '0:04'],
+  ['clip_100', 'Sat 09:34', true, '1:09:26'],
+  ['Screen recording', 'Yesterday 07:20', false, '0:03'],
+  ['Meeting', 'Yesterday 07:20', false, '0:02'],
+  ['Meeting (2)', 'Today 10:03', false, '0:02'],
+  ['Presentasjon', 'Today 10:25', true, '0:27']
+];
+
+function rows(cols, maxH) {
+  return CLIPS.map((c, i) => {
+    const sel = i === 1;
+    return `<div class="row${sel ? ' sel' : ''}">
+      ${sel ? `<span class="cursor">${ic('hand')}</span>` : ''}
+      <span class="pbtn">${ic('play', sel ? COL.Y : COL.W)}</span>
+      ${wave(i + 3, cols, maxH, sel ? COL.W : COL.D)}
+      <div class="meta"><div class="nm">${c[0]}</div><div class="sub">${c[1]}${c[2] ? ' · <b>transcribed</b>' : ''}</div></div>
+      <span class="len">${c[3]}</span>
+      <span class="more">${ic('dots', sel ? COL.W : COL.G)}</span>
+    </div>`;
+  }).join('');
+}
+
+const titlebar = `<div class="titlebar">
+  ${ic('note', COL.Y)}
+  <span class="brand">Thrasher</span><span class="lvl">LV 1</span>
+  <span class="sp"></span>
+  <span class="tb">${ic('gear', COL.G)}</span>
+  <span class="tb">${ic('min', COL.G)}</span>
+  <span class="tb close">${ic('close', COL.G)}</span>
+</div>`;
+
+const cmdItems = `
+  <div class="cmd">${ic('imp', COL.W)}Import</div>
+  <div class="cmd">${ic('ask', COL.W)}Ask</div>
+  <div class="cmd">${ic('widget', COL.W)}Widget</div>`;
+
+const footer = (wide) => wide
+  ? `<div class="win footer"><div class="fline">
+      <span class="pbtn">${ic('play')}</span>
+      <span class="np" style="flex:none;width:180px">Nothing playing</span>
+      <span class="exp">EXP</span>
+      <div class="prog"><i></i></div>
+      <span class="tm">--:-- / --:--</span>
+    </div></div>`
+  : `<div class="win footer"><div class="fline">
+      <span class="pbtn">${ic('play')}</span>
+      <span class="np">Nothing playing</span>
+      <span class="tm">--:-- / --:--</span>
+    </div>
+    <div class="fline" style="gap:6px;margin-top:3px"><span class="exp">EXP</span><div class="prog" style="flex:1;margin:3px"><i></i></div></div>
+    </div>`;
+
+document.getElementById('portrait').innerHTML = `
+  ${titlebar}
+  <div class="win card">
+    <div class="sprite" style="width:48px;height:60px">${pixSVG(ICONS.mic, '', P)}</div>
+    <div class="info">
+      <div class="name">Default microphone</div>
+      <div class="status"><span class="dot"></span>READY</div>
+      <div class="timer">00:00.0</div>
+      <div class="meterrow"><span class="label">IN</span>${meter('m1', 14)}</div>
+    </div>
+    <div class="recbox">${recButton(19)}<span class="label">REC</span></div>
+  </div>
+  <div class="row2">
+    <div class="win tools">
+      <div class="picker"><span class="lab">PARTY</span><span class="val">Inbox</span>${ic('down', COL.Y)}</div>
+      <div class="field">${ic('search', COL.D)}Search<span class="caret"></span></div>
+    </div>
+    <div class="win cmds">${cmdItems}</div>
+  </div>
+  <div class="win list">${rows(11, 7)}</div>
+  ${footer(false)}
+`;
+
+document.getElementById('wide').innerHTML = `
+  ${titlebar}
+  <div class="wbody">
+    <div class="lcol">
+      <div class="win bigcard">
+        <div class="party">
+          <div class="sprite" style="width:78px;height:102px">${pixSVG(ICONS.mic, '', 6)}</div>
+          <div class="info">
+            <span class="label">RECORDER</span>
+            <div class="name">Default microphone</div>
+            <div class="status"><span class="dot"></span><span class="k">STATUS</span>READY</div>
+          </div>
+        </div>
+        <div class="bigtimer">00:00.0</div>
+        <div class="stats">
+          <div class="meterrow"><span class="label">IN</span>${meter('m2', 26)}<span class="db" id="db2">-18 dB</span></div>
+        </div>
+        <div class="bigrec">${recButton(33)}<span class="label">REC</span></div>
+      </div>
+      <div class="win wcmds"><span class="label ttl">CMD</span>${cmdItems}</div>
+    </div>
+    <div class="rcol">
+      <div class="win tools wtools">
+        <div class="picker"><span class="lab">PARTY</span><span class="val">Inbox</span>${ic('down', COL.Y)}</div>
+        <div class="field">${ic('search', COL.D)}Search<span class="caret"></span></div>
+      </div>
+      <div class="win list">
+        <div class="listhead"><span class="label">CLIPS</span><span class="label">TIME</span></div>
+        ${rows(20, 9)}
+      </div>
+    </div>
+  </div>
+  ${footer(true)}
+`;
+
+// meter animation, quantised to segments (cheap to redraw)
+const meters = [...document.querySelectorAll('.meter')].map(m => [...m.children]);
+const db2 = document.getElementById('db2');
+let t = 0, last = -1;
+function setLevel(v) {
+  meters.forEach(segs => {
+    const n = Math.round(v * segs.length);
+    segs.forEach((s, i) => s.classList.toggle('on', i < n));
+  });
+  db2.textContent = `${Math.round(-48 + v * 46)} dB`;
+}
+function frame(now) {
+  t = now / 1000;
+  const v = Math.min(1, 0.42 + 0.22 * Math.sin(t * 2.3) + 0.14 * Math.sin(t * 5.1 + 1) + 0.08 * Math.sin(t * 11));
+  const q = Math.round(v * 26);
+  if (q !== last) { last = q; setLevel(v); }
+  requestAnimationFrame(frame);
+}
+if (STILL) setLevel(0.62); else requestAnimationFrame(frame);
+</script>
+</body>
+</html>

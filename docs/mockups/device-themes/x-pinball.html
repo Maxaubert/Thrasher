@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Thrasher Pinball</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Monoton&family=Barlow+Condensed:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --plasma:#ff7a1a; --plasma-hi:#ffb050;
+  --cab:#0a090c; --ink:#efe8f2; --mute:#8d8496;
+  --pf:#0b1124;
+  --chrome:linear-gradient(180deg,#f4f4f6 0%,#9a98a0 45%,#e6e5ea 60%,#6d6a74 100%);
+  --chromeV:linear-gradient(90deg,#6d6a74 0%,#e9e8ee 40%,#a19fa8 60%,#f4f4f6 75%,#5e5b64 100%);
+}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 24px;background:#0d0b10;color:var(--ink);font-family:'Barlow Condensed',system-ui,sans-serif}
+
+/* ---------- page heading ---------- */
+.head{display:flex;gap:34px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
+.eyebrow{font-size:11px;letter-spacing:4px;color:#b9a9c4;font-weight:600}
+.head h1{margin:2px 0 0;font-family:'Monoton';font-weight:400;font-size:44px;line-height:1;
+  background:linear-gradient(180deg,#fff3c4,#ffb347 50%,#ff5a1f);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 10px rgba(255,110,30,.35))}
+.idea{font-size:16px;color:#d9cfe0;max-width:300px;line-height:1.3}
+.what{display:grid;grid-template-columns:repeat(2,minmax(240px,1fr));gap:4px 26px;margin:0;padding:0;list-style:none;font-size:14px;color:#cfc4d6}
+.what li::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--plasma);box-shadow:0 0 6px var(--plasma);margin-right:8px;vertical-align:1px}
+.fontnote{font-size:12px;color:#7c7286;margin-top:4px}
+
+.stage{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+
+/* ---------- window shell ---------- */
+.win{position:relative;border-radius:10px;overflow:hidden;background:var(--cab);display:flex;flex-direction:column;
+  box-shadow:0 0 0 1px #2c2733,0 0 0 4px #141117,0 0 0 5px #3a3440,0 24px 50px rgba(0,0,0,.6)}
+.p{width:400px;height:620px}
+.w{width:1000px;height:620px}
+
+.tb{flex:none;height:32px;display:flex;align-items:center;gap:4px;padding:0 6px 0 12px;
+  background:linear-gradient(#2a2530,#121015);box-shadow:inset 0 -1px 0 #000,inset 0 -3px 0 #5f5866}
+.brand{font-family:'Monoton';font-size:16px;letter-spacing:2px;color:var(--plasma-hi);text-shadow:0 0 8px rgba(255,120,30,.55)}
+.tb .sp{flex:1}
+.ib{width:26px;height:24px;display:grid;place-items:center;border-radius:4px;color:#c9c3cf}
+.ib svg{width:15px;height:15px}
+.ib.gear{color:#ffb050}
+
+/* ---------- backglass ---------- */
+.bglass{position:relative;flex:none;overflow:hidden;
+  background:
+   radial-gradient(circle at 18% 22%,#fff 0 1px,transparent 1.6px),
+   radial-gradient(circle at 80% 14%,#fff 0 1px,transparent 1.6px),
+   radial-gradient(circle at 66% 30%,#ffd 0 .8px,transparent 1.4px),
+   radial-gradient(circle at 34% 10%,#fde 0 .8px,transparent 1.4px),
+   radial-gradient(ellipse at 50% 110%,rgba(255,110,30,.55),transparent 60%),
+   repeating-conic-gradient(from 0deg at 50% 115%,#3a1148 0 5deg,#1e0b2e 5deg 10deg);
+  box-shadow:inset 0 0 0 2px #000,inset 0 0 0 4px #6b6472,inset 0 0 0 5px #000}
+.bglass .art{position:absolute;inset:0;pointer-events:none}
+.bglass .title{position:relative;text-align:center;font-family:'Monoton';letter-spacing:3px;
+  background:linear-gradient(180deg,#fffbe6,#ffc35a 45%,#ff5a1f 80%,#b02a00);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 0 #2a0636) drop-shadow(0 0 8px rgba(255,120,40,.5))}
+.dmdbox{position:relative;background:#050304;border-radius:4px;padding:5px;
+  box-shadow:inset 0 0 0 1px #2b2420,0 0 0 2px #000,0 0 0 4px #4d4752,0 0 20px rgba(255,110,20,.25)}
+.dmdbox canvas{display:block}
+
+/* ---------- playfield ---------- */
+.pf{position:relative;flex:none;display:flex;overflow:hidden;
+  background:
+   radial-gradient(ellipse at 22% 30%,rgba(70,110,255,.28),transparent 55%),
+   radial-gradient(ellipse at 70% 90%,rgba(255,80,60,.18),transparent 55%),
+   repeating-linear-gradient(115deg,rgba(255,255,255,.018) 0 14px,transparent 14px 28px),
+   var(--pf);
+  box-shadow:inset 0 2px 0 #000,inset 0 3px 0 #514a58}
+.pf .zone{flex:1;min-width:0;position:relative;display:flex;flex-direction:column}
+.lanes{display:flex;align-items:center;gap:0}
+.lane{position:relative;display:grid;place-items:center;border-left:1.5px solid #8d8a94;height:100%}
+.lane:last-child{border-right:1.5px solid #8d8a94}
+.lamp{border-radius:50%;background:radial-gradient(circle at 40% 35%,#3c2c22,#120a06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.lamp.on{background:radial-gradient(circle at 40% 35%,#fff6d0,var(--c) 45%,#5a1a00);box-shadow:0 0 7px var(--c),inset 0 0 0 1px rgba(255,255,255,.3)}
+.cap{font-size:10px;letter-spacing:2px;color:#a9b4e0;font-weight:600;text-transform:uppercase}
+
+.bumpers{display:flex;justify-content:space-around;align-items:flex-start}
+.bump{display:flex;flex-direction:column;align-items:center;gap:3px}
+.bk{position:relative;border-radius:50%;
+  background:radial-gradient(circle at 50% 42%,var(--c2) 0,var(--c) 58%,#120608 100%);
+  box-shadow:0 3px 0 #000,0 0 14px var(--g),inset 0 0 0 2px rgba(0,0,0,.5)}
+.bk::before{content:"";position:absolute;inset:16%;border-radius:50%;
+  background:radial-gradient(circle at 40% 30%,#ffffff,#e4e0d8 55%,#9b958c);
+  box-shadow:0 0 0 2px #c9c6cf,0 0 0 3px #3a3640,0 2px 4px rgba(0,0,0,.6)}
+.bk svg{position:absolute;inset:0;margin:auto;color:#1c1820}
+.bk.red{--c:#e5322a;--c2:#ff8a6a;--g:rgba(255,60,40,.45)}
+.bk.yel{--c:#e8a60e;--c2:#ffe27a;--g:rgba(255,190,40,.4)}
+.bk.blu{--c:#1f78e0;--c2:#7cc4ff;--g:rgba(60,150,255,.45)}
+.blabel{font-size:10px;letter-spacing:2px;font-weight:700;color:#e9e4f0}
+
+.shooter{flex:none;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+  background:linear-gradient(90deg,#05060c,#141a30 50%,#05060c);border-left:3px solid #8f8c96}
+.rod{position:relative;width:10px;background:var(--chromeV);border-radius:2px}
+.rod::after{content:"";position:absolute;left:-4px;right:-4px;bottom:0;height:70%;
+  background:repeating-linear-gradient(180deg,#cfcdd4 0 2px,#4a4750 2px 4px);border-radius:3px;opacity:.9}
+.knob{position:relative;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  background:radial-gradient(circle at 38% 30%,#ff9a86,#e3261c 45%,#7a0a06 100%);
+  box-shadow:0 0 0 3px #1a0606,0 0 0 5px #b7b4bd,0 0 0 6px #2a272e,0 0 22px rgba(255,60,30,.55),0 5px 8px rgba(0,0,0,.6);
+  color:#fff}
+.knob b{font-size:11px;letter-spacing:2px;font-weight:700;line-height:1}
+.uparrow{position:absolute;top:8px;left:50%;transform:translateX(-50%)}
+
+/* ---------- toolbar ---------- */
+.toolbar{flex:none;display:flex;align-items:center;gap:8px;background:linear-gradient(#141118,#0d0b10);box-shadow:inset 0 -1px 0 #29242e}
+.mode{display:flex;align-items:center;gap:6px;height:28px;padding:0 12px 0 12px;font-weight:700;letter-spacing:2px;font-size:14px;color:#2a0d00;
+  background:radial-gradient(ellipse at 50% 30%,#ffe0a0,#ffa040 50%,#e0600c);
+  clip-path:polygon(0 0,86% 0,100% 50%,86% 100%,0 100%);padding-right:22px;filter:drop-shadow(0 0 6px rgba(255,120,30,.55))}
+.search{flex:1;display:flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:14px;background:#040406;color:#857c8f;font-size:14px;
+  box-shadow:inset 0 0 0 1px #000,0 0 0 1.5px #6e6876,inset 0 2px 4px rgba(0,0,0,.8)}
+.search svg{width:14px;height:14px}
+
+/* ---------- clip list ---------- */
+.list{flex:1;display:flex;flex-direction:column;min-height:0;background:
+  linear-gradient(90deg,rgba(255,255,255,.02),transparent 30%),#0c0a0f}
+.row{flex:1;display:flex;align-items:center;gap:9px;padding:0 10px 0 8px;border-bottom:1px solid rgba(255,255,255,.05);min-height:0}
+.row .ins{flex:none;display:block}
+.row .nm{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+.row .n{font-weight:600;color:#f0eaf4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05}
+.row .s{color:#8f86a0;letter-spacing:.5px;display:flex;align-items:center;gap:6px;white-space:nowrap;line-height:1.2}
+.tag{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--plasma);border:1px solid rgba(255,122,26,.6);border-radius:3px;padding:0 4px;line-height:12px}
+.row .wv{flex:none;display:block}
+.row .len{flex:none;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--plasma);text-shadow:0 0 6px rgba(255,120,30,.45)}
+.dots{flex:none;display:flex;flex-direction:column;gap:2.5px;padding:0 2px}
+.dots i{width:3.5px;height:3.5px;border-radius:50%;background:#8a8094}
+.row.sel{background:linear-gradient(90deg,rgba(255,122,26,.26),rgba(255,122,26,.06) 70%);
+  box-shadow:inset 0 0 0 1px rgba(255,150,50,.7),inset 3px 0 0 var(--plasma)}
+.row.sel .n{color:#ffe2c2}
+.row.sel .dots i{background:#ffb070}
+
+/* ---------- footer apron ---------- */
+.apron{flex:none;display:flex;align-items:center;gap:12px;padding:0 14px 0 0;
+  background:linear-gradient(#1b1720,#0b0a0d);box-shadow:inset 0 2px 0 #000,inset 0 3px 0 #5f5866}
+.flip{flex:none;position:relative;display:grid;place-items:center;border-radius:0 50% 50% 0;
+  background:radial-gradient(circle at 30% 35%,#ff9480,#d8241a 50%,#6a0804);
+  box-shadow:inset -2px 0 0 #000,0 0 0 2px #2a0a08,0 0 14px rgba(255,60,30,.4);color:#fff}
+.fmid{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.fmid canvas{display:block;width:100%}
+.rail{position:relative;height:7px;border-radius:4px;background:#050507;box-shadow:inset 0 0 0 1px #000,0 0 0 1px #5e5866}
+.rail::before{content:"";position:absolute;left:4px;right:4px;top:3px;height:1px;background:#4a4550}
+.ball{position:absolute;left:-2px;top:-3px;width:13px;height:13px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff,#bdbac4 40%,#55525c 80%,#2a282e);box-shadow:0 1px 2px #000}
+
+/* ---------- portrait sizes ---------- */
+.p .bglass{height:146px;padding:7px 18px 10px}
+.p .bglass .title{font-size:24px;line-height:28px;margin-bottom:6px}
+.p .dmdbox{margin:0 auto;width:fit-content}
+.p .pf{height:100px}
+.p .pf .zone{padding:8px 10px 6px 12px;gap:7px}
+.p .lanes{height:18px}
+.p .lane{width:21px}
+.p .lamp{width:11px;height:11px}
+.p .bk{width:44px;height:44px}
+.p .bk svg{width:16px;height:16px}
+.p .shooter{width:86px;padding-bottom:9px}
+.p .rod{height:22px}
+.p .knob{width:56px;height:56px}
+.p .toolbar{height:42px;padding:0 10px}
+.p .row .n{font-size:15.5px}
+.p .row .s{font-size:11px}
+.p .row .len{width:50px;font-size:12px}
+.p .apron{height:54px}
+.p .flip{width:40px;height:40px}
+
+/* ---------- wide sizes ---------- */
+.w .body{flex:1;display:flex;min-height:0}
+.w .left{width:400px;flex:none;display:flex;flex-direction:column;box-shadow:inset -3px 0 0 #000,inset -5px 0 0 #5f5866}
+.w .right{flex:1;display:flex;flex-direction:column;min-width:0}
+.w .bglass{height:212px;padding:12px 20px 14px}
+.w .bglass .title{font-size:44px;line-height:50px;margin-bottom:10px}
+.w .dmdrow{display:flex;align-items:center;justify-content:center;gap:10px}
+.spk{width:22px;height:74px;border-radius:4px;background:radial-gradient(circle,#4a4450 0 1.3px,transparent 1.6px) 0 0/6px 6px,#121015;box-shadow:inset 0 0 0 1px #000,0 0 0 1.5px #4d4752}
+.w .pf{flex:1;margin-right:5px}
+.w .pf .zone{padding:12px 14px 0 16px;gap:10px}
+.w .lanes{height:24px;justify-content:center}
+.w .lane{width:22px}
+.w .lamp{width:12px;height:12px}
+.w .bumpers{position:relative;height:130px;display:block;z-index:1}
+.w .bump{position:absolute}
+.w .bk{width:58px;height:58px}
+.w .bk svg{width:20px;height:20px}
+.w .shooter{width:94px;padding-bottom:14px}
+.w .rod{height:120px}
+.w .knob{width:66px;height:66px}
+.w .knob b{font-size:12px}
+.w .toolbar{height:56px;padding:0 18px}
+.w .mode{height:32px;font-size:15px}
+.w .search{height:32px;border-radius:16px}
+.w .list{padding:4px 0}
+.w .row{padding:0 18px 0 14px;gap:14px}
+.w .row .n{font-size:19px}
+.w .row .s{font-size:12px}
+.w .row .len{width:70px;font-size:14px}
+.w .apron{height:60px;padding-right:20px;gap:16px}
+.w .flip{width:46px;height:46px}
+.flippers{position:absolute;left:0;right:0;bottom:0;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <div>
+    <div class="eyebrow">THRASHER THEME</div>
+    <h1>Pinball</h1>
+  </div>
+  <div class="idea">The whole app is a pinball cabinet. Backglass up top, playfield below, and every control is a part of the machine.</div>
+  <div>
+    <ul class="what">
+      <li>Timer status and mic name glow on an orange dot matrix</li>
+      <li>REC is the launch plunger in the shooter lane</li>
+      <li>Import ask and widget are the three pop bumpers</li>
+      <li>Input level is a row of rollover lane lights</li>
+      <li>Clips are lit arrow inserts you hit to play</li>
+      <li>Left flipper button runs the player, the ball rides the progress rail</li>
+    </ul>
+    <div class="fontnote">New fonts Monoton (backglass art only) and Barlow Condensed, both OFL. The dot matrix is drawn, no font.</div>
+  </div>
+</div>
+
+<div class="stage">
+  <!-- ================= PORTRAIT ================= -->
+  <div class="win p" id="P">
+    <div class="tb"><span class="brand">THRASHER</span><span class="sp"></span>
+      <span class="ib gear" data-i="gear"></span><span class="ib" data-i="min"></span><span class="ib" data-i="close"></span></div>
+    <div class="bglass">
+      <svg class="art" viewBox="0 0 400 146" preserveAspectRatio="none" data-art></svg>
+      <div class="title">THRASHER</div>
+      <div class="dmdbox"><canvas class="dmd" data-pitch="2.6" style="width:333px;height:84px"></canvas></div>
+    </div>
+    <div class="pf">
+      <div class="zone">
+        <div style="display:flex;align-items:center;gap:8px"><span class="cap">Input</span><div class="lanes" data-lanes="10"></div></div>
+        <div class="bumpers" data-bumpers></div>
+      </div>
+      <div class="shooter">
+        <svg class="uparrow" width="16" height="22" viewBox="0 0 16 22" style="top:6px"><polygon points="8,0 16,9 11,9 11,22 5,22 5,9 0,9" fill="#ff7a1a" opacity=".9" style="filter:drop-shadow(0 0 3px #ff7a1a)"/></svg>
+        <div class="rod"></div>
+        <div class="knob" data-rec></div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="mode">Inbox <svg width="10" height="10" viewBox="0 0 10 10"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+      <div class="search" data-search></div>
+    </div>
+    <div class="list" data-list="p"></div>
+    <div class="apron">
+      <div class="flip" data-flip></div>
+      <div class="fmid"><canvas class="dmd foot" data-pitch="2.2" style="height:16px"></canvas><div class="rail"><div class="ball"></div></div></div>
+    </div>
+  </div>
+
+  <!-- ================= WIDE ================= -->
+  <div class="win w" id="W">
+    <div class="tb"><span class="brand">THRASHER</span><span class="sp"></span>
+      <span class="ib gear" data-i="gear"></span><span class="ib" data-i="min"></span><span class="ib" data-i="close"></span></div>
+    <div class="body">
+      <div class="left">
+        <div class="bglass">
+          <svg class="art" viewBox="0 0 400 212" preserveAspectRatio="none" data-art></svg>
+          <div class="title">THRASHER</div>
+          <div class="dmdrow"><div class="spk"></div>
+            <div class="dmdbox"><canvas class="dmd" data-pitch="2.45" style="width:304px;height:76px"></canvas></div>
+          <div class="spk"></div></div>
+        </div>
+        <div class="pf">
+          <div class="zone">
+            <div style="display:flex;align-items:center;gap:10px;justify-content:center"><span class="cap">Input</span><div class="lanes" data-lanes="10"></div></div>
+            <div class="bumpers" data-bumpers="tri"></div>
+            <svg class="flippers" viewBox="0 0 290 132" width="100%" height="132" preserveAspectRatio="xMidYMax meet" data-flippers></svg>
+          </div>
+          <div class="shooter">
+            <svg class="uparrow" width="18" height="26" viewBox="0 0 16 22"><polygon points="8,0 16,9 11,9 11,22 5,22 5,9 0,9" fill="#ff7a1a" style="filter:drop-shadow(0 0 3px #ff7a1a)"/></svg>
+            <svg class="uparrow" width="14" height="20" viewBox="0 0 16 22" style="top:40px"><polygon points="8,0 16,9 11,9 11,22 5,22 5,9 0,9" fill="#ff7a1a" opacity=".45"/></svg>
+            <svg class="uparrow" width="12" height="17" viewBox="0 0 16 22" style="top:68px"><polygon points="8,0 16,9 11,9 11,22 5,22 5,9 0,9" fill="#ff7a1a" opacity=".22"/></svg>
+            <div class="rod"></div>
+            <div class="knob" data-rec></div>
+          </div>
+        </div>
+      </div>
+      <div class="right">
+        <div class="toolbar">
+          <div class="mode">Inbox <svg width="11" height="11" viewBox="0 0 10 10"><path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg></div>
+          <div class="search" data-search></div>
+        </div>
+        <div class="list" data-list="w"></div>
+      </div>
+    </div>
+    <div class="apron">
+      <div class="flip" data-flip></div>
+      <div class="fmid"><canvas class="dmd foot" data-pitch="2.4" style="height:17px"></canvas><div class="rail"><div class="ball"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STILL = location.search.includes('still');
+const IC = {
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>',
+  min:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 12h12"/></svg>',
+  close:'<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  imp:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>',
+  ask:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg>',
+  wid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="6" height="5" fill="currentColor" stroke="none"/></svg>',
+  mic:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
+  play:'<svg width="16" height="16" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" fill="currentColor"/></svg>'
+};
+document.querySelectorAll('[data-i]').forEach(e=>e.innerHTML=IC[e.dataset.i]);
+document.querySelectorAll('[data-search]').forEach(e=>e.innerHTML=IC.search+'<span>Search</span>');
+document.querySelectorAll('[data-rec]').forEach(e=>e.innerHTML=IC.mic+'<b>REC</b>');
+document.querySelectorAll('[data-flip]').forEach(e=>e.innerHTML=IC.play);
+
+/* backglass art: lightning bolts and orbit arcs */
+document.querySelectorAll('[data-art]').forEach(s=>{
+  const H=+s.getAttribute('viewBox').split(' ')[3];
+  s.innerHTML=`
+   <path d="M-20 ${H*0.95} Q200 ${H*0.35} 420 ${H*0.95}" fill="none" stroke="#ff6aa8" stroke-opacity=".25" stroke-width="2"/>
+   <path d="M-20 ${H*1.05} Q200 ${H*0.5} 420 ${H*1.05}" fill="none" stroke="#5ac8ff" stroke-opacity=".22" stroke-width="2"/>
+   <g fill="#ffd34a" opacity=".85"><polygon points="22,${H*0.08} 40,${H*0.08} 31,${H*0.24} 42,${H*0.24} 18,${H*0.5} 26,${H*0.3} 16,${H*0.3}"/>
+   <polygon points="378,${H*0.08} 360,${H*0.08} 369,${H*0.24} 358,${H*0.24} 382,${H*0.5} 374,${H*0.3} 384,${H*0.3}"/></g>`;
+});
+
+/* lane lights (input meter) */
+const laneSets=[];
+document.querySelectorAll('[data-lanes]').forEach(l=>{
+  const n=+l.dataset.lanes, lamps=[];
+  for(let i=0;i<n;i++){
+    const c=i<n*0.66?'#ff7a1a':i<n*0.84?'#ffc23a':'#ff3a2a';
+    const lane=document.createElement('div');lane.className='lane';
+    const lp=document.createElement('div');lp.className='lamp';lp.style.setProperty('--c',c);
+    lane.appendChild(lp);l.appendChild(lane);lamps.push(lp);
+  }
+  laneSets.push(lamps);
+});
+function setLevel(v){laneSets.forEach(ls=>{const k=Math.round(v*ls.length);ls.forEach((lp,i)=>lp.classList.toggle('on',i<k))})}
+
+/* pop bumpers */
+const BUMPS=[['red','imp','IMPORT'],['yel','ask','ASK'],['blu','wid','WIDGET']];
+document.querySelectorAll('[data-bumpers]').forEach(b=>{
+  const tri=b.dataset.bumpers==='tri';
+  const pos=[[34,0],[176,0],[105,62]];
+  BUMPS.forEach(([c,ic,lab],i)=>{
+    const d=document.createElement('div');d.className='bump';
+    d.innerHTML=`<div class="bk ${c}">${IC[ic]}</div><div class="blabel">${lab}</div>`;
+    if(tri){d.style.left=pos[i][0]+'px';d.style.top=pos[i][1]+'px'}
+    b.appendChild(d);
+  });
+});
+
+/* wide playfield flippers and slingshots */
+document.querySelectorAll('[data-flippers]').forEach(s=>{
+  s.innerHTML=`
+   <defs><linearGradient id="fl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#bdb8c4"/></linearGradient></defs>
+   <path d="M10 10 L10 70 L92 104" fill="none" stroke="#8f8c96" stroke-width="3"/>
+   <path d="M280 10 L280 70 L198 104" fill="none" stroke="#8f8c96" stroke-width="3"/>
+   <polygon points="36,26 36,66 68,82" fill="#e5322a" fill-opacity=".55" stroke="#ff8a6a" stroke-width="2"/>
+   <polygon points="254,26 254,66 222,82" fill="#e5322a" fill-opacity=".55" stroke="#ff8a6a" stroke-width="2"/>
+   <g transform="translate(92 104) rotate(22)"><path d="M0 -8 A8 8 0 0 0 0 8 L44 3 A3 3 0 0 0 44 -3 Z" fill="url(#fl)" stroke="#e5322a" stroke-width="2.5"/><circle r="3" fill="#6d6a74"/></g>
+   <g transform="translate(198 104) rotate(158)"><path d="M0 -8 A8 8 0 0 1 0 8 L44 3 A3 3 0 0 1 44 -3 Z" fill="url(#fl)" stroke="#e5322a" stroke-width="2.5" transform="scale(1,-1)"/><circle r="3" fill="#6d6a74"/></g>
+   <polygon points="145,40 153,52 137,52" fill="#ffc23a" opacity=".6"/>`;
+});
+
+/* clips */
+const CLIPS=[
+ ['clip_001','Sat 05:48',1,'16:53'],['clip_005','Sat 05:48',0,'2:03'],['clip_006','Sat 06:05',0,'0:04'],
+ ['clip_100','Sat 09:34',1,'1:09:26'],['Screen recording','Yesterday 07:20',0,'0:03'],['Meeting','Yesterday 07:20',0,'0:02'],
+ ['Meeting (2)','Today 10:03',0,'0:02'],['Presentasjon','Today 10:25',1,'0:27']];
+const INS=['#ff4b3a','#ffc23a','#3aa8ff','#4be08a'];
+function rnd(seed){let s=seed*9301+49297;return()=>((s=(s*9301+49297)%233280)/233280)}
+function wave(i,w,h,sel){
+  const r=rnd(i+3),n=Math.floor(w/3.2);let b='';
+  for(let k=0;k<n;k++){const a=(0.25+0.75*Math.abs(Math.sin(k*0.55+i))*r())*h;b+=`<rect x="${k*3.2}" y="${(h-a)/2}" width="1.8" height="${a}" rx=".9"/>`}
+  return `<svg class="wv" width="${w}" height="${h}" fill="${sel?'#ffa050':'#6f6880'}">${b}</svg>`;
+}
+function insert(i,sel,w,h){
+  const c=sel?'#ff8a2a':INS[i%4];
+  return `<svg class="ins" width="${w}" height="${h}" viewBox="0 0 30 22"${sel?' style="filter:drop-shadow(0 0 5px #ff7a1a)"':''}>
+   <defs><radialGradient id="g${i}${w}" cx=".4" cy=".4" r=".8"><stop offset="0" stop-color="#fff" stop-opacity="${sel?.95:.45}"/><stop offset=".45" stop-color="${c}"/><stop offset="1" stop-color="${c}" stop-opacity=".35"/></radialGradient></defs>
+   <polygon points="1,2 19,2 29,11 19,20 1,20 6,11" fill="url(#g${i}${w})" opacity="${sel?1:.72}" stroke="rgba(255,255,255,.25)" stroke-width=".8"/>
+   <path d="M12 7l6 4-6 4z" fill="${sel?'#2a0d00':'#120c10'}"/></svg>`;
+}
+document.querySelectorAll('[data-list]').forEach(l=>{
+  const wide=l.dataset.list==='w';
+  l.innerHTML=CLIPS.map(([n,d,t,len],i)=>{const sel=i===1;return `
+   <div class="row${sel?' sel':''}">${insert(i,sel,wide?38:30,wide?28:22)}
+    <div class="nm"><div class="n">${n}</div><div class="s">${d}${t?'<span class="tag">transcribed</span>':''}</div></div>
+    ${wave(i,wide?150:52,wide?22:16,sel)}<div class="len">${len}</div><div class="dots"><i></i><i></i><i></i></div></div>`}).join('');
+});
+
+/* ---------- dot matrix ---------- */
+const G={
+'0':['01110','10001','10001','10001','10001','10001','01110'],'1':['00100','01100','00100','00100','00100','00100','01110'],
+'2':['01110','10001','00001','00010','00100','01000','11111'],'3':['11111','00010','00100','00010','00001','10001','01110'],
+'4':['00010','00110','01010','10010','11111','00010','00010'],'5':['11111','10000','11110','00001','00001','10001','01110'],
+'6':['00110','01000','10000','11110','10001','10001','01110'],'7':['11111','00001','00010','00100','01000','01000','01000'],
+'8':['01110','10001','10001','01110','10001','10001','01110'],'9':['01110','10001','10001','01111','00001','00010','01100'],
+A:['01110','10001','10001','11111','10001','10001','10001'],C:['01110','10001','10000','10000','10000','10001','01110'],
+D:['11110','10001','10001','10001','10001','10001','11110'],E:['11111','10000','10000','11110','10000','10000','11111'],
+F:['11111','10000','10000','11110','10000','10000','10000'],G:['01110','10001','10000','10111','10001','10001','01111'],
+H:['10001','10001','10001','11111','10001','10001','10001'],I:['111','010','010','010','010','010','111'],
+L:['10000','10000','10000','10000','10000','10000','11111'],M:['10001','11011','10101','10101','10001','10001','10001'],
+N:['10001','10001','11001','10101','10011','10001','10001'],O:['01110','10001','10001','10001','10001','10001','01110'],
+P:['11110','10001','10001','11110','10000','10000','10000'],R:['11110','10001','10001','11110','10100','10010','10001'],
+T:['11111','00100','00100','00100','00100','00100','00100'],U:['10001','10001','10001','10001','10001','10001','01110'],
+Y:['10001','10001','01010','00100','00100','00100','00100'],
+':':['0','1','1','0','1','1','0'],'.':['0','0','0','0','0','1','1'].map(r=>r),'-':['000','000','000','111','000','000','000'],
+'/':['001','001','010','010','010','100','100'],' ':['00','00','00','00','00','00','00'],
+'*':['00000','01110','11111','11111','11111','01110','00000']};
+G['.']=['00','00','00','00','00','11','11'];
+function tw(s,sc){let w=0;for(const ch of s)w+=(G[ch][0].length+1)*sc;return w-sc}
+function dmd(cv,draw){
+  const p=+cv.dataset.pitch, W=cv.clientWidth, H=cv.clientHeight, dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr;cv.height=H*dpr;const x=cv.getContext('2d');x.scale(dpr,dpr);
+  const cols=Math.floor(W/p),rows=Math.floor(H/p),grid=new Uint8Array(cols*rows);
+  const ox=(W-cols*p)/2+p/2,oy=(H-rows*p)/2+p/2;
+  const api={cols,rows,text(s,X,Y,sc=1,lv=3,al='l'){
+    if(al==='c')X=Math.round((cols-tw(s,sc))/2);if(al==='r')X=cols-tw(s,sc)-X;
+    for(const ch of s){const g=G[ch];for(let r=0;r<7;r++)for(let c=0;c<g[r].length;c++)if(g[r][c]==='1')
+      for(let a=0;a<sc;a++)for(let b=0;b<sc;b++){const cx=X+c*sc+b,cy=Y+r*sc+a;if(cx>=0&&cx<cols&&cy>=0&&cy<rows)grid[cy*cols+cx]=lv}
+      X+=(g[0].length+1)*sc}},
+    px(cx,cy,lv){if(cx>=0&&cx<cols&&cy>=0&&cy<rows)grid[cy*cols+cx]=lv}};
+  draw(api);
+  x.fillStyle='#070302';x.fillRect(0,0,W,H);
+  const col=['rgba(255,100,20,.09)','#7a300a','#e8640f','#ffa040'];
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){const v=grid[r*cols+c],X=ox+c*p,Y=oy+r*p;
+    if(v>=2){x.fillStyle='rgba(255,110,20,.22)';x.beginPath();x.arc(X,Y,p*.62,0,7);x.fill()}
+    x.fillStyle=col[v];x.beginPath();x.arc(X,Y,p*(v?.4:.3),0,7);x.fill()}
+}
+function drawAll(t){
+  document.querySelectorAll('canvas.dmd:not(.foot)').forEach(cv=>dmd(cv,a=>{
+    a.text('*',2,1,1,3);a.text('READY',9,1,1,3);
+    for(let i=0;i<10;i++)a.px(a.cols-3-i*2,4,1);
+    a.text('00:00.0',0,9,2,3,'c');
+    a.text('DEFAULT MICROPHONE',0,a.rows-7,1,2,'c');
+  }));
+  document.querySelectorAll('canvas.dmd.foot').forEach(cv=>dmd(cv,a=>{
+    const y=Math.floor((a.rows-7)/2);a.text('NOTHING PLAYING',0,y,1,2);a.text('--:-- / --:--',0,y,1,2,'r');
+  }));
+}
+document.fonts.ready.then(()=>{
+  drawAll();
+  let lv=.42;setLevel(lv);
+  if(STILL)return;
+  let last=0,tgt=.5;
+  (function loop(ts){
+    if(ts-last>70){last=ts;if(Math.random()<.18)tgt=.2+Math.random()*.7;lv+=(tgt-lv)*.45+(Math.random()-.5)*.08;lv=Math.max(0,Math.min(1,lv));setLevel(lv)}
+    requestAnimationFrame(loop)})(0);
+});
+</script>
+</body>
+</html>

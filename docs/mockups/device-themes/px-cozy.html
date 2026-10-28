@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cozy Cabin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Pixelify+Sans:wght@400;500;600&family=Tiny5&display=swap" rel="stylesheet">
+<style>
+:root{
+  --u:3px;                 /* one art pixel */
+  --ink:#2a170d;
+  --wood-dd:#3a2213;
+  --wood-d:#5a341d;
+  --wood:#7a4a28;
+  --wood-l:#9a6234;
+  --wood-hl:#c08a4e;
+  --slot:#2f1b0f;
+  --slot-hl:#4d2e19;
+  --honey:#f0b23c;
+  --honey-l:#ffd982;
+  --ember:#e0662c;
+  --moss:#6f9238;
+  --moss-l:#a3c25a;
+  --cream:#f6e7c4;
+  --parch:#ead4a2;
+  --parch-d:#c8a56a;
+  --parch-dd:#9c7a45;
+  --text-dim:#c9a77a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#140e0a}
+body{
+  color:var(--cream);
+  font-family:"Pixelify Sans",system-ui,sans-serif;
+  padding:21px 12px 30px;
+  background:
+    repeating-conic-gradient(#17100b 0 25%, #140e0a 0 50%) 0 0/12px 12px;
+  -webkit-font-smoothing:none;
+}
+svg.px{display:block;shape-rendering:crispEdges}
+.c-x{fill:currentColor}
+.c-k{fill:var(--ink)} .c-m{fill:#4b3a30} .c-M{fill:#8f7562} .c-H{fill:#c4a487}
+.c-g{fill:var(--glass,#b9772f)} .c-G{fill:var(--glass-l,#dca04e)}
+.c-f{fill:var(--flame,#f0892c)} .c-F{fill:var(--flame-c,#ffd06a)}
+.c-o{fill:var(--ember)} .c-h{fill:var(--honey)} .c-y{fill:var(--honey-l)}
+.c-p{fill:var(--parch)} .c-q{fill:var(--parch-dd)} .c-v{fill:var(--moss)} .c-V{fill:var(--moss-l)}
+.c-w{fill:var(--wood)} .c-W{fill:var(--wood-l)} .c-d{fill:var(--wood-d)}
+
+/* ---------- page heading ---------- */
+header.intro{max-width:1440px;margin:0 auto 26px;display:flex;gap:36px;align-items:flex-end;flex-wrap:wrap}
+.intro h1{font-family:"Jersey 10";font-weight:400;font-size:66px;line-height:.8;color:var(--honey);
+  text-shadow:3px 3px 0 var(--ember),6px 6px 0 var(--ink);letter-spacing:1px}
+.intro .idea{font-size:16px;color:var(--parch);margin-top:12px;max-width:420px}
+.intro ul{list-style:none;font-size:14px;color:var(--text-dim);display:grid;gap:5px}
+.intro li{display:flex;gap:9px;align-items:center}
+.intro li::before{content:"";width:6px;height:6px;background:var(--honey);box-shadow:3px 3px 0 var(--ember);flex:none}
+.stage{display:flex;flex-wrap:wrap;gap:21px;justify-content:center;align-items:flex-start;max-width:1480px;margin:0 auto}
+figure{display:flex;flex-direction:column;gap:15px}
+figcaption{width:0;min-width:100%;line-height:1.5;font-family:"Tiny5";font-size:12px;letter-spacing:1px;color:#8c6b4a;text-transform:uppercase;padding-left:3px}
+
+/* ---------- pixel helpers ---------- */
+.pb{ /* notched pixel border, 3px */
+  box-shadow:0 calc(-1*var(--u)) 0 0 var(--ink),0 var(--u) 0 0 var(--ink),
+             calc(-1*var(--u)) 0 0 0 var(--ink),var(--u) 0 0 0 var(--ink);
+}
+.nail{position:absolute;width:6px;height:6px;background:#26160c;box-shadow:inset 3px 3px 0 #d6a466;z-index:3}
+.wood{background-color:var(--wood);background-image:var(--wood-tile);background-size:192px 144px;image-rendering:pixelated}
+.wood-dark{background-color:var(--wood-d);background-image:var(--wood-tile-d);background-size:192px 144px;image-rendering:pixelated}
+.parch{background-color:var(--parch);background-image:var(--parch-tile);background-size:96px 96px;image-rendering:pixelated;color:var(--ink)}
+
+/* ---------- app window ---------- */
+.win{position:relative;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 -3px 0 0 var(--ink),0 3px 0 0 var(--ink),-3px 0 0 0 var(--ink),3px 0 0 0 var(--ink),
+             12px 12px 0 0 rgba(0,0,0,.45);
+  margin:3px}
+.portrait{width:400px;height:620px}
+.wide{width:1000px;height:620px}
+
+/* title bar */
+.titlebar{height:36px;flex:none;display:flex;align-items:center;gap:9px;padding:0 9px 0 12px;position:relative;
+  border-bottom:3px solid var(--ink);box-shadow:inset 0 -3px 0 rgba(0,0,0,.25), inset 0 3px 0 rgba(255,210,150,.12)}
+.titlebar .logo{color:var(--honey)}
+.titlebar .name{font-family:"Jersey 10";font-size:26px;line-height:1;color:var(--cream);text-shadow:3px 3px 0 var(--ink);letter-spacing:1px;margin-top:-3px}
+.titlebar .sp{flex:1}
+.tbtn{width:27px;height:24px;display:grid;place-items:center;color:var(--parch);background:transparent;border:0;cursor:pointer}
+.tbtn:hover{background:rgba(0,0,0,.25);color:var(--honey-l)}
+.tbtn.close:hover{background:var(--ember);color:var(--cream)}
+
+/* recorder */
+.recorder{position:relative;flex:none}
+.scene-row{display:flex;align-items:flex-start;position:relative}
+.pane{position:relative;padding:6px;background:var(--wood-l);flex:none;
+  box-shadow:0 -3px 0 0 var(--ink),0 3px 0 0 var(--ink),-3px 0 0 0 var(--ink),3px 0 0 0 var(--ink),
+             inset 3px 3px 0 0 var(--wood-hl), inset -3px -3px 0 0 var(--wood-d)}
+.pane canvas{display:block;image-rendering:pixelated;background:#1d2340}
+.pane .mull-v,.pane .mull-h{position:absolute;background:var(--wood-l);box-shadow:0 0 0 3px var(--ink) inset}
+.pane .mull-v{top:6px;bottom:6px;left:50%;width:9px;margin-left:-4px;box-shadow:inset 3px 0 0 var(--ink),inset -3px 0 0 var(--ink)}
+.pane .mull-h{left:6px;right:6px;top:50%;height:9px;margin-top:-4px;box-shadow:inset 0 3px 0 var(--ink),inset 0 -3px 0 var(--ink)}
+.pane .shine{position:absolute;left:12px;top:12px;width:6px;height:15px;background:rgba(255,240,210,.22);box-shadow:6px -6px 0 0 rgba(255,240,210,.14)}
+.sill{position:absolute;left:-9px;right:-9px;bottom:-15px;height:12px;background:var(--wood-hl);
+  box-shadow:0 -3px 0 0 var(--ink),0 3px 0 0 var(--ink),-3px 0 0 0 var(--ink),3px 0 0 0 var(--ink),inset 0 -3px 0 var(--wood-l)}
+.sill .pot{position:absolute;bottom:12px}
+
+/* lantern record button */
+.lantern-wrap{position:relative;display:flex;flex-direction:column;align-items:center}
+.chain{width:3px;background:repeating-linear-gradient(180deg,#8f7562 0 6px,#4b3a30 6px 9px,transparent 9px 12px)}
+.beam-hook{width:15px;height:6px;background:var(--ink)}
+.lantern{position:relative;background:none;border:0;cursor:pointer;display:grid;place-items:center;
+  --glass:#b9772f;--glass-l:#dca04e;--flame:#f0892c;--flame-c:#ffd06a}
+.lantern .glow{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);pointer-events:none;opacity:.55;animation:flick 1.6s steps(1) infinite}
+.lantern .body{position:relative;z-index:1}
+.lantern:hover,.lantern.lit{--glass:#f7c45a;--glass-l:#fff0b0;--flame:#ff8f2e;--flame-c:#fff6cf}
+.lantern:hover .glow,.lantern.lit .glow{opacity:1}
+@keyframes flick{0%{opacity:.55}30%{opacity:.48}55%{opacity:.6}80%{opacity:.5}}
+.lantern:hover .glow{animation:none}
+.tag{position:relative;margin-top:6px;display:flex;align-items:center;gap:6px;padding:3px 9px 3px 8px;background:var(--wood-l);
+  color:var(--cream);font-family:"Tiny5";font-size:12px;letter-spacing:2px;
+  box-shadow:0 -3px 0 0 var(--ink),0 3px 0 0 var(--ink),-3px 0 0 0 var(--ink),3px 0 0 0 var(--ink),inset 0 3px 0 var(--wood-hl),inset 0 -3px 0 var(--wood-d)}
+.tag::before,.tag::after{content:"";position:absolute;top:-12px;width:3px;height:9px;background:#8f7562}
+.tag::before{left:12px}.tag::after{right:12px}
+.tag .mic{color:var(--honey)}
+
+/* parchment readout card */
+.card{position:relative;padding:9px 12px 12px;
+  box-shadow:0 -3px 0 0 var(--ink),0 3px 0 0 var(--ink),-3px 0 0 0 var(--ink),3px 0 0 0 var(--ink),
+             inset 3px 3px 0 0 #fff3d6, inset -3px -3px 0 0 var(--parch-d), 6px 6px 0 0 rgba(0,0,0,.3)}
+.card .pin{position:absolute;width:6px;height:6px;background:var(--ember);box-shadow:inset -3px -3px 0 #9a3c18}
+.status{display:flex;align-items:center;gap:7px;font-family:"Tiny5";font-size:12px;letter-spacing:2px;color:#3e5a1a}
+.status .dot{width:9px;height:9px;background:var(--moss);box-shadow:inset -3px -3px 0 #47651f, inset 3px 3px 0 var(--moss-l)}
+.device{font-size:13px;color:#6b4a28;display:flex;align-items:center;gap:6px;margin-top:4px}
+.timer{font-family:"Jersey 10";line-height:.8;color:var(--ink);letter-spacing:1px}
+.meter{display:flex;gap:3px;height:12px;margin-top:9px;padding:3px;background:#3b2414;
+  box-shadow:inset 3px 3px 0 #22130a}
+.meter i{flex:1;background:#5a3a22}
+.meter i.on{background:var(--moss-l)} .meter i.on.mid{background:var(--honey)} .meter i.on.hot{background:var(--ember)}
+.meter i.peak{background:var(--honey-l)}
+
+/* toolbar */
+.toolbar{flex:none;display:flex;align-items:center;gap:9px;padding:0 12px;height:48px;position:relative}
+.picker{height:30px;display:flex;align-items:center;gap:9px;padding:0 9px 0 10px;border:0;cursor:pointer;font:500 14px "Pixelify Sans";
+  box-shadow:0 -3px 0 0 var(--ink),0 3px 0 0 var(--ink),-3px 0 0 0 var(--ink),3px 0 0 0 var(--ink),inset 0 -3px 0 var(--parch-d),inset 0 3px 0 #fff3d6}
+.picker .ic{color:var(--parch-dd)}
+.search{flex:1;min-width:0;height:30px;display:flex;align-items:center;gap:8px;padding:0 9px;background:#3b2414;color:var(--text-dim);font-size:14px;
+  box-shadow:0 -3px 0 0 var(--ink),0 3px 0 0 var(--ink),-3px 0 0 0 var(--ink),3px 0 0 0 var(--ink),inset 3px 3px 0 #22130a}
+.search span{opacity:.8}
+.ibtn{width:30px;height:30px;flex:none;display:grid;place-items:center;border:0;cursor:pointer;color:var(--cream);background:var(--wood-l);
+  box-shadow:0 -3px 0 0 var(--ink),0 3px 0 0 var(--ink),-3px 0 0 0 var(--ink),3px 0 0 0 var(--ink),inset 3px 3px 0 var(--wood-hl),inset -3px -3px 0 var(--wood-d)}
+.ibtn:hover{color:var(--honey-l)}
+
+/* clip list: inventory */
+.inv{flex:1;min-height:0;margin:3px 12px 9px;padding:9px;background:#3a2214;position:relative;overflow:hidden;
+  box-shadow:0 -3px 0 0 var(--ink),0 3px 0 0 var(--ink),-3px 0 0 0 var(--ink),3px 0 0 0 var(--ink),inset 3px 3px 0 #24140a,inset -3px -3px 0 #573421}
+.rows{display:flex;flex-direction:column;gap:6px}
+.row{display:flex;align-items:center;gap:9px;height:45px;padding:0 6px 0 3px;background:var(--slot-hl);position:relative;
+  box-shadow:inset 3px 3px 0 #23130a, inset -3px -3px 0 #63402a}
+.row .slot{width:36px;height:36px;flex:none;display:grid;place-items:center;background:var(--slot);color:var(--honey);margin-left:1px;
+  box-shadow:inset 3px 3px 0 #170c05, inset -3px -3px 0 #4f301b}
+.row .wave{flex:none;color:var(--parch-d)}
+.row .txt{flex:1;min-width:0}
+.row .nm{font-size:14px;font-weight:500;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:clip}
+.row .sub{font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:5px;white-space:nowrap;margin-top:1px}
+.row .sub .scroll{color:var(--moss-l)}
+.row .len{font-family:"Jersey 10";font-size:21px;color:var(--parch);flex:none;min-width:40px;text-align:right}
+.row .more{width:18px;height:27px;flex:none;display:grid;place-items:center;color:var(--text-dim)}
+.row:hover{background:#5a3720}
+.row.sel{background-color:var(--parch);background-image:var(--parch-tile);background-size:96px 96px;
+  box-shadow:0 -3px 0 0 var(--honey),0 3px 0 0 var(--honey),-3px 0 0 0 var(--honey),3px 0 0 0 var(--honey),inset 3px 3px 0 #fff3d6,inset -3px -3px 0 var(--parch-d)}
+.row.sel .slot{background:#c99e5c;color:var(--ink);box-shadow:inset 3px 3px 0 #a07a42, inset -3px -3px 0 #e8c88e}
+.row.sel .nm{color:var(--ink)} .row.sel .sub{color:#6b4a28} .row.sel .len{color:var(--ink)} .row.sel .wave{color:var(--ember)} .row.sel .more{color:#6b4a28}
+.row.sel .sub .scroll{color:#4c6c20}
+.row.sel::before{content:"";position:absolute;left:-12px;top:50%;margin-top:-6px;width:6px;height:12px;background:var(--honey);
+  clip-path:polygon(0 0,50% 0,50% 25%,100% 25%,100% 75%,50% 75%,50% 100%,0 100%)}
+.scrollbar{position:absolute;right:3px;top:9px;bottom:9px;width:3px;background:#24140a}
+.scrollbar i{position:absolute;left:0;top:0;width:3px;height:40%;background:var(--parch-dd)}
+
+/* footer player */
+.footer{flex:none;height:57px;display:flex;align-items:center;gap:12px;padding:0 15px 0 12px;position:relative;
+  border-top:3px solid var(--ink);box-shadow:inset 0 3px 0 rgba(255,210,150,.14)}
+.fplay{width:36px;height:36px;flex:none;display:grid;place-items:center;border:0;cursor:pointer;color:var(--ink);background:var(--honey);
+  box-shadow:0 -3px 0 0 var(--ink),0 3px 0 0 var(--ink),-3px 0 0 0 var(--ink),3px 0 0 0 var(--ink),inset 3px 3px 0 var(--honey-l),inset -3px -3px 0 #b97a1c}
+.fmid{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+.ftop{display:flex;justify-content:space-between;align-items:baseline;gap:9px}
+.fname{font-size:14px;color:var(--parch)}
+.ftime{font-family:"Jersey 10";font-size:20px;color:var(--text-dim);line-height:.8;letter-spacing:1px}
+.prog{height:9px;background:#2a170d;position:relative;box-shadow:inset 0 3px 0 #170c05}
+.prog::after{content:"";position:absolute;inset:3px 0 0;background:repeating-linear-gradient(90deg,transparent 0 21px,#4a2c18 21px 24px)}
+.prog i{position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--honey)}
+
+/* ---------- portrait specifics ---------- */
+.portrait .recorder{height:243px;padding:15px 15px 0 15px}
+.portrait .scene-row{height:132px;gap:0}
+.portrait .lantern-wrap{flex:1;margin-top:-15px}
+.portrait .card{margin-top:24px}
+.portrait .card .top{display:flex;justify-content:space-between;align-items:flex-end}
+.portrait .timer{font-size:46px}
+
+/* ---------- wide specifics ---------- */
+.wide .body{flex:1;min-height:0;display:flex}
+.wide .left{width:400px;flex:none;position:relative;padding:21px 21px 0;border-right:3px solid var(--ink);box-shadow:inset -3px 0 0 rgba(0,0,0,.25)}
+.wide .right{flex:1;min-width:0;display:flex;flex-direction:column;padding-top:6px}
+.wide .scene-row{height:228px}
+.wide .lantern-wrap{flex:1;margin-top:-21px}
+.wide .tag{font-size:14px;padding:6px 12px}
+.wide .card{margin-top:33px;padding:12px 15px 15px}
+.wide .timer{font-size:84px;margin:12px 0 6px}
+.wide .meter{height:18px;margin-top:12px}
+.wide .toolbar{padding:0 15px}
+.wide .inv{margin:3px 15px 12px}
+.wide .row{height:48px}
+.wide .shelf{position:absolute;left:21px;right:21px;bottom:15px;height:9px;background:var(--wood-hl);
+  box-shadow:0 -3px 0 0 var(--ink),0 3px 0 0 var(--ink),-3px 0 0 0 var(--ink),3px 0 0 0 var(--ink),inset 0 -3px 0 var(--wood-l)}
+.wide .shelf .items{position:absolute;bottom:12px;left:9px;right:9px;display:flex;align-items:flex-end;justify-content:space-between}
+
+html.still *{animation:none!important}
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div>
+    <h1>Cozy Cabin</h1>
+    <p class="idea">A warm pixel cabin at dusk. Your clips sit on the shelf like items in a backpack.</p>
+  </div>
+  <ul>
+    <li>Wood plank walls, nail heads and parchment cards on a 3px pixel grid</li>
+    <li>The record button is a hanging lantern that lights up while you record</li>
+    <li>A little window shows fireflies over the pines</li>
+    <li>Clips are inventory slots and the selected one glows on parchment</li>
+  </ul>
+</header>
+
+<div class="stage">
+
+<!-- ================= PORTRAIT ================= -->
+<figure>
+<div class="win portrait wood">
+  <div class="titlebar wood-dark">
+    <span class="logo" data-icon="flame"></span>
+    <span class="name">Thrasher</span>
+    <span class="sp"></span>
+    <button class="tbtn" title="Settings" data-icon="gear"></button>
+    <button class="tbtn" title="Minimise" data-icon="min"></button>
+    <button class="tbtn close" title="Close" data-icon="close"></button>
+  </div>
+
+  <section class="recorder">
+    <span class="nail" style="left:6px;top:6px"></span><span class="nail" style="right:6px;top:6px"></span>
+    <div class="scene-row">
+      <div class="pane">
+        <canvas class="scene" width="54" height="36" style="width:162px;height:108px"></canvas>
+        <span class="mull-v"></span><span class="mull-h"></span><span class="shine"></span>
+        <div class="sill"><span class="pot" style="left:12px" data-icon="plant"></span><span class="pot" style="right:15px" data-icon="mug"></span></div>
+      </div>
+      <div class="lantern-wrap">
+        <span class="beam-hook"></span>
+        <span class="chain" style="height:12px"></span>
+        <button class="lantern" title="Record">
+          <span class="glow" data-glow="38"></span>
+          <span class="body" data-icon="lantern"></span>
+        </button>
+        <span class="tag"><span class="mic" data-icon="mic"></span>REC</span>
+      </div>
+    </div>
+    <div class="card parch">
+      <span class="pin" style="left:6px;top:6px"></span><span class="pin" style="right:6px;top:6px"></span>
+      <div class="top">
+        <div style="padding-left:6px">
+          <div class="status"><span class="dot"></span>READY</div>
+          <div class="device"><span data-icon="micsm"></span>Default microphone</div>
+        </div>
+        <div class="timer">00:00.0</div>
+      </div>
+      <div class="meter" data-seg="30"></div>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <button class="picker parch">Inbox<span class="ic" data-icon="down"></span></button>
+    <div class="search"><span data-icon="search"></span><span>Search</span></div>
+    <button class="ibtn" title="Import file" data-icon="import"></button>
+    <button class="ibtn" title="Ask" data-icon="ask"></button>
+    <button class="ibtn" title="Widget mode" data-icon="widget"></button>
+  </div>
+
+  <div class="inv"><div class="rows" data-clips></div><div class="scrollbar"><i></i></div></div>
+
+  <div class="footer wood-dark">
+    <span class="nail" style="left:3px;top:6px"></span><span class="nail" style="right:3px;top:6px"></span>
+    <button class="fplay" title="Play" data-icon="play"></button>
+    <div class="fmid">
+      <div class="ftop"><span class="fname">Nothing playing</span><span class="ftime">--:-- / --:--</span></div>
+      <div class="prog"><i></i></div>
+    </div>
+  </div>
+</div>
+<figcaption>Portrait 400 x 620 · default layout · lantern is the record button</figcaption>
+</figure>
+
+<!-- ================= WIDE ================= -->
+<figure>
+<div class="win wide wood">
+  <div class="titlebar wood-dark">
+    <span class="logo" data-icon="flame"></span>
+    <span class="name">Thrasher</span>
+    <span class="sp"></span>
+    <button class="tbtn" title="Settings" data-icon="gear"></button>
+    <button class="tbtn" title="Minimise" data-icon="min"></button>
+    <button class="tbtn close" title="Close" data-icon="close"></button>
+  </div>
+
+  <div class="body">
+    <section class="left recorder">
+      <span class="nail" style="left:6px;top:6px"></span><span class="nail" style="right:9px;top:6px"></span>
+      <div class="scene-row">
+        <div class="pane">
+          <canvas class="scene" width="78" height="66" style="width:234px;height:198px"></canvas>
+          <span class="mull-v"></span><span class="mull-h"></span><span class="shine"></span>
+          <div class="sill"><span class="pot" style="left:15px" data-icon="plant"></span><span class="pot" style="left:60px" data-icon="candle"></span><span class="pot" style="right:18px" data-icon="mug"></span></div>
+        </div>
+        <div class="lantern-wrap">
+          <span class="beam-hook"></span>
+          <span class="chain" style="height:18px"></span>
+          <button class="lantern" title="Record">
+            <span class="glow" data-glow="72"></span>
+            <span class="body" data-icon="lantern" data-s="6"></span>
+          </button>
+          <span class="tag"><span class="mic" data-icon="mic"></span>REC</span>
+        </div>
+      </div>
+      <div class="card parch">
+        <span class="pin" style="left:6px;top:6px"></span><span class="pin" style="right:6px;top:6px"></span>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 3px 0 6px">
+          <div class="status"><span class="dot"></span>READY</div>
+          <div class="device" style="margin-top:0"><span data-icon="micsm"></span>Default microphone</div>
+        </div>
+        <div class="timer">00:00.0</div>
+        <div class="meter" data-seg="32"></div>
+      </div>
+      <div class="shelf"><div class="items"><span data-icon="books"></span><span data-icon="jar"></span><span data-icon="tape"></span><span data-icon="plant"></span></div></div>
+    </section>
+
+    <section class="right">
+      <div class="toolbar">
+        <button class="picker parch">Inbox<span class="ic" data-icon="down"></span></button>
+        <div class="search"><span data-icon="search"></span><span>Search</span></div>
+        <button class="ibtn" title="Import file" data-icon="import"></button>
+        <button class="ibtn" title="Ask" data-icon="ask"></button>
+        <button class="ibtn" title="Widget mode" data-icon="widget"></button>
+      </div>
+      <div class="inv"><div class="rows" data-clips="wide"></div></div>
+    </section>
+  </div>
+
+  <div class="footer wood-dark">
+    <span class="nail" style="left:3px;top:6px"></span><span class="nail" style="right:3px;top:6px"></span>
+    <button class="fplay" title="Play" data-icon="play"></button>
+    <div class="fmid">
+      <div class="ftop"><span class="fname">Nothing playing</span><span class="ftime">--:-- / --:--</span></div>
+      <div class="prog"><i></i></div>
+    </div>
+  </div>
+</div>
+<figcaption>Wide 1000 x 620 · default layout · recorder left with a cabin shelf · fonts Jersey 10 Pixelify Sans Tiny5</figcaption>
+</figure>
+
+</div>
+
+<script>
+const STILL = location.search.includes('still');
+if (STILL) document.documentElement.classList.add('still');
+const U = 3;
+
+/* ---------- pixel SVG from a grid of chars ---------- */
+function px(rows, s = U, cls = 'px') {
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length;
+  let out = '';
+  rows.forEach((r, y) => {
+    let x = 0;
+    while (x < r.length) {
+      const c = r[x];
+      let n = 1;
+      while (x + n < r.length && r[x + n] === c) n++;
+      if (c !== '.' && c !== ' ') out += `<rect class="c-${c}" x="${x*s}" y="${y*s}" width="${n*s}" height="${s}"/>`;
+      x += n;
+    }
+  });
+  return `<svg class="${cls}" width="${w*s}" height="${h*s}" viewBox="0 0 ${w*s} ${h*s}">${out}</svg>`;
+}
+
+const ICONS = {
+  gear:["...x...","x.xxx.x",".xx.xx.","xx...xx",".xx.xx.","x.xxx.x","...x..."],
+  min:[".......",".......",".......",".......",".......","xxxxxxx"],
+  close:["xx...xx",".xx.xx.","..xxx..",".xx.xx.","xx...xx"],
+  play:["x....","xx...","xxx..","xxxx.","xxxxx","xxxx.","xxx..","xx...","x...."],
+  down:["xxxxx",".xxx.","..x.."],
+  search:[".xxx...","x...x..","x...x..","x...x..",".xxxx..","....xx.",".....xx"],
+  import:["...x...","...x...",".x.x.x.","..xxx..","...x...","x.....x","xxxxxxx"],
+  ask:[".xxxxxx.","x......x","x.x.x.xx","x......x",".xxxxxx.","..x.....","..x....."],
+  widget:["xxxxxxxx","x......x","x......x","x...xxxx","x...xxxx","xxxxxxxx"],
+  more:["x",".","x",".","x"],
+  mic:[".xxx.",".xxx.","x.x.x","x...x",".xxx.","..x..",".xxx."],
+  micsm:[".x.","xxx","x.x",".x."],
+  scroll:["xxxx.","x..xx","x.x.x","x...x","xxxxx"],
+  flame:["..o..",".oo..",".oho.","ohhho","ohyho",".oyo."],
+  plant:["..V.V..","V.vVv.V",".vVvVv.","..vVv..","..oho..","..ooo..","...o..."].map(r=>r),
+  mug:["..y.y..","...y...","kkkkkk.","kppppkk","kpqqpkk","kppppkk",".kkkk.."],
+  candle:["..h..",".hyh.","..k..",".ppp.",".ppp.",".pqp.","kkkkk"],
+  books:["oo.hh.vv.","oo.hh.vv.","oy.hy.vV.","oo.hh.vv.","oy.hy.vV.","oo.hh.vv."],
+  jar:[".kkkk.","kqqqqk","khhhhk","khyhhk","khhhhk","khhhhk",".kkkk."],
+  tape:["kkkkkkkk","kppppppk","kpkppkpk","kppppppk","kqqqqqqk","kkkkkkkk"],
+  lantern:[
+    ".......kkkk.......",
+    "......kM..Mk......",
+    "......k....k......",
+    ".......kkkk.......",
+    ".....kkkkkkkk.....",
+    "....kMMHMMMMMk....",
+    "...kMmmmmmmmmmk...",
+    "..kkkkkkkkkkkkkk..",
+    "..kmMGGggggggMmk..",
+    "..kmMGgggggggMmk..",
+    "..kmMGgggfggg Mmk.".replace(' ','g'),
+    "..kmMGggffgggMmk..",
+    "..kmMGgfFfgggMmk..",
+    "..kmMGgfFFfggMmk..",
+    "..kmMGfFFFfggMmk..",
+    "..kmMGfFFFfggMmk..",
+    "..kmMGgfFfgggMmk..",
+    "..kmMGggkggggMmk..",
+    "..kmMGggkggggMmk..",
+    "..kkkkkkkkkkkkkk..",
+    ".kMMHMMMMMMMMMMMk.",
+    ".kmmmmmmmmmmmmmmk.",
+    "..kkkkkkkkkkkkkk..",
+  ],
+};
+// fix lantern row width (18)
+ICONS.lantern = ICONS.lantern.map(r => r.slice(0,18).padEnd(18,'.'));
+
+document.querySelectorAll('[data-icon]').forEach(el => {
+  el.innerHTML = px(ICONS[el.dataset.icon], +(el.dataset.s||U)) + el.innerHTML;
+});
+
+/* glow halo: quantised rings, 3px cells */
+document.querySelectorAll('[data-glow]').forEach(el => {
+  const n = +el.dataset.glow, c = (n - 1) / 2;
+  const lv = ['', 'rgba(255,196,90,.10)', 'rgba(255,196,90,.17)', 'rgba(255,205,110,.26)'];
+  let rects = '';
+  for (let y = 0; y < n; y++) {
+    let x = 0;
+    const lvl = xx => { const d = Math.hypot(xx - c, (y - c) * 1.05) / c; return d < .42 ? 3 : d < .7 ? 2 : d < 1 ? 1 : 0; };
+    while (x < n) {
+      const l = lvl(x); let k = 1;
+      while (x + k < n && lvl(x + k) === l) k++;
+      if (l) rects += `<rect x="${x*U}" y="${y*U}" width="${k*U}" height="${U}" fill="${lv[l]}"/>`;
+      x += k;
+    }
+  }
+  el.innerHTML = `<svg class="px" width="${n*U}" height="${n*U}">${rects}</svg>`;
+});
+
+/* ---------- seeded random ---------- */
+function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+function hash(str) { let h = 2166136261; for (const ch of str) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; }
+
+/* ---------- wood and parchment tiles ---------- */
+function woodTile(base, seedN) {
+  const W = 64, H = 48, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), r = rng(seedN);
+  const shade = (hex, k) => { const n = parseInt(hex.slice(1), 16); const f = v => Math.max(0, Math.min(255, Math.round(v * k))); return `rgb(${f(n>>16)},${f((n>>8)&255)},${f(n&255)})`; };
+  for (let row = 0; row < 8; row++) {
+    const y0 = row * 6;
+    let x = Math.floor(r() * 30);
+    const joints = [x % W, (x + 24 + Math.floor(r() * 12)) % W];
+    // plank fill per segment
+    for (let px_ = 0; px_ < W; px_++) {
+      const seg = (px_ >= Math.min(...joints) && px_ < Math.max(...joints)) ? 0 : 1;
+      g.fillStyle = shade(base, seg ? 1 : 0.92 + row % 2 * 0.04);
+      g.fillRect(px_, y0, 1, 5);
+    }
+    g.fillStyle = shade(base, 0.55); g.fillRect(0, y0 + 5, W, 1);           // seam
+    g.fillStyle = shade(base, 1.18); g.fillRect(0, y0, W, 1);               // top light
+    joints.forEach(j => { g.fillStyle = shade(base, 0.55); g.fillRect(j, y0, 1, 5); g.fillStyle = shade(base, 1.18); g.fillRect((j + 1) % W, y0 + 1, 1, 4); });
+    // grain dashes
+    for (let k = 0; k < 7; k++) {
+      const gx = Math.floor(r() * W), gy = y0 + 1 + Math.floor(r() * 4), len = 2 + Math.floor(r() * 6);
+      g.fillStyle = shade(base, r() < .5 ? 0.82 : 1.1);
+      for (let i = 0; i < len; i++) g.fillRect((gx + i) % W, gy, 1, 1);
+    }
+    if (r() < .35) { const kx = Math.floor(r() * W); g.fillStyle = shade(base, .6); g.fillRect(kx, y0 + 2, 2, 1); g.fillStyle = shade(base, .75); g.fillRect(kx - 1, y0 + 2, 1, 1); g.fillRect(kx + 2, y0 + 2, 1, 1); }
+  }
+  return `url(${c.toDataURL()})`;
+}
+function parchTile() {
+  const W = 32, c = document.createElement('canvas'); c.width = W; c.height = W;
+  const g = c.getContext('2d'), r = rng(77);
+  g.fillStyle = '#ead4a2'; g.fillRect(0, 0, W, W);
+  for (let i = 0; i < 46; i++) { g.fillStyle = r() < .7 ? '#e0c690' : '#f3e2b8'; g.fillRect(Math.floor(r()*W), Math.floor(r()*W), 1, 1); }
+  for (let i = 0; i < 3; i++) { g.fillStyle = '#dcc088'; const x = Math.floor(r()*W), y = Math.floor(r()*W); g.fillRect(x, y, 3, 1); }
+  return `url(${c.toDataURL()})`;
+}
+const rs = document.documentElement.style;
+rs.setProperty('--wood-tile', woodTile('#7a4a28', 11));
+rs.setProperty('--wood-tile-d', woodTile('#553119', 23));
+rs.setProperty('--parch-tile', parchTile());
+
+/* ---------- clips ---------- */
+const CLIPS = [
+  ['clip_001', 'Sat 05:48', true, '16:53'],
+  ['clip_005', 'Sat 05:48', false, '2:03'],
+  ['clip_006', 'Sat 06:05', false, '0:04'],
+  ['clip_100', 'Sat 09:34', true, '1:09:26'],
+  ['Screen recording', 'Yesterday 07:20', false, '0:03'],
+  ['Meeting', 'Yesterday 07:20', false, '0:02'],
+  ['Meeting (2)', 'Today 10:03', false, '0:02'],
+  ['Presentasjon', 'Today 10:25', true, '0:27'],
+];
+function wave(name, bars) {
+  const r = rng(hash(name)); const H = 8; const rows = Array.from({length: H}, () => '');
+  const hs = []; for (let i = 0; i < bars; i++) hs.push(1 + Math.floor(Math.pow(r(), .8) * (H - 1)));
+  for (let y = 0; y < H; y++) for (let i = 0; i < bars; i++) {
+    const h = hs[i], top = Math.floor((H - h) / 2);
+    rows[y] += (y >= top && y < top + h ? 'x' : '.') + (i < bars - 1 ? '.' : '');
+  }
+  return px(rows);
+}
+document.querySelectorAll('[data-clips]').forEach(el => {
+  const wide = el.dataset.clips === 'wide';
+  el.innerHTML = CLIPS.map(([n, d, t, l], i) => `
+    <div class="row${i === 1 ? ' sel' : ''}">
+      <span class="slot">${px(ICONS.play)}</span>
+      <span class="wave">${wave(n, wide ? 14 : 9)}</span>
+      <div class="txt"><div class="nm">${n}</div>
+        <div class="sub">${d}${t ? ` · <span class="scroll">${px(ICONS.scroll)}</span>transcribed` : ''}</div></div>
+      <span class="len">${l}</span>
+      <span class="more">${px(ICONS.more)}</span>
+    </div>`).join('');
+});
+
+/* ---------- meter ---------- */
+const meters = [...document.querySelectorAll('.meter')].map(m => {
+  const n = +m.dataset.seg; m.innerHTML = '<i></i>'.repeat(n);
+  return { segs: [...m.children], n, peak: 0 };
+});
+function drawMeter(level) {
+  meters.forEach(m => {
+    const on = Math.round(level * m.n);
+    m.peak = Math.max(on, m.peak - 0.35);
+    const pk = Math.round(m.peak);
+    m.segs.forEach((s, i) => {
+      const f = i / m.n;
+      s.className = i < on ? ('on' + (f > .86 ? ' hot' : f > .62 ? ' mid' : '')) : (i === pk && pk > on ? 'peak' : '');
+    });
+  });
+}
+
+/* ---------- window scene: dusk pines with fireflies ---------- */
+const scenes = [...document.querySelectorAll('canvas.scene')].map((c, k) => {
+  const g = c.getContext('2d'); const W = c.width, H = c.height; const r = rng(5 + k);
+  const stars = Array.from({length: Math.round(W * H / 90)}, () => [Math.floor(r()*W), Math.floor(r()*H*0.45), r()*6]);
+  const flies = Array.from({length: Math.round(W / 8)}, () => [r()*W, H*0.55 + r()*H*0.38, r()*6.28, 0.5 + r()]);
+  const pines = []; for (let x = -4; x < W + 6; x += 5 + Math.floor(r()*5)) pines.push([x, 10 + Math.floor(r()*Math.min(16, H*0.35))]);
+  const far = []; for (let x = 0; x < W; x++) far.push(Math.round(H*0.58 + Math.sin(x*0.13 + k)*3 + Math.sin(x*0.05)*4));
+  return { g, W, H, stars, flies, pines, far };
+});
+function drawScene(s, t) {
+  const { g, W, H } = s;
+  const bands = ['#1b1f3c', '#232850', '#2e3060', '#463a6a', '#6a4868', '#9a5a5c'];
+  const bh = H * 0.62 / bands.length;
+  bands.forEach((col, i) => {
+    g.fillStyle = col; g.fillRect(0, Math.floor(i*bh), W, Math.ceil(bh) + 1);
+    if (i) { g.fillStyle = bands[i-1]; const y = Math.floor(i*bh); for (let x = (i % 2); x < W; x += 2) g.fillRect(x, y, 1, 1); }
+  });
+  // stars
+  s.stars.forEach(([x, y, p]) => { const b = Math.sin(t*1.5 + p); if (b > -0.3) { g.fillStyle = b > .6 ? '#fff2cc' : '#9aa0c8'; g.fillRect(x, y, 1, 1); } });
+  // moon
+  const mx = W - 12, my = 5;
+  g.fillStyle = '#f6e7c4'; g.fillRect(mx+1, my, 4, 6); g.fillRect(mx, my+1, 6, 4);
+  g.fillStyle = '#d9c398'; g.fillRect(mx+3, my+2, 1, 1); g.fillRect(mx+1, my+3, 1, 1);
+  // far hills
+  g.fillStyle = '#2b3150';
+  s.far.forEach((h, x) => g.fillRect(x, h, 1, H - h));
+  // cabin light far away
+  g.fillStyle = '#ffd982'; g.fillRect(Math.floor(W*0.3), s.far[Math.floor(W*0.3)] + 2, 1, 1);
+  // pines
+  s.pines.forEach(([x, h], i) => {
+    const base = H - 4 - (i % 2); g.fillStyle = i % 3 ? '#1a2a26' : '#203430';
+    for (let y = 0; y < h; y++) { const w = Math.floor((y % 4) + y / 2.6) ; g.fillRect(x - Math.floor(w/2), base - h + y, w + 1, 1); }
+    g.fillStyle = '#24150c'; g.fillRect(x, base, 1, 2);
+  });
+  // ground
+  g.fillStyle = '#20301c'; g.fillRect(0, H - 4, W, 4);
+  g.fillStyle = '#2d4224'; for (let x = 0; x < W; x += 3) g.fillRect(x, H - 4, 1, 1);
+  // fireflies
+  s.flies.forEach(([x0, y0, p, sp]) => {
+    const x = Math.round((x0 + Math.sin(t*0.6*sp + p) * 4 + W) % W), y = Math.round(y0 + Math.cos(t*0.8*sp + p*1.7) * 3);
+    const b = Math.sin(t * 2.2 * sp + p);
+    if (b < -0.2) return;
+    if (b > 0.4) { g.fillStyle = 'rgba(255,210,110,.35)'; g.fillRect(x-1, y, 3, 1); g.fillRect(x, y-1, 1, 3); }
+    g.fillStyle = b > 0.4 ? '#fff0a0' : '#c9a24a'; g.fillRect(x, y, 1, 1);
+  });
+}
+
+let last = 0;
+function frame(ms) {
+  const t = ms / 1000;
+  if (ms - last > 80 || STILL) {
+    last = ms;
+    scenes.forEach(s => drawScene(s, t));
+    const lvl = 0.38 + Math.sin(t*3.1)*0.12 + Math.sin(t*7.7)*0.09 + Math.sin(t*13.3)*0.06;
+    drawMeter(Math.max(0, Math.min(1, lvl)));
+  }
+  if (!STILL) requestAnimationFrame(frame);
+}
+if (STILL) { meters.forEach(m => m.peak = 0.7 * m.n); frame(2300); } else requestAnimationFrame(frame);
+</script>
+</body>
+</html>

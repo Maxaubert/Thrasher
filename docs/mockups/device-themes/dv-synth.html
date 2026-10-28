@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pocket Synth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@700;900&family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=block" rel="stylesheet">
+<style>
+:root{
+  --page:#121212;
+  --body:#e8e6e0; --body2:#dedbd3; --edge:#c4c0b6; --ink:#1c1c1b; --mute:#7a766d; --faint:#a9a59b;
+  --cap:#f6f5f1; --cap2:#e6e4de; --capShadow:#b3afa5;
+  --dk:#2c2c2b; --dk2:#1f1f1e;
+  --or:#ff5a1e; --or2:#e94a12;
+  --oled:#0b0c0c; --px:#eef3ee; --pxdim:#3a3e3c;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:#e9e7e1;font-family:"Inter Tight",system-ui,sans-serif;padding:22px 24px 30px}
+.mono{font-family:"JetBrains Mono",monospace}
+
+/* ---------- page heading ---------- */
+.head{display:flex;flex-wrap:wrap;gap:12px 40px;align-items:flex-end;margin-bottom:18px}
+.kick{font:700 10px/1 "JetBrains Mono";letter-spacing:.32em;color:#8b877e;margin-bottom:8px}
+.ttl{font:800 38px/1 "Inter Tight";letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
+.ttl i{width:12px;height:12px;border-radius:3px;background:var(--or);display:inline-block}
+.idea{font-size:14px;color:#bdb9b0;max-width:330px;line-height:1.45}
+.chg{list-style:none;display:grid;grid-template-columns:repeat(2,auto);gap:6px 28px;font-size:12.5px;color:#cfcbc2}
+.chg li{display:flex;gap:8px;align-items:center}
+.chg li:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--or)}
+.map{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.map span{font:500 10.5px/1 "JetBrains Mono";color:#d8d4cb;border:1px solid #34332f;border-radius:4px;padding:6px 8px;background:#1a1a19}
+.map b{color:var(--or);font-weight:700;margin-right:5px}
+
+.stage{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}
+
+/* ---------- device shell ---------- */
+.win{position:relative;border-radius:16px;overflow:hidden;color:var(--ink);
+  background:
+    repeating-linear-gradient(90deg,rgba(255,255,255,.0) 0 2px,rgba(255,255,255,.18) 2px 3px),
+    linear-gradient(180deg,#eeece7,#e2dfd8);
+  box-shadow:0 0 0 1px #9d998f,inset 0 1px 0 #fff,0 18px 40px rgba(0,0,0,.55),0 2px 0 1px #8e8a80;
+  display:flex;flex-direction:column}
+.p{width:400px;height:620px}
+.w{width:1000px;height:620px}
+.screw{position:absolute;width:9px;height:9px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#fbfaf7,#b8b4aa);box-shadow:inset 0 0 0 1px #a39f95}
+.screw:after{content:"";position:absolute;left:1.5px;right:1.5px;top:3.8px;height:1.4px;background:#8f8b81;transform:rotate(35deg)}
+
+/* title bar */
+.tb{height:34px;flex:none;display:flex;align-items:center;padding:0 12px 0 16px;gap:10px;border-bottom:1px solid var(--edge)}
+.logo{display:flex;align-items:center;gap:8px}
+.logo .sq{width:10px;height:10px;border-radius:2px;background:var(--or)}
+.logo b{font:800 12px/1 "Inter Tight";letter-spacing:.22em}
+.logo s{text-decoration:none;font:500 9px/1 "JetBrains Mono";color:var(--mute);letter-spacing:.12em;border:1px solid var(--faint);border-radius:3px;padding:2px 4px}
+.tb .sp{flex:1}
+.tbtn{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#3b3a37;
+  background:linear-gradient(#f9f8f5,#e2dfd8);box-shadow:0 1px 0 #aaa69c,inset 0 0 0 1px #c8c4ba}
+.tbtn svg{width:12px;height:12px}
+
+/* silkscreen */
+.silk{font:600 8px/1 "JetBrains Mono";letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.silk.o{color:var(--or2)}
+
+/* OLED */
+.oled{background:var(--oled);border-radius:7px;color:var(--px);position:relative;overflow:hidden;
+  box-shadow:0 0 0 3px #222221,0 0 0 4px #9a968c,inset 0 0 18px rgba(0,0,0,.9)}
+.oled:after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px)}
+.st{display:flex;align-items:center;gap:7px;font:700 10px/1 "JetBrains Mono";letter-spacing:.2em}
+.st i{width:7px;height:7px;background:var(--px);display:inline-block}
+.tmr{font-family:"Doto","JetBrains Mono",monospace;font-weight:700;letter-spacing:.02em;line-height:1}
+.dev{font:500 10px/1 "JetBrains Mono";color:#b9c0ba;letter-spacing:.04em;display:flex;align-items:center;gap:6px}
+.dev svg{width:11px;height:11px}
+.meter{display:flex;gap:2px;align-items:flex-end}
+.meter u{flex:1;background:var(--pxdim);display:block}
+.meter u.on{background:var(--px)}
+.meter u.pk{background:var(--or)}
+
+/* keys */
+.key{position:relative;border-radius:8px;display:grid;place-items:center;color:#2a2a28;
+  background:linear-gradient(180deg,var(--cap),var(--cap2));
+  box-shadow:0 2px 0 var(--capShadow),0 3px 7px rgba(0,0,0,.16),inset 0 1px 0 #fff,inset 0 0 0 1px #d2cfc7}
+.key.dk{background:linear-gradient(180deg,#3a3a38,var(--dk2));color:#ecebe6;box-shadow:0 2px 0 #0f0f0e,0 3px 7px rgba(0,0,0,.28),inset 0 1px 0 #555}
+.key.or{background:linear-gradient(180deg,#ff6a30,var(--or2));color:#fff;box-shadow:0 2px 0 #a8360b,0 3px 8px rgba(233,74,18,.35),inset 0 1px 0 #ff9a6e}
+.key.lit{background:linear-gradient(180deg,#ff6a30,var(--or2));color:#fff;box-shadow:0 2px 0 #a8360b,0 0 0 3px rgba(255,90,30,.22),0 0 14px rgba(255,90,30,.45),inset 0 1px 0 #ff9a6e}
+.key svg{width:15px;height:15px}
+.key svg.wave{width:auto;height:auto}
+.key .n{position:absolute;left:6px;top:5px;font:700 8px/1 "JetBrains Mono";letter-spacing:.06em;opacity:.6}
+.led{width:6px;height:6px;border-radius:50%;background:#c4c0b6;box-shadow:inset 0 1px 1px rgba(0,0,0,.25);flex:none}
+.led.on{background:var(--or);box-shadow:0 0 6px var(--or),0 0 0 1px #ffb08c inset}
+.led.w{background:#fff;box-shadow:0 0 5px #fff}
+
+/* knob */
+.knob{position:relative;border-radius:50%;flex:none;
+  background:repeating-conic-gradient(from -135deg,#8f8b81 0 1.5deg,transparent 1.5deg 27deg);
+  -webkit-mask:radial-gradient(circle,#000 70%,#000 0);padding:4px}
+.knob .cap{width:100%;height:100%;border-radius:50%;position:relative;
+  background:radial-gradient(circle at 38% 30%,#4a4a47,#1d1d1c 70%);box-shadow:0 2px 3px rgba(0,0,0,.4),inset 0 0 0 1px #000}
+.knob .cap:after{content:"";position:absolute;left:50%;top:12%;width:2px;height:32%;margin-left:-1px;border-radius:1px;background:var(--or)}
+.knob.light .cap{background:radial-gradient(circle at 38% 30%,#ffffff,#d6d3cb 72%);box-shadow:0 2px 3px rgba(0,0,0,.25),inset 0 0 0 1px #b4b0a6}
+
+/* LCD strips for toolbar */
+.lcd{height:30px;border-radius:6px;background:var(--oled);color:var(--px);display:flex;align-items:center;gap:8px;padding:0 10px;
+  font:500 11px/1 "JetBrains Mono";box-shadow:0 0 0 2px #262625,0 0 0 3px #a19d93,inset 0 0 10px #000}
+.lcd svg{width:12px;height:12px;flex:none}
+.lcd .ph{color:#8c948e}
+
+/* clip rows (portrait) */
+.rows{flex:1;overflow:hidden;padding:4px 12px 0}
+.row{height:33px;display:flex;align-items:center;gap:8px;padding:0 4px;border-radius:6px}
+.row.sel{background:rgba(255,90,30,.09);box-shadow:inset 0 0 0 1px rgba(255,90,30,.35)}
+.row .num{width:18px;font:700 9px/1 "JetBrains Mono";color:var(--mute);text-align:right}
+.row.sel .num{color:var(--or2)}
+.row .key{width:28px;height:27px;border-radius:6px;flex:none}
+.row .key svg{width:11px;height:11px}
+.txt{flex:1;min-width:0}
+.nm{font:600 12.5px/1.1 "Inter Tight";white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{font:500 9px/1 "JetBrains Mono";color:var(--mute);margin-top:3px;letter-spacing:.04em;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.tag{font:700 7.5px/1 "JetBrains Mono";letter-spacing:.08em;text-transform:uppercase;color:var(--or2);border:1px solid rgba(233,74,18,.55);border-radius:2px;padding:1.5px 3px}
+.len{font:500 11px/1 "JetBrains Mono";text-align:right;flex:none}
+.dots{width:20px;height:20px;border-radius:50%;flex:none;display:grid;place-items:center;color:#55524c;
+  background:linear-gradient(#f7f6f2,#dfdcd5);box-shadow:0 1px 0 #aeaa9f,inset 0 0 0 1px #cdc9c0}
+.dots svg{width:10px;height:10px}
+.wave{flex:none;display:block}
+
+/* footer transport */
+.ft{flex:none;border-top:1px solid var(--edge);display:flex;align-items:center;gap:12px;
+  background:linear-gradient(180deg,rgba(0,0,0,.02),rgba(0,0,0,.05))}
+.steps{display:flex;gap:4px;align-items:center}
+.steps .led{width:5px;height:5px}
+
+/* ---------- portrait specifics ---------- */
+.p .recm{padding:12px 16px 10px;border-bottom:1px solid var(--edge);flex:none}
+.p .oled{height:108px;padding:11px 13px}
+.p .tmr{font-size:40px;margin-top:9px}
+.p .fn{display:flex;gap:10px;align-items:flex-end;margin-top:14px}
+.fnk{display:flex;flex-direction:column;align-items:center;gap:6px}
+.p .fnk .key{width:52px;height:44px}
+.p .fnk .key.or{width:76px}
+.p .fnk .key svg{width:17px;height:17px}
+.p .tool{flex:none;display:flex;gap:9px;align-items:center;padding:9px 16px 8px;border-bottom:1px solid var(--edge)}
+.p .ft{height:60px;padding:0 16px}
+
+/* ---------- wide specifics ---------- */
+.w .main{flex:1;display:flex;min-height:0}
+.w .left{width:392px;flex:none;border-right:1px solid var(--edge);padding:16px 18px;display:flex;flex-direction:column;gap:14px;
+  background:linear-gradient(180deg,rgba(0,0,0,.015),rgba(0,0,0,.04))}
+.w .oled{height:188px;padding:16px 18px}
+.w .tmr{font-size:70px;margin-top:16px}
+.w .fn{display:flex;gap:12px;align-items:flex-end}
+.w .fnk .key{width:72px;height:58px}
+.w .fnk .key.or{width:96px}
+.w .fnk .key svg{width:20px;height:20px}
+.grille{flex:1;border-radius:8px;min-height:0;
+  background-image:radial-gradient(circle,#9d998f 1.6px,transparent 2px);background-size:10px 10px;background-position:5px 5px;opacity:.8}
+.w .right{flex:1;display:flex;flex-direction:column;min-width:0}
+.w .tool{flex:none;display:flex;gap:12px;align-items:center;padding:14px 20px 12px}
+.pads{flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);gap:18px 16px;padding:6px 20px 16px;min-height:0}
+.pad{display:flex;flex-direction:column;min-width:0}
+.pad .key{flex:1;min-height:0;border-radius:10px;place-items:stretch;display:flex;flex-direction:column;justify-content:space-between;padding:9px 10px 10px}
+.pad .key .top{display:flex;justify-content:space-between;align-items:center}
+.pad .key .top b{font:700 10px/1 "JetBrains Mono";letter-spacing:.06em;opacity:.7}
+.pad .key .mid{display:flex;align-items:center;justify-content:center}
+.pad .key .mid svg{width:18px;height:18px}
+.pad .lab{padding:9px 2px 0}
+.pad .l1{display:flex;align-items:center;gap:6px}
+.pad .l1 .nm{flex:1;font-size:13px}
+.pad .l2{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.pad .l3{margin-top:5px;height:11px}
+.w .ft{height:62px;padding:0 20px}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <div>
+    <div class="kick">THRASHER THEME</div>
+    <div class="ttl"><i></i>Pocket Synth</div>
+  </div>
+  <p class="idea">The app becomes a tiny white aluminium sampler. A mono screen, a few knobs and sixteen numbered keys. Each clip is a pad.</p>
+  <ul class="chg">
+    <li>Recorder is a pixel screen with a segment meter</li>
+    <li>Import ask and widget become keys beside REC</li>
+    <li>Clips are numbered keys, the selected one glows orange</li>
+    <li>Wide view lays clips out as a 4 by 2 pad bank</li>
+  </ul>
+</div>
+<div class="map">
+  <span><b>9</b>REC key records</span>
+  <span><b>10</b>import</span>
+  <span><b>11</b>ask</span>
+  <span><b>12</b>widget</span>
+  <span><b>1 to 8</b>clip pads play a clip</span>
+  <span><b>13</b>transport key plays or pauses</span>
+  <span><b>IN knob</b>picks the mic</span>
+  <span><b>PROJ knob</b>picks the project</span>
+  <span><b>step LEDs</b>are the progress bar</span>
+  <span><b>gear</b>settings</span>
+</div>
+
+<div class="stage">
+  <!-- ================= PORTRAIT ================= -->
+  <div class="win p" id="P">
+    <span class="screw" style="left:7px;bottom:7px"></span><span class="screw" style="right:7px;bottom:7px"></span>
+    <div class="tb">
+      <div class="logo"><span class="sq"></span><b>THRASHER</b><s>PS 16</s></div>
+      <div class="sp"></div>
+      <div class="tbtn" data-ic="gear"></div><div class="tbtn" data-ic="min"></div><div class="tbtn" data-ic="x"></div>
+    </div>
+    <div class="recm">
+      <div class="oled">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="st"><i class="blink"></i>READY</div>
+          <div class="dev"><span data-ic="mic"></span>Default microphone</div>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:14px">
+          <div class="tmr">00:00.0</div>
+          <div class="meter" data-seg="20" style="flex:1;height:22px;margin-bottom:6px"></div>
+        </div>
+      </div>
+      <div class="fn">
+        <div class="fnk"><div class="key or"><span class="n">09</span><span data-ic="mic"></span></div><span class="silk o">Rec</span></div>
+        <div class="fnk"><div class="key"><span class="n">10</span><span data-ic="imp"></span></div><span class="silk">Import</span></div>
+        <div class="fnk"><div class="key"><span class="n">11</span><span data-ic="ask"></span></div><span class="silk">Ask</span></div>
+        <div class="fnk"><div class="key"><span class="n">12</span><span data-ic="wid"></span></div><span class="silk">Widget</span></div>
+        <div style="flex:1"></div>
+        <div class="fnk"><div class="knob" style="width:44px;height:44px"><div class="cap"></div></div><span class="silk">In</span></div>
+      </div>
+    </div>
+    <div class="tool">
+      <div class="knob light" style="width:30px;height:30px;padding:3px"><div class="cap"></div></div>
+      <div class="lcd" style="width:94px"><span class="silk" style="color:#7d857f;font-size:7px">PROJ</span>Inbox<span data-ic="dd" style="margin-left:auto"></span></div>
+      <div class="lcd" style="flex:1"><span data-ic="srch"></span><span class="ph">Search</span></div>
+    </div>
+    <div class="rows" id="prow"></div>
+    <div class="ft">
+      <div class="key dk" style="width:38px;height:36px;flex:none"><span class="n" style="left:4px;top:3px;font-size:7px">13</span><span data-ic="play"></span></div>
+      <div style="flex:1;min-width:0">
+        <div class="lcd" style="height:24px;justify-content:space-between"><span>Nothing playing</span><span>--:-- / --:--</span></div>
+        <div class="steps" data-n="24" style="margin-top:7px;justify-content:space-between;padding:0 2px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= WIDE ================= -->
+  <div class="win w" id="W">
+    <span class="screw" style="left:8px;bottom:8px"></span><span class="screw" style="right:8px;bottom:8px"></span>
+    <div class="tb">
+      <div class="logo"><span class="sq"></span><b>THRASHER</b><s>PS 16</s><span class="silk" style="margin-left:6px">Pocket sampler</span></div>
+      <div class="sp"></div>
+      <div class="tbtn" data-ic="gear"></div><div class="tbtn" data-ic="min"></div><div class="tbtn" data-ic="x"></div>
+    </div>
+    <div class="main">
+      <div class="left">
+        <div class="oled">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="st" style="font-size:11px"><i class="blink"></i>READY</div>
+            <div class="st" style="font-size:9px;color:#7d857f;letter-spacing:.16em">MONO IN</div>
+          </div>
+          <div class="tmr">00:00.0</div>
+          <div class="meter" data-seg="32" style="height:16px;margin-top:16px"></div>
+          <div class="dev" style="margin-top:12px"><span data-ic="mic"></span>Default microphone</div>
+        </div>
+        <div class="fn">
+          <div class="fnk"><div class="key or"><span class="n">09</span><span data-ic="mic"></span></div><span class="silk o">Rec</span></div>
+          <div class="fnk"><div class="key"><span class="n">10</span><span data-ic="imp"></span></div><span class="silk">Import</span></div>
+          <div class="fnk"><div class="key"><span class="n">11</span><span data-ic="ask"></span></div><span class="silk">Ask</span></div>
+          <div class="fnk"><div class="key"><span class="n">12</span><span data-ic="wid"></span></div><span class="silk">Widget</span></div>
+        </div>
+        <div style="display:flex;gap:16px;flex:1;min-height:0;align-items:stretch">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:7px;justify-content:center">
+            <div class="knob" style="width:62px;height:62px;padding:5px"><div class="cap"></div></div>
+            <span class="silk">In</span>
+          </div>
+          <div class="grille"></div>
+        </div>
+      </div>
+      <div class="right">
+        <div class="tool">
+          <div class="knob light" style="width:32px;height:32px;padding:3px"><div class="cap"></div></div>
+          <div class="lcd" style="width:118px"><span class="silk" style="color:#7d857f;font-size:7px">PROJ</span>Inbox<span data-ic="dd" style="margin-left:auto"></span></div>
+          <div class="lcd" style="flex:1"><span data-ic="srch"></span><span class="ph">Search</span></div>
+          <span class="silk">Bank A</span>
+        </div>
+        <div class="pads" id="wpad"></div>
+      </div>
+    </div>
+    <div class="ft">
+      <div class="key dk" style="width:46px;height:40px;flex:none"><span class="n" style="left:5px;top:4px;font-size:7px">13</span><span data-ic="play"></span></div>
+      <div class="lcd" style="width:250px;justify-content:space-between"><span>Nothing playing</span><span>--:-- / --:--</span></div>
+      <div class="steps" data-n="48" style="flex:1;justify-content:space-between"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const S='fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
+const IC={
+ gear:`<svg viewBox="0 0 24 24" ${S}><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>`,
+ min:`<svg viewBox="0 0 24 24" ${S}><path d="M6 12h12"/></svg>`,
+ x:`<svg viewBox="0 0 24 24" ${S}><path d="M7 7l10 10M17 7L7 17"/></svg>`,
+ mic:`<svg viewBox="0 0 24 24" ${S}><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>`,
+ imp:`<svg viewBox="0 0 24 24" ${S}><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg>`,
+ ask:`<svg viewBox="0 0 24 24" ${S}><path d="M5 5.5h14v10H10l-4 3.5v-3.5H5z"/></svg>`,
+ wid:`<svg viewBox="0 0 24 24" ${S}><rect x="3.5" y="5" width="17" height="14" rx="2"/><rect x="11.5" y="11.5" width="6" height="4.5" rx="1" fill="currentColor" stroke="none"/></svg>`,
+ dd:`<svg viewBox="0 0 24 24" ${S}><path d="M7 10l5 5 5-5"/></svg>`,
+ srch:`<svg viewBox="0 0 24 24" ${S}><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5L20 20"/></svg>`,
+ play:`<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>`,
+ dots:`<svg viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="18.5" r="2" fill="currentColor"/></svg>`
+};
+const CLIPS=[
+ ["clip_001","Sat 05:48",1,"16:53"],["clip_005","Sat 05:48",0,"2:03"],["clip_006","Sat 06:05",0,"0:04"],
+ ["clip_100","Sat 09:34",1,"1:09:26"],["Screen recording","Yesterday 07:20",0,"0:03"],["Meeting","Yesterday 07:20",0,"0:02"],
+ ["Meeting (2)","Today 10:03",0,"0:02"],["Presentasjon","Today 10:25",1,"0:27"]];
+function rnd(seed){let s=seed*9301+49297;return()=>{s=(s*9301+49297)%233280;return s/233280}}
+function wave(i,w,h,n,col,op){const r=rnd(i+3);const bw=w/n;let o=`<svg class="wave" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+ for(let k=0;k<n;k++){const env=Math.sin(Math.PI*(k+.5)/n)*.6+.4;const v=Math.max(.14,env*(.35+r()*.65));const bh=Math.max(2,v*h);
+  o+=`<rect x="${(k*bw+bw*.2).toFixed(1)}" y="${((h-bh)/2).toFixed(1)}" width="${(bw*.6).toFixed(1)}" height="${bh.toFixed(1)}" rx="${(bw*.3).toFixed(1)}" fill="${col}" opacity="${op}"/>`}
+ return o+'</svg>'}
+const pad2=n=>String(n).padStart(2,'0');
+// portrait rows
+document.getElementById('prow').innerHTML=CLIPS.map((c,i)=>{const sel=i===1;
+ return `<div class="row${sel?' sel':''}"><span class="num">${pad2(i+1)}</span>
+  <div class="key${sel?' lit':''}"><span data-ic="play"></span></div>
+  <div class="txt"><div class="nm">${c[0]}</div><div class="sub">${c[1]}${c[2]?'<span class="tag">transcribed</span>':''}</div></div>
+  ${wave(i,54,16,13,sel?'#e94a12':'#2b2a28',sel?1:.5)}
+  <span class="len" style="width:50px">${c[3]}</span><div class="dots"><span data-ic="dots"></span></div></div>`}).join('');
+// wide pads
+document.getElementById('wpad').innerHTML=CLIPS.map((c,i)=>{const sel=i===1;
+ return `<div class="pad"><div class="key${sel?' lit':''}">
+   <div class="top"><b>${pad2(i+1)}</b><span class="led${sel?' w':''}"></span></div>
+   <div class="mid"><span data-ic="play"></span></div>
+   <div>${wave(i,106,18,17,sel?'#ffffff':'#2b2a28',sel?.9:.45)}</div></div>
+  <div class="lab"><div class="l1"><span class="nm">${c[0]}</span><div class="dots"><span data-ic="dots"></span></div></div>
+   <div class="l2"><span class="sub" style="margin:0">${c[1]}</span><span class="len">${c[3]}</span></div>
+   <div class="l3">${c[2]?'<span class="tag">transcribed</span>':''}</div></div></div>`}).join('');
+document.querySelectorAll('[data-ic]').forEach(e=>{e.innerHTML=IC[e.dataset.ic];if(e.tagName==='SPAN')e.style.display='inline-flex'});
+document.querySelectorAll('.steps').forEach(e=>{e.innerHTML='<span class="led"></span>'.repeat(+e.dataset.n)});
+const meters=[...document.querySelectorAll('.meter')];
+meters.forEach(m=>{m.innerHTML='<u></u>'.repeat(+m.dataset.seg);[...m.children].forEach((u,k)=>u.style.height=(45+55*k/m.children.length)+'%')});
+let lvl=.45;
+function draw(t){lvl+=(Math.random()-.5)*.25;lvl=Math.min(.85,Math.max(.12,lvl));
+ meters.forEach(m=>{const n=m.children.length,on=Math.round(lvl*n);[...m.children].forEach((u,k)=>{u.className=k<on?(k>=n-3?'on pk':'on'):''})});
+ document.querySelectorAll('.blink').forEach(b=>b.style.opacity=(Math.floor(t/600)%2)?.35:1);}
+const still=location.search.includes('still');
+if(still){lvl=.52;draw(0)}else{let last=0;(function f(t){if(t-last>70){draw(t);last=t}requestAnimationFrame(f)})(0)}
+</script>
+</body>
+</html>

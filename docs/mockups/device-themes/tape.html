@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tape Deck Theme</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Oswald:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#140e0a;
+  --chassis:#22170f;
+  --chassis-2:#1a120c;
+  --chassis-hi:#3a281a;
+  --cream:#efe3c8;
+  --cream-2:#e2d3b2;
+  --ink:#2a1c12;
+  --ink-soft:#6b5644;
+  --alu-ink:#3b342c;
+  --red:#c9331f;
+  --red-dk:#8e2012;
+  --amber:#f2a64a;
+  --brass:#c9a25e;
+  --led:#ff5a3a;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --label:'Oswald','Arial Narrow',sans-serif;
+  --hand:'Caveat','Comic Sans MS',cursive;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--cream);font-family:var(--label);padding:18px 24px;min-height:100vh}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+svg{display:block}
+
+/* page head */
+.head{display:flex;gap:36px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
+.head h1{font-family:var(--hand);font-weight:700;font-size:46px;line-height:.9;color:var(--cream)}
+.head h1 small{display:block;font-family:var(--label);font-weight:500;font-size:11px;letter-spacing:.32em;color:var(--brass);margin-bottom:6px}
+.head p{font-size:14px;color:#cdbb9b;max-width:360px;letter-spacing:.02em}
+.head ul{list-style:none;font-size:12.5px;color:#b9a585;display:grid;grid-template-columns:auto auto;gap:3px 26px}
+.head li::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-right:8px;vertical-align:1px}
+.stage{display:flex;gap:36px;flex-wrap:wrap;align-items:flex-start}
+
+/* window */
+.win{position:relative;height:620px;border-radius:10px;overflow:hidden;background:var(--chassis);
+  box-shadow:0 0 0 1px #000,0 20px 50px rgba(0,0,0,.55);display:flex;flex-direction:column}
+.portrait{width:400px}
+.wide{width:1000px;display:grid;grid-template-columns:400px 1fr;grid-template-rows:38px 1fr 56px}
+
+/* walnut */
+.walnut{background:
+  repeating-linear-gradient(90deg,rgba(0,0,0,.10) 0 2px,transparent 2px 9px),
+  repeating-linear-gradient(88deg,rgba(255,210,150,.05) 0 1px,transparent 1px 17px),
+  linear-gradient(180deg,#714427,#4c2b17 60%,#3d2212)}
+/* brushed aluminium */
+.alu{background:
+  repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,rgba(0,0,0,.035) 1px 2px),
+  linear-gradient(180deg,#dcd6ca,#bdb5a7 70%,#a9a193)}
+
+/* title bar */
+.tb{height:38px;flex:none;display:flex;align-items:center;padding:0 8px 0 12px;gap:6px;border-bottom:1px solid #1a0f08}
+.wide .tb{grid-column:1/3}
+.plate{display:flex;align-items:center;gap:8px;padding:3px 10px 3px 8px;border-radius:3px;
+  background:linear-gradient(180deg,#e3c58a,#b48c4b);box-shadow:inset 0 1px 0 #f6e2b4,0 1px 0 rgba(0,0,0,.4);color:#3a2610}
+.plate b{font-weight:600;font-size:13px;letter-spacing:.28em}
+.plate i{font-style:normal;font-size:9px;letter-spacing:.18em;opacity:.7}
+.screw{width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f0e4c8,#8a7a5e);position:relative;flex:none}
+.screw::after{content:"";position:absolute;left:1px;right:1px;top:3px;height:1px;background:#4a3a24;transform:rotate(35deg)}
+.tb .sp{flex:1}
+.tbtn{width:28px;height:26px;display:grid;place-items:center;border-radius:4px;color:#ecd9b5}
+.tbtn:hover{background:rgba(0,0,0,.25)}
+.tbtn svg{width:15px;height:15px}
+
+/* deck faceplate */
+.deck{flex:none;padding:10px 12px;position:relative;border-bottom:2px solid #0f0a06;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+.deck .row{display:flex;gap:8px}
+.cass{flex:1;border-radius:6px;padding:5px;background:#120c08;box-shadow:inset 0 2px 6px #000,0 1px 0 rgba(255,255,255,.6)}
+.cass svg{width:100%;height:100%}
+.reel{transform-box:fill-box;transform-origin:center;animation:spin 6s linear infinite}
+.reel.r2{animation-duration:4.2s}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.counter{width:100px;flex:none;display:flex;flex-direction:column;justify-content:space-between;padding:4px 0}
+.eng{font-size:8.5px;letter-spacing:.24em;color:var(--alu-ink);font-weight:500}
+.digits{display:flex;gap:1px;align-items:center;padding:3px;border-radius:3px;background:#1b1410;box-shadow:inset 0 1px 3px #000,0 1px 0 rgba(255,255,255,.6)}
+.digits span{font-family:var(--mono);font-weight:700;font-size:15px;color:#f4ead6;background:linear-gradient(180deg,#0c0907,#2c231c 50%,#0c0907);
+  width:11px;text-align:center;line-height:20px;border-radius:1px}
+.digits em{font-family:var(--mono);font-style:normal;color:#8d7d6a;font-size:12px;width:5px;text-align:center}
+.status{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.2em;color:var(--alu-ink);font-weight:600}
+.led{width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd2b0,var(--led) 45%,#7a1a0a);box-shadow:0 0 6px rgba(255,90,58,.8)}
+.dev{font-size:10.5px;color:var(--alu-ink);letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.vu{flex:none;border-radius:5px;padding:4px;background:#2a1d13;box-shadow:inset 0 2px 5px #000,0 1px 0 rgba(255,255,255,.6)}
+.vu svg{width:100%;height:100%}
+.needle{transform-box:view-box;transform-origin:80px 104px;animation:vu 2.6s ease-in-out infinite}
+@keyframes vu{0%{transform:rotate(-32deg)}12%{transform:rotate(-8deg)}22%{transform:rotate(-20deg)}35%{transform:rotate(4deg)}
+  44%{transform:rotate(-14deg)}58%{transform:rotate(-26deg)}70%{transform:rotate(-6deg)}84%{transform:rotate(-18deg)}100%{transform:rotate(-32deg)}}
+
+/* piano keys */
+.keys{flex:1;display:flex;gap:3px;padding:3px;border-radius:4px;background:#0f0a06;box-shadow:0 1px 0 rgba(255,255,255,.6)}
+.key{flex:1;position:relative;border-radius:2px 2px 4px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  background:linear-gradient(180deg,#ece7dc,#c9c1b2 78%,#8f8778 78%,#6f685b);color:#3a3129;
+  box-shadow:inset 0 1px 0 #fff}
+.key svg{width:17px;height:17px;margin-top:-6px}
+.key span{font-size:8px;letter-spacing:.2em;font-weight:500;margin-top:-1px;margin-bottom:6px}
+.key:hover{filter:brightness(1.05)}
+.key:active{transform:translateY(2px)}
+.key.rec{flex:2.1;background:linear-gradient(180deg,#e2543a,var(--red) 40%,#a72614 78%,#6e170b 78%,#55120a);color:#fff3e6;box-shadow:inset 0 1px 0 #ff9a7f}
+.key.rec svg{width:22px;height:22px}
+.key.rec span{font-size:10.5px;font-weight:600;letter-spacing:.3em}
+.key.rec .dot{position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:#ffd8c8;box-shadow:0 0 4px #fff}
+
+/* toolbar */
+.toolbar{flex:none;height:42px;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--chassis-2);border-bottom:1px solid #0d0805}
+.dymo{display:flex;align-items:center;gap:7px;height:26px;padding:0 9px 0 11px;border-radius:3px;
+  background:linear-gradient(180deg,#1b1b1d,#0b0b0c);color:#f5f1e8;box-shadow:0 1px 2px #000,inset 0 1px 0 #3a3a3e;
+  font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.24em;text-shadow:0 1px 0 #000,0 -1px 0 rgba(255,255,255,.25)}
+.dymo svg{width:12px;height:12px}
+.search{flex:1;height:26px;display:flex;align-items:center;gap:7px;padding:0 10px;border-radius:13px;
+  background:#120c08;box-shadow:inset 0 2px 4px #000,0 1px 0 rgba(255,220,170,.08);color:#9a8670;font-size:12px;letter-spacing:.06em}
+.search svg{width:13px;height:13px}
+
+/* clip shelf */
+.list{flex:1;overflow:hidden;padding:3px 16px 2px 8px;background:
+  repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 36px),var(--chassis)}
+.clip{display:flex;align-items:center;gap:7px;height:33px;margin-bottom:1px}
+.knob{width:26px;height:26px;flex:none;border-radius:50%;display:grid;place-items:center;color:#2a1c12;
+  background:radial-gradient(circle at 35% 30%,#f3e9d4,#b7aa90 70%,#7d705a);box-shadow:0 1px 2px #000,inset 0 -1px 1px rgba(0,0,0,.3)}
+.knob svg{width:10px;height:10px;margin-left:2px}
+.spine{flex:1;min-width:0;height:30px;display:flex;align-items:center;gap:8px;padding:0 4px 0 0;border-radius:3px;position:relative;color:var(--ink);
+  background:repeating-linear-gradient(0deg,rgba(120,90,50,.07) 0 1px,transparent 1px 5px),linear-gradient(180deg,var(--cream),var(--cream-2));
+  box-shadow:0 1px 0 rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.6);transition:transform .15s}
+.spine::before{content:"";width:22px;align-self:stretch;border-radius:3px 0 0 3px;flex:none;
+  background:linear-gradient(90deg,var(--band) 0 70%,rgba(0,0,0,.15) 70% 74%,transparent 74%)}
+.spine .txt{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px}
+.nm{font-family:var(--hand);font-weight:700;font-size:19px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#24170e;transform:rotate(-1deg)}
+.sub{font-size:9.5px;letter-spacing:.1em;color:var(--ink-soft);white-space:nowrap;display:flex;align-items:center;gap:5px;text-transform:uppercase}
+.stamp{font-size:8px;letter-spacing:.12em;color:var(--red);border:1px solid var(--red);border-radius:2px;padding:0 3px;line-height:11px;transform:rotate(-3deg)}
+.portrait .sub .stamp{display:none}
+.portrait .sub .tick{display:inline-block}
+.tick{display:none;width:8px;height:8px;border-radius:50%;background:var(--red)}
+.wave{flex:none;color:#5d4634}
+.len{font-family:var(--mono);font-weight:500;font-size:11px;color:#3e2c1e;width:46px;text-align:right;flex:none}
+.dots{width:20px;height:24px;display:grid;place-items:center;color:#6b5644;flex:none}
+.dots svg{width:14px;height:14px}
+.clip.sel .spine{transform:translateX(6px);background:repeating-linear-gradient(0deg,rgba(120,90,50,.07) 0 1px,transparent 1px 5px),linear-gradient(180deg,#fff6e2,#f1e2c1);
+  box-shadow:0 0 0 2px var(--amber),0 3px 8px rgba(0,0,0,.7)}
+.clip.sel .knob{background:radial-gradient(circle at 35% 30%,#ffb47a,var(--amber) 55%,#a2611f);color:#2a1406}
+
+/* footer transport */
+.foot{flex:none;height:54px;display:flex;align-items:center;gap:10px;padding:0 14px;border-top:1px solid #0d0805}
+.wide .foot{grid-column:1/3}
+.pkey{width:38px;height:32px;flex:none;border-radius:3px;display:grid;place-items:center;color:#3a3129;
+  background:linear-gradient(180deg,#ece7dc,#c9c1b2 76%,#8f8778 76%,#6f685b);box-shadow:0 1px 2px #000,inset 0 1px 0 #fff}
+.pkey svg{width:13px;height:13px;margin-top:-3px}
+.np{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
+.np .t{display:flex;justify-content:space-between;align-items:baseline}
+.np .t b{font-family:var(--hand);font-weight:500;font-size:19px;line-height:1;color:#f0deba}
+.np .t i{font-style:normal;font-family:var(--mono);font-size:11px;color:#e8cf9f;background:#120c08;padding:2px 6px;border-radius:2px;box-shadow:inset 0 1px 2px #000}
+.slot{height:6px;border-radius:3px;background:#120c08;box-shadow:inset 0 1px 2px #000,0 1px 0 rgba(255,220,170,.15);position:relative}
+.slot::after{content:"";position:absolute;left:0;top:-3px;width:6px;height:12px;border-radius:1px;background:linear-gradient(180deg,#e3c58a,#9c7538)}
+
+/* wide specifics */
+.wide .deck{grid-row:2;border-bottom:0;border-right:2px solid #0f0a06;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.wide .deck>.screw{position:absolute}
+.wide .cass{flex:none;height:158px}
+.wide .mid{display:flex;gap:12px;height:112px}
+.wide .vu{width:196px}
+.wide .counter{width:auto;flex:1;padding:2px 0}
+.wide .digits span{font-size:22px;width:16px;line-height:30px}
+.wide .digits em{font-size:16px;width:7px}
+.wide .keys{flex:none;height:86px}
+.wide .key svg{width:20px;height:20px}
+.wide .key.rec svg{width:26px;height:26px}
+.wide .key span{font-size:9px}
+.wide .key.rec span{font-size:12px}
+.wide .input{display:flex;align-items:center;gap:12px;flex:1;min-height:0}
+.dial{width:46px;height:46px;border-radius:50%;flex:none;position:relative;
+  background:repeating-conic-gradient(from 0deg,#2a2420 0 6deg,#3d3530 6deg 12deg);box-shadow:0 2px 4px rgba(0,0,0,.6),0 0 0 3px #a59d8f}
+.dial::after{content:"";position:absolute;inset:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#5a504a,#1e1916)}
+.dial i{position:absolute;left:50%;top:5px;width:3px;height:11px;margin-left:-1.5px;background:var(--amber);border-radius:2px;z-index:1;transform-origin:50% 18px;transform:rotate(-30deg)}
+.grille{flex:1;align-self:stretch;border-radius:4px;background:repeating-linear-gradient(90deg,#1c140e 0 3px,transparent 3px 7px);opacity:.55}
+.devbox{display:flex;flex-direction:column;gap:3px}
+.devbox .d{font-family:var(--hand);font-weight:700;font-size:22px;line-height:1;color:var(--ink)}
+.wide .right{grid-row:2;display:flex;flex-direction:column;min-width:0}
+.wide .toolbar{height:54px;padding:0 18px;gap:10px}
+.wide .dymo{height:30px;font-size:13px}
+.wide .search{height:30px;border-radius:15px;max-width:none}
+.wide .list{padding:10px 22px 6px 14px;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 50px),var(--chassis)}
+.wide .clip{height:46px;margin-bottom:4px;gap:10px}
+.wide .knob{width:32px;height:32px}
+.wide .knob svg{width:12px;height:12px}
+.wide .spine{height:40px;gap:14px}
+.wide .spine::before{width:30px}
+.wide .spine .txt{flex-direction:column;gap:2px;align-items:flex-start}
+.wide .nm{font-size:23px}
+.wide .len{font-size:12px;width:60px}
+
+.still *,.still *::before,.still *::after{animation:none!important}
+.still .needle{transform:rotate(-12deg)}
+</style>
+</head>
+<body>
+<header class="head">
+  <h1><small>THRASHER THEME</small>Tape Deck</h1>
+  <p>A warm 1970s cassette deck in walnut and brushed aluminium. Your clips sit on the shelf like labelled tapes.</p>
+  <ul>
+    <li>Recorder becomes a cassette window with spinning reels</li>
+    <li>Level bar becomes an analog VU needle</li>
+    <li>Import ask and widget move into the piano key row beside REC</li>
+    <li>Clips are hand lettered tape spines with a colour band</li>
+    <li>Project picker is a Dymo label strip</li>
+    <li>Wide view puts the deck on the left like a hardware unit</li>
+  </ul>
+</header>
+<main class="stage">
+  <div class="win portrait" id="p"></div>
+  <div class="win wide" id="w"></div>
+</main>
+
+<script>
+const still = new URLSearchParams(location.search).has('still');
+if (still) document.documentElement.classList.add('still');
+
+const I = {
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  min:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 12h12"/></svg>',
+  close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg>',
+  mic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>',
+  down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
+  imp:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg>',
+  ask:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a7.5 7.5 0 0 1-11 6.6L4 20l1.4-4.6A7.5 7.5 0 1 1 20 12z"/></svg>',
+  widget:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2"/><rect x="12" y="12" width="6" height="4.5" rx="1" fill="currentColor" stroke="none"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4.5v15a1 1 0 0 0 1.5.86l12.4-7.5a1 1 0 0 0 0-1.72L7.5 3.64A1 1 0 0 0 6 4.5z"/></svg>',
+  dots:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>'
+};
+
+const clips = [
+  ['clip_001','Sat 05:48',true,'16:53','#c9331f'],
+  ['clip_005','Sat 05:48',false,'2:03','#d99a2b'],
+  ['clip_006','Sat 06:05',false,'0:04','#3f7c74'],
+  ['clip_100','Sat 09:34',true,'1:09:26','#7a4a2a'],
+  ['Screen recording','Yesterday 07:20',false,'0:03','#2f5a8a'],
+  ['Meeting','Yesterday 07:20',false,'0:02','#d99a2b'],
+  ['Meeting (2)','Today 10:03',false,'0:02','#3f7c74'],
+  ['Presentasjon','Today 10:25',true,'0:27','#c9331f']
+];
+
+function rnd(seed){let s=seed*9301+49297;return()=>{s=(s*9301+49297)%233280;return s/233280}}
+function wave(i,w,h){
+  const r=rnd(i+3),n=Math.floor(w/3);let b='';
+  for(let k=0;k<n;k++){const a=(0.25+0.75*r())*(0.5+0.5*Math.sin(k/n*Math.PI))*h;b+=`<rect x="${k*3}" y="${(h-a)/2}" width="1.6" height="${a}" rx=".8"/>`}
+  return `<svg class="wave" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="currentColor">${b}</svg>`;
+}
+
+function cassette(id){
+  // shell, label, window, packs, hubs
+  const hub=(cx,cls)=>{let t='';for(let k=0;k<6;k++)t+=`<rect x="${cx-1.6}" y="${46.5-11.5}" width="3.2" height="4" rx=".6" transform="rotate(${k*60} ${cx} 46.5)" fill="#e9dfcb"/>`;
+    return `<g class="reel ${cls}"><circle cx="${cx}" cy="46.5" r="11.5" fill="none" stroke="#e9dfcb" stroke-width="2.4"/>${t}<circle cx="${cx}" cy="46.5" r="16" fill="none" stroke="#2a1f17" stroke-width="1" stroke-dasharray="3 5"/></g>`};
+  return `<svg viewBox="0 0 280 100" preserveAspectRatio="xMidYMid meet">
+  <defs><clipPath id="win${id}"><rect x="62" y="31" width="156" height="31" rx="6"/></clipPath>
+  <linearGradient id="sh${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a3a2e"/><stop offset="1" stop-color="#2b2019"/></linearGradient></defs>
+  <rect x="6" y="3" width="268" height="94" rx="7" fill="url(#sh${id})" stroke="#0b0705"/>
+  <rect x="16" y="9" width="248" height="64" rx="4" fill="#efe3c8"/>
+  <rect x="16" y="17" width="248" height="4" fill="#c9331f"/><rect x="16" y="23" width="248" height="2" fill="#d99a2b"/>
+  <text x="24" y="15.5" font-family="Oswald" font-size="6.5" letter-spacing="2" fill="#6b5644">SIDE A</text>
+  <text x="256" y="15.5" text-anchor="end" font-family="Oswald" font-size="6.5" letter-spacing="2" fill="#6b5644">C60</text>
+  <rect x="58" y="28" width="164" height="37" rx="8" fill="#2a1d13"/>
+  <g clip-path="url(#win${id})"><rect x="62" y="31" width="156" height="31" fill="#3b2415"/>
+    <circle cx="96" cy="46.5" r="30" fill="#5b331b"/><circle cx="96" cy="46.5" r="30" fill="none" stroke="#7a4626" stroke-width=".6" stroke-dasharray="1 2"/>
+    <circle cx="184" cy="46.5" r="21" fill="#5b331b"/>
+    <rect x="62" y="31" width="156" height="31" fill="rgba(242,166,74,.10)"/>
+    <rect x="62" y="31" width="156" height="6" fill="rgba(255,255,255,.08)"/></g>
+  ${hub(96,'r1')}${hub(184,'r2')}
+  <text x="140" y="84" text-anchor="middle" font-family="Caveat" font-weight="700" font-size="13" fill="#e9dfcb">Default microphone</text>
+  <path d="M86 97l8-9h92l8 9" fill="#1d1510" stroke="#0b0705"/>
+  <circle cx="112" cy="93" r="2.2" fill="#0b0705"/><circle cx="168" cy="93" r="2.2" fill="#0b0705"/>
+  <circle cx="13" cy="10" r="2" fill="#1d1510"/><circle cx="267" cy="10" r="2" fill="#1d1510"/><circle cx="13" cy="90" r="2" fill="#1d1510"/><circle cx="267" cy="90" r="2" fill="#1d1510"/>
+  </svg>`;
+}
+
+function vu(id){
+  const vals=[[-20,-48],[-10,-31],[-7,-21],[-5,-12],[-3,-2],[-2,6],[-1,14],[0,24],[1,32],[2,40],[3,48]];
+  const cx=80,cy=104,R=86;let t='',l='';
+  for(const [v,a] of vals){const rad=a*Math.PI/180,x1=cx+R*Math.sin(rad),y1=cy-R*Math.cos(rad),r2=R-(v%5===0||v===-7||v===3?8:5),x2=cx+r2*Math.sin(rad),y2=cy-r2*Math.cos(rad);
+    t+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${v>=0?'#c9331f':'#2a1c12'}" stroke-width="1.2"/>`;
+    if([-20,-10,-5,0,3].includes(v)){const r3=R+7;l+=`<text x="${cx+r3*Math.sin(rad)}" y="${cy-r3*Math.cos(rad)+2.5}" text-anchor="middle" font-family="Oswald" font-size="7" fill="${v>=0?'#c9331f':'#2a1c12'}">${v>0?'+'+v:v}</text>`}}
+  const arc=(a0,a1,r,c,w)=>{const p=a=>[cx+r*Math.sin(a*Math.PI/180),cy-r*Math.cos(a*Math.PI/180)];const [x0,y0]=p(a0),[x1,y1]=p(a1);return `<path d="M${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}" fill="none" stroke="${c}" stroke-width="${w}"/>`};
+  return `<svg viewBox="0 0 160 92" preserveAspectRatio="xMidYMid meet">
+  <defs><radialGradient id="vf${id}" cx=".5" cy=".9" r=".9"><stop offset="0" stop-color="#ffe2a8"/><stop offset=".7" stop-color="#f2c77e"/><stop offset="1" stop-color="#d79a4e"/></radialGradient></defs>
+  <rect x="0" y="0" width="160" height="92" rx="3" fill="url(#vf${id})"/>
+  ${arc(-48,24,R,'#2a1c12',1)}${arc(24,48,R,'#c9331f',3)}${t}${l}
+  <text x="80" y="62" text-anchor="middle" font-family="Oswald" font-weight="600" font-size="13" letter-spacing="1" fill="#2a1c12">VU</text>
+  <g class="needle"><line x1="80" y1="104" x2="80" y2="22" stroke="#1a100a" stroke-width="1.3" stroke-linecap="round"/></g>
+  <rect x="0" y="76" width="160" height="16" fill="#2a1d13"/><circle cx="80" cy="80" r="6" fill="#120c08"/>
+  <rect x="0" y="0" width="160" height="30" rx="3" fill="rgba(255,255,255,.12)"/>
+  </svg>`;
+}
+
+const digits=s=>`<div class="digits">${[...s].map(c=>/\d/.test(c)?`<span>${c}</span>`:`<em>${c}</em>`).join('')}</div>`;
+const tb=()=>`<div class="tb walnut"><div class="plate"><span class="screw"></span><b>THRASHER</b><i>STEREO</i></div><div class="sp"></div>
+  <button class="tbtn" title="Settings">${I.gear}</button><button class="tbtn" title="Minimise">${I.min}</button><button class="tbtn" title="Close">${I.close}</button></div>`;
+const keys=()=>`<div class="keys"><button class="key rec" title="Record"><i class="dot"></i>${I.mic}<span>REC</span></button>
+  <button class="key" title="Import file">${I.imp}<span>IMPORT</span></button><button class="key" title="Ask">${I.ask}<span>ASK</span></button><button class="key" title="Widget mode">${I.widget}<span>WIDGET</span></button></div>`;
+const toolbar=()=>`<div class="toolbar"><button class="dymo">INBOX ${I.down}</button><div class="search">${I.search}Search</div></div>`;
+const list=(ww)=>`<div class="list">${clips.map((c,i)=>`<div class="clip${i===1?' sel':''}"><button class="knob" title="Play">${I.play}</button>
+  <div class="spine" style="--band:${c[4]}"><div class="txt"><div class="nm">${c[0]}</div><div class="sub">${c[1]}${c[2]?'<i class="tick" title="transcribed"></i><span class="stamp">transcribed</span>':''}</div></div>
+  ${wave(i,ww,ww>50?22:16)}<div class="len">${c[3]}</div><button class="dots" title="More">${I.dots}</button></div></div>`).join('')}</div>`;
+const foot=()=>`<div class="foot walnut"><button class="pkey" title="Play">${I.play}</button><div class="np"><div class="t"><b>Nothing playing</b><i>--:-- / --:--</i></div><div class="slot"></div></div></div>`;
+const status=()=>`<div class="status"><i class="led"></i>READY</div>`;
+
+document.getElementById('p').innerHTML = tb() + `<div class="deck alu">
+  <div class="row" style="height:96px"><div class="cass">${cassette('p')}</div>
+    <div class="counter">${status()}<div><div class="eng">COUNTER</div>${digits('00:00.0')}</div><span></span></div></div>
+  <div class="row" style="height:74px;margin-top:8px"><div class="vu" style="width:128px">${vu('p')}</div>${keys()}</div>
+</div>` + toolbar() + list(40) + foot();
+
+document.getElementById('w').innerHTML = tb() + `<div class="deck alu">
+  <span class="screw" style="left:6px;top:6px"></span><span class="screw" style="right:6px;top:6px"></span>
+  <span class="screw" style="left:6px;bottom:6px"></span><span class="screw" style="right:6px;bottom:6px"></span>
+  <div class="cass">${cassette('w')}</div>
+  <div class="mid"><div class="vu">${vu('w')}</div>
+    <div class="counter">${status()}<div><div class="eng" style="margin-bottom:4px">TAPE COUNTER</div>${digits('00:00.0')}</div></div></div>
+  ${keys()}
+  <div class="input"><div class="dial"><i></i></div><div class="devbox"><div class="eng">INPUT</div><div class="d">Default microphone</div></div><div class="grille"></div></div>
+</div><div class="right">${toolbar()}${list(70)}</div>` + foot();
+</script>
+</body>
+</html>

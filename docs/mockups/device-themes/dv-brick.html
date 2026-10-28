@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brick Phone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Pixelify+Sans:wght@400;500;600&family=Silkscreen&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#101010;
+  --p1:#55585e; --p2:#33353a; --p3:#232428; --p4:#17181a;
+  --rub1:#3c3e43; --rub2:#26272b;
+  --silver:#c9ccd1; --label:#8d9097;
+  --amber:#ffb24a; --amberdim:#c98a3a;
+  --lcd1:#f6bf5e; --lcd2:#e39a33;
+  --ink:#3b1f05; --ink2:rgba(59,31,5,.62); --ghost:rgba(59,31,5,.13);
+  --green1:#4fb35c; --green2:#2b7a37;
+  --red1:#d9493a; --red2:#932719;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg)}
+body{color:#d8d8d8;font-family:"Chakra Petch",sans-serif;padding:20px 22px;min-width:0}
+svg{display:block}
+.intro{display:flex;flex-wrap:wrap;gap:12px 56px;align-items:flex-end;margin-bottom:18px}
+.intro h1{font-family:"Pixelify Sans";font-weight:600;font-size:40px;line-height:1;color:var(--amber);letter-spacing:.02em;text-shadow:0 0 18px rgba(255,170,60,.25)}
+.intro .kick{font-family:"Silkscreen";font-size:9px;letter-spacing:.18em;color:#8b8b8b;margin-bottom:8px}
+.intro p{font-size:13px;color:#a9a9a9;margin-top:8px;max-width:330px}
+.intro ul{list-style:none;columns:2;column-gap:40px;font-size:12px;color:#bdbdbd}
+.intro li{padding:3px 0 3px 14px;position:relative;break-inside:avoid}
+.intro li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;background:var(--amber)}
+.stage{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+figure{display:flex;flex-direction:column;gap:10px;width:min-content}
+figcaption{font-family:"Silkscreen";font-size:8px;letter-spacing:.12em;color:#7d7d7d;max-width:1000px;line-height:1.6}
+figcaption b{color:var(--amberdim);font-weight:400}
+
+/* ---------- phone body ---------- */
+.win{position:relative;flex:none}
+.win.p{width:400px;height:620px}
+.win.w{width:1000px;height:620px}
+.antenna{position:absolute;top:0;width:34px;height:40px;border-radius:12px 12px 4px 4px;
+  background:linear-gradient(90deg,#1c1d20,#3a3c41 45%,#1f2023);box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
+.antenna::after{content:"";position:absolute;left:8px;right:8px;top:6px;height:3px;border-radius:2px;background:rgba(255,255,255,.08)}
+.shell{position:absolute;left:0;right:0;bottom:0;top:12px;border-radius:34px 34px 52px 52px;
+  background:linear-gradient(165deg,var(--p1) 0%,var(--p2) 38%,var(--p3) 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.16),inset 0 -4px 0 rgba(0,0,0,.45),inset 2px 0 0 rgba(255,255,255,.05),0 22px 44px rgba(0,0,0,.55)}
+.w .shell{border-radius:40px}
+.top{position:absolute;left:0;right:0;top:12px;height:44px;display:flex;align-items:center;padding:0 22px 0 28px}
+.brand{font-family:"Chakra Petch";font-weight:700;font-size:13px;letter-spacing:.34em;color:var(--silver);
+  text-shadow:0 1px 0 rgba(0,0,0,.6),0 -1px 0 rgba(255,255,255,.08)}
+.brand small{font-weight:500;font-size:8px;letter-spacing:.24em;color:var(--label);margin-left:8px}
+.ear{position:absolute;left:50%;top:18px;transform:translateX(-50%);width:70px;height:9px;border-radius:5px;
+  background:radial-gradient(circle,#0b0b0c 1.2px,transparent 1.6px) 0 0/6px 4.5px,#202124;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.08)}
+.tbtns{margin-left:auto;display:flex;gap:8px}
+.nub{width:30px;height:18px;border-radius:9px;display:grid;place-items:center;color:var(--silver);
+  background:linear-gradient(#45474c,#2a2b2f);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 2px 0 #111,0 3px 4px rgba(0,0,0,.4)}
+.nub svg{width:12px;height:12px}
+.nub.off{color:#f08a7c}
+
+/* bezel and LCD */
+.bezel{position:absolute;background:linear-gradient(#141518,#0d0e10);border-radius:18px 18px 26px 26px;
+  box-shadow:inset 0 2px 3px rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.1)}
+.bezel .bz{position:absolute;top:4px;left:16px;font-family:"Silkscreen";font-size:7px;letter-spacing:.2em;color:#5b5d63}
+.bezel .bz.r{left:auto;right:16px}
+.lcd{position:absolute;inset:14px 10px 10px;border-radius:6px;overflow:hidden;color:var(--ink);
+  background:radial-gradient(120% 90% at 50% 35%,var(--lcd1),var(--lcd2));
+  box-shadow:inset 0 0 0 1px rgba(59,31,5,.35),inset 0 6px 14px rgba(80,40,0,.35),0 0 26px rgba(255,170,60,.12)}
+.lcd::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(59,31,5,.07) 0 1px,transparent 1px 3px),
+             repeating-linear-gradient(90deg,rgba(59,31,5,.06) 0 1px,transparent 1px 3px),
+             linear-gradient(170deg,rgba(255,255,255,.22),transparent 28%)}
+.px{shape-rendering:crispEdges;fill:currentColor}
+.lcd .sc{font-family:"Silkscreen";font-size:8px;letter-spacing:.06em;line-height:1}
+
+/* LCD shared bits */
+.sig{display:flex;align-items:flex-end;gap:2px}
+.sig i{display:block;width:4px;background:var(--ghost)}
+.sig i.on{background:var(--ink)}
+.stat{display:inline-flex;align-items:center;gap:5px}
+.stat .tag{background:var(--ink);color:var(--lcd1);padding:2px 4px 1px}
+.dot{width:5px;height:5px;background:var(--ink);display:inline-block}
+.dot.off{background:var(--ghost)}
+.timer{font-family:"Pixelify Sans";font-weight:600;line-height:1;letter-spacing:.01em;text-shadow:2px 2px 0 var(--ghost)}
+.timer span{font-size:.55em}
+.op{display:flex;align-items:center;gap:5px}
+.tools{display:flex;gap:6px;align-items:stretch}
+.proj{display:flex;align-items:center;gap:5px;background:var(--ink);color:var(--lcd1);padding:0 6px;font-family:"Pixelify Sans";font-weight:600;font-size:13px}
+.proj svg{width:9px;height:8px}
+.search{flex:1;display:flex;align-items:center;gap:6px;border:2px solid var(--ink);padding:0 6px;font-family:"Pixelify Sans";font-size:13px;color:var(--ink2)}
+.search svg{width:9px;height:9px;color:var(--ink)}
+.caret{width:2px;height:12px;background:var(--ink);margin-left:-4px}
+.caret.off{background:transparent}
+.listwrap{position:relative;display:flex;gap:4px;min-height:0}
+.list{flex:1;min-width:0;overflow:hidden}
+.row{display:flex;align-items:center;gap:7px;padding:0 4px 0 3px;border-bottom:1px dotted rgba(59,31,5,.35)}
+.row.sel{background:var(--ink);color:var(--lcd1);border-bottom-color:transparent}
+.row .pb svg{width:12px;height:12px}
+.wv{display:flex;align-items:center;gap:1px;height:12px;flex:none}
+.wv i{display:block;width:2px;background:currentColor;opacity:.85}
+.nm{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.nm b{font-family:"Pixelify Sans";font-weight:500;font-size:13px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm small{font-family:"Silkscreen";font-size:7px;letter-spacing:.06em;line-height:1;opacity:.78;white-space:nowrap}
+.len{font-family:"Pixelify Sans";font-weight:500;font-size:13px}
+.row .dt svg{width:6px;height:10px}
+.sbar{width:5px;flex:none;border-left:1px solid var(--ink);border-right:1px solid var(--ink);position:relative;
+  background:repeating-linear-gradient(0deg,var(--ghost) 0 1px,transparent 1px 3px)}
+.sbar i{position:absolute;left:0;right:0;top:12%;height:22%;background:var(--ink)}
+.foot{display:flex;align-items:center;gap:8px;border-top:2px solid var(--ink)}
+.foot .pb svg{width:13px;height:13px}
+.foot .np{font-family:"Pixelify Sans";font-weight:500;font-size:13px}
+.foot .tm{font-family:"Silkscreen";font-size:8px;margin-left:auto;opacity:.8}
+.prog{height:6px;border:1px solid var(--ink);position:relative;background:repeating-linear-gradient(90deg,var(--ghost) 0 2px,transparent 2px 4px)}
+.soft{display:flex;justify-content:space-between;align-items:center;font-family:"Pixelify Sans";font-weight:600;font-size:12px;background:rgba(59,31,5,.12);border-top:1px solid rgba(59,31,5,.3)}
+.soft span{display:flex;align-items:center;gap:4px}
+.soft svg{width:8px;height:8px}
+
+/* rubber keys */
+.key{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--silver);
+  background:linear-gradient(var(--rub1),var(--rub2));border-radius:14px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.17),inset 0 -2px 0 rgba(0,0,0,.35),0 2px 0 #0e0f10,0 3px 5px rgba(0,0,0,.45)}
+.key .d{font-family:"Chakra Petch";font-weight:700;font-size:15px;color:var(--amber);text-shadow:0 0 6px rgba(255,170,60,.45)}
+.key .l{font-family:"Chakra Petch";font-weight:600;font-size:8px;letter-spacing:.14em;color:var(--label)}
+.key.job .l{color:var(--amber);opacity:.9}
+.key.job svg{width:13px;height:13px;color:var(--amber)}
+.key svg{width:14px;height:14px}
+.key.green{background:linear-gradient(var(--green1),var(--green2));color:#eaffea}
+.key.red{background:linear-gradient(var(--red1),var(--red2));color:#ffe7e2}
+.key.green .l,.key.red .l{color:inherit;opacity:.95}
+.key.soft-k{background:linear-gradient(#4a4c51,#2d2e32)}
+.key.soft-k .l{color:var(--silver)}
+.nav{position:relative;background:linear-gradient(#44464b,#26272b);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.4),0 3px 0 #0e0f10,0 4px 7px rgba(0,0,0,.5)}
+.nav .ar{position:absolute;left:50%;transform:translateX(-50%);color:var(--silver);opacity:.8}
+.nav .ar svg{width:12px;height:12px}
+.nav .ok{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;display:grid;place-items:center;color:var(--amber);
+  background:radial-gradient(circle at 50% 35%,#3b3d42,#1f2023);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 0 0 2px #17181a}
+.cap{position:absolute;font-family:"Chakra Petch";font-weight:600;font-size:7.5px;letter-spacing:.2em;color:var(--label);text-align:center;white-space:nowrap}
+.grille{display:grid;grid-template-columns:repeat(7,4px);gap:4px}
+.grille i{width:4px;height:4px;border-radius:50%;background:#0c0c0d;box-shadow:0 1px 0 rgba(255,255,255,.08)}
+
+/* ---------- portrait specifics ---------- */
+.p .antenna{left:36px}
+.p .bezel{left:20px;right:20px;top:58px;height:346px}
+.p .lcd{display:flex;flex-direction:column;padding:7px 8px 0}
+.p .rec{display:flex;align-items:center;gap:10px;height:74px;padding-bottom:4px;border-bottom:1px dashed rgba(59,31,5,.45)}
+.p .recmid{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px}
+.p .timer{font-size:34px}
+.p .sig i:nth-child(n){}
+.p .side{display:flex;flex-direction:column;align-items:center;gap:4px;width:36px}
+.p .side svg{width:15px;height:20px}
+.p .tools{height:22px;margin:6px 0 4px}
+.p .listwrap{flex:1}
+.p .row{height:26px}
+.p .foot{height:30px;margin-top:2px}
+.p .prog{width:70px}
+.p .soft{height:18px;margin:0 -8px;padding:0 10px}
+.p .ctrl{position:absolute;left:20px;right:20px;top:416px;height:76px}
+.p .ctrl .key{position:absolute;width:104px;height:32px}
+.p .k-menu{left:0;top:0;border-radius:8px 18px 18px 8px}
+.p .k-find{right:0;top:0;border-radius:18px 8px 8px 18px}
+.p .k-rec{left:0;bottom:0;border-radius:8px 18px 22px 18px}
+.p .k-stop{right:0;bottom:0;border-radius:18px 8px 18px 22px}
+.p .nav{position:absolute;left:50%;top:0;width:124px;height:76px;transform:translateX(-50%);border-radius:40px}
+.p .nav .ar.u{top:4px} .p .nav .ar.dn{bottom:4px}
+.p .nav .ok{width:38px;height:38px}
+.p .nav .ok svg{width:14px;height:14px}
+.p .pad{position:absolute;left:24px;right:24px;top:500px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px}
+.p .pad .key{height:23px;border-radius:12px}
+
+/* ---------- wide specifics ---------- */
+.w .antenna{left:52px}
+.w .top{padding-left:110px}
+.w .bezel{left:196px;right:196px;top:58px;height:502px;border-radius:20px}
+.w .lcd{display:grid;grid-template-columns:232px 1fr;grid-template-rows:1fr auto auto;padding:10px 12px 0;column-gap:14px}
+.w .recw{display:flex;flex-direction:column;align-items:center;border-right:1px dashed rgba(59,31,5,.45);padding:2px 14px 10px 0}
+.w .recw .hd{align-self:stretch;display:flex;justify-content:space-between;align-items:center}
+.w .bigmic{margin:18px 0 12px;width:96px;height:96px;display:grid;place-items:center;
+  background:radial-gradient(circle,var(--ghost) 1px,transparent 1.4px) 0 0/4px 4px;border:2px solid var(--ink)}
+.w .bigmic svg{width:42px;height:56px}
+.w .timer{font-size:60px}
+.w .op{margin-top:10px}
+.w .sig{margin-top:auto;gap:3px}
+.w .sig i{width:9px}
+.w .scale{align-self:stretch;display:flex;justify-content:space-between;margin-top:5px;opacity:.7}
+.w .hint{margin-top:12px;opacity:.75}
+.w .lst{display:flex;flex-direction:column;min-height:0}
+.w .tools{height:28px;margin:2px 0 8px}
+.w .proj{font-size:15px;padding:0 9px}
+.w .search{font-size:15px}
+.w .listwrap{flex:1}
+.w .row{height:41px;gap:10px;padding:0 8px 0 6px}
+.w .row .pb svg{width:14px;height:14px}
+.w .nm b{font-size:15px}
+.w .nm small{font-size:8px}
+.w .len{font-size:15px}
+.w .wv{height:16px}
+.w .foot{grid-column:1/-1;height:38px;gap:12px}
+.w .foot .np{font-size:15px}
+.w .foot .tm{margin-left:0}
+.w .foot .prog{flex:1}
+.w .soft{grid-column:1/-1;height:20px;margin:0 -12px;padding:0 14px}
+.w .pad{position:absolute;left:28px;top:150px;width:146px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px 8px}
+.w .pad .key{height:50px;flex-direction:column;gap:2px;border-radius:16px}
+.w .pad .key .l{font-size:7px;letter-spacing:.1em}
+.w .pad .key.job svg{width:12px;height:12px}
+.w .padcap{left:28px;width:146px;top:128px}
+.w .navw{position:absolute;right:42px;top:118px;width:112px;height:112px;border-radius:50%}
+.w .navw .ar.u{top:8px} .w .navw .ar.dn{bottom:8px}
+.w .navw .ok{width:46px;height:46px}
+.w .navw .ok svg{width:16px;height:16px}
+.w .k-rec{position:absolute;right:30px;top:276px;width:136px;height:54px;border-radius:26px}
+.w .k-stop{position:absolute;right:30px;top:376px;width:136px;height:42px;border-radius:22px}
+.w .k-rec svg{width:18px;height:18px}
+.w .k-menu{position:absolute;left:206px;top:568px;width:110px;height:30px;border-radius:8px 8px 18px 18px}
+.w .k-find{position:absolute;right:206px;top:568px;width:110px;height:30px;border-radius:8px 8px 18px 18px}
+.w .grille{position:absolute;left:50%;top:574px;transform:translateX(-50%)}
+.w .sideg{position:absolute;right:56px;top:470px;grid-template-columns:repeat(6,4px)}
+
+/* readability: VT323 for LCD words and numbers */
+.lcd .proj,.lcd .search,.lcd .nm b,.lcd .len,.lcd .np,.lcd .soft{font-family:"VT323",monospace;font-weight:400}
+.p .proj,.p .search,.p .np{font-size:17px}
+.p .nm b,.p .len{font-size:17px;line-height:.9}
+.p .soft{font-size:16px}
+.w .proj,.w .search,.w .np{font-size:20px}
+.w .nm b,.w .len{font-size:20px;line-height:.9}
+.w .soft{font-size:17px}
+.w .sideg{left:auto;transform:none}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor"><circle cx="12" cy="12" r="7.6" stroke-width="3.2" stroke-dasharray="3 2.97"/><circle cx="12" cy="12" r="5.6" stroke-width="2"/><circle cx="12" cy="12" r="1.6" stroke-width="1.8"/></g></symbol>
+    <symbol id="i-min" viewBox="0 0 24 24"><path d="M6 12h12" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></g></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor"/></symbol>
+    <symbol id="i-import" viewBox="0 0 24 24"><path d="M12 4v10M7.5 10l4.5 4.5 4.5-4.5M5 16v3.5h14V16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-ask" viewBox="0 0 24 24"><path d="M4.5 5h15v10.5H11l-4.5 4v-4h-2z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M9 10.3h.01M12 10.3h.01M15 10.3h.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-widget" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M3.5 9h17"/><rect x="12.5" y="12.5" width="5" height="3.5" fill="currentColor"/></g></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="5.8"/><path d="M15 15l5 5"/></g></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 6l-6 7h12z" fill="currentColor"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 18l-6-7h12z" fill="currentColor"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></symbol>
+    <!-- pixel glyphs for the LCD -->
+    <symbol id="x-play" viewBox="0 0 10 10"><path class="px" d="M0 0h10v1H0zM0 9h10v1H0zM0 0h1v10H0zM9 0h1v10H9zM3 2h1v6H3zM4 3h1v4H4zM5 4h1v2H5zM6 4h1v2H6z"/></symbol>
+    <symbol id="x-dots" viewBox="0 0 4 10"><path class="px" d="M1 0h2v2H1zM1 4h2v2H1zM1 8h2v2H1z"/></symbol>
+    <symbol id="x-fold" viewBox="0 0 9 8"><path class="px" d="M0 0h4v1H0zM0 1h9v7H0z"/></symbol>
+    <symbol id="x-chev" viewBox="0 0 8 8"><path class="px" d="M0 2h8v1H0zM1 3h6v1H1zM2 4h4v1H2zM3 5h2v1H3z"/></symbol>
+    <symbol id="x-mag" viewBox="0 0 9 9"><path class="px" d="M2 0h3v1H2zM1 1h1v1H1zM5 1h1v1H5zM0 2h1v3H0zM6 2h1v3H6zM1 5h1v1H1zM5 5h1v1H5zM2 6h3v1H2zM6 6h1v1H6zM7 7h1v1H7zM8 8h1v1H8z"/></symbol>
+    <symbol id="x-mic" viewBox="0 0 12 16"><path class="px" d="M4 0h4v1H4zM3 1h6v7H3zM4 8h4v1H4zM1 5h1v3H1zM10 5h1v3H10zM2 8h1v1H2zM9 8h1v1H9zM3 9h6v1H3zM5 10h2v3H5zM2 13h8v1H2z"/><path d="M4 3h4v1H4zM4 5h4v1H4z" shape-rendering="crispEdges" fill="var(--lcd1)"/></symbol>
+    <symbol id="x-tri" viewBox="0 0 8 8"><path class="px" d="M0 3h8v2H0zM1 2h6v1H1zM2 1h4v1H2zM3 0h2v1H3z"/></symbol>
+  </defs>
+</svg>
+
+<header class="intro">
+  <div>
+    <div class="kick">THRASHER THEME</div>
+    <h1>Brick Phone</h1>
+    <p>Thrasher as a chunky late 90s handset. The app lives on an amber backlit LCD and the keys do the work.</p>
+  </div>
+  <ul>
+    <li>Green call key records and red end key stops or goes back</li>
+    <li>Menu soft key opens settings and Find jumps to Search</li>
+    <li>Keys 1 2 3 are import ask and widget with backlit icons</li>
+    <li>Nav rocker scrolls the clip inbox and its centre plays</li>
+    <li>Input level is the classic signal bars icon</li>
+    <li>Wide view turns the handset sideways like a game phone</li>
+  </ul>
+</header>
+
+<main class="stage">
+
+<!-- ================= PORTRAIT ================= -->
+<figure>
+  <div class="win p">
+    <div class="antenna"></div>
+    <div class="shell"></div>
+    <div class="top">
+      <div class="brand" style="margin-left:52px">THRASHER</div>
+      <div class="tbtns">
+        <div class="nub" title="Minimise"><svg><use href="#i-min"/></svg></div>
+        <div class="nub off" title="Close"><svg><use href="#i-close"/></svg></div>
+      </div>
+    </div>
+    <div class="ear" style="top:50px;width:60px;height:6px"></div>
+
+    <div class="bezel">
+      <span class="bz">THRASHER</span><span class="bz r">AMBER LCD</span>
+      <div class="lcd">
+        <div class="rec">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:36px">
+            <div class="sig" data-sig="7" data-h="5,42"></div>
+            <span class="sc">IN</span>
+          </div>
+          <div class="recmid">
+            <div class="op sc"><svg style="width:6px;height:8px"><use href="#x-mic"/></svg>DEFAULT MICROPHONE</div>
+            <div class="timer">00:00<span>.0</span></div>
+            <div class="stat sc"><span class="tag">READY</span><i class="dot" data-blink></i></div>
+          </div>
+          <div class="side"><svg><use href="#x-mic"/></svg><span class="sc">REC</span></div>
+        </div>
+        <div class="tools">
+          <div class="proj"><svg><use href="#x-fold"/></svg>Inbox<svg style="width:8px"><use href="#x-chev"/></svg></div>
+          <div class="search"><svg><use href="#x-mag"/></svg>Search<i class="caret" data-caret></i></div>
+        </div>
+        <div class="listwrap">
+          <div class="list" data-list></div>
+          <div class="sbar"><i></i></div>
+        </div>
+        <div class="foot">
+          <span class="pb"><svg><use href="#x-play"/></svg></span>
+          <span class="np">Nothing playing</span>
+          <span class="tm">--:-- / --:--</span>
+          <div class="prog"></div>
+        </div>
+        <div class="soft">
+          <span>Menu</span>
+          <span><svg><use href="#x-tri"/></svg>Play<svg style="transform:rotate(180deg)"><use href="#x-tri"/></svg></span>
+          <span>Find</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <div class="key soft-k k-menu"><svg><use href="#i-gear"/></svg><span class="l">MENU</span></div>
+      <div class="key soft-k k-find"><svg><use href="#i-search"/></svg><span class="l">FIND</span></div>
+      <div class="key green k-rec"><svg><use href="#i-mic"/></svg><span class="l">REC</span></div>
+      <div class="key red k-stop"><svg><use href="#i-stop"/></svg><span class="l">STOP</span></div>
+      <div class="nav">
+        <span class="ar u"><svg><use href="#i-up"/></svg></span>
+        <span class="ok"><svg><use href="#i-play"/></svg></span>
+        <span class="ar dn"><svg><use href="#i-down"/></svg></span>
+      </div>
+    </div>
+
+    <div class="pad" data-pad="p"></div>
+  </div>
+  <figcaption>PORTRAIT 400 X 620 <b>/</b> GEAR MOVED TO THE MENU SOFT KEY <b>/</b> MIC BUTTON IS THE GREEN CALL KEY <b>/</b> IMPORT ASK WIDGET MOVED TO KEYS 1 2 3 <b>/</b> RED KEY STOPS <b>/</b> ROCKER STEPS CLIPS AND PLAYS</figcaption>
+</figure>
+
+<!-- ================= WIDE ================= -->
+<figure>
+  <div class="win w">
+    <div class="antenna"></div>
+    <div class="shell"></div>
+    <div class="top">
+      <div class="brand">THRASHER<small>DUAL BAND REC</small></div>
+      <div class="tbtns">
+        <div class="nub" title="Minimise"><svg><use href="#i-min"/></svg></div>
+        <div class="nub off" title="Close"><svg><use href="#i-close"/></svg></div>
+      </div>
+    </div>
+    <div class="ear" style="top:34px"></div>
+
+    <div class="cap padcap">KEYPAD</div>
+    <div class="pad" data-pad="w"></div>
+
+    <div class="bezel">
+      <span class="bz">THRASHER</span><span class="bz r">AMBER LCD</span>
+      <div class="lcd">
+        <div class="recw">
+          <div class="hd sc"><span class="stat"><span class="tag">READY</span><i class="dot" data-blink></i></span><span>LINE 1</span></div>
+          <div class="bigmic"><svg><use href="#x-mic"/></svg></div>
+          <div class="timer">00:00<span>.0</span></div>
+          <div class="op sc"><svg style="width:6px;height:8px"><use href="#x-mic"/></svg>DEFAULT MICROPHONE</div>
+          <div class="sig" data-sig="16" data-h="4,46"></div>
+          <div class="scale sc"><span>-60</span><span>-30</span><span>-12</span><span>0</span></div>
+          <div class="hint sc">GREEN KEY TO RECORD</div>
+        </div>
+        <div class="lst">
+          <div class="tools">
+            <div class="proj"><svg><use href="#x-fold"/></svg>Inbox<svg style="width:8px"><use href="#x-chev"/></svg></div>
+            <div class="search"><svg><use href="#x-mag"/></svg>Search<i class="caret" data-caret></i></div>
+          </div>
+          <div class="listwrap">
+            <div class="list" data-list></div>
+            <div class="sbar"><i style="height:70%;top:0"></i></div>
+          </div>
+        </div>
+        <div class="foot">
+          <span class="pb"><svg><use href="#x-play"/></svg></span>
+          <span class="np">Nothing playing</span>
+          <span class="tm">--:-- / --:--</span>
+          <div class="prog"></div>
+        </div>
+        <div class="soft"><span>Menu</span><span style="opacity:.75"><svg><use href="#x-tri"/></svg>Rocker plays<svg style="transform:rotate(180deg)"><use href="#x-tri"/></svg></span><span>Find</span></div>
+      </div>
+    </div>
+
+    <div class="key soft-k k-menu"><svg><use href="#i-gear"/></svg><span class="l">MENU</span></div>
+    <div class="key soft-k k-find"><svg><use href="#i-search"/></svg><span class="l">FIND</span></div>
+    <div class="grille"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
+    <div class="cap" style="right:42px;width:112px;top:96px">CLIPS</div>
+    <div class="nav navw">
+      <span class="ar u"><svg><use href="#i-up"/></svg></span>
+      <span class="ok"><svg><use href="#i-play"/></svg></span>
+      <span class="ar dn"><svg><use href="#i-down"/></svg></span>
+    </div>
+    <div class="key green k-rec"><svg><use href="#i-mic"/></svg><span class="l" style="font-size:10px">REC</span></div>
+    <div class="cap" style="right:30px;width:136px;top:338px">CALL TO RECORD</div>
+    <div class="key red k-stop"><svg><use href="#i-stop"/></svg><span class="l">STOP</span></div>
+    <div class="cap" style="right:30px;width:136px;top:426px">END TO STOP OR BACK</div>
+    <div class="grille sideg"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <figcaption>WIDE 1000 X 620 <b>/</b> HANDSET TURNED SIDEWAYS <b>/</b> KEYPAD ON THE LEFT WING <b>/</b> ROCKER AND CALL KEYS ON THE RIGHT WING <b>/</b> SOFT KEYS UNDER THE SCREEN <b>/</b> RECORDER LEFT AND INBOX RIGHT ON ONE LCD</figcaption>
+</figure>
+
+</main>
+
+<script>
+(function(){
+  var still = /[?&]still\b/.test(location.search);
+  var clips = [
+    ["clip_001","Sat 05:48 · transcribed","16:53"],
+    ["clip_005","Sat 05:48","2:03"],
+    ["clip_006","Sat 06:05","0:04"],
+    ["clip_100","Sat 09:34 · transcribed","1:09:26"],
+    ["Screen recording","Yesterday 07:20","0:03"],
+    ["Meeting","Yesterday 07:20","0:02"],
+    ["Meeting (2)","Today 10:03","0:02"],
+    ["Presentasjon","Today 10:25 · transcribed","0:27"]
+  ];
+  function rnd(seed){ return function(){ seed = (seed*9301+49297)%233280; return seed/233280; }; }
+  function wave(i,n,max){
+    var r = rnd(i*77+13), s = "";
+    for (var k=0;k<n;k++){ var h = 2 + Math.round(r()*(max-2)); s += '<i style="height:'+h+'px"></i>'; }
+    return s;
+  }
+  document.querySelectorAll("[data-list]").forEach(function(el){
+    var wide = el.closest(".w") != null;
+    el.innerHTML = clips.map(function(c,i){
+      return '<div class="row'+(i===1?' sel':'')+'">'+
+        '<span class="pb"><svg><use href="#x-play"/></svg></span>'+
+        '<span class="wv">'+wave(i, wide?18:10, wide?16:12)+'</span>'+
+        '<span class="nm"><b>'+c[0]+'</b><small>'+c[1].toUpperCase()+'</small></span>'+
+        '<span class="len">'+c[2]+'</span>'+
+        '<span class="dt"><svg><use href="#x-dots"/></svg></span></div>';
+    }).join("");
+  });
+  var keys = [
+    ["1","IMPORT","i-import"],["2","ASK","i-ask"],["3","WIDGET","i-widget"],
+    ["4","GHI"],["5","JKL"],["6","MNO"],["7","PQRS"],["8","TUV"],["9","WXYZ"],
+    ["*","+"],["0","SPACE"],["#","SHIFT"]
+  ];
+  document.querySelectorAll("[data-pad]").forEach(function(el){
+    var wide = el.dataset.pad === "w";
+    el.innerHTML = keys.map(function(k){
+      var job = !!k[2];
+      var ico = job ? '<svg><use href="#'+k[2]+'"/></svg>' : '';
+      if (wide) return '<div class="key'+(job?' job':'')+'"><span class="d">'+k[0]+'</span>'+(job?ico:'<span class="l">'+k[1]+'</span>')+(job?'<span class="l">'+k[1]+'</span>':'')+'</div>';
+      return '<div class="key'+(job?' job':'')+'"><span class="d">'+k[0]+'</span>'+ico+'<span class="l">'+k[1]+'</span></div>';
+    }).join("");
+  });
+  if (/[?&]wide\b/.test(location.search)) {}
+  var sigs = [];
+  document.querySelectorAll("[data-sig]").forEach(function(el){
+    var n = +el.dataset.sig, hh = el.dataset.h.split(",").map(Number), html = "";
+    for (var i=0;i<n;i++){ var h = Math.round(hh[0] + (hh[1]-hh[0])*i/(n-1)); html += '<i style="height:'+h+'px"></i>'; }
+    el.innerHTML = html; sigs.push([].slice.call(el.children));
+  });
+  var blinks = document.querySelectorAll("[data-blink]"), carets = document.querySelectorAll("[data-caret]");
+  function frame(t){
+    var lvl = still ? 0.62 : Math.min(1, Math.max(0.08, 0.45 + 0.28*Math.sin(t/430) + 0.18*Math.sin(t/97+1.3) + 0.1*Math.sin(t/53)));
+    sigs.forEach(function(bars){ var on = Math.round(lvl*bars.length); bars.forEach(function(b,i){ b.className = i<on ? "on" : ""; }); });
+    var bl = still ? true : Math.floor(t/600)%2===0;
+    blinks.forEach(function(b){ b.classList.toggle("off", !bl); });
+    carets.forEach(function(c){ c.classList.toggle("off", !bl); });
+  }
+  frame(0);
+  if (!still){
+    var last = 0;
+    (function loop(t){ if (t-last > 90){ frame(t); last = t; } requestAnimationFrame(loop); })(0);
+  }
+})();
+</script>
+</body>
+</html>

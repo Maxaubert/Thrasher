@@ -8,6 +8,7 @@ A polished, dark, minimalist audio recorder for Windows, written in Rust. Replac
 - GitHub issues: epic #1, child issues #2 to #12. #13 (markers and tags) was skipped on purpose.
 - `README.md`: the short pitch.
 - `docs/building.md`: how to build. The app and the transcription worker must be built with **two separate cargo commands** (feature unification would put CUDA in the app).
+- `docs/device-themes.md`: spec and plan for the 15 device themes (mockups in `docs/mockups/device-themes/`).
 - `docs/open-questions.md`: questions waiting for Max. Check it at the start of a session.
 - `docs/transcription-benchmark.md`: whisper.cpp vs faster-whisper speed and word timing.
 - Tech stack research (2026-10-23): `C:\Users\Admin\Documents\Claude\research\thrasher\2026-10-23-tech-stack.md`, linked from `docs/plan.md` section 7.

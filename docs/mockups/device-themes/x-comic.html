@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thrasher Comic Book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#141010; --paper:#fdf4dc; --paper2:#f6e8c3; --red:#e3342f; --yel:#ffd43b;
+  --blue:#2a6fdb; --cyan:#7cc6ee; --grey:#b9ad93;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#141113;color:#f4ead2;font-family:"Comic Neue",sans-serif;padding:26px 30px;
+  background-image:radial-gradient(#2a2427 1.2px,transparent 1.6px);background-size:9px 9px}
+.head{display:flex;gap:44px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
+.head h1{font-family:Bangers,sans-serif;font-weight:400;font-size:44px;letter-spacing:2px;color:var(--yel);
+  -webkit-text-stroke:1.5px #000;text-shadow:4px 4px 0 var(--red);line-height:1;transform:rotate(-2deg)}
+.head p{font-size:16px;font-weight:700;margin-top:8px;color:#f4ead2}
+.head ul{list-style:none;display:grid;grid-template-columns:auto auto;gap:4px 30px;font-size:13.5px;font-weight:700;color:#d9ccb0}
+.head li::before{content:"";display:inline-block;width:9px;height:9px;background:var(--yel);border:1.5px solid #000;transform:rotate(45deg);margin-right:8px}
+.stage{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.lbl{font-family:Bangers,sans-serif;letter-spacing:1.5px;font-size:15px;color:#cdbf9f;margin-bottom:6px}
+
+/* ---------- window = comic page ---------- */
+.win{background:var(--paper);border:3px solid #000;box-shadow:7px 7px 0 #000;display:flex;flex-direction:column;
+  color:var(--ink);overflow:hidden;position:relative}
+.p{width:400px;height:620px;padding:0 9px 9px;gap:7px}
+.w{width:1000px;height:620px;padding:0 11px 11px;gap:9px}
+.panel{border:3px solid var(--ink);background:#fff;position:relative}
+.dots{background-color:#fff;background-image:radial-gradient(var(--cyan) 1.6px,transparent 1.9px);background-size:7px 7px}
+.dotsY{background-color:var(--yel);background-image:radial-gradient(#f39b1d 1.5px,transparent 1.8px);background-size:6px 6px}
+
+/* masthead */
+.mast{display:flex;align-items:center;height:46px;gap:8px;border-bottom:3px solid var(--ink);margin:0 -9px;padding:0 9px;background:var(--paper)}
+.w .mast{margin:0 -11px;padding:0 11px;height:50px}
+.logo{font-family:Bangers,sans-serif;font-size:30px;letter-spacing:2px;color:var(--red);-webkit-text-stroke:1.4px #000;
+  text-shadow:3px 3px 0 var(--yel),4px 4px 0 #000;transform:rotate(-3deg) skewX(-6deg);line-height:1}
+.w .logo{font-size:34px}
+.issue{font-family:Bangers,sans-serif;font-size:12px;letter-spacing:1px;border:2px solid var(--ink);background:var(--yel);padding:1px 5px 0;line-height:1.2;transform:rotate(3deg)}
+.mast .sp{flex:1}
+.tb{width:30px;height:30px;display:grid;place-items:center;border:2.5px solid var(--ink);background:#fff;box-shadow:2px 2px 0 var(--ink)}
+.tb.gear{border-radius:50%;background:var(--yel)}
+.tb svg{width:17px;height:17px}
+
+/* recorder */
+.rec{display:grid;overflow:hidden}
+.p .rec{height:164px;grid-template-columns:1fr 124px;grid-template-rows:auto 1fr auto;padding:8px 6px 8px 10px;column-gap:4px}
+.cap{font-family:Bangers,sans-serif;letter-spacing:1.2px;background:var(--yel);border:2.5px solid var(--ink);padding:2px 8px 1px;
+  display:inline-flex;align-items:center;gap:6px;font-size:15px;line-height:1.1;box-shadow:2px 2px 0 var(--ink);width:max-content}
+.cap .dot{width:9px;height:9px;border-radius:50%;background:#2fbf4f;border:2px solid var(--ink)}
+.cap.st{transform:rotate(-2deg)}
+.bubble{background:#fff;border:2.5px solid var(--ink);border-radius:50% / 46%;position:relative;display:inline-block}
+.timer{font-family:Bangers,sans-serif;font-size:42px;letter-spacing:2px;padding:4px 18px 0;line-height:1;align-self:center;justify-self:start}
+.timer::after{display:none;content:"";position:absolute;right:10px;bottom:-12px;width:18px;height:16px;background:#fff;border-right:2.5px solid var(--ink);border-bottom:2.5px solid var(--ink);
+  transform:skewX(-35deg) rotate(10deg);clip-path:polygon(0 0,100% 0,100% 100%)}
+.dev{font-family:"Comic Neue";font-weight:700;font-size:12.5px;background:#fff;border:2.5px solid var(--ink);padding:3px 8px;display:inline-flex;gap:6px;align-items:center;width:max-content}
+.dev svg{width:14px;height:14px}
+.dev b{font-family:Bangers;font-weight:400;letter-spacing:1px;font-size:12px;color:var(--red)}
+/* onomatopoeia meter */
+.meter{display:flex;align-items:flex-end;gap:1px;font-family:Bangers,sans-serif;line-height:.85;height:32px;margin-top:4px}
+.meter span{color:var(--paper);-webkit-text-stroke:1.3px var(--grey);transition:none;display:inline-block}
+.meter span.on{-webkit-text-stroke:1.4px #000}
+.burstwrap{grid-row:1 / 4;grid-column:2;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.burst{display:block;filter:drop-shadow(3px 3px 0 #000)}
+.burst text{font-family:Bangers,sans-serif}
+.burstlbl{font-family:Bangers;font-size:12px;letter-spacing:1px;margin-top:-2px;background:#fff;border:2px solid var(--ink);padding:1px 6px 0}
+
+/* toolbar */
+.tools{display:flex;gap:6px;align-items:center;height:40px}
+.pick{height:36px;display:flex;align-items:center;gap:6px;padding:0 8px;background:var(--yel);border:2.5px solid var(--ink);box-shadow:2px 2px 0 var(--ink);
+  font-family:Bangers;font-size:17px;letter-spacing:1.2px;white-space:nowrap}
+.pick small{font-size:10px;letter-spacing:1px;color:#6b4a00;margin-right:-1px}
+.pick svg{width:12px;height:12px}
+.search{flex:1;height:36px;display:flex;align-items:center;gap:6px;padding:0 12px;background:#fff;border:2.5px solid var(--ink);border-radius:18px;position:relative;
+  font-weight:700;font-size:13.5px;color:#8a7f69;min-width:0}
+.search svg{width:15px;height:15px;flex:none}
+.search::after{content:"";position:absolute;left:14px;bottom:-9px;width:8px;height:8px;border:2.2px solid var(--ink);border-radius:50%;background:#fff}
+.search::before{content:"";position:absolute;left:7px;bottom:-15px;width:5px;height:5px;border:2px solid var(--ink);border-radius:50%;background:#fff}
+.ib{height:36px;min-width:36px;display:flex;align-items:center;justify-content:center;gap:5px;border:2.5px solid var(--ink);background:#fff;box-shadow:2px 2px 0 var(--ink);
+  font-family:Bangers;font-size:14px;letter-spacing:1px;padding:0 7px}
+.ib svg{width:18px;height:18px;flex:none}
+.ib.ask{background:var(--cyan)}
+
+/* clip list */
+.list{flex:1;padding:5px 7px 5px 6px;display:flex;flex-direction:column;gap:3px;overflow:hidden}
+.row{display:flex;align-items:center;gap:9px;height:31px;flex:none}
+.w .row{height:40px;gap:12px}
+.play{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--ink);background:#fff;display:grid;place-items:center;flex:none}
+.w .play{width:30px;height:30px}
+.play svg{width:10px;height:10px;margin-left:2px}
+.sb{flex:1;min-width:0;height:100%;display:flex;align-items:center;gap:8px;background:#fff;border:2.2px solid var(--ink);border-radius:15px;padding:0 6px 0 9px;position:relative}
+.sb::before{content:"";position:absolute;left:-9px;top:50%;margin-top:-5px;width:10px;height:10px;background:inherit;border-left:2.2px solid var(--ink);border-bottom:2.2px solid var(--ink);
+  transform:skewY(-30deg);clip-path:polygon(0 0,100% 0,100% 100%,0 100%)}
+.sb .wv{width:38px;height:18px;flex:none}
+.w .sb .wv{width:70px;height:22px}
+.nm{flex:1;min-width:0;line-height:1.05}
+.nm b{display:block;font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.w .nm b{font-size:15px}
+.nm i{font-style:normal;font-size:10.5px;color:#6d6452;font-weight:700}
+.w .nm i{font-size:11.5px}
+.nm i em{font-style:normal;color:var(--blue)}
+.len{font-family:Bangers;font-size:15px;letter-spacing:1px;white-space:nowrap}
+.w .len{font-size:17px}
+.more{width:14px;height:20px;display:grid;place-items:center;flex:none}
+.more svg{width:4px;height:16px}
+.row.sel .sb{background:var(--yel);border-width:2.6px;box-shadow:3px 3px 0 var(--ink)}
+.row.sel .play{background:var(--red)}
+.row.sel .play svg path{fill:#fff}
+.row.sel .nm i{color:#5a4400}
+.zap{position:absolute;right:-6px;top:-9px;font-family:Bangers;font-size:11px;letter-spacing:.5px;background:var(--red);color:#fff;border:2px solid var(--ink);padding:0 4px;transform:rotate(8deg);line-height:1.25}
+
+/* footer */
+.foot{height:50px;display:flex;align-items:center;gap:9px;padding:0 10px;flex:none}
+.foot .play{background:var(--yel)}
+.foot .np{font-weight:700;font-size:13px;white-space:nowrap}
+.foot .np small{display:block;font-family:Bangers;font-size:10.5px;letter-spacing:1px;color:var(--red);font-weight:400;line-height:1}
+.prog{flex:1;height:14px;border:2.5px solid var(--ink);background:#fff;position:relative;min-width:40px}
+.prog::after{content:"";position:absolute;inset:2px;background-image:radial-gradient(#cfc4aa 1.2px,transparent 1.5px);background-size:5px 5px}
+.time{font-family:Bangers;font-size:15px;letter-spacing:1px;white-space:nowrap}
+
+/* wide layout */
+.wbody{flex:1;display:grid;grid-template-columns:40% 1fr;gap:9px;min-height:0}
+.w .rec{grid-template-columns:1fr;grid-template-rows:auto auto 1fr auto auto;padding:12px 16px 14px;justify-items:start}
+.w .rec .burstwrap{grid-row:3;grid-column:1;justify-self:center}
+.w .timer{font-size:58px;padding:6px 26px 0;margin-top:12px;justify-self:center}
+.w .meter{height:46px;justify-self:center}
+.w .dev{margin-top:10px;font-size:14px;justify-self:center}
+.wright{display:flex;flex-direction:column;gap:9px;min-height:0}
+.w .tools{height:44px}
+.w .pick,.w .search,.w .ib{height:40px}
+.w .search{border-radius:20px}
+.w .list{padding:8px 10px;gap:5px}
+.w .foot{height:52px}
+.hdr{font-family:Bangers;letter-spacing:1.5px;font-size:13px;position:absolute;top:-3px;left:-3px;background:var(--ink);color:var(--yel);padding:2px 8px 1px;z-index:2}
+.w .list{padding-top:24px}
+.tail{position:absolute;right:16%;bottom:-17px;width:24px;height:19px;overflow:visible}
+.tail path{paint-order:stroke}
+.w .tail{width:32px;height:25px;bottom:-22px}
+.ripple{position:absolute;inset:0;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="head">
+  <div>
+    <h1>COMIC BOOK</h1>
+    <p>Your recorder as a page of a comic, inked panels and all</p>
+  </div>
+  <ul>
+    <li>Record is a POW burst that shouts REC</li>
+    <li>The level meter is a BZZZZT sound effect that lights up</li>
+    <li>Every clip is a speech bubble, the selected one pops yellow</li>
+    <li>Search is a thought bubble, status and project are caption boxes</li>
+  </ul>
+</div>
+
+<div class="stage">
+  <div>
+    <div class="lbl">PORTRAIT 400 X 620 / ONE PANEL PER JOB</div>
+    <div class="win p" id="P"></div>
+  </div>
+  <div>
+    <div class="lbl">WIDE 1000 X 620 / SPLASH PANEL RECORDER ON THE LEFT</div>
+    <div class="win w" id="W"></div>
+  </div>
+</div>
+
+<script>
+const STILL = location.search.includes('still');
+const I = {
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="#141010" stroke-width="2.6" stroke-linejoin="round"><path d="M12 2.5l1.6 2.6 3-.7.6 3 2.7 1.4-1.3 2.7 1.3 2.7-2.7 1.4-.6 3-3-.7L12 21.5l-1.6-2.6-3 .7-.6-3-2.7-1.4L5.4 12 4.1 9.3l2.7-1.4.6-3 3 .7z"/><circle cx="12" cy="12" r="3.2"/></svg>',
+  min:'<svg viewBox="0 0 24 24"><path d="M5 13h14" stroke="#141010" stroke-width="3.2" stroke-linecap="round"/></svg>',
+  close:'<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#141010" stroke-width="3.2" stroke-linecap="round"/></svg>',
+  mic:'<svg viewBox="0 0 24 24" fill="none" stroke="#141010" stroke-width="2.4" stroke-linecap="round"><rect x="8.5" y="3" width="7" height="11" rx="3.5"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21M8.5 21h7"/></svg>',
+  down:'<svg viewBox="0 0 12 12"><path d="M1.5 3.5h9L6 9.5z" fill="#141010"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="#141010" stroke-width="2.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5.5 5.5"/></svg>',
+  imp:'<svg viewBox="0 0 24 24" fill="none" stroke="#141010" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5M4 15v4.5h16V15"/></svg>',
+  ask:'<svg viewBox="0 0 24 24" fill="#fff" stroke="#141010" stroke-width="2.4" stroke-linejoin="round"><path d="M4 5.5h16v10H11l-5 4v-4H4z"/><path d="M9 10.5h.01M12 10.5h.01M15 10.5h.01" stroke-width="3" stroke-linecap="round"/></svg>',
+  wid:'<svg viewBox="0 0 24 24" fill="none" stroke="#141010" stroke-width="2.5" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14"/><path d="M3.5 9h17"/><rect x="12" y="12" width="5.5" height="4" fill="#141010"/></svg>',
+  play:'<svg viewBox="0 0 10 10"><path d="M1 0.5L9.5 5 1 9.5z" fill="#141010"/></svg>',
+  more:'<svg viewBox="0 0 4 16"><circle cx="2" cy="2" r="1.8" fill="#141010"/><circle cx="2" cy="8" r="1.8" fill="#141010"/><circle cx="2" cy="14" r="1.8" fill="#141010"/></svg>'
+};
+const CLIPS=[
+ ['clip_001','Sat 05:48',1,'16:53'],['clip_005','Sat 05:48',0,'2:03'],['clip_006','Sat 06:05',0,'0:04'],
+ ['clip_100','Sat 09:34',1,'1:09:26'],['Screen recording','Yesterday 07:20',0,'0:03'],['Meeting','Yesterday 07:20',0,'0:02'],
+ ['Meeting (2)','Today 10:03',0,'0:02'],['Presentasjon','Today 10:25',1,'0:27']];
+
+function rnd(seed){let s=seed;return()=>{s=(s*9301+49297)%233280;return s/233280}}
+function wave(seed,n){const r=rnd(seed*7+3);let b='';const w=n*4;
+  for(let i=0;i<n;i++){const h=3+Math.round(r()*12*(0.5+0.5*Math.sin(i/n*3.14)));b+=`<rect x="${i*4}" y="${9-h/2}" width="2.4" height="${h}" fill="#141010"/>`}
+  return `<svg class="wv" viewBox="0 0 ${w} 18" preserveAspectRatio="none">${b}</svg>`}
+function burst(size,label){
+  const n=16,cx=size/2,cy=size/2,R=size/2-4,r=R*0.68,r2=rnd(size);let pts=[];
+  for(let i=0;i<n*2;i++){const a=i/(n*2)*Math.PI*2-Math.PI/2;const rr=i%2?r*(0.92+r2()*0.12):R*(0.86+r2()*0.14);pts.push((cx+Math.cos(a)*rr).toFixed(1)+','+(cy+Math.sin(a)*rr).toFixed(1))}
+  let pts2=pts.map(p=>{const[x,y]=p.split(',').map(Number);return (cx+(x-cx)*0.78).toFixed(1)+','+(cy+(y-cy)*0.78).toFixed(1)}).join(' ');
+  const fs=size*0.25, ms=size*0.2;
+  return `<svg class="burst" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+   <polygon points="${pts.join(' ')}" fill="#ffd43b" stroke="#141010" stroke-width="3" stroke-linejoin="round"/>
+   <polygon points="${pts2}" fill="#e3342f" stroke="#141010" stroke-width="2.5" stroke-linejoin="round"/>
+   <g transform="translate(${cx-ms/2},${cy-ms*1.15}) scale(${ms/24})" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><rect x="8.5" y="3" width="7" height="11" rx="3.5" fill="#fff"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21"/></g>
+   <text x="${cx}" y="${cy+fs*0.95}" text-anchor="middle" font-size="${fs}" fill="#fff" stroke="#141010" stroke-width="1.6" paint-order="stroke" letter-spacing="1" transform="rotate(-6 ${cx} ${cy})">${label}</text>
+  </svg>`}
+function meter(id,base,step){const word='BZZZZZZZZT';let s='';
+  for(let i=0;i<word.length;i++)s+=`<span style="font-size:${base+i*step}px;transform:rotate(${(i%2?3:-3)}deg)">${word[i]}</span>`;
+  return `<div class="meter" id="${id}">${s}</div>`}
+function rows(){return CLIPS.map((c,i)=>`<div class="row${i==1?' sel':''}"><div class="play">${I.play}</div>
+  <div class="sb">${wave(i+1,i==1?14:12)}<div class="nm"><b>${c[0]}</b><i>${c[1]}${c[2]?' · <em>transcribed</em>':''}</i></div>
+  <span class="len">${c[3]}</span><span class="more">${I.more}</span>${i==1?'<span class="zap">PICKED</span>':''}</div></div>`).join('')}
+function mast(){return `<div class="mast"><span class="logo">THRASHER</span><span class="issue">No 1</span><span class="sp"></span>
+  <span class="tb gear">${I.gear}</span><span class="tb">${I.min}</span><span class="tb">${I.close}</span></div>`}
+function tools(labels){return `<div class="tools"><div class="pick">Inbox ${I.down}</div>
+  <div class="search">${I.search}Search</div>
+  <div class="ib">${I.imp}${labels?'IMPORT':''}</div><div class="ib ask">${I.ask}${labels?'ASK':''}</div><div class="ib">${I.wid}${labels?'WIDGET':''}</div></div>`}
+function foot(){return `<div class="panel foot dotsY"><div class="play">${I.play}</div><div class="np" style="background:#fff;border:2.2px solid #141010;padding:2px 8px"><small>NOW SHOWING</small>Nothing playing</div>
+  <div class="prog"></div><span class="time" style="background:#fff;border:2.2px solid #141010;padding:2px 7px 0">--:-- / --:--</span></div>`}
+
+document.getElementById('P').innerHTML = mast()+`
+ <div class="panel rec dots">
+   <div><span class="cap st"><span class="dot"></span>READY</span></div>
+   <div class="bubble timer">00:00.0<svg class="tail" viewBox="0 0 30 22"><path d="M2 1 L26 20 L16 1" fill="#fff" stroke="#141010" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+   <div>${meter('mP',17,1.5)}<div class="dev" style="margin-top:5px">${I.mic}Default microphone</div></div>
+   <div class="burstwrap">${burst(124,'REC')}</div>
+ </div>`+tools(false)+`<div class="panel list">${rows()}</div>`+foot();
+
+document.getElementById('W').innerHTML = mast()+`<div class="wbody">
+ <div class="panel rec dots"><span class="hdr">MEANWHILE AT THE MIC</span>
+   <div style="margin-top:14px"><span class="cap st"><span class="dot"></span>READY</span></div>
+   <div class="bubble timer">00:00.0<svg class="tail" viewBox="0 0 30 22"><path d="M2 1 L26 20 L16 1" fill="#fff" stroke="#141010" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+   <div class="burstwrap">${burst(196,'REC!')}</div>
+   ${meter('mW',26,2.6)}
+   <div class="dev">${I.mic}<b>INPUT</b>Default microphone</div>
+ </div>
+ <div class="wright">${tools(true)}<div class="panel list"><span class="hdr">THE CLIPS SO FAR</span>${rows()}</div></div>
+</div>`+foot();
+
+const cols=['#ffd43b','#ffd43b','#ffd43b','#ffb02e','#ffb02e','#ff8a24','#ff8a24','#f25a26','#e3342f','#e3342f'];
+function setLevel(id,lv){const sp=document.getElementById(id).children;
+  for(let i=0;i<sp.length;i++){const on=i<lv;sp[i].className=on?'on':'';sp[i].style.color=on?cols[i]:'var(--paper)'}}
+if(STILL){setLevel('mP',6);setLevel('mW',6)}
+else{let t=0,lv=5;(function tick(){t++;if(t%5==0){lv=Math.max(1,Math.min(10,Math.round(4+Math.sin(t/14)*3+Math.random()*3)));setLevel('mP',lv);setLevel('mW',lv)}requestAnimationFrame(tick)})()}
+</script>
+</body>
+</html>

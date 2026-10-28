@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thrasher Pocket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Silkscreen&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 4 LCD shades, olive to near black */
+  --l0:#c3ce7b; --l1:#8d9d49; --l2:#4e6127; --l3:#1a2710;
+  /* plastic shell */
+  --sh0:#c2c4b4; --sh1:#a6a897; --sh2:#7f8172; --sh3:#45473d;
+  --sur:#34362f; --surlo:#25271f;
+  /* rubber keys */
+  --key:#2f3c1a; --keyhi:#4e6127; --keylo:#18210c;
+  --page:#121410;
+  /* pixel sprite fills */
+  --c0:var(--l0); --c1:var(--l1); --c2:var(--l2); --c3:var(--l3);
+  --ck:var(--key); --ch:var(--keyhi); --cl:var(--keylo); --co:#0e1407; --cs:#6e8436; --ca:#6b7a3a;
+  --step8:polygon(8px 0,calc(100% - 8px) 0,calc(100% - 8px) 4px,calc(100% - 4px) 4px,calc(100% - 4px) 8px,100% 8px,100% calc(100% - 8px),calc(100% - 4px) calc(100% - 8px),calc(100% - 4px) calc(100% - 4px),calc(100% - 8px) calc(100% - 4px),calc(100% - 8px) 100%,8px 100%,8px calc(100% - 4px),4px calc(100% - 4px),4px calc(100% - 8px),0 calc(100% - 8px),0 8px,4px 8px,4px 4px,8px 4px);
+  --step4:polygon(4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px),0 4px,4px 4px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--page)}
+body{color:var(--l0);font-family:"Silkscreen",monospace;padding:28px 24px 40px;-webkit-font-smoothing:none;font-smooth:never}
+svg{display:block}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+
+/* ---------- page head ---------- */
+.head{max-width:1440px;margin:0 auto 22px;display:flex;gap:28px;align-items:flex-end;flex-wrap:wrap}
+.head h1{font-family:"Jersey 10",monospace;font-weight:400;font-size:60px;line-height:.8;color:var(--l0);text-shadow:4px 4px 0 var(--l2)}
+.head .idea{font-size:8px;letter-spacing:1px;color:var(--l1);margin-top:10px}
+.head ul{list-style:none;font-size:8px;line-height:16px;letter-spacing:.5px;color:#a9b37a}
+.head li::before{content:"";display:inline-block;width:4px;height:4px;background:var(--l1);margin:0 8px 2px 0;vertical-align:middle}
+.stage{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.cap{font-size:8px;letter-spacing:1px;color:var(--sh2);margin-top:10px}
+
+/* ---------- shell ---------- */
+.shell{position:relative;background:var(--sh1);clip-path:var(--step8);
+  box-shadow:inset 0 4px 0 var(--sh0),inset 0 -6px 0 var(--sh2),inset 4px 0 0 #b3b5a4,inset -4px 0 0 #96988a;
+  display:flex;flex-direction:column}
+.portrait{width:400px;height:620px}
+.wide{width:1000px;height:620px}
+
+.tbar{height:36px;flex:none;display:flex;align-items:center;padding:6px 14px 0 16px;gap:10px}
+.logo{font-family:"Jersey 10",monospace;font-size:30px;line-height:1;color:var(--sh3);text-shadow:0 2px 0 var(--sh0);letter-spacing:1px}
+.logo-sub{font-size:8px;color:var(--sh2);letter-spacing:1px;margin-top:5px}
+.tbar .sp{flex:1}
+.hkey{width:26px;height:20px;display:grid;place-items:center;background:var(--sh3);clip-path:var(--step4);color:var(--sh0);
+  box-shadow:inset 0 -4px 0 #2e2f28,inset 0 2px 0 #5a5c50}
+.hkey svg{margin-top:-2px}
+.hkey.x{background:var(--key);box-shadow:inset 0 -4px 0 var(--keylo),inset 0 2px 0 var(--keyhi);color:var(--l0)}
+
+/* screen surround */
+.sur{background:var(--sur);clip-path:var(--step8);padding:6px 12px 12px;box-shadow:inset 0 -4px 0 var(--surlo),inset 0 4px 0 #44463d;display:flex;flex-direction:column}
+.surtop{height:14px;flex:none;display:flex;align-items:center;gap:6px;font-size:8px;letter-spacing:1px;color:#7d806f}
+.led{width:6px;height:6px;background:var(--l0);box-shadow:0 0 0 2px #22291a}
+.surtop .rule{flex:1;height:2px;background:repeating-linear-gradient(90deg,#5a5d50 0 2px,transparent 2px 4px)}
+
+/* ---------- LCD ---------- */
+.lcd{position:relative;flex:1;min-height:0;background:var(--l0);color:var(--l3);overflow:hidden;
+  box-shadow:inset 0 2px 0 var(--l1),inset 2px 0 0 var(--l1)}
+.lcd::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,rgba(26,39,16,.07) 1px,transparent 1px) 0 0/2px 2px,
+             linear-gradient(rgba(26,39,16,.07) 1px,transparent 1px) 0 0/2px 2px}
+.dith{background:repeating-conic-gradient(var(--l1) 0 25%,var(--l0) 0 50%) 0 0/4px 4px}
+.dith2{background:repeating-conic-gradient(var(--l2) 0 25%,var(--l1) 0 50%) 0 0/4px 4px}
+.pxo{box-shadow:0 -2px 0 0 var(--l3),0 2px 0 0 var(--l3),-2px 0 0 0 var(--l3),2px 0 0 0 var(--l3)}
+.scr{position:absolute;inset:0;display:flex;flex-direction:column}
+
+.rec{flex:none;padding:10px 12px 10px;position:relative}
+.rec-top{display:flex;align-items:center;gap:8px;font-size:8px;letter-spacing:1px}
+.status{display:flex;align-items:center;gap:6px;padding:2px 6px;background:var(--l3);color:var(--l0)}
+.dot{width:6px;height:6px;background:var(--l0)}
+.dot.off{background:var(--l2)}
+.dev{display:flex;align-items:center;gap:6px;color:var(--l2);margin-left:auto;white-space:nowrap}
+.timer{font-family:"Jersey 10",monospace;font-size:60px;line-height:50px;letter-spacing:2px;margin:8px 0 6px;text-shadow:2px 2px 0 var(--l1)}
+.timer small{font-size:30px;letter-spacing:0}
+.meter{display:flex;gap:2px;height:12px;align-items:stretch}
+.meter i{flex:1;background:repeating-conic-gradient(var(--l1) 0 25%,var(--l0) 0 50%) 0 0/4px 4px}
+.meter i.on{background:var(--l3)}
+.meter i.pk{background:var(--l2)}
+.scale{display:flex;justify-content:space-between;font-size:8px;color:var(--l2);margin-top:3px;letter-spacing:0}
+
+.sep{height:4px;flex:none;background:repeating-conic-gradient(var(--l3) 0 25%,var(--l1) 0 50%) 0 0/4px 4px}
+.tools{flex:none;display:flex;gap:10px;padding:10px 12px 8px}
+.pick{display:flex;align-items:center;gap:8px;padding:0 8px;height:22px;background:var(--l3);color:var(--l0);font-family:"Jersey 10",monospace;font-size:20px}
+.search{flex:1;display:flex;align-items:center;gap:8px;height:22px;padding:0 8px;background:var(--l0);color:var(--l2);font-family:"Jersey 10",monospace;font-size:20px}
+
+.list{flex:1;min-height:0;overflow:hidden;list-style:none;padding:2px 8px 0 4px}
+.row{display:grid;grid-template-columns:10px 22px 44px 1fr auto 8px;align-items:center;gap:8px;height:34px;padding:0 6px 0 0;position:relative;
+  background:linear-gradient(90deg,var(--l1) 2px,transparent 2px) 0 100%/4px 2px repeat-x}
+.row .cur{opacity:0}
+.row.sel{background:var(--l1)}
+.row.sel .cur{opacity:1}
+.pbtn{width:22px;height:20px;display:grid;place-items:center}
+.pbtn.pxo{margin:2px}
+.row .pbtn{width:18px;height:18px}
+.name{font-family:"Jersey 10",monospace;font-size:20px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:clip}
+.sub{font-size:8px;line-height:10px;color:var(--l2);letter-spacing:.5px;white-space:nowrap}
+.row.sel .sub{color:var(--l3)}
+.len{font-family:"Jersey 10",monospace;font-size:20px}
+.wave{color:var(--l2)}
+.row.sel .wave{color:var(--l3)}
+
+.player{flex:none;border-top:2px solid var(--l3);padding:6px 12px 8px;background:var(--l0);position:relative;z-index:1}
+.pl-top{display:flex;align-items:center;gap:10px}
+.pl-top .np{font-family:"Jersey 10",monospace;font-size:20px;flex:1}
+.pl-top .tm{font-size:8px;letter-spacing:1px;color:var(--l2)}
+.prog{height:6px;margin:6px 2px 0}
+.prog b{display:block;width:0;height:100%;background:var(--l3)}
+
+/* ---------- bezel controls ---------- */
+.klab{font-size:8px;letter-spacing:1px;color:var(--sh3);text-shadow:0 1px 0 var(--sh0);white-space:nowrap;text-align:center}
+.klab em{font-style:normal;font-family:"Jersey 10",monospace;font-size:20px;line-height:0;vertical-align:-2px;margin-right:3px;color:var(--sh3)}
+.kbtn{position:relative;display:block;filter:drop-shadow(0 4px 0 rgba(30,32,25,.45))}
+.kbtn .ico{position:absolute;inset:0;display:grid;place-items:center;color:var(--l0)}
+.dpad{filter:drop-shadow(0 4px 0 rgba(30,32,25,.45))}
+.pill{height:24px;display:grid;place-items:center;background:var(--key);clip-path:var(--step4);color:var(--l0);
+  box-shadow:inset 0 -4px 0 var(--keylo),inset 0 2px 0 var(--keyhi)}
+.pill svg{margin-top:-2px}
+.kgroup{display:flex;flex-direction:column;align-items:center;gap:8px}
+.grille{display:grid;grid-template-columns:repeat(6,4px);gap:4px}
+.grille i{width:4px;height:4px;background:var(--sh3);box-shadow:0 -2px 0 var(--sh2)}
+
+/* portrait specifics */
+.portrait .bez{flex:1;min-height:0;display:flex;padding:0 14px}
+.portrait .sur{flex:1}
+.portrait .ctrl{height:142px;flex:none;position:relative}
+.portrait .ctrl .dpg{position:absolute;left:24px;top:22px}
+.portrait .ctrl .pills{position:absolute;left:128px;top:72px;display:flex;gap:14px}
+.portrait .ctrl .pills .pill{width:48px}
+.portrait .ctrl .bb{position:absolute;left:276px;top:50px}
+.portrait .ctrl .ab{position:absolute;left:326px;top:16px}
+
+/* wide specifics */
+.wide .body{flex:1;min-height:0;display:flex;gap:0;padding:0 0 8px}
+.wide .lcol,.wide .rcol{width:160px;flex:none;position:relative}
+.wide .sur{flex:1}
+.wide .lcol .dpg{position:absolute;left:30px;top:150px}
+.wide .lcol .pills{position:absolute;left:22px;top:340px;display:flex;flex-direction:column;gap:18px}
+.wide .lcol .pills .pill{width:116px}
+.wide .rcol .ab{position:absolute;left:62px;top:140px}
+.wide .rcol .bb{position:absolute;left:14px;top:232px}
+.wide .rcol .grille{position:absolute;left:44px;top:410px}
+.wide .scr{display:grid;grid-template-columns:44% 1fr;grid-template-rows:1fr auto}
+.wide .rec{grid-row:1;grid-column:1;padding:18px 18px 16px;display:flex;flex-direction:column;
+  background:linear-gradient(var(--l1) 2px,transparent 2px) 100% 0/2px 4px repeat-y}
+.wide .rec-top{flex-wrap:wrap}
+.wide .dev{margin-left:0}
+.wide .stagec{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.wide .sprite-pad{padding:14px 26px;position:relative}
+.wide .timer{font-size:80px;line-height:62px;margin:0;text-shadow:4px 4px 0 var(--l1)}
+.wide .timer small{font-size:40px}
+.wide .devrow{display:flex;justify-content:center;font-size:8px;letter-spacing:1px;color:var(--l2);gap:6px;align-items:center;margin-bottom:10px}
+.wide .meter{height:16px}
+.wide .right{grid-row:1;grid-column:2;display:flex;flex-direction:column;min-height:0}
+.wide .tools{padding:16px 16px 10px}
+.wide .list{padding:2px 14px 0 8px}
+.wide .row{height:42px;grid-template-columns:10px 22px 56px 1fr auto 8px}
+.wide .player{grid-row:2;grid-column:1 / 3;display:flex;align-items:center;gap:16px;padding:8px 16px}
+.wide .player .pl-top{flex:none;width:300px}
+.wide .player .prog{flex:1;margin:0 2px}
+</style>
+</head>
+<body>
+
+<header class="head">
+  <div>
+    <h1>Pocket</h1>
+    <p class="idea">Thrasher as a pocket handheld with a green LCD</p>
+  </div>
+  <ul>
+    <li>The window is a plastic handheld and the app lives on a 4 shade green LCD</li>
+    <li>A key records and B imports and the ASK and WIDGET pills sit between them and the D pad</li>
+    <li>The D pad steps through the clip list and the gear sits on the top edge</li>
+    <li>Pixel grid everywhere with dither shading and the pixel fonts Jersey 10 and Silkscreen</li>
+  </ul>
+</header>
+
+<main class="stage">
+  <div>
+    <div class="shell portrait" id="P"></div>
+    <p class="cap">Portrait 400 x 620 &nbsp; Record and toolbar icons moved onto the bezel</p>
+  </div>
+  <div>
+    <div class="shell wide" id="W"></div>
+    <p class="cap">Wide 1000 x 620 &nbsp; D pad left and A B right like a landscape handheld</p>
+  </div>
+</main>
+
+<script>
+const STILL = location.search.includes('still');
+
+/* ---------- pixel art helpers ---------- */
+function pix(map, scale, cls){
+  const h = map.length, w = map[0].length, paths = {};
+  map.forEach((row, y) => [...row].forEach((c, x) => {
+    if (c === '.' || c === ' ') return;
+    paths[c] = (paths[c] || '') + `M${x} ${y}h1v1h-1z`;
+  }));
+  let s = `<svg class="${cls||''}" viewBox="0 0 ${w} ${h}" width="${w*scale}" height="${h*scale}" shape-rendering="crispEdges" aria-hidden="true">`;
+  for (const k in paths) s += `<path d="${paths[k]}" style="fill:${k === '#' ? 'currentColor' : 'var(--c' + k + ')'}"/>`;
+  return s + '</svg>';
+}
+const I = {
+  mic:   ["...###...","..#####..","..#####..","..#####..","..#####..","#.#####.#","#..###..#",".#.....#.","..#####..","....#....","..#####.."],
+  micS:  [".###.","#####","#####","#####",".###.","..#..",".###."],
+  gear:  ["....#....",".#.###.#.","..#####..",".###.###.","###...###",".###.###.","..#####..",".#.###.#.","....#...."],
+  min:   [".......",".......",".......",".......",".......","#######","#######"],
+  close: ["##...##","###.###",".#####.","..###..",".#####.","###.###","##...##"],
+  imp:   ["....#....","....#....","....#....","..#.#.#..","...###...","....#....","#.......#","#.......#","#########"],
+  ask:   [".#######.","#.......#","#.#.#.#.#","#.......#",".###.###.","...#.#...","....#...."],
+  wid:   ["#########","#########","#.......#","#.......#","#...#####","#...#####","#...#####","#########"],
+  play:  ["#.....","###...","#####.","######","#####.","###...","#....."],
+  dots:  ["##","##","..","##","##","..","##","##"],
+  down:  ["#######",".#####.","..###..","...#..."],
+  find:  [".####...","#....#..","#....#..","#....#..","#....#..",".####...",".....##.","......##"],
+  cur:   ["#...","##..","###.","####","###.","##..","#..."],
+};
+const MIC_SPRITE = [
+".....333333.....",
+"....31111113....",
+"...3101111113...",
+"...3101111123...",
+"...3111111123...",
+"...3333333333...",
+"...3101111123...",
+"...3111111123...",
+"...3333333333...",
+"...3101111123...",
+"...3111111123...",
+"...3111111223...",
+"....31122223....",
+".3...333333...3.",
+".3............3.",
+".33..........33.",
+"..33........33..",
+"...3333333333...",
+".......33.......",
+".......33.......",
+".......33.......",
+"....33333333....",
+"...3222222223...",
+"...3333333333..."];
+
+function circleMap(d){
+  const r = d/2, rows = [];
+  for (let y = 0; y < d; y++){
+    let s = '';
+    for (let x = 0; x < d; x++){
+      const dx = x + .5 - r, dy = y + .5 - r, q = dx*dx + dy*dy;
+      if (q > r*r) { s += '.'; continue; }
+      if (q > (r-1)*(r-1)) { s += 'o'; continue; }
+      if (q > (r-2)*(r-2)) { s += (dx + dy < 0) ? 'h' : 'l'; continue; }
+      s += 'k';
+    }
+    rows.push(s);
+  }
+  // one hard specular pixel pair, upper left
+  const sy = Math.round(d*.28), sx = Math.round(d*.28);
+  rows[sy] = rows[sy].slice(0, sx) + 'ss' + rows[sy].slice(sx + 2);
+  return rows;
+}
+function dpadMap(n, a){
+  const lo = (n - a)/2, hi = lo + a - 1, c = (n - 1)/2;
+  const inC = (x, y) => x >= 0 && y >= 0 && x < n && y < n && ((x >= lo && x <= hi) || (y >= lo && y <= hi));
+  const g = [];
+  for (let y = 0; y < n; y++){
+    const r = [];
+    for (let x = 0; x < n; x++){
+      if (!inC(x, y)) { r.push('.'); continue; }
+      if (!inC(x-1,y) || !inC(x+1,y) || !inC(x,y-1) || !inC(x,y+1)) { r.push('o'); continue; }
+      if (!inC(x,y-2)) { r.push('h'); continue; }
+      if (!inC(x,y+2)) { r.push('l'); continue; }
+      r.push('k');
+    }
+    g.push(r);
+  }
+  const set = (x, y, ch) => g[y][x] = ch;
+  // arrows on each arm
+  set(c,2,'a'); for (let i=-1;i<=1;i++) set(c+i,3,'a');
+  set(c,n-3,'a'); for (let i=-1;i<=1;i++) set(c+i,n-4,'a');
+  set(2,c,'a'); for (let i=-1;i<=1;i++) set(3,c+i,'a');
+  set(n-3,c,'a'); for (let i=-1;i<=1;i++) set(n-4,c+i,'a');
+  // centre dimple
+  for (let y=-1;y<=1;y++) for (let x=-1;x<=1;x++) set(c+x,c+y,'l');
+  return g.map(r => r.join(''));
+}
+function waveSvg(seed, cols, rowsH, scale){
+  let s = seed, rects = '';
+  const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const mid = Math.floor(rowsH/2);
+  for (let x = 0; x < cols; x++){
+    const env = 0.35 + 0.65 * Math.abs(Math.sin((x + seed % 7) / 3.1));
+    const hgt = Math.max(0, Math.round(rnd() * env * mid));
+    rects += `M${x} ${mid - hgt}h1v${hgt*2 + 1}h-1z`;
+    x++; // 1 cell gap between bars
+  }
+  return `<svg class="wave" viewBox="0 0 ${cols} ${rowsH}" width="${cols*scale}" height="${rowsH*scale}" shape-rendering="crispEdges" aria-hidden="true"><path d="${rects}" fill="currentColor"/></svg>`;
+}
+
+/* ---------- data ---------- */
+const CLIPS = [
+  ["clip_001","Sat 05:48 · transcribed","16:53"],
+  ["clip_005","Sat 05:48","2:03"],
+  ["clip_006","Sat 06:05","0:04"],
+  ["clip_100","Sat 09:34 · transcribed","1:09:26"],
+  ["Screen recording","Yesterday 07:20","0:03"],
+  ["Meeting","Yesterday 07:20","0:02"],
+  ["Meeting (2)","Today 10:03","0:02"],
+  ["Presentasjon","Today 10:25 · transcribed","0:27"],
+];
+const hash = t => [...t].reduce((a, c) => (a * 31 + c.charCodeAt(0)) & 0xffff, 7);
+
+/* ---------- builders ---------- */
+const titleBar = () => `
+  <div class="tbar">
+    <span class="logo">THRASHER</span><span class="logo-sub">POCKET REC</span>
+    <span class="sp"></span>
+    <button class="hkey" title="Settings">${pix(I.gear,1.5)}</button>
+    <button class="hkey" title="Minimise">${pix(I.min,1.5)}</button>
+    <button class="hkey x" title="Close">${pix(I.close,1.5)}</button>
+  </div>`;
+
+const statusBits = () => `
+  <span class="status"><i class="dot"></i>READY</span>`;
+
+const meter = n => `<div class="meter">${'<i></i>'.repeat(n)}</div>`;
+
+const rows = (wcols) => CLIPS.map((c, i) => `
+  <li class="row${i === 1 ? ' sel' : ''}">
+    <span class="cur">${pix(I.cur,2)}</span>
+    <button class="pbtn pxo" title="Play">${pix(I.play,2)}</button>
+    ${waveSvg(hash(c[0]), wcols, 7, 2)}
+    <div style="min-width:0"><div class="name">${c[0]}</div><div class="sub">${c[1]}</div></div>
+    <span class="len">${c[2]}</span>
+    <button title="More">${pix(I.dots,1)}</button>
+  </li>`).join('');
+
+const tools = () => `
+  <div class="tools">
+    <button class="pick">Inbox ${pix(I.down,2)}</button>
+    <div class="search pxo">${pix(I.find,2)}Search</div>
+  </div>`;
+
+const player = () => `
+  <div class="player">
+    <div class="pl-top">
+      <button class="pbtn pxo" title="Play">${pix(I.play,2)}</button>
+      <span class="np">Nothing playing</span>
+      <span class="tm">--:-- / --:--</span>
+    </div>
+    <div class="prog dith pxo"><b></b></div>
+  </div>`;
+
+const btnA = d => `<div class="kgroup ab"><button class="kbtn" title="Record">${pix(circleMap(d),4)}<span class="ico">${pix(I.mic,2)}</span></button><span class="klab"><em>A</em>REC</span></div>`;
+const btnB = d => `<div class="kgroup bb"><button class="kbtn" title="Import file">${pix(circleMap(d),4)}<span class="ico">${pix(I.imp,2)}</span></button><span class="klab"><em>B</em>IMPORT</span></div>`;
+const dpad = s => `<div class="kgroup dpg"><div class="dpad" title="Move through clips">${pix(dpadMap(19,7),s)}</div><span class="klab">CLIPS</span></div>`;
+const pills = () => `<div class="pills">
+    <div class="kgroup"><button class="pill" title="Ask">${pix(I.ask,2)}</button><span class="klab">ASK</span></div>
+    <div class="kgroup"><button class="pill" title="Widget mode">${pix(I.wid,2)}</button><span class="klab">WIDGET</span></div>
+  </div>`;
+const surTop = () => `<div class="surtop"><i class="led"></i>PWR<span class="rule"></span>LCD<span class="rule" style="max-width:24px"></span></div>`;
+
+document.getElementById('P').innerHTML = `
+  ${titleBar()}
+  <div class="bez"><div class="sur">${surTop()}
+    <div class="lcd"><div class="scr">
+      <section class="rec">
+        <div class="rec-top">${statusBits()}<span class="dev">${pix(I.micS,2)}Default microphone</span></div>
+        <div class="timer">00:00<small>.0</small></div>
+        ${meter(30)}
+      </section>
+      <div class="sep"></div>
+      ${tools()}
+      <ul class="list">${rows(21)}</ul>
+      ${player()}
+    </div></div>
+  </div></div>
+  <div class="ctrl">
+    ${dpad(4)}
+    ${pills()}
+    ${btnB(11)}
+    ${btnA(12)}
+  </div>`;
+
+document.getElementById('W').innerHTML = `
+  ${titleBar()}
+  <div class="body">
+    <div class="lcol">${dpad(5)}${pills()}</div>
+    <div class="sur">${surTop()}
+      <div class="lcd"><div class="scr">
+        <section class="rec">
+          <div class="rec-top">${statusBits()}</div>
+          <div class="stagec">
+            <div class="sprite-pad dith">${pix(MIC_SPRITE,4)}</div>
+            <div class="timer">00:00<small>.0</small></div>
+          </div>
+          <div class="devrow">${pix(I.micS,2)}Default microphone</div>
+          ${meter(34)}
+          <div class="scale"><span>-60</span><span>-40</span><span>-20</span><span>-6</span><span>0</span></div>
+        </section>
+        <div class="right">
+          ${tools()}
+          <ul class="list">${rows(27)}</ul>
+        </div>
+        ${player()}
+      </div></div>
+    </div>
+    <div class="rcol">${btnA(16)}${btnB(12)}<div class="grille">${'<i></i>'.repeat(30)}</div></div>
+  </div>`;
+
+/* ---------- meter, stepped at 10 fps like a real LCD ---------- */
+const meters = [...document.querySelectorAll('.meter')];
+let t = 0, peak = 0;
+function drawMeter(level){
+  meters.forEach(m => {
+    const segs = m.children, n = segs.length, on = Math.round(level * n), pk = Math.min(n - 1, Math.round(peak * n));
+    for (let i = 0; i < n; i++){
+      segs[i].className = i < on ? 'on' : (i === pk ? 'pk' : '');
+    }
+  });
+}
+function tick(){
+  t++;
+  const lv = Math.max(0, Math.min(1, 0.42 + 0.22*Math.sin(t*0.7) + 0.14*Math.sin(t*2.3) + (Math.random() - .5)*0.12));
+  peak = Math.max(lv, peak - 0.03);
+  drawMeter(lv);
+  document.querySelectorAll('.dot').forEach(d => d.classList.toggle('off', (t % 10) >= 7));
+}
+if (STILL){ peak = 0.68; drawMeter(0.55); }
+else { tick(); setInterval(tick, 100); }
+</script>
+</body>
+</html>

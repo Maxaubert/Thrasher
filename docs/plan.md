@@ -353,8 +353,6 @@ press Recording to see how each one reacts).
 | Sumi Sakura | Ink black, faint 録音 and ensō on the recorder, square pink seal button | A few falling petals |
 | Sumi Kintsugi | Black lacquer, gold cracks across the recorder, gold accent | Slow shine along the cracks |
 | Ocean Lagoon | Turquoise water, see-through cards | Sun rays sway, small bubbles rise |
-| Space Nebula | Pink and teal gas clouds behind stars, pink accent | Clouds and stars drift |
-
 | Cyberpunk | Still neon outlines on the recorder and toolbar | A red, green and blue snake runs round the recorder |
 
 The old colour themes (Volt, Glacier, Mint, Violet, Signal, Chalk) are removed (Max,
@@ -367,15 +365,16 @@ The old colour themes (Volt, Glacier, Mint, Violet, Signal, Chalk) are removed (
 - The clock stops for Ember, in the widget, and while the window is hidden or minimised.
   It runs twice as fast while recording.
 - Aurora is removed and Sakura's highlighted clip is pink (Max, 2026-10-27).
+- Nebula is removed (Max, 2026-10-28). A saved "Nebula" falls back to Ember.
 - Max found the first step rates (4 to 30 a second) choppy, so effects now step 60 times a
   second. Slow drifts (glows, rays, stars) follow `Fx.slow`, which steps 20 times a
   second, and the glows and Lagoon's water and rays are small images (`ui/fx`) scaled up:
   the software renderer draws those far faster than gradients. CPU of one core at
   520x700 on the test copy (32 threads, so under 1% of the whole CPU):
 
-  | Ember | Snow | Daylight | Graphite | Sakura | Kintsugi | Lagoon | Nebula | Cyberpunk |
-  |---|---|---|---|---|---|---|---|---|
-  | 0% | 21% | 18% | 8% | 16% | 14% | 30% | 12% | 12% |
+  | Ember | Snow | Daylight | Graphite | Sakura | Kintsugi | Lagoon | Cyberpunk |
+  |---|---|---|---|---|---|---|---|
+  | 0% | 21% | 18% | 8% | 16% | 14% | 30% | 12% |
 
 - 録音 is drawn from Noto Serif JP Black glyph outlines (OFL), since the app embeds no
   Japanese font.

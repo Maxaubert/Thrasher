@@ -3873,7 +3873,7 @@ fn export_reporter(weak: slint::Weak<AppWindow>) -> impl Fn(f32) {
 }
 
 /// Steps per second of each theme's effect, in the order of `Theme.names`; 0 for none.
-const EFFECT_FPS: [f32; 9] = [0.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0];
+const EFFECT_FPS: [f32; 8] = [0.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0];
 
 /// Advances `Fx.t`, the clock of the theme effects, twice as fast while recording. It
 /// stands still for Ember, in the widget and while the window is hidden or minimised,

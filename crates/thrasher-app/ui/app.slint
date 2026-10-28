@@ -189,7 +189,7 @@ struct Palette {
 // settings page switches it.
 export global Theme {
     in-out property <int> current: 0;
-    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Nebula", "Cyberpunk"];
+    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk"];
     property <[Palette]> palettes: [
         // Ember
         { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618, card-line: #00000000 },
@@ -205,8 +205,6 @@ export global Theme {
         { bg: #0a0a0a, card: #121212, row: #191818, raised: #1f1f1e, line: #1c1c1b, line-soft: #151514, edge: #31302d, text: #efe7da, text2: #d4ccc1, muted: #98938b, dim: #7c7872, accent: #e0bb62, accent-hover: #e5c57a, on-accent: #1a1406, wave: #484642, wave-dim: #3a3836, track: #282725, danger: #ff8f7a, hover: #232221, hover-soft: #1f1e1d, row-hover: #111110, picked: #262115, popup: #1f1f1e, popup-edge: #413f3c, knob: #716d68, faint: #615e59, fainter: #3c3b38, rec-rest: #5b4d2b, divider: #1a1919, border: #21201f, card-edge: #1c1c1b, footer: #0f0e0e, press: #39311d, card-line: #00000000 },
         // Lagoon
         { bg: #04222a, card: #08343e9e, row: #112f37, raised: #154049, line: #16333b, line-soft: #0f2d34, edge: #2a464e, text: #e4f7fb, text2: #c9dde2, muted: #8fa6ac, dim: #748c92, accent: #7ff5d8, accent-hover: #92f6de, on-accent: #03211b, wave: #405c62, wave-dim: #334f56, track: #213e45, danger: #ff8f7a, hover: #1d3941, hover-soft: #18353d, row-hover: #0b2830, picked: #143d41, popup: #154049, popup-edge: #3a555c, knob: #698288, faint: #597379, fainter: #355158, rec-rest: #33726c, divider: #143139, border: #1a373f, card-edge: #16333b, footer: #08262ee6, press: #1f5050, card-line: #ffffff14 },
-        // Nebula
-        { bg: #05040b, card: #b9b0ff10, row: #ffffff0a, raised: #ffffff12, line: #ffffff12, line-soft: #ffffff0a, edge: #ffffff24, text: #efedff, text2: #d3d1e2, muted: #9694a2, dim: #7a7885, accent: #ff8adf, accent-hover: #ff9ce4, on-accent: #2a0420, wave: #44434d, wave-dim: #36353e, track: #ffffff16, danger: #ff8f7a, hover: #ffffff17, hover-soft: #ffffff10, row-hover: #ffffff08, picked: #261527, popup: #1c1a2a, popup-edge: #3d3c46, knob: #6e6d79, faint: #5e5d68, fainter: #383741, rec-rest: #64375c, divider: #ffffff0c, border: #ffffff14, card-edge: #ffffff12, footer: #08070f99, press: #3c213a, card-line: #ffffff1c },
         // Cyberpunk
         { bg: #05060b, card: #0a0c15, row: #11131c, raised: #181a23, line: #18191f, line-soft: #111217, edge: #2d2e34, text: #eef2ff, text2: #d2d6e2, muted: #9598a2, dim: #7a7c85, accent: #ffffff, accent-hover: #ffffff, on-accent: #05050a, wave: #44464d, wave-dim: #36383e, track: #23252b, danger: #ff8f7a, hover: #1f2026, hover-soft: #1a1b21, row-hover: #0c0d12, picked: #26262b, popup: #181a23, popup-edge: #3d3f46, knob: #6e7079, faint: #5e6068, fainter: #383a41, rec-rest: #646568, divider: #15171c, border: #1c1e23, card-edge: #18191f, footer: #0a0b10, press: #3c3d41, card-line: #30304a },
     ];
@@ -249,8 +247,8 @@ export global Theme {
     out property <color> selected-edge: root.current == 4 ? root.accent.with-alpha(0.5) : root.edge;
     // Sakura and Kintsugi have a square seal for a record button.
     out property <bool> rec-square: root.current == 4 || root.current == 5;
-    // Text fields: sunk into the window colour, see-through on Nebula's glass.
-    out property <color> field: root.current == 7 ? #0000004d : root.bg;
+    // Text fields: sunk into the window colour.
+    out property <color> field: root.bg;
     out property <string> mono: "JetBrains Mono";
 }
 
@@ -2021,24 +2019,6 @@ component Bubbles inherits Rectangle {
     }
 }
 
-// Stars drifting slowly down.
-component Stars inherits Rectangle {
-    in property <int> count: 40;
-    in property <length> size: 1px;
-    in property <float> speed: 2.5;
-    for i in root.count: Rectangle {
-        property <float> r1: Math.mod(i * 53 + 3, 97) / 97;
-        property <float> r2: Math.mod(i * 29 + 17, 89) / 89;
-        width: root.size;
-        height: root.size;
-        border-radius: root.size / 2;
-        background: #ffffff;
-        opacity: 0.3 + self.r2 * 0.6;
-        x: self.r1 * root.width;
-        y: Math.mod(self.r2 * root.height / 1px + Fx.slow * root.speed, root.height / 1px) * 1px;
-    }
-}
-
 // The window's effect, behind everything.
 component WindowFx inherits Rectangle {
     // Snow and Daylight: falling snow.
@@ -2088,32 +2068,6 @@ component WindowFx inherits Rectangle {
             y: -10px;
         }
         Bubbles { count: 8; }
-    }
-    // Nebula: pink and teal clouds behind drifting stars.
-    if Theme.current == 7: Rectangle {
-        Glow {
-            source: @image-url("fx/glow-violet.png");
-            width: 340px;
-            height: 340px;
-            x: -120px + Math.sin(Fx.slow * 4deg) * 40px;
-            y: -110px + Math.cos(Fx.slow * 3deg) * 30px;
-        }
-        Glow {
-            source: @image-url("fx/glow-aqua.png");
-            width: 300px;
-            height: 300px;
-            x: parent.width - 200px + Math.cos(Fx.slow * 3.5deg) * 40px;
-            y: parent.height * 0.25 + Math.sin(Fx.slow * 4deg) * 30px;
-        }
-        Glow {
-            source: @image-url("fx/glow-pink.png");
-            width: 280px;
-            height: 280px;
-            x: parent.width * 0.1 + Math.sin(Fx.slow * 3deg) * 30px;
-            y: parent.height * 0.62 + Math.cos(Fx.slow * 4.5deg) * 30px;
-        }
-        Stars { count: 40; size: 1px; speed: 2.5; }
-        Stars { count: 14; size: 2px; speed: 5; }
     }
 }
 
@@ -5491,7 +5445,7 @@ export component AppWindow inherits Window {
     // opposite directions: round the recorder, through the gap to the toolbar, the
     // highlighted clip, out to the window frame and back. A lap of a box takes a few
     // seconds; recording doubles the clock and so their speed.
-    if Theme.current == 8 && !root.compact && root.page == 0: Rectangle {
+    if Theme.current == 7 && !root.compact && root.page == 0: Rectangle {
         property <[TourPoint]> route: Tour.route(Tour.rec, Tour.tool, Tour.sel, root.width / 1px, root.height / 1px, Tour.foot, root.wide);
         property <float> head: Fx.t * 120;
         TourSnake { route: parent.route; head: parent.head; dir: 1; tint: #00f0ff; }

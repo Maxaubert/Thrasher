@@ -87,9 +87,12 @@ cargo run --release -p thrasher-core --features whisper-cuda --example transcrib
 - **`THRASHER_SETTINGS=<file>`:** read and save settings there instead of the real
   settings file. Always set it for automated checks.
 - **`THRASHER_TEST_WINDOW=1`:** the window opens without taking focus, for checks run
-  while someone works at the PC. Drive it without focus or the mouse: press buttons
-  through UI Automation (every button has an accessible name) and send keys with
-  `PostMessage`. Never call `SetForegroundWindow` or move the cursor. Run tests from a
+  while someone works at the PC. Drive it without focus or the mouse: find a button
+  through UI Automation (every button has an accessible name), read its bounding
+  rectangle, and post a click to the window at its centre with `PostMessage`; send
+  keys with `PostMessage` too. Do not call UIA `Invoke` (or Toggle, Expand, Select,
+  SetValue): measured 2026-10-28, `Invoke` brings the window to the front. Never call
+  `SetForegroundWindow` or move the cursor. Run tests from a
   renamed copy of the exe so the user's own Thrasher is never stopped.
   Dialogs would take focus, so in this mode exports save without asking (into the last
   export folder) and Import reads its files from **`THRASHER_TEST_IMPORT`** (paths

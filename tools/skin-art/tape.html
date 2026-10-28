@@ -1,0 +1,88 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Oswald;font-weight:500;src:url(../../crates/thrasher-app/ui/fonts/Oswald-500.ttf)}
+@font-face{font-family:Oswald;font-weight:600;src:url(../../crates/thrasher-app/ui/fonts/Oswald-600.ttf)}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+svg{display:block}
+#a{position:absolute;left:0;top:0}
+</style></head><body><div id="a"></div>
+<script>
+// One element of the Tape Deck mockup (docs/mockups/device-themes/tape.html), alone on a
+// transparent page, for cutting into PNGs. ?el=name&w=css-width&h=css-height
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+const svg = (vb, body) => `<svg width="${W}" height="${H}" viewBox="${vb}" preserveAspectRatio="xMidYMid meet">${body}</svg>`;
+
+if (el === 'cassette') {
+  // The shell, label, window and tape packs; the hubs and the device name are live.
+  a.innerHTML = svg('0 0 280 100', `
+  <defs><clipPath id="win"><rect x="62" y="31" width="156" height="31" rx="6"/></clipPath>
+  <linearGradient id="sh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a3a2e"/><stop offset="1" stop-color="#2b2019"/></linearGradient></defs>
+  <rect x="6" y="3" width="268" height="94" rx="7" fill="url(#sh)" stroke="#0b0705"/>
+  <rect x="16" y="9" width="248" height="64" rx="4" fill="#efe3c8"/>
+  <rect x="16" y="17" width="248" height="4" fill="#c9331f"/><rect x="16" y="23" width="248" height="2" fill="#d99a2b"/>
+  <text x="24" y="15.5" font-family="Oswald" font-weight="500" font-size="6.5" letter-spacing="2" fill="#6b5644">SIDE A</text>
+  <text x="256" y="15.5" text-anchor="end" font-family="Oswald" font-weight="500" font-size="6.5" letter-spacing="2" fill="#6b5644">C60</text>
+  <rect x="58" y="28" width="164" height="37" rx="8" fill="#2a1d13"/>
+  <g clip-path="url(#win)"><rect x="62" y="31" width="156" height="31" fill="#3b2415"/>
+    <circle cx="96" cy="46.5" r="30" fill="#5b331b"/><circle cx="96" cy="46.5" r="30" fill="none" stroke="#7a4626" stroke-width=".6" stroke-dasharray="1 2"/>
+    <circle cx="184" cy="46.5" r="21" fill="#5b331b"/>
+    <rect x="62" y="31" width="156" height="31" fill="rgba(242,166,74,.10)"/>
+    <rect x="62" y="31" width="156" height="6" fill="rgba(255,255,255,.08)"/></g>
+  <path d="M86 97l8-9h92l8 9" fill="#1d1510" stroke="#0b0705"/>
+  <circle cx="112" cy="93" r="2.2" fill="#0b0705"/><circle cx="168" cy="93" r="2.2" fill="#0b0705"/>
+  <circle cx="13" cy="10" r="2" fill="#1d1510"/><circle cx="267" cy="10" r="2" fill="#1d1510"/><circle cx="13" cy="90" r="2" fill="#1d1510"/><circle cx="267" cy="90" r="2" fill="#1d1510"/>`);
+}
+if (el === 'reels') {
+  // A strip of 8 frames of one hub turning through 60 degrees (its teeth repeat every
+  // 60, and 12 dashes make the ring repeat every 30). Each frame is H square.
+  const n = 8, dash = (2 * Math.PI * 16 / 12 - 3).toFixed(4);
+  let s = '';
+  for (let k = 0; k < n; k++) {
+    const rot = k * 60 / n, cx = 17 + k * 34;
+    let t = '';
+    for (let j = 0; j < 6; j++) t += `<rect x="${cx - 1.6}" y="${17 - 11.5}" width="3.2" height="4" rx=".6" transform="rotate(${j * 60 + rot} ${cx} 17)" fill="#e9dfcb"/>`;
+    s += `<g><circle cx="${cx}" cy="17" r="11.5" fill="none" stroke="#e9dfcb" stroke-width="2.4"/>${t}<circle cx="${cx}" cy="17" r="16" fill="none" stroke="#2a1f17" stroke-width="1" stroke-dasharray="3 ${dash}" transform="rotate(${rot} ${cx} 17)"/></g>`;
+  }
+  a.innerHTML = svg(`0 0 ${34 * n} 34`, s);
+}
+const cx = 80, cy = 104, R = 86;
+const P = (ang, r) => [cx + r * Math.sin(ang * Math.PI / 180), cy - r * Math.cos(ang * Math.PI / 180)];
+if (el === 'vu-face') {
+  const vals = [[-20,-48],[-10,-31],[-7,-21],[-5,-12],[-3,-2],[-2,6],[-1,14],[0,24],[1,32],[2,40],[3,48]];
+  let t = '', l = '';
+  for (const [v, ang] of vals) {
+    const [x1, y1] = P(ang, R), r2 = R - (v % 5 === 0 || v === -7 || v === 3 ? 8 : 5), [x2, y2] = P(ang, r2);
+    t += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${v >= 0 ? '#c9331f' : '#2a1c12'}" stroke-width="1.2"/>`;
+    if ([-20,-10,-5,0,3].includes(v)) { const [x3, y3] = P(ang, R + 7); l += `<text x="${x3}" y="${y3 + 2.5}" text-anchor="middle" font-family="Oswald" font-weight="500" font-size="7" fill="${v >= 0 ? '#c9331f' : '#2a1c12'}">${v > 0 ? '+' + v : v}</text>`; }
+  }
+  const arc = (a0, a1, r, c, w) => { const [x0, y0] = P(a0, r), [x1, y1] = P(a1, r); return `<path d="M${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}" fill="none" stroke="${c}" stroke-width="${w}"/>`; };
+  a.innerHTML = svg('0 0 160 92', `<defs><radialGradient id="vf" cx=".5" cy=".9" r=".9"><stop offset="0" stop-color="#ffe2a8"/><stop offset=".7" stop-color="#f2c77e"/><stop offset="1" stop-color="#d79a4e"/></radialGradient></defs>
+  <rect x="0" y="0" width="160" height="92" rx="3" fill="url(#vf)"/>
+  ${arc(-48, 24, R, '#2a1c12', 1)}${arc(24, 48, R, '#c9331f', 3)}${t}${l}
+  <text x="80" y="62" text-anchor="middle" font-family="Oswald" font-weight="600" font-size="13" letter-spacing="1" fill="#2a1c12">VU</text>`);
+}
+if (el === 'vu-over') {
+  // What lies over the needle: the base strip, the pivot cap and the glass shine.
+  a.innerHTML = svg('0 0 160 92', `<defs><clipPath id="c"><rect x="0" y="0" width="160" height="92" rx="3"/></clipPath></defs><g clip-path="url(#c)">
+  <rect x="0" y="76" width="160" height="16" fill="#2a1d13"/><circle cx="80" cy="80" r="6" fill="#120c08"/>
+  <rect x="0" y="0" width="160" height="30" rx="3" fill="rgba(255,255,255,.12)"/></g>`);
+}
+// Tiles: one period of a repeating texture, transparent where the colour shows through.
+if (el === 'walnut-grain') a.style.background = 'repeating-linear-gradient(90deg,rgba(0,0,0,.10) 0 2px,transparent 2px 9px),repeating-linear-gradient(90deg,rgba(255,210,150,.05) 0 1px,transparent 1px 17px)';
+if (el === 'alu-lines') a.style.background = 'repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,rgba(0,0,0,.035) 1px 2px)';
+if (el === 'spine-lines') a.style.background = 'repeating-linear-gradient(0deg,rgba(120,90,50,.07) 0 1px,transparent 1px 5px)';
+if (el === 'grille') a.style.background = 'repeating-linear-gradient(90deg,#1c140e 0 3px,transparent 3px 7px)';
+if (el === 'dial') {
+  a.innerHTML = `<div style="position:absolute;left:3px;top:3px;width:46px;height:46px;border-radius:50%;background:repeating-conic-gradient(from 0deg,#2a2420 0 6deg,#3d3530 6deg 12deg);box-shadow:0 0 0 3px #a59d8f">
+  <div style="position:absolute;inset:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#5a504a,#1e1916)"></div>
+  <i style="position:absolute;left:50%;top:5px;width:3px;height:11px;margin-left:-1.5px;background:#f2a64a;border-radius:2px;transform-origin:50% 18px;transform:rotate(-30deg)"></i></div>`;
+}
+const knob = (bg) => `<div style="position:absolute;left:2px;top:1px;width:${W - 4}px;height:${H - 4}px;border-radius:50%;background:${bg};box-shadow:0 1px 2px #000,inset 0 -1px 1px rgba(0,0,0,.3)"></div>`;
+if (el === 'knob') a.innerHTML = knob('radial-gradient(circle at 35% 30%,#f3e9d4,#b7aa90 70%,#7d705a)');
+if (el === 'knob-sel') a.innerHTML = knob('radial-gradient(circle at 35% 30%,#ffb47a,#f2a64a 55%,#a2611f)');
+if (el === 'screw') a.innerHTML = `<div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f0e4c8,#8a7a5e)"><div style="position:absolute;left:1px;right:1px;top:3px;height:1px;background:#4a3a24;transform:rotate(35deg)"></div></div>`;
+if (el === 'led') a.innerHTML = `<div style="position:absolute;left:6px;top:6px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd2b0,#ff5a3a 45%,#7a1a0a);box-shadow:0 0 6px rgba(255,90,58,.8)"></div>`;
+</script></body></html>

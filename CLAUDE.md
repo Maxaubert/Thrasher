@@ -27,7 +27,7 @@ A polished, dark, minimalist audio recorder for Windows, written in Rust. Replac
 - Write WAV incrementally on a worker thread. A crash must lose under a second of audio.
 - Clip sidecar JSON next to each clip. Keep the WAV plain and portable.
 - Everything local. The only network use is downloading transcription models on demand.
-- UI toolkit: Slint with the software renderer (idle about 32 to 40 MB; FemtoVG used 80 MB). The window is frameless with its own title bar and Ember controls (no std-widgets ComboBox). It follows the "Ember" mockups (orange on warm black, canvas linked in `docs/plan.md` section 12). Fonts Inter Tight and JetBrains Mono are embedded from `crates/thrasher-app/ui/fonts` (OFL).
+- UI toolkit: Slint with the software renderer (idle about 32 to 40 MB; FemtoVG used 80 MB). The window is frameless with its own title bar and Ember controls (no std-widgets ComboBox). It follows the "Ember" mockups (orange on warm black, canvas linked in `docs/plan.md` section 12). Fonts Inter Tight and JetBrains Mono (plus Caveat and Oswald for Tape Deck) are embedded from `crates/thrasher-app/ui/fonts` (OFL). Device skins: `docs/device-themes.md`, art tools in `tools/skin-art/`.
 - Transcription: whisper.cpp (whisper-rs) in a separate worker process, `thrasher-transcribe.exe`.
 - Test against a scratch folder with the env var `THRASHER_DIR`, never Max's real `VoiceClips`.
 - Never commit audio clips, models or personal paths.

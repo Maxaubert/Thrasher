@@ -72,6 +72,8 @@ export struct ClipRow {
     duration: string,
     // "Today 09:14 · transcribed" and the like.
     meta: string,
+    // Just when it was made, "Today 09:14", for skins that show the rest their own way.
+    when: string,
     has-system: bool,
     transcribed: bool,
     // Peak per column, 0..1, for the small waveform.
@@ -149,7 +151,7 @@ export struct Palette {
 // settings page switches it.
 export global Theme {
     in-out property <int> current: 0;
-    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk"];
+    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck"];
     property <[Palette]> palettes: [
         // Ember
         { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618, card-line: #00000000 },
@@ -167,6 +169,8 @@ export global Theme {
         { bg: #04222a, card: #08343e9e, row: #112f37, raised: #154049, line: #16333b, line-soft: #0f2d34, edge: #2a464e, text: #e4f7fb, text2: #c9dde2, muted: #8fa6ac, dim: #748c92, accent: #7ff5d8, accent-hover: #92f6de, on-accent: #03211b, wave: #405c62, wave-dim: #334f56, track: #213e45, danger: #ff8f7a, hover: #1d3941, hover-soft: #18353d, row-hover: #0b2830, picked: #143d41, popup: #154049, popup-edge: #3a555c, knob: #698288, faint: #597379, fainter: #355158, rec-rest: #33726c, divider: #143139, border: #1a373f, card-edge: #16333b, footer: #08262ee6, press: #1f5050, card-line: #ffffff14 },
         // Cyberpunk
         { bg: #05060b, card: #0a0c15, row: #11131c, raised: #181a23, line: #18191f, line-soft: #111217, edge: #2d2e34, text: #eef2ff, text2: #d2d6e2, muted: #9598a2, dim: #7a7c85, accent: #ffffff, accent-hover: #ffffff, on-accent: #05050a, wave: #44464d, wave-dim: #36383e, track: #23252b, danger: #ff8f7a, hover: #1f2026, hover-soft: #1a1b21, row-hover: #0c0d12, picked: #26262b, popup: #181a23, popup-edge: #3d3f46, knob: #6e7079, faint: #5e6068, fainter: #383a41, rec-rest: #646568, divider: #15171c, border: #1c1e23, card-edge: #18191f, footer: #0a0b10, press: #3c3d41, card-line: #30304a },
+        // Tape Deck: walnut chassis, cream labels, amber lamps (its main page is ui/skins/tape.slint).
+        { bg: #22170f, card: #2b1d13, row: #2a1c12, raised: #3a281a, line: #2e2016, line-soft: #281b12, edge: #4a3524, text: #efe3c8, text2: #e2d3b2, muted: #b9a585, dim: #9a8670, accent: #f2a64a, accent-hover: #f6b765, on-accent: #2a1406, wave: #6b5644, wave-dim: #5d4634, track: #120c08, danger: #ff8f7a, hover: #3a281a, hover-soft: #33231a, row-hover: #2a1c12, picked: #3a2a18, popup: #2b1d13, popup-edge: #5a4230, knob: #8a7a5e, faint: #7a6a58, fainter: #4a3a2c, rec-rest: #6d4a33, divider: #2a1c12, border: #3a2a1d, card-edge: #3a2a1d, footer: #1a120c, press: #4a3018, card-line: #00000000 },
     ];
     out property <color> bg: root.palettes[root.current].bg;
     out property <color> card: root.palettes[root.current].card;
@@ -211,8 +215,8 @@ export global Theme {
     out property <color> field: root.bg;
     out property <string> mono: "JetBrains Mono";
     // How the main page is built, one per palette in the order of `names`: 0 classic,
-    // the look in ui/skins/classic.slint. Device skins get their own numbers.
-    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0];
+    // the look in ui/skins/classic.slint; 1 Tape Deck, ui/skins/tape.slint.
+    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1];
     out property <int> skin: root.skins[root.current];
 }
 
@@ -584,12 +588,12 @@ export component MenuRow inherits Rectangle {
     }
 }
 
-// The project dropdown over the clip list: pick a project, make a new one, or
-// rename, delete (when empty) or export the current one. Project 0 is Inbox.
-export component ProjectPicker inherits Rectangle {
+// The project menu: pick a project, make a new one, or rename, delete (when empty) or
+// export the current one. Project 0 is Inbox. It opens under the element it fills, so a
+// skin can give the picker its own look.
+export component ProjectMenu inherits Rectangle {
     in property <[string]> projects;
     in property <int> current;
-    in property <bool> enabled: true;
     in property <bool> has-clips;
     callback choose(int);
     callback create();
@@ -597,44 +601,7 @@ export component ProjectPicker inherits Rectangle {
     callback delete();
     callback export();
     property <int> shown-rows: min(root.projects.length, 8);
-    width: row.preferred-width + 16px;
-    height: 30px;
-    vertical-stretch: 0;
-    horizontal-stretch: 0;
-    border-radius: 8px;
-    background: t.has-hover && root.enabled ? Theme.raised : transparent;
-    accessible-role: combobox;
-    accessible-label: "Project";
-    accessible-value: root.current >= 0 && root.current < root.projects.length ? root.projects[root.current] : "";
-    accessible-expandable: true;
-    accessible-action-default => { if (root.enabled) { popup.show(); } }
-    accessible-action-expand => { if (root.enabled) { popup.show(); } }
-    // Name and arrow inside the box, so both light up and open the list.
-    row := HorizontalLayout {
-        x: 8px;
-        width: parent.width - 16px;
-        alignment: start;
-        spacing: 6px;
-        Text {
-            text: root.current >= 0 && root.current < root.projects.length ? root.projects[root.current] : "";
-            color: Theme.text;
-            font-size: 13px;
-            font-weight: 800;
-            vertical-alignment: center;
-        }
-        Icon {
-            name: "down";
-            tint: Theme.muted;
-            width: 12px;
-            height: 12px;
-            y: (parent.height - self.height) / 2;
-        }
-    }
-    t := TouchArea {
-        enabled: root.enabled;
-        mouse-cursor: pointer;
-        clicked => { popup.show(); }
-    }
+    public function show() { popup.show(); }
     popup := PopupWindow {
         x: 0;
         y: root.height + 4px;
@@ -675,201 +642,97 @@ export component ProjectPicker inherits Rectangle {
     }
 }
 
-export component ClipItem inherits Rectangle {
+// The project dropdown over the clip list; ProjectMenu holds what it offers.
+export component ProjectPicker inherits Rectangle {
+    in property <[string]> projects;
+    in property <int> current;
+    in property <bool> enabled: true;
+    in property <bool> has-clips;
+    callback choose(int);
+    callback create();
+    callback rename();
+    callback delete();
+    callback export();
+    width: row.preferred-width + 16px;
+    height: 30px;
+    vertical-stretch: 0;
+    horizontal-stretch: 0;
+    border-radius: 8px;
+    background: t.has-hover && root.enabled ? Theme.raised : transparent;
+    accessible-role: combobox;
+    accessible-label: "Project";
+    accessible-value: root.current >= 0 && root.current < root.projects.length ? root.projects[root.current] : "";
+    accessible-expandable: true;
+    accessible-action-default => { if (root.enabled) { menu.show(); } }
+    accessible-action-expand => { if (root.enabled) { menu.show(); } }
+    // Name and arrow inside the box, so both light up and open the list.
+    row := HorizontalLayout {
+        x: 8px;
+        width: parent.width - 16px;
+        alignment: start;
+        spacing: 6px;
+        Text {
+            text: root.current >= 0 && root.current < root.projects.length ? root.projects[root.current] : "";
+            color: Theme.text;
+            font-size: 13px;
+            font-weight: 800;
+            vertical-alignment: center;
+        }
+        Icon {
+            name: "down";
+            tint: Theme.muted;
+            width: 12px;
+            height: 12px;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { menu.show(); }
+    }
+    menu := ProjectMenu {
+        width: parent.width;
+        height: parent.height;
+        projects: root.projects;
+        current: root.current;
+        has-clips: root.has-clips;
+        choose(i) => { root.choose(i); }
+        create => { root.create(); }
+        rename => { root.rename(); }
+        delete => { root.delete(); }
+        export => { root.export(); }
+    }
+}
+
+// The menu of a clip row: manage, rename, export, move, delete, and merge when several
+// are picked. It fills the row it belongs to and opens at a point in it, kept inside
+// the window.
+export component ClipMenu inherits Rectangle {
     in property <ClipRow> item;
-    // Width of the small waveform; 0 leaves it out (narrow windows).
-    in property <length> wave-width: 84px;
-    in property <bool> selected;
-    // Part of a selection of several clips (Ctrl or Shift click).
-    in property <bool> picked;
-    // How many clips are picked, when this one is among them; its menu offers to merge.
+    // How many clips are picked, when this one is among them; the menu offers to merge.
     in property <int> merge-count;
-    in property <bool> active;
-    in property <bool> playing;
-    in property <float> progress;
-    callback play();
-    callback cue(float);
-    callback play-at(float);
-    // A click highlights the clip and a double click opens it. Ctrl and Shift pick
-    // several. The three-dot menu (or a right click, or the right arrow key) opens
-    // it.
-    callback select(bool, bool);
+    // The projects, for "Move to", and the one this clip is in.
+    in property <[string]> projects;
+    in property <int> project;
+    // The window's height, so the menu and its submenus stay inside it.
+    in property <length> window-h: 10000px;
     callback merge();
     callback open();
     callback rename();
     callback export(int);
     callback delete();
-    // The projects, for "Move to", and the one this clip is in.
-    in property <[string]> projects;
-    in property <int> project;
     callback move-to(int);
     // The submenu open beside the menu: 1 export formats, 2 projects, 0 none.
     property <int> sub;
-
-    // Where the menu opens: under the dots, or where the right click was.
+    // Where the menu opens.
     property <length> menu-x;
     property <length> menu-y;
-    // The window's height, so the menu and its submenus stay inside it.
-    in property <length> window-h: 10000px;
-    height: 52px;
-    border-radius: 10px;
-    background: root.picked ? Theme.picked : root.active || root.selected ? Theme.selected-row : row-touch.has-hover ? Theme.row-hover : transparent;
-    border-width: root.selected || root.picked ? 1px : 0;
-    border-color: root.picked ? Theme.accent.with-alpha(0.33) : Theme.selected-edge;
-    accessible-role: list-item;
-    accessible-label: root.item.name + ", " + root.item.duration;
-    accessible-item-selectable: true;
-    accessible-item-selected: root.selected || root.picked;
-    accessible-action-default => { root.select(false, false); }
-    row-touch := TouchArea {
-        mouse-cursor: pointer;
-        pointer-event(e) => {
-            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
-                root.select(e.modifiers.control, e.modifiers.shift);
-            }
-            // On release: the press that closes an open menu is used up by that menu,
-            // so opening on the press would only work every other time.
-            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
-                root.menu-at(self.mouse-x, self.mouse-y);
-            }
-        }
-        // Opens just this clip, even out of several picked.
-        double-clicked => { root.select(false, false); root.open(); }
-    }
-    HorizontalLayout {
-        padding-left: 8px;
-        padding-right: 8px;
-        spacing: 12px;
-        VerticalLayout {
-            alignment: center;
-            IconBtn {
-                size: 32px;
-                round: true;
-                icon-size: 11px;
-                icon: root.active && root.playing ? "pause" : "play";
-                label: (root.active && root.playing ? "Pause " : "Play ") + root.item.name;
-                tip: root.active && root.playing ? "Pause" : "Play";
-                filled: root.active;
-                outlined: !root.active;
-                tint: root.active ? Theme.on-accent : Theme.text;
-                clicked => { root.play(); }
-            }
-        }
-        // A click on the waveform moves the clip's start there (and jumps while it
-        // plays); a double click plays from there.
-        if root.wave-width > 0: Rectangle {
-            width: root.wave-width;
-            height: 28px;
-            y: (parent.height - self.height) / 2;
-            Wave {
-                height: 22px;
-                y: (parent.height - self.height) / 2;
-                gap: 1px;
-                values: root.item.wave;
-                progress: root.active ? root.progress : -1;
-            }
-            TouchArea {
-                mouse-cursor: pointer;
-                // Ctrl or Shift picks clips here too, as anywhere on the row.
-                property <bool> picking;
-                pointer-event(e) => {
-                    if (e.kind == PointerEventKind.down) { self.picking = e.modifiers.control || e.modifiers.shift; }
-                    if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.picking && self.has-hover) {
-                        root.select(e.modifiers.control, e.modifiers.shift);
-                    }
-                    // A right click here opens the same menu as anywhere on the row.
-                    if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
-                        root.menu-at(
-                            self.absolute-position.x - root.absolute-position.x + self.mouse-x,
-                            self.absolute-position.y - root.absolute-position.y + self.mouse-y);
-                    }
-                }
-                // Seeking is only for the highlighted clip: on another clip a click just
-                // highlights it, and the rest of a double-click there does nothing.
-                property <bool> fresh;
-                clicked => {
-                    if (!self.picking) {
-                        if (!root.selected && !root.active) {
-                            root.select(false, false);
-                            self.fresh = true;
-                        } else if (!self.fresh) {
-                            root.cue(clamp(self.mouse-x / self.width, 0, 1));
-                        }
-                    }
-                }
-                double-clicked => {
-                    if (!self.fresh) {
-                        root.play-at(clamp(self.mouse-x / self.width, 0, 1));
-                    }
-                }
-                Timer {
-                    interval: 500ms;
-                    running: parent.fresh;
-                    triggered => { parent.fresh = false; }
-                }
-            }
-        }
-        VerticalLayout {
-            alignment: center;
-            spacing: 2px;
-            horizontal-stretch: 1;
-            Text {
-                text: root.item.name;
-                color: Theme.text;
-                font-size: 14px;
-                font-weight: 500;
-                overflow: elide;
-            }
-            Text {
-                text: root.item.meta;
-                color: root.active ? Theme.accent : Theme.dim;
-                font-size: 11px;
-                overflow: elide;
-            }
-        }
-        Text {
-            text: root.item.duration;
-            color: Theme.muted;
-            font-family: Theme.mono;
-            font-size: 12px;
-            vertical-alignment: center;
-        }
-        // The three-dot menu: manage, rename, export, delete.
-        Rectangle {
-            width: 28px;
-            height: 28px;
-            y: (parent.height - self.height) / 2;
-            border-radius: 7px;
-            background: dots.has-hover ? Theme.raised : transparent;
-            accessible-role: button;
-            accessible-label: "Menu for " + root.item.name;
-            accessible-action-default => { root.open-menu(); }
-            Icon {
-                name: "dots";
-                tint: dots.has-hover ? Theme.text : Theme.dim;
-                width: 16px;
-                height: 16px;
-            }
-            property <bool> hovering: dots.has-hover;
-            changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
-            dots := TouchArea {
-                mouse-cursor: pointer;
-                clicked => { Tips.hide(); root.open-menu(); }
-            }
-
-        }
-    }
-    // Opens the menu where the right click was (row coordinates).
-    function menu-at(x: length, y: length) {
+    // Opens the menu at a point of the row (row coordinates).
+    public function show-at(x: length, y: length) {
         menu.close();
         root.menu-x = min(x, root.width - 210px);
         root.menu-y = y;
-        root.sub = 0;
-        menu.show();
-    }
-    function open-menu() {
-        root.menu-x = root.width - 8px - 210px;
-        root.menu-y = (root.height + 28px) / 2 + 4px;
         root.sub = 0;
         menu.show();
     }
@@ -995,6 +858,224 @@ export component ClipItem inherits Rectangle {
                 }
             }
         }
+    }
+}
+
+// The waveform of a clip row as a seek bar. A click on the highlighted (or playing) clip
+// moves its start there, a double click plays from there; on another clip a click just
+// highlights it. Ctrl or Shift picks clips, as anywhere on the row.
+export component WaveSeek inherits TouchArea {
+    in property <bool> selected;
+    in property <bool> active;
+    callback select(bool, bool);
+    callback cue(float);
+    callback play-at(float);
+    // A right click, at this point in window coordinates.
+    callback menu(length, length);
+    mouse-cursor: pointer;
+    property <bool> picking;
+    pointer-event(e) => {
+        if (e.kind == PointerEventKind.down) { self.picking = e.modifiers.control || e.modifiers.shift; }
+        if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.picking && self.has-hover) {
+            root.select(e.modifiers.control, e.modifiers.shift);
+        }
+        // A right click here opens the same menu as anywhere on the row.
+        if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+            root.menu(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+        }
+    }
+    // Seeking is only for the highlighted clip: on another clip a click just
+    // highlights it, and the rest of a double-click there does nothing.
+    property <bool> fresh;
+    clicked => {
+        if (!self.picking) {
+            if (!root.selected && !root.active) {
+                root.select(false, false);
+                self.fresh = true;
+            } else if (!self.fresh) {
+                root.cue(clamp(self.mouse-x / self.width, 0, 1));
+            }
+        }
+    }
+    double-clicked => {
+        if (!self.fresh) {
+            root.play-at(clamp(self.mouse-x / self.width, 0, 1));
+        }
+    }
+    Timer {
+        interval: 500ms;
+        running: root.fresh;
+        triggered => { root.fresh = false; }
+    }
+}
+
+export component ClipItem inherits Rectangle {
+    in property <ClipRow> item;
+    // Width of the small waveform; 0 leaves it out (narrow windows).
+    in property <length> wave-width: 84px;
+    in property <bool> selected;
+    // Part of a selection of several clips (Ctrl or Shift click).
+    in property <bool> picked;
+    // How many clips are picked, when this one is among them; its menu offers to merge.
+    in property <int> merge-count;
+    in property <bool> active;
+    in property <bool> playing;
+    in property <float> progress;
+    callback play();
+    callback cue(float);
+    callback play-at(float);
+    // A click highlights the clip and a double click opens it. Ctrl and Shift pick
+    // several. The three-dot menu (or a right click, or the right arrow key) opens
+    // it.
+    callback select(bool, bool);
+    callback merge();
+    callback open();
+    callback rename();
+    callback export(int);
+    callback delete();
+    // The projects, for "Move to", and the one this clip is in.
+    in property <[string]> projects;
+    in property <int> project;
+    callback move-to(int);
+    // The window's height, so the menu and its submenus stay inside it.
+    in property <length> window-h: 10000px;
+    height: 52px;
+    border-radius: 10px;
+    background: root.picked ? Theme.picked : root.active || root.selected ? Theme.selected-row : row-touch.has-hover ? Theme.row-hover : transparent;
+    border-width: root.selected || root.picked ? 1px : 0;
+    border-color: root.picked ? Theme.accent.with-alpha(0.33) : Theme.selected-edge;
+    accessible-role: list-item;
+    accessible-label: root.item.name + ", " + root.item.duration;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected || root.picked;
+    accessible-action-default => { root.select(false, false); }
+    row-touch := TouchArea {
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                root.select(e.modifiers.control, e.modifiers.shift);
+            }
+            // On release: the press that closes an open menu is used up by that menu,
+            // so opening on the press would only work every other time.
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                root.menu-at(self.mouse-x, self.mouse-y);
+            }
+        }
+        // Opens just this clip, even out of several picked.
+        double-clicked => { root.select(false, false); root.open(); }
+    }
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            IconBtn {
+                size: 32px;
+                round: true;
+                icon-size: 11px;
+                icon: root.active && root.playing ? "pause" : "play";
+                label: (root.active && root.playing ? "Pause " : "Play ") + root.item.name;
+                tip: root.active && root.playing ? "Pause" : "Play";
+                filled: root.active;
+                outlined: !root.active;
+                tint: root.active ? Theme.on-accent : Theme.text;
+                clicked => { root.play(); }
+            }
+        }
+        // A click on the waveform moves the clip's start there (and jumps while it
+        // plays); a double click plays from there.
+        if root.wave-width > 0: Rectangle {
+            width: root.wave-width;
+            height: 28px;
+            y: (parent.height - self.height) / 2;
+            Wave {
+                height: 22px;
+                y: (parent.height - self.height) / 2;
+                gap: 1px;
+                values: root.item.wave;
+                progress: root.active ? root.progress : -1;
+            }
+            WaveSeek {
+                selected: root.selected;
+                active: root.active;
+                select(ctrl, shift) => { root.select(ctrl, shift); }
+                cue(f) => { root.cue(f); }
+                play-at(f) => { root.play-at(f); }
+                menu(x, y) => { root.menu-at(x - root.absolute-position.x, y - root.absolute-position.y); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text {
+                text: root.item.name;
+                color: Theme.text;
+                font-size: 14px;
+                font-weight: 500;
+                overflow: elide;
+            }
+            Text {
+                text: root.item.meta;
+                color: root.active ? Theme.accent : Theme.dim;
+                font-size: 11px;
+                overflow: elide;
+            }
+        }
+        Text {
+            text: root.item.duration;
+            color: Theme.muted;
+            font-family: Theme.mono;
+            font-size: 12px;
+            vertical-alignment: center;
+        }
+        // The three-dot menu: manage, rename, export, delete.
+        Rectangle {
+            width: 28px;
+            height: 28px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 7px;
+            background: dots.has-hover ? Theme.raised : transparent;
+            accessible-role: button;
+            accessible-label: "Menu for " + root.item.name;
+            accessible-action-default => { root.open-menu(); }
+            Icon {
+                name: "dots";
+                tint: dots.has-hover ? Theme.text : Theme.dim;
+                width: 16px;
+                height: 16px;
+            }
+            property <bool> hovering: dots.has-hover;
+            changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
+            dots := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Tips.hide(); root.open-menu(); }
+            }
+
+        }
+    }
+    // Opens the menu where the right click was (row coordinates), or under the dots.
+    function menu-at(x: length, y: length) {
+        menu.show-at(x, y);
+    }
+    function open-menu() {
+        menu.show-at(root.width - 8px - 210px, (root.height + 28px) / 2 + 4px);
+    }
+    menu := ClipMenu {
+        width: parent.width;
+        height: parent.height;
+        item: root.item;
+        merge-count: root.merge-count;
+        projects: root.projects;
+        project: root.project;
+        window-h: root.window-h;
+        merge => { root.merge(); }
+        open => { root.open(); }
+        rename => { root.rename(); }
+        export(kind) => { root.export(kind); }
+        delete => { root.delete(); }
+        move-to(p) => { root.move-to(p); }
     }
 }
 
@@ -1575,15 +1656,24 @@ export component TextField inherits Rectangle {
     // Raising it puts the cursor in the field (Ctrl+F).
     in property <int> focus-ticket;
     changed focus-ticket => { root.grab(); }
+    // Its look, for skins; the defaults are the classic field.
+    in property <length> radius: 8px;
+    in property <color> fill: Theme.field;
+    in property <color> rest-edge: Theme.edge;
+    in property <color> ink: Theme.text;
+    in property <color> hint: Theme.dim;
+    in property <length> font-size: 13px;
+    in property <string> family: root.mono ? Theme.mono : "Inter Tight";
+    in property <length> side: 12px;
     public function grab() {
         input.focus();
         input.select-all();
     }
     height: 36px;
-    border-radius: 8px;
-    background: Theme.field;
+    border-radius: root.radius;
+    background: root.fill;
     border-width: 1px;
-    border-color: invalid ? Theme.danger : input.has-focus ? Theme.accent : Theme.edge;
+    border-color: invalid ? Theme.danger : input.has-focus ? Theme.accent : root.rest-edge;
     opacity: enabled ? 1 : 0.45;
     Rectangle {
         visible: input.has-focus && !root.invalid;
@@ -1591,17 +1681,17 @@ export component TextField inherits Rectangle {
         y: -3px;
         width: parent.width + 6px;
         height: parent.height + 6px;
-        border-radius: 11px;
+        border-radius: root.radius + 3px;
         border-width: 3px;
         border-color: Theme.accent.with-alpha(0.16);
     }
     HorizontalLayout {
-        padding-left: 12px;
-        padding-right: 12px;
+        padding-left: root.side;
+        padding-right: root.side;
         spacing: 8px;
         if root.icon != "": Icon {
             name: root.icon;
-            tint: Theme.dim;
+            tint: root.hint;
             width: 14px;
             height: 14px;
             y: (parent.height - self.height) / 2;
@@ -1612,8 +1702,9 @@ export component TextField inherits Rectangle {
                 width: 100%;
                 height: 100%;
                 text: root.placeholder;
-                color: Theme.dim;
-                font-size: 13px;
+                color: root.hint;
+                font-size: root.font-size;
+                font-family: root.family;
                 vertical-alignment: center;
                 overflow: elide;
             }
@@ -1624,9 +1715,9 @@ export component TextField inherits Rectangle {
                 enabled: root.enabled;
                 single-line: true;
                 vertical-alignment: center;
-                color: Theme.text;
-                font-size: 13px;
-                font-family: root.mono ? Theme.mono : "Inter Tight";
+                color: root.ink;
+                font-size: root.font-size;
+                font-family: root.family;
                 selection-background-color: Theme.accent.with-alpha(0.4);
                 selection-foreground-color: Theme.text;
                 accessible-label: root.label;
@@ -1665,7 +1756,7 @@ export component SourceRow inherits Rectangle {
             color: Theme.accent;
             font-family: Theme.mono;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 500;
             vertical-alignment: center;
             width: 16px;
         }
@@ -3079,8 +3170,10 @@ export global Main {
     // Picking clips: a click, Ctrl+click (add or remove) or Shift+click (a range).
     in property <[bool]> picked;
     in property <int> picked-count;
-    // How far the list is scrolled (0 or less) and how much of it shows. Rows are 54px.
+    // How far the list is scrolled (0 or less) and how much of it shows.
     in-out property <length> list-y;
+    // The height of one clip row; the skin shown sets it (54px for the classic look).
+    in-out property <length> row-h: 54px;
     in-out property <length> list-height: 300px;
 
     // The projects (0 is Inbox) and the one shown.
@@ -3137,6 +3230,6 @@ export global Main {
 
     // Keeps the list from staying scrolled past its end after it shrinks (a delete).
     public function clamp-list() {
-        self.list-y = clamp(self.list-y, min(0px, self.list-height - self.clips.length * 54px), 0px);
+        self.list-y = clamp(self.list-y, min(0px, self.list-height - self.clips.length * self.row-h), 0px);
     }
 }

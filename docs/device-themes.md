@@ -80,6 +80,51 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
   `ask-delete`, `refocus`), since a global cannot reach AppWindow's functions or focus.
 - `Theme.skin` comes from `Theme.skins`, one per palette (0 classic).
 
+**Built in step 2, the Tape Deck pilot (2026-10-28):**
+- `ui/skins/tape.slint` (skin 1, theme "Tape Deck", palette 9). Shared pieces moved to
+  `common.slint` so a skin reuses the behaviour and draws its own look: `ProjectMenu`
+  (the project popup), `ClipMenu` (a row's menu, `show-at(x, y)`), `WaveSeek` (the
+  waveform's seek and pick logic), style properties on `TextField` (`radius`, `fill`,
+  `rest-edge`, `ink`, `hint`, `font-size`, `family`, `side`), `Main.row-h` (each MainPage
+  sets its row height on `init`; keyboard scrolling and `clamp-list` use it) and
+  `ClipRow.when` (the date alone, for skins that show "transcribed" their own way).
+- Rust: `EFFECT_FPS` gets one entry per theme; `RECORDING_FPS` runs the Fx clock only
+  while recording, not paused (Tape Deck 12), so a still deck costs nothing.
+
+### Recipe from the pilot (follow it for the other skins)
+
+- **Art:** an element page `tools/skin-art/<skin>.html` draws each fixed piece of the
+  mockup alone (`?el=&w=&h=`); `sh tools/skin-art/cut.sh <skin> <out>` shoots them with
+  headless Edge at 1x and 2x on transparency. Tape Deck: 26 PNGs, 140 KB.
+- **Textures are tiles** (one period, alpha) over a Slint gradient: walnut, aluminium,
+  paper, grille. Slint tiles in physical pixels, so pick the 2x tile when `1phx < 0.7px`.
+- **Software renderer limits:** no drop shadows, no rounded clipping, and gradients
+  ignore `border-radius`. Shadows are stacked translucent rectangles or part of a PNG;
+  round gradient parts (knobs, LEDs) are PNGs.
+- **Motion:** a frame strip, one frame picked with `source-clip-x` from `Fx.t`. Use the
+  part's symmetry: 8 frames turn a 6-toothed hub through its 60 degree repeat. A needle
+  is a `Path` whose end is `sin`/`cos` of an animated angle.
+- **Text in cells** (the tape counter): a string cannot be split, so each cell clips the
+  whole mono string to one character's advance (0.6 em for JetBrains Mono).
+- **Fonts:** static instances with `fontTools.varLib.instancer` (`--update-name-table`,
+  or set the names by hand when the weight has no named instance), subset to Latin with
+  `pyftsubset --layout-features='*' --name-IDs='*'`. A new weight of a family the app
+  already uses can change existing text (CSS weight matching): JetBrains Mono 700 would
+  have taken a weight-600 label, so that label now asks for 500. Caveat's 0 reads
+  clearly in "clip_100" at 19 to 23px in Slint, so it is used as it is.
+- **Controls:** every device control keeps the classic accessible name and tooltip
+  (REC is "Record" / "Stop and save", tips "Record" / "Stop"). While recording, the key
+  beside REC becomes Pause (Import is unavailable then anyway).
+- **Checks:** `THRASHER_TEST_KEEP_WINDOW=1` keeps the test window from turning into the
+  widget while recording behind other windows, so recording shots work headless.
+
+**Budgets measured on the pilot** (test copy, 2.25x display, 10 s samples):
+- CPU idle 0.2% (Ember 0.3%); recording 12.7% at 520x700 (Ember 18.4%), 18.4% at
+  1100x700 (Ember 22.8%).
+- Working set idle 42.3 MB vs Ember 38.6 MB (+3.7); wide 49.9 vs 47.6 MB (+2.3).
+- Exe +2.19 MB: fonts 0.34 MB, art 0.14 MB, generated code about 1.7 MB. At that rate
+  15 skins pass the 15 MB budget, so later skins must share more code (see section 6).
+
 ### Art
 
 - **Chrome and textures** (walnut, leatherette, brass, bezels, pixel frames) become small
@@ -149,3 +194,6 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
   right between the portrait and wide sizes.
 - **Size of the work:** 15 skins is a lot. The pilot shows the real cost per skin before the
   rest start.
+- **Exe size** (pilot, 2026-10-28): Slint generates about 1.7 MB of code per skin main
+  page, so 15 skins would reach 25 to 30 MB against the 15 MB budget. Options: share more
+  parts between skins, or raise the budget. A decision for Max.

@@ -2203,50 +2203,49 @@ component Scroller inherits Rectangle {
 
 struct FxPoint { x: length, y: length }
 
-// Cyberpunk: a red, green and blue snake of light running round the card's edge.
-component Snake inherits Rectangle {
-    in property <length> radius: 14px;
-    // The inset outline the snake follows, in pixels.
-    property <float> w: self.width / 1px - 2;
-    property <float> h: self.height / 1px - 2;
-    property <float> r: self.radius / 1px;
-    property <float> top: self.w - 2 * self.r;
-    property <float> side: self.h - 2 * self.r;
-    property <float> arc: 3.14159 * self.r / 2;
-    property <float> perim: 2 * self.top + 2 * self.side + 4 * self.arc;
-    // A lap every six seconds.
-    property <float> head: Fx.t * self.perim / 6;
-    pure function at(d0: float) -> FxPoint {
-        if (self.perim <= 0) { return { x: 0, y: 0 }; }
-        // From the top left, clockwise: top, corner, right, corner, bottom, corner, left, corner.
-        if (Math.mod(d0, self.perim) < self.top) { return { x: (1 + self.r + Math.mod(d0, self.perim)) * 1px, y: 1px }; }
-        if (Math.mod(d0, self.perim) < self.top + self.arc) { return self.corner(self.w - self.r, self.r, -90 + (Math.mod(d0, self.perim) - self.top) / self.arc * 90); }
-        if (Math.mod(d0, self.perim) < self.top + self.arc + self.side) { return { x: (1 + self.w) * 1px, y: (1 + self.r + Math.mod(d0, self.perim) - self.top - self.arc) * 1px }; }
-        if (Math.mod(d0, self.perim) < self.top + 2 * self.arc + self.side) { return self.corner(self.w - self.r, self.h - self.r, (Math.mod(d0, self.perim) - self.top - self.arc - self.side) / self.arc * 90); }
-        if (Math.mod(d0, self.perim) < 2 * self.top + 2 * self.arc + self.side) { return { x: (1 + self.w - self.r - (Math.mod(d0, self.perim) - self.top - 2 * self.arc - self.side)) * 1px, y: (1 + self.h) * 1px }; }
-        if (Math.mod(d0, self.perim) < 2 * self.top + 3 * self.arc + self.side) { return self.corner(self.r, self.h - self.r, 90 + (Math.mod(d0, self.perim) - 2 * self.top - 2 * self.arc - self.side) / self.arc * 90); }
-        if (Math.mod(d0, self.perim) < 2 * self.top + 3 * self.arc + 2 * self.side) { return { x: 1px, y: (1 + self.h - self.r - (Math.mod(d0, self.perim) - 2 * self.top - 3 * self.arc - self.side)) * 1px }; }
-        return self.corner(self.r, self.r, 180 + (Math.mod(d0, self.perim) - 2 * self.top - 3 * self.arc - 2 * self.side) / self.arc * 90);
-    }
-    pure function corner(cx: float, cy: float, deg: float) -> FxPoint {
-        return { x: (1 + cx + self.r * Math.cos(deg * 1deg)) * 1px, y: (1 + cy + self.r * Math.sin(deg * 1deg)) * 1px };
-    }
-    for i in 48: Rectangle {
-        property <FxPoint> p: root.at(root.head + root.perim * 2 - i * 4.3);
-        property <color> c: i < 16 ? #ff2d55 : i < 32 ? #30ff8a : #2d8bff;
-        x: self.p.x - 4.5px;
-        y: self.p.y - 4.5px;
-        width: 9px;
-        height: 9px;
-        Rectangle {
-            border-radius: 4.5px;
-            background: @radial-gradient(circle, parent.c.with-alpha(0.45) 0%, parent.c.with-alpha(0) 70%);
-        }
-        Rectangle {
-            width: 2.4px;
-            height: 2.4px;
-            border-radius: 1.2px;
-            background: parent.c;
+// Cyberpunk: the boxes the two snakes tour on the main page, in window px. Each box
+// fills itself in when it moves (see the `tour` functions); the route is made in Rust
+// (src/tour.rs) and only again when a box moves.
+struct TourBox { x: float, y: float, w: float, h: float, r: float, on: bool }
+struct TourPoint { x: float, y: float, tunnel: bool }
+export global Tour {
+    in-out property <TourBox> rec;
+    in-out property <TourBox> tool;
+    in-out property <TourBox> sel;
+    // The top of the footer: a highlighted row below it is out of view.
+    in-out property <float> foot: 100000;
+    // recorder, toolbar, highlighted row, window width and height, footer top, wide
+    pure callback route(TourBox, TourBox, TourBox, float, float, float, bool) -> [TourPoint];
+}
+
+// One snake of light along the route, its head at point `head` (fractional), its tail
+// behind it in the direction it came from (`dir` 1 forward, -1 backward). In the gaps
+// between boxes it runs faint and dotted, as through a tunnel.
+component TourSnake inherits Rectangle {
+    in property <[TourPoint]> route;
+    in property <float> head;
+    in property <int> dir: 1;
+    in property <color> tint;
+    property <int> n: self.route.length;
+    for i in 60: Rectangle {
+        property <int> k: root.n > 0 ? Math.mod(Math.mod(Math.floor(root.head) - root.dir * i, root.n) + root.n, root.n) : 0;
+        property <TourPoint> p: root.n > 0 ? root.route[self.k] : { x: -100, y: -100, tunnel: false };
+        property <float> fade: (1 - i / 60) * (1 - i / 60);
+        visible: root.n > 0 && !(self.p.tunnel && Math.mod(i, 4) >= 2);
+        x: self.p.x * 1px - self.width / 2;
+        y: self.p.y * 1px - self.height / 2;
+        width: self.p.tunnel ? 1.6px : 3px;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: root.tint.with-alpha((self.p.tunnel ? 0.35 : 1) * self.fade);
+        // A soft glow round every third dot.
+        if Math.mod(i, 3) == 0 && !self.p.tunnel: Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background: root.tint.with-alpha(0.13 * parent.fade);
         }
     }
 }
@@ -2313,8 +2312,6 @@ component CardFx inherits Rectangle {
             }
         }
     }
-    // Cyberpunk: the snake round the edge.
-    if Theme.current == 8: Snake { radius: root.radius; }
 }
 
 // The round record button: a mic, or a stop square while recording.
@@ -2393,6 +2390,18 @@ component RecorderCard inherits Rectangle {
     border-radius: root.mode == 2 ? 18px : 14px;
     border-width: 1px;
     border-color: Theme.card-line;
+    // Where it is in the window, for the Cyberpunk tour. absolute-position is not read
+    // again when only an ancestor moves, so these name the window size as well.
+    property <length> at-x: Win.width > 0 && Win.height > 0 ? self.absolute-position.x : self.absolute-position.x;
+    property <length> at-y: Win.width > 0 && Win.height > 0 ? self.absolute-position.y : self.absolute-position.y;
+    function tour() {
+        Tour.rec = { x: self.at-x / 1px, y: self.at-y / 1px, w: self.width / 1px, h: self.height / 1px, r: self.border-radius / 1px, on: true };
+    }
+    init => { self.tour(); }
+    changed at-x => { self.tour(); }
+    changed at-y => { self.tour(); }
+    changed width => { self.tour(); }
+    changed height => { self.tour(); }
     // The snow rests on top of the card and reaches past its edge.
     clip: Theme.current != 1 && Theme.current != 2;
     vertical-stretch: root.mode == 2 ? 1 : 0;
@@ -3416,7 +3425,12 @@ export component AppWindow inherits Window {
     callback waves-ready();
     callback quit();
 
-    changed selected => { root.selection-changed(root.selected); }
+    changed selected => {
+        if (root.selected < 0) {
+            Tour.sel = { x: 0, y: 0, w: 0, h: 0, r: 0, on: false };
+        }
+        root.selection-changed(root.selected);
+    }
 
     // Status messages fade out after a while.
     status-timer := Timer {
@@ -3743,6 +3757,16 @@ export component AppWindow inherits Window {
                         border-radius: 14px;
                         border-width: 1px;
                         border-color: Theme.card-line;
+                        property <length> at-x: Win.width > 0 && Win.height > 0 ? self.absolute-position.x : self.absolute-position.x;
+                        property <length> at-y: Win.width > 0 && Win.height > 0 ? self.absolute-position.y : self.absolute-position.y;
+                        function tour() {
+                            Tour.tool = { x: self.at-x / 1px, y: self.at-y / 1px, w: self.width / 1px, h: self.height / 1px, r: 14, on: true };
+                        }
+                        init => { self.tour(); }
+                        changed at-x => { self.tour(); }
+                        changed at-y => { self.tour(); }
+                        changed width => { self.tour(); }
+                        changed height => { self.tour(); }
                         // Only beside the big recorder; in portrait just the recorder has snow.
                         if root.wide && (Theme.current == 1 || Theme.current == 2): SnowCap {
                             radius: 14px;
@@ -3891,6 +3915,19 @@ export component AppWindow inherits Window {
                         ClipItem {
                             item: clip;
                             window-h: root.height;
+                            property <bool> me: i == root.selected;
+                            property <length> at-x: Win.width > 0 && Win.height > 0 ? self.absolute-position.x : self.absolute-position.x;
+                            property <length> at-y: root.list-y < 1px && Win.width > 0 && Win.height > 0 ? self.absolute-position.y : self.absolute-position.y;
+                            function tour() {
+                                if (self.me) {
+                                    Tour.sel = { x: self.at-x / 1px, y: self.at-y / 1px, w: self.width / 1px, h: self.height / 1px, r: 10, on: true };
+                                }
+                            }
+                            init => { self.tour(); }
+                            changed me => { self.tour(); }
+                            changed at-x => { self.tour(); }
+                            changed at-y => { self.tour(); }
+                            changed width => { self.tour(); }
                             wave-width: root.narrow ? 0 : root.wide ? 160px : 84px;
                             selected: i == root.selected;
                             picked: root.picked[i];
@@ -3975,6 +4012,9 @@ export component AppWindow inherits Window {
             // Now playing: the clip in the player, else the highlighted one, else
             // nothing yet. The page's footer, across the whole window.
             now := Rectangle {
+                property <length> at-y: Win.width > 0 && Win.height > 0 ? self.absolute-position.y : self.absolute-position.y;
+                init => { Tour.foot = self.at-y / 1px; }
+                changed at-y => { Tour.foot = self.at-y / 1px; }
                 property <int> shown: root.active-clip >= 0 && root.active-clip < root.clips.length ? root.active-clip
                     : root.selected >= 0 && root.selected < root.clips.length ? root.selected : -1;
                 property <bool> is-active: self.shown >= 0 && self.shown == root.active-clip;
@@ -5445,6 +5485,17 @@ export component AppWindow inherits Window {
         interval: 2500ms;
         running: root.export-state == 2;
         triggered => { root.export-state = 0; }
+    }
+
+    // Cyberpunk: two snakes of light, cyan and magenta, touring the main page in
+    // opposite directions: round the recorder, through the gap to the toolbar, the
+    // highlighted clip, out to the window frame and back. A lap of a box takes a few
+    // seconds; recording doubles the clock and so their speed.
+    if Theme.current == 8 && !root.compact && root.page == 0: Rectangle {
+        property <[TourPoint]> route: Tour.route(Tour.rec, Tour.tool, Tour.sel, root.width / 1px, root.height / 1px, Tour.foot, root.wide);
+        property <float> head: Fx.t * 120;
+        TourSnake { route: parent.route; head: parent.head; dir: 1; tint: #00f0ff; }
+        TourSnake { route: parent.route; head: parent.route.length / 2 - parent.head; dir: -1; tint: #ff2bd6; }
     }
 
     // The tooltip, below the hovered button (above it near the bottom edge), kept

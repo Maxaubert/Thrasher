@@ -6,6 +6,7 @@ mod log;
 mod settings;
 mod snow;
 mod startup;
+mod tour;
 mod transcription;
 mod voice;
 mod waves;
@@ -1631,6 +1632,30 @@ fn main() -> Result<(), slint::PlatformError> {
     let snow = ui.global::<Snow>();
     snow.on_body(|w, r, scale, seed| snow::cap(w, r, scale, seed as u64).body.into());
     snow.on_under(|w, r, scale, seed| snow::cap(w, r, scale, seed as u64).under.into());
+    // The Cyberpunk snakes' route round the main page's boxes.
+    ui.global::<Tour>()
+        .on_route(|rec, tool, sel, w, h, foot, wide| {
+            let rect = |b: &TourBox| tour::Rect {
+                x: b.x,
+                y: b.y,
+                w: b.w,
+                h: b.h,
+                r: b.r,
+            };
+            let tool_r = rect(&tool);
+            // The highlighted row only while it is in view, below the toolbar and above the footer.
+            let shown = sel.on && sel.w > 1.0 && sel.y >= tool.y + tool.h && sel.y + sel.h <= foot;
+            let points = tour::route(rect(&rec), tool_r, shown.then(|| rect(&sel)), w, h, wide);
+            let points: Vec<TourPoint> = points
+                .into_iter()
+                .map(|p| TourPoint {
+                    x: p.x,
+                    y: p.y,
+                    tunnel: p.tunnel,
+                })
+                .collect();
+            ModelRc::new(VecModel::from(points))
+        });
     crate::log!("window built in {} ms", log::ms(t));
     let recovered = library.recover().unwrap_or_default();
     thrasher_core::merge::clean_leftovers(&library);

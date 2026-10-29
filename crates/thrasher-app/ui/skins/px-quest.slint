@@ -138,6 +138,7 @@ component PBtn inherits Rectangle {
     changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
     t := TouchArea {
         enabled: root.enabled;
+        mouse-cursor: pointer;
         clicked => { Tips.hide(); root.clicked(); }
     }
 }
@@ -148,6 +149,7 @@ component TitleKey inherits Rectangle {
     in property <image> icon;
     in property <string> label;
     in property <bool> danger;
+    in property <bool> hand;
     callback clicked;
     width: 27px;
     height: 27px;
@@ -164,6 +166,7 @@ component TitleKey inherits Rectangle {
     property <bool> hovering: t.has-hover;
     changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
     t := TouchArea {
+        mouse-cursor: root.hand ? pointer : default;
         clicked => { Tips.hide(); root.clicked(); }
     }
 }
@@ -204,7 +207,7 @@ component Title inherits Rectangle {
         }
         VerticalLayout {
             alignment: center;
-            TitleKey { icon: @image-url("px-quest/gear.png"); label: "Settings"; clicked => { root.go(3); } }
+            TitleKey { icon: @image-url("px-quest/gear.png"); label: "Settings"; hand: true; clicked => { root.go(3); } }
         }
         VerticalLayout {
             alignment: center;
@@ -352,6 +355,7 @@ component RecKey inherits VerticalLayout {
             property <bool> hovering: t.has-hover;
             changed hovering => { Tips.hover(self.hovering, Main.recording ? "Stop" : "Record", self.absolute-position, self.width, self.height); }
             t := TouchArea {
+                mouse-cursor: pointer;
                 clicked => { Tips.hide(); Main.toggle-record(); root.refocus(); }
             }
         }
@@ -476,6 +480,9 @@ component Cmd inherits Rectangle {
     in property <string> tip;
     in property <bool> enabled: true;
     in property <bool> big;
+    // Keeps room for Import and for Resume, so the portrait menu keeps its width when
+    // Import becomes Pause or Resume.
+    in property <bool> steady;
     callback clicked;
     property <bool> hot: t.has-hover && root.enabled;
     height: root.big ? 27px : 21px;
@@ -494,6 +501,7 @@ component Cmd inherits Rectangle {
             Px { source: root.icon; colorize: root.hot ? Q.gold : Q.white; }
         }
         Text {
+            min-width: root.steady ? max(room-a.preferred-width, room-b.preferred-width) : 0;
             text: root.text;
             color: root.hot ? Q.gold : Q.white;
             font-family: Q.font;
@@ -502,10 +510,25 @@ component Cmd inherits Rectangle {
             accessible-role: none;
         }
     }
+    room-a := Text {
+        visible: false;
+        text: "Import";
+        font-family: Q.font;
+        font-size: root.big ? 15px : 14px;
+        accessible-role: none;
+    }
+    room-b := Text {
+        visible: false;
+        text: "Resume";
+        font-family: Q.font;
+        font-size: root.big ? 15px : 14px;
+        accessible-role: none;
+    }
     property <bool> hovering: t.has-hover;
     changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
     t := TouchArea {
         enabled: root.enabled;
+        mouse-cursor: pointer;
         clicked => { Tips.hide(); root.clicked(); }
     }
 }
@@ -524,6 +547,7 @@ component CmdWin inherits Win {
         if !Main.recording: Cmd {
             icon: @image-url("px-quest/imp.png");
             text: "Import";
+            steady: true;
             label: "Import audio or video";
             tip: "Import";
             clicked => { Main.import-files(); }
@@ -531,6 +555,7 @@ component CmdWin inherits Win {
         if Main.recording: Cmd {
             icon: Main.paused ? @image-url("px-quest/cplay.png") : @image-url("px-quest/cpause.png");
             text: Main.paused ? "Resume" : "Pause";
+            steady: true;
             label: Main.paused ? "Resume" : "Pause";
             tip: Main.paused ? "Resume" : "Pause";
             clicked => { Main.toggle-pause(); root.refocus(); }
@@ -646,6 +671,7 @@ component Party inherits Rectangle {
     }
     t := TouchArea {
         enabled: root.enabled;
+        mouse-cursor: pointer;
         clicked => { menu.show(); }
     }
     menu := ProjectMenu {
@@ -771,6 +797,7 @@ component Tools inherits Win {
                 accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
                 all-p := AllBox { }
                 TouchArea {
+                    mouse-cursor: pointer;
                     clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
                 }
             }
@@ -809,6 +836,7 @@ component WideTools inherits Win {
             accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
             all-w := AllBox { }
             TouchArea {
+                mouse-cursor: pointer;
                 clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
             }
         }
@@ -854,6 +882,7 @@ component Row inherits Rectangle {
         visible: Q.blink;
     }
     row-touch := TouchArea {
+        mouse-cursor: pointer;
         pointer-event(e) => {
             if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
                 root.select(e.modifiers.control, e.modifiers.shift);
@@ -969,6 +998,7 @@ component Row inherits Rectangle {
             property <bool> hovering: more.has-hover;
             changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
             more := TouchArea {
+                mouse-cursor: pointer;
                 clicked => { Tips.hide(); root.open-menu(); }
             }
         }
@@ -1071,6 +1101,7 @@ component Hit inherits Rectangle {
         }
     }
     t := TouchArea {
+        mouse-cursor: pointer;
         clicked => { root.clicked(); }
     }
 }
@@ -1160,6 +1191,7 @@ component Exp inherits Rectangle {
     }
     TouchArea {
         enabled: root.shown >= 0;
+        mouse-cursor: pointer;
         clicked => {
             Main.selected = root.shown;
             Main.seek-fraction(clamp((self.mouse-x - 6px) / (self.width - 12px), 0, 1));
@@ -1376,7 +1408,7 @@ export component MainPage inherits Rectangle {
     // come and go.
     if Main.status != "": Win {
         x: (parent.width - self.width) / 2;
-        y: parent.height - 9px - root.foot-h - 6px - self.height;
+        y: parent.height - 9px - root.foot-h - 6px - (Main.export-state != 0 ? 45px : 0) - self.height;
         width: min(msg.preferred-width + 18px + 18px, parent.width - 32px);
         height: 39px;
         pad-x: 9px;

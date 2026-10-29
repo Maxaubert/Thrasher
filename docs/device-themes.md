@@ -266,10 +266,11 @@ used). Its other pages are the classic ones in a green LCD palette (`Theme.pages
   Tape Deck and Phosphor main pages at 520x700 and 1100x700 match before and after.
 
 **Built in step 5, Answering Machine main page (2026-10-29):** `ui/skins/dv-answer.slint`
-(skin 10, theme "Answering Machine", appended to `Theme.names`; it was built in parallel
-with Pocket, Quest Menu and Brick Phone, which come before it), art in `ui/skins/dv-answer/`
+(skin 10, theme "Answering Machine", index 17 in `Theme.names`, after Pocket, Quest Menu and
+Brick Phone), art in `ui/skins/dv-answer/`
 (58 pieces at 1x and 2x, 0.24 MB) from `tools/skin-art/dv-answer.html`
 (`sh tools/skin-art/cut.sh dv-answer OUT`).
+- Settings gallery: its tile is the Answering Machine line in `Gallery.devices` (`ui/gallery.slint`), band #d9452b.
 - The recorder is the machine: the smoked display (the clip count with the NEW lamp, the
   state, the timer, the microphone), the red REC key, the micro cassette (its reels turn
   while recording), the LED meter (-40 to 0 dB) and the speaker. Wide windows move LOAD, ASK

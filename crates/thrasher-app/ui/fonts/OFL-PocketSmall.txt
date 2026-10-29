@@ -1,5 +1,5 @@
 Pocket Small is Silkscreen (https://github.com/googlefonts/silkscreen) with a redrawn 5, subset
-to Latin, for Thrasher's Pocket skin (tools/skin-art/px-pocket-fonts.py).
+to Latin, for Thrasher's Pocket and Brick Phone skins (tools/skin-art/px-pocket-fonts.py).
 
 Copyright 2001 The Silkscreen Project Authors (https://github.com/googlefonts/silkscreen)
 

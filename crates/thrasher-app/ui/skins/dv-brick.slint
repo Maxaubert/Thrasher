@@ -35,7 +35,7 @@ global Brick {
     out property <color> on-red: #ffe7e2;
     out property <color> close: #f08a7c;
     out property <string> words: "VT323";
-    out property <string> caps: "Brick Caps";
+    out property <string> caps: "Pocket Small";
     out property <string> keys: "Chakra Petch";
     out property <string> figures: "Brick Figures";
 }
@@ -212,7 +212,7 @@ component Digit inherits Text {
     accessible-role: none;
 }
 
-// The small caps of the LCD (Brick Caps, Silkscreen with a square 5, draws one font pixel
+// The small caps of the LCD (Pocket Small, Silkscreen with a square 5, draws one font pixel
 // per px at 8px).
 component Caps inherits Text {
     color: Brick.ink;
@@ -446,7 +446,7 @@ component Stat inherits HorizontalLayout {
         width: tag.preferred-width + 8px;
         height: 11px;
         background: Brick.ink;
-        // Brick Caps capitals are 5 px high; this sets them in the middle of the tag.
+        // Pocket Small capitals are 5 px high; this sets them in the middle of the tag.
         tag := Text {
             x: 4px;
             y: (parent.height - 10px) / 2 - 0.5px;

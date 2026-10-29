@@ -505,11 +505,11 @@ pages are the classic ones in its blue and gold palette (`Theme.pages` 0).
   after.
 
 **Built in step 5, Brick Phone main page (2026-10-29):** `ui/skins/dv-brick.slint` (skin 9,
-theme "Brick Phone", index 16 in `Theme.names`; 14 and 15 are held for Pocket and Quest Menu,
-built on their own branches, with Ember's colours until they land), art in `ui/skins/dv-brick/`
+theme "Brick Phone", index 16 in `Theme.names`, after Pocket and Quest Menu), art in `ui/skins/dv-brick/`
 (112 PNGs, 138 KB) from `tools/skin-art/dv-brick.html` (`sh tools/skin-art/cut.sh dv-brick OUT`;
 `ONLY="a b"` cuts just those pieces). Its other pages are the classic ones in a charcoal and
 amber palette (`Theme.pages` 0).
+- Settings gallery: its tile is the Brick Phone line in `Gallery.devices` (`ui/gallery.slint`), band #7a8a3a.
 - The keys do the work: the green call key is Record, then Pause and Resume while recording;
   the red end key is "Stop and save" (off while idle); the Menu soft key opens Settings and
   Find puts the cursor in the search (as Ctrl+F); keys 1 2 3 are Import, Ask (a plain "2 ABC"
@@ -517,9 +517,9 @@ amber palette (`Theme.pages` 0).
   arrow keys do and its OK plays or pauses, like the footer's play. Keys 4 to # only show.
 - Portrait windows under 540 px high keep only keys 1 2 3 of the keypad; wide windows under
   400 px of LCD leave out the big mic, and the right wing's gaps close up on short windows.
-- Fonts: Chakra Petch 600 and 700 (keys and brand), "Brick Caps" (Silkscreen 400 with a square
+- Fonts: Chakra Petch 600 and 700 (keys and brand), "Pocket Small" (Silkscreen 400 with a square
   5, since its own 5 differs from its S by two pixels; LCD small caps, used at 8 px only, where
-  one font pixel is one px), VT323 (LCD words) and "Brick Figures" for the timer
+  one font pixel is one px; shared with Pocket, built by `px-pocket-fonts.py`), VT323 (LCD words) and "Brick Figures" for the timer
   (`tools/skin-art/dv-brick-fonts.py`), all OFL, Latin subset, 66 KB.
 - Wide rows give up the waveform as the list narrows (18 bars from 340 px of row, 10 from 280
   px, none below), so the clip names keep their room at the 820 px minimum.

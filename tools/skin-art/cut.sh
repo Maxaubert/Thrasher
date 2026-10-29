@@ -3,6 +3,7 @@
 # on a transparent background (docs/device-themes.md, "Recipe from the pilot").
 #
 #   sh tools/skin-art/cut.sh tape OUT_DIR    (or x-comic)
+#   sh tools/skin-art/cut.sh dash OUT_DIR    (the Car Dashboard, into ui/skins/dash/)
 #
 # reads tools/skin-art/<skin>.html and the piece list below, and writes OUT_DIR/<name>.png
 # and OUT_DIR/<name>@2x.png. Copy the ones the skin uses to crates/thrasher-app/ui/skins/<skin>/.
@@ -36,6 +37,9 @@ x-comic) PIECES="logo:logo:214:52 picked:picked:60:26 rec-p:rec-p:128:128 rec-w:
 x-spatial) PIECES="room-p:room-p:200:310 room-w:room-w:500:310 shadow-pane:shadow-pane:196:204 shadow-near:shadow-near:220:226
   shadow-pill:shadow-pill:180:140 shadow-tab:shadow-tab:108:80 orb-s:orb-s:170:170 orb-l:orb-l:242:242
   rb-28:rb-28:48:48 rb-30:rb-30:50:50 rb-34:rb-34:54:54 logo:logo:40:40 thumb:thumb:27:27 ring-s:ring-s:110:110 ring-l:ring-l:220:220" ;;
+dash) PIECES="gauge-p:gauge-p:188:188 gauge-w:gauge-w:270:270 wheel-p:wheel-p:200:192 wheel-w:wheel-w:400:244
+  rec:rec:128:128 rec-on:rec-on:128:128 sbtn:sbtn:42:42 chip:chip:20:20 cover:cover:38:38 logo:logo:16:16
+  lamp-ok:lamp-ok:22:22 lamp-rec:lamp-rec:22:22 lamp-pause:lamp-pause:22:22" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 

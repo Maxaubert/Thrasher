@@ -313,6 +313,53 @@ skin needs, with the same outlines and metrics).
 - Exe +2.35 MB (44.83 to 47.18 MB): fonts 0.09 MB, art 0.46 MB, generated code about
   1.8 MB. Ember and Tape Deck main pages at 520x700 and 1100x700 match before and after.
 
+**Built in step 5, Spatial Glass main page (2026-10-29):** `ui/skins/x-spatial.slint`
+(skin 5, theme "Spatial Glass", index 12 in `Theme.names`), art in `ui/skins/x-spatial/`,
+cut by `sh tools/skin-art/cut.sh x-spatial OUT` from `tools/skin-art/x-spatial.html`. Its
+other pages keep the classic layout in its palette for now (`Theme.pages` 0; only Tape
+Deck has its own). It uses `ProjectMenu.up` (added with Phosphor) to open the project menu
+above its picker (the ornament sits at the window's foot).
+- **Pre-blurred room:** the room behind the glass is one picture per orientation at half
+  the mockup's size (200x310, 500x310), stretched to the window. It is blurred, so the
+  renderer's nearest-pixel scaling does not show.
+- **Shadows as nine-slice:** `@image-url("x.png", nine-slice(t r b l))` works in the
+  software renderer. A CSS `box-shadow` on a transparent box paints only outside the box,
+  so the cut picture has a clear middle and the glass over it stays clear. The borders
+  are in source pixels and drawn at 1x, so use it only for soft parts (shadows).
+- **Glass light:** gradients ignore corners, so a pane's top light is a rounded band down
+  to where the corners end, then a square gradient below it.
+- **Paths are costly:** the renderer draws every Path into a mask of its whole box each
+  time anything over it changes. The halo's 72 ticks as ring-sized paths and the tilted
+  pane as one window-high path took recording at 1100x700 to 33.9% CPU; ticks in 14px
+  boxes and the pane as two slanted path ends over plain rectangles brought it to 17.8%.
+  Keep paths small; draw what is upright with rectangles.
+- **Tilt without rotation:** the wide recorder pane's outline is a trapezoid (its far edge
+  12px shorter at each end); the contents stay square. Its nine-slice shadow is cut into
+  16 upright strips, each shrunk to the slant at its right end; one upright box left its
+  clear middle showing past the slanted ends (a pale corner, a dark slab).
+- **Stroked paths shrink:** Slint fits a path into its box less the stroke width, keeping
+  the aspect, so a 1px outline in a 372x38 box came out 3% smaller (5px in from each
+  side) and the halo's 3px ticks in 14px boxes 21% shorter. Give a stroked path a box
+  larger by the stroke and move it back by half (see `RecorderTilt` and `Orb`).
+- **No seams:** a gradient under a lit band starts at the band's brightness.
+- **Tabular figures:** Inter Tight's digits are proportional, so the timer would jitter.
+  `tools/skin-art/spatial-figures.py` maps the `tnum` glyphs as the plain ones and keeps
+  only the timer's characters, as its own family "Spatial Figures" (300 and 400, 7 KB),
+  so no other text can pick it up. Its 5 is clearly a 5.
+- **Baselines:** a smaller tenth beside the timer sits on the same baseline when it is
+  lifted by 0.242 em (Inter's descent) times the size difference.
+- **Short windows:** below 470px of pane height the wide recorder takes the small orb and
+  timer.
+- **Checks:** typing reaches a field headless only as posted key-downs (VK codes); posted
+  `WM_CHAR` does not. The wheel needs a posted mouse move first. Posted hovers do not
+  show tooltips in any theme (checked on Ember too).
+
+**Budgets measured on Spatial Glass** (test copy, 2.25x display, 10 s samples):
+- CPU idle 0.0 to 0.2% (Ember 0.0 to 0.3%); recording 7.7% at 520x700 (Ember 17 to 19%),
+  13 to 18% at 1100x700 (Ember 22 to 25%).
+- Working set idle 41 to 42 vs 40 to 41 MB (about +1), wide 52 vs 48 to 49 MB (+3).
+- Exe +2.0 MB (44.83 to 46.85 MB): art 0.41 MB, fonts 7 KB, the rest generated code.
+
 ### Art
 
 - **Chrome and textures** (walnut, leatherette, brass, bezels, pixel frames) become small

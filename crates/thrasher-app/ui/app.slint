@@ -22,6 +22,8 @@ import "./fonts/Pixel95-400.ttf";
 import "./fonts/Pixel95-700.ttf";
 import "./fonts/Bangers-400.ttf";
 import "./fonts/ComicNeue-700.ttf";
+import "./fonts/SpatialFigures-300.ttf";
+import "./fonts/SpatialFigures-400.ttf";
 import {
     ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Tips, Theme, Fx, Main, Pages, Win, Tour, TourPoint, Snow, TrimTouch,
     Icon, Tip, Btn, IconBtn, Toggle, Wave, BackLink, ExportButton, ResizeEdge, TitleBar, OrderList, PageHeader, Select,
@@ -32,6 +34,7 @@ import { MainPage as TapeMain } from "skins/tape.slint";
 import { MainPage as PhosphorMain } from "skins/phosphor.slint";
 import { MainPage as Os95Main } from "skins/dv-os95.slint";
 import { MainPage as ComicMain } from "skins/x-comic.slint";
+import { MainPage as SpatialMain } from "skins/x-spatial.slint";
 import {
     ClipPage as TapeClip, SettingsPage as TapeSettings, ModelsPage as TapeModels, MergePage as TapeMerge, AskPage as TapeAsk,
     Widget as TapeWidget, Dialog as TapeDialog, Speaking as TapeSpeaking, Drop as TapeDrop,
@@ -643,6 +646,15 @@ export component AppWindow inherits Window {
             refocus => { keys.focus(); }
         }
         if !compact && page == 0 && Theme.skin == 4: ComicMain {
+            narrow: root.narrow;
+            wide: root.wide;
+            tall: root.tall;
+            go(p) => { root.go(p); }
+            ask-rename(i) => { root.ask-rename(i); }
+            ask-delete(i) => { root.ask-delete(i); }
+            refocus => { keys.focus(); }
+        }
+        if !compact && page == 0 && Theme.skin == 5: SpatialMain {
             narrow: root.narrow;
             wide: root.wide;
             tall: root.tall;

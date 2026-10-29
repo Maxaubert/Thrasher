@@ -31,6 +31,11 @@ dv-os95) PIECES="desk:desk:4:4 checker:checker:2:2 floppy:floppy:16:15 balloon:b
 x-comic) PIECES="logo:logo:214:52 picked:picked:60:26 rec-p:rec-p:128:128 rec-w:rec-w:200:200 stop-p:stop-p:256:128 stop-w:stop-w:400:200
   meter-off-p:meter-off-p:118:38 meter-on-p:meter-on-p:118:38 meter-off-w:meter-off-w:178:56 meter-on-w:meter-on-w:178:56
   dots:dots:7:7 dots-yellow:dots-yellow:6:6 dots-grey:dots-grey:5:5" ;;
+# Spatial Glass: the rooms and the shadows are used at 1x only (they are
+# blurred, so scaling them up costs nothing); the shadows are nine-slice images.
+x-spatial) PIECES="room-p:room-p:200:310 room-w:room-w:500:310 shadow-pane:shadow-pane:196:204 shadow-near:shadow-near:220:226
+  shadow-pill:shadow-pill:180:140 shadow-tab:shadow-tab:108:80 orb-s:orb-s:170:170 orb-l:orb-l:242:242
+  rb-28:rb-28:48:48 rb-30:rb-30:50:50 rb-34:rb-34:54:54 logo:logo:40:40 thumb:thumb:27:27 ring-s:ring-s:110:110 ring-l:ring-l:220:220" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 

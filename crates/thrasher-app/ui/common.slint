@@ -153,7 +153,7 @@ export struct Palette {
 // settings page switches it.
 export global Theme {
     in-out property <int> current: 0;
-    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book"];
+    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass"];
     property <[Palette]> palettes: [
         // Ember
         { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618, card-line: #00000000 },
@@ -180,6 +180,8 @@ export global Theme {
         { bg: #c0c0c0, card: #d4d4d4, row: #cacaca, raised: #dfdfdf, line: #a4a4a4, line-soft: #b4b4b4, edge: #808080, text: #000000, text2: #141414, muted: #333333, dim: #474747, accent: #0a1f7a, accent-hover: #1c3fa8, on-accent: #ffffff, wave: #7a7a7a, wave-dim: #949494, track: #a6a6a6, danger: #a40000, hover: #b4bde0, hover-soft: #cfcfcf, row-hover: #c8c8c8, picked: #b9c3e6, popup: #d4d4d4, popup-edge: #808080, knob: #f4f4f4, faint: #5a5a5a, fainter: #8a8a8a, rec-rest: #8a96c4, divider: #b0b0b0, border: #808080, card-edge: #9a9a9a, footer: #b8b8b8, press: #a9b5de, card-line: #808080 },
         // Comic Book: ink on comic paper, red and yellow (its main page is ui/skins/x-comic.slint).
         { bg: #fdf4dc, card: #ffffff, row: #fffaf0, raised: #f6e8c3, line: #e6d8b5, line-soft: #efe2c0, edge: #b9ad93, text: #141010, text2: #2e2620, muted: #6d6452, dim: #8a7f69, accent: #e3342f, accent-hover: #c92a25, on-accent: #ffffff, wave: #b9ad93, wave-dim: #cfc4aa, track: #e6d8b5, danger: #c8302a, hover: #f6e8c3, hover-soft: #f3e4bb, row-hover: #f9eecf, picked: #ffe68a, popup: #fffaf0, popup-edge: #141010, knob: #8a7f69, faint: #8a7f69, fainter: #cfc4aa, rec-rest: #f2b3b0, divider: #eadcb8, border: #141010, card-edge: #d9caa4, footer: #f6e8c3, press: #f8c9c6, card-line: #141010 },
+        // Spatial Glass: frosted glass in a dusky room, a red orb (its main page is ui/skins/x-spatial.slint).
+        { bg: #2a2430, card: #3a3440, row: #352f3b, raised: #453e4c, line: #403946, line-soft: #37303d, edge: #5a5262, text: #ffffff, text2: #e6e2ea, muted: #b4adbb, dim: #958e9c, accent: #ff4d5e, accent-hover: #ff6b78, on-accent: #2a0610, wave: #7a7282, wave-dim: #615a69, track: #4a4352, danger: #ff8f7a, hover: #4a4352, hover-soft: #433c4a, row-hover: #322c38, picked: #4a3a48, popup: #3e3845, popup-edge: #6a6272, knob: #a8a1af, faint: #a39cab, fainter: #6e6776, rec-rest: #7a4a55, divider: #3a3440, border: #4a4352, card-edge: #4a4352, footer: #241f29, press: #5a3a44, card-line: #ffffff24 },
     ];
     out property <color> bg: root.palettes[root.current].bg;
     out property <color> card: root.palettes[root.current].card;
@@ -226,8 +228,8 @@ export global Theme {
     // How the main page is built, one per palette in the order of `names`: 0 classic,
     // the look in ui/skins/classic.slint; 1 Tape Deck, ui/skins/tape.slint; 2 Phosphor,
     // ui/skins/phosphor.slint; 3 Desktop 95, ui/skins/dv-os95.slint; 4 Comic Book,
-    // ui/skins/x-comic.slint.
-    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4];
+    // ui/skins/x-comic.slint; 5 Spatial Glass, ui/skins/x-spatial.slint.
+    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5];
     out property <int> skin: root.skins[root.current];
     // How the other pages are built: 1 Tape Deck's (skins/tape-pages.slint), else 0, the
     // classic pages in the theme's palette (also for skins whose pages are not built yet).

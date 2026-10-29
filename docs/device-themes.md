@@ -209,6 +209,11 @@ With 23 themes, a dropdown is too long. Settings gets a theme gallery: small thu
 two groups, Classic and Devices. Clicking one switches at once. The thumbnails come from
 the mockup screenshots.
 
+Max picked layout **B, strips** (2026-10-29), mockup in `mockups/device-themes/gallery/`:
+one sideways strip per group with page arrows, a thin scroll bar and a fade, so the card
+stays about 250 px tall. Tiles 104x64 (device art at 1x and 2x, 64 colours, about 153 KB
+in all); classic tiles are drawn live from the palette. Only built skins are listed.
+
 ## 5. Plan
 
 Each step is one PR, tested on the headless test copy, and merged only after Max says yes.

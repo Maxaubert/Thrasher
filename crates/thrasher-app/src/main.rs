@@ -2505,7 +2505,14 @@ fn main() -> Result<(), slint::PlatformError> {
         let weak = ui.as_weak();
         move |text| {
             {
-                let accent = weak.unwrap().global::<Theme>().get_accent();
+                // Tape Deck types the tags in a darker amber, readable on its cream card.
+                let ui = weak.unwrap();
+                let theme = ui.global::<Theme>();
+                let accent = if theme.get_tape() {
+                    slint::Color::from_rgb_u8(0xc6, 0x6a, 0x12)
+                } else {
+                    theme.get_accent()
+                };
                 slint::StyledText::from_markdown(&edit_markup(&text, accent))
             }
             .unwrap_or_else(|_| slint::StyledText::from_plain_text(&text))
@@ -3894,7 +3901,9 @@ fn effect_clock(ui: &AppWindow) -> Timer {
         let theme = usize::try_from(ui.global::<Theme>().get_current()).ok();
         let rate = |table: &[f32]| theme.and_then(|i| table.get(i).copied()).unwrap_or(0.0);
         let mut fps = rate(&EFFECT_FPS);
-        if ui.get_recording() && !ui.get_paused() {
+        // The same motion turns the clip's cassette while it plays on its own page.
+        let playing_clip = ui.get_page() == 1 && ui.global::<Main>().get_playing();
+        if (ui.get_recording() && !ui.get_paused()) || playing_clip {
             fps = fps.max(rate(&RECORDING_FPS));
         }
         let now = std::time::Instant::now();

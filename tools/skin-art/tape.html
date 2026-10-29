@@ -35,6 +35,29 @@ if (el === 'cassette') {
   <circle cx="112" cy="93" r="2.2" fill="#0b0705"/><circle cx="168" cy="93" r="2.2" fill="#0b0705"/>
   <circle cx="13" cy="10" r="2" fill="#1d1510"/><circle cx="267" cy="10" r="2" fill="#1d1510"/><circle cx="13" cy="90" r="2" fill="#1d1510"/><circle cx="267" cy="90" r="2" fill="#1d1510"/>`);
 }
+if (el === 'cassette-clip') {
+  // The clip pages' cassette (docs/mockups/device-themes/tape-pages/tape-clip.html): the
+  // same shell with a writing line on the label for the clip's name, the window lower.
+  // The hubs, the name and the word under the label are live.
+  a.innerHTML = svg('0 0 280 100', `
+  <defs><clipPath id="win"><rect x="62" y="42" width="156" height="31" rx="6"/></clipPath>
+  <linearGradient id="sh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a3a2e"/><stop offset="1" stop-color="#2b2019"/></linearGradient></defs>
+  <rect x="6" y="3" width="268" height="94" rx="7" fill="url(#sh)" stroke="#0b0705"/>
+  <rect x="16" y="9" width="248" height="70" rx="4" fill="#efe3c8"/>
+  <text x="24" y="15.5" font-family="Oswald" font-weight="500" font-size="6.5" letter-spacing="2" fill="#6b5644">SIDE A</text>
+  <text x="256" y="15.5" text-anchor="end" font-family="Oswald" font-weight="500" font-size="6.5" letter-spacing="2" fill="#6b5644">C60</text>
+  <rect x="24" y="30.5" width="232" height=".6" fill="#6b5644" opacity=".45"/>
+  <rect x="16" y="33" width="248" height="3" fill="#c9331f"/><rect x="16" y="37" width="248" height="1.5" fill="#d99a2b"/>
+  <rect x="58" y="39" width="164" height="37" rx="8" fill="#2a1d13"/>
+  <g clip-path="url(#win)"><rect x="62" y="42" width="156" height="31" fill="#3b2415"/>
+    <circle cx="96" cy="57.5" r="30" fill="#5b331b"/><circle cx="96" cy="57.5" r="30" fill="none" stroke="#7a4626" stroke-width=".6" stroke-dasharray="1 2"/>
+    <circle cx="184" cy="57.5" r="21" fill="#5b331b"/>
+    <rect x="62" y="42" width="156" height="31" fill="rgba(242,166,74,.10)"/>
+    <rect x="62" y="42" width="156" height="6" fill="rgba(255,255,255,.08)"/></g>
+  <path d="M86 97l8-9h92l8 9" fill="#1d1510" stroke="#0b0705"/>
+  <circle cx="112" cy="93" r="2.2" fill="#0b0705"/><circle cx="168" cy="93" r="2.2" fill="#0b0705"/>
+  <circle cx="13" cy="10" r="2" fill="#1d1510"/><circle cx="267" cy="10" r="2" fill="#1d1510"/><circle cx="13" cy="90" r="2" fill="#1d1510"/><circle cx="267" cy="90" r="2" fill="#1d1510"/>`);
+}
 if (el === 'reels') {
   // A strip of 8 frames of one hub turning through 60 degrees (its teeth repeat every
   // 60, and 12 dashes make the ring repeat every 30). Each frame is H square.

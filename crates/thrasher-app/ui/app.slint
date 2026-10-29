@@ -17,12 +17,16 @@ import "./fonts/Caveat-700.ttf";
 import "./fonts/Oswald-500.ttf";
 import "./fonts/Oswald-600.ttf";
 import {
-    ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Tips, Theme, Fx, Main, Win, Tour, TourPoint, Snow,
+    ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Tips, Theme, Fx, Main, Pages, Win, Tour, TourPoint, Snow, TrimTouch,
     Icon, Tip, Btn, IconBtn, Toggle, Wave, BackLink, ExportButton, ResizeEdge, TitleBar, OrderList, PageHeader, Select,
     TextField, SourceRow, ShortcutBox, Card, CardPart, CardRow, Chip, Meter, WindowFx, Scroller, TourSnake, TranscriptCard,
 } from "common.slint";
 import { MainPage as ClassicMain } from "skins/classic.slint";
 import { MainPage as TapeMain } from "skins/tape.slint";
+import {
+    ClipPage as TapeClip, SettingsPage as TapeSettings, ModelsPage as TapeModels, MergePage as TapeMerge, AskPage as TapeAsk,
+    Widget as TapeWidget, Dialog as TapeDialog, Speaking as TapeSpeaking, Drop as TapeDrop,
+} from "skins/tape-pages.slint";
 // What the app reaches from Rust.
 export { ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Theme, Fx, Main, Tour, Snow }
 
@@ -103,47 +107,47 @@ export component AppWindow inherits Window {
     in property <float> play-fraction <=> Main.play-fraction;
     in property <string> play-position <=> Main.play-position;
     in property <string> play-length: "0:00";
-    in-out property <int> speed-index: 1;
+    in-out property <int> speed-index <=> Pages.speed-index;
     // The transcript shows pauses and the marks for edited and spoken words.
-    in-out property <bool> show-marks: true;
-    in-out property <bool> looping;
-    in property <[float]> detail-wave;
+    in-out property <bool> show-marks <=> Pages.show-marks;
+    in-out property <bool> looping <=> Pages.looping;
+    in property <[float]> detail-wave <=> Pages.detail-wave;
     // The kept part of the highlighted clip, as parts of its length; the handles on
     // the player waveform move them.
-    in-out property <float> trim-start: 0;
-    in-out property <float> trim-end: 1;
+    in-out property <float> trim-start <=> Pages.trim-start;
+    in-out property <float> trim-end <=> Pages.trim-end;
     callback trim-changed(float, float);
-    in property <string> detail-meta;
+    in property <string> detail-meta <=> Pages.detail-meta;
 
     in-out property <string> status <=> Main.status;
-    in property <bool> can-transcribe;
-    in property <bool> transcribing;
-    in property <bool> translating;
-    in property <string> translation;
-    in-out property <string> shown-lang;
-    in property <[LangRow]> langs;
+    in property <bool> can-transcribe <=> Pages.can-transcribe;
+    in property <bool> transcribing <=> Pages.transcribing;
+    in property <bool> translating <=> Pages.translating;
+    in property <string> translation <=> Pages.translation;
+    in-out property <string> shown-lang <=> Pages.shown-lang;
+    in property <[LangRow]> langs <=> Pages.langs;
     callback choose-lang(string);
     callback lang-filter(string);
     // A language needs a model: 1 opens the Whisper models, 2 the AI settings.
     callback install-for(int);
     // The translation model in settings, and its download (below 0 when none runs).
-    in property <bool> translator-ready;
-    in property <float> translator-download: -1;
-    in property <string> summary;
-    in property <bool> summarising;
+    in property <bool> translator-ready <=> Pages.translator-ready;
+    in property <float> translator-download <=> Pages.translator-download;
+    in property <string> summary <=> Pages.summary;
+    in property <bool> summarising <=> Pages.summarising;
     in property <bool> can-ai <=> Main.can-ai;
-    in-out property <bool> show-summary;
+    in-out property <bool> show-summary <=> Pages.show-summary;
     callback summarise-selected();
     // The AI finished translating clip `name` into `code`: whether it worked, and the
     // text or the error.
     callback translated(bool, string, string, string);
     // Ask: the question, whether it covers all projects, the answer as it is
     // written, and the passages it was given.
-    in-out property <string> question;
-    in-out property <bool> ask-all;
-    in property <string> answer;
-    in property <bool> asking;
-    in property <[AskSource]> sources;
+    in-out property <string> question <=> Pages.question;
+    in-out property <bool> ask-all <=> Pages.ask-all;
+    in property <string> answer <=> Pages.answer;
+    in property <bool> asking <=> Pages.asking;
+    in property <[AskSource]> sources <=> Pages.sources;
     callback ask(string, bool);
     callback open-source(int);
     callback answered();
@@ -151,24 +155,24 @@ export component AppWindow inherits Window {
     callback summarised(bool, string, string);
     // The AI model in settings: the choices, the one picked, whether it is
     // downloaded, and the download's progress (below 0 when none runs).
-    in property <[string]> ai-models;
-    in-out property <int> ai-model-index;
-    in property <bool> ai-ready;
-    in property <float> ai-download: -1;
+    in property <[string]> ai-models <=> Pages.ai-models;
+    in-out property <int> ai-model-index <=> Pages.ai-model-index;
+    in property <bool> ai-ready <=> Pages.ai-ready;
+    in property <float> ai-download <=> Pages.ai-download;
     callback ai-model-changed(int);
     // 0 the summary model, 1 the translation model.
     callback download-ai(int);
-    in property <float> transcribe-progress;
-    in-out property <bool> speaking;
-    in property <float> speak-progress;
-    in property <string> speak-stage;
-    in property <string> transcript;
-    in property <[WordRow]> words;
-    in property <int> current-word: -1;
-    in property <string> edit-badge;
+    in property <float> transcribe-progress <=> Pages.transcribe-progress;
+    in-out property <bool> speaking <=> Pages.speaking;
+    in property <float> speak-progress <=> Pages.speak-progress;
+    in property <string> speak-stage <=> Pages.speak-stage;
+    in property <string> transcript <=> Pages.transcript;
+    in property <[WordRow]> words <=> Pages.words;
+    in property <int> current-word <=> Pages.current-word;
+    in property <string> edit-badge <=> Pages.edit-badge;
     in property <string> edit-length;
     in property <string> edit-was;
-    in-out property <bool> renaming;
+    in-out property <bool> renaming <=> Pages.renaming;
     // A question in front of the page: 1 rename a clip, 2 confirm deleting it; which
     // clip, and the name being typed.
     in property <[string]> projects <=> Main.projects;
@@ -176,7 +180,7 @@ export component AppWindow inherits Window {
     callback create-project(string);
     callback rename-project(string);
     // Files are being dragged over the window.
-    in property <bool> dropping;
+    in property <bool> dropping <=> Pages.dropping;
     in-out property <string> query <=> Main.query;
     in-out property <bool> search-all <=> Main.search-all;
     in property <[SearchHit]> hits <=> Main.hits;
@@ -184,42 +188,42 @@ export component AppWindow inherits Window {
     // 1 rename clip, 2 delete clip, 3 unsaved changes, 4 new project, 5 rename project.
     in-out property <int> dialog <=> Main.dialog;
     // How many clips the delete dialog removes.
-    property <int> delete-count: 1;
-    in-out property <int> dialog-clip;
+    property <int> delete-count <=> Pages.delete-count;
+    in-out property <int> dialog-clip <=> Pages.dialog-clip;
     in-out property <string> dialog-text <=> Main.dialog-text;
     // The transcript as typed in the editor, to save or throw away when leaving it.
-    in-out property <string> edit-draft;
+    in-out property <string> edit-draft <=> Pages.edit-draft;
     // The transcript is being edited in its card on the clip page; where to go once
     // the editor is left (-1: stay).
-    in-out property <bool> editing;
+    in-out property <bool> editing <=> Pages.editing;
     property <int> leave-to: -1;
 
-    in property <[string]> mic-devices;
-    in-out property <int> mic-index;
-    in-out property <bool> record-system;
-    in property <string> folder;
-    in property <string> name-template;
-    in property <string> name-preview;
-    in-out property <int> export-format;
-    in-out property <bool> clean-voice;
-    in property <[string]> languages;
-    in-out property <int> language-index;
-    in property <[ModelRow]> models;
-    in property <string> model-summary;
-    in property <string> models-used;
-    in property <int> model-count;
-    in-out property <string> model-query;
-    in-out property <int> model-filter;
-    in-out property <bool> model-compressed;
-    in property <bool> name-invalid;
-    in property <[string]> hotkey-parts;
-    in property <int> downloading: -1;
-    in property <float> download-progress;
+    in property <[string]> mic-devices <=> Pages.mic-devices;
+    in-out property <int> mic-index <=> Pages.mic-index;
+    in-out property <bool> record-system <=> Pages.record-system;
+    in property <string> folder <=> Pages.folder;
+    in property <string> name-template <=> Pages.name-template;
+    in property <string> name-preview <=> Pages.name-preview;
+    in-out property <int> export-format <=> Pages.export-format;
+    in-out property <bool> clean-voice <=> Pages.clean-voice;
+    in property <[string]> languages <=> Pages.languages;
+    in-out property <int> language-index <=> Pages.language-index;
+    in property <[ModelRow]> models <=> Pages.models;
+    in property <string> model-summary <=> Pages.model-summary;
+    in property <string> models-used <=> Pages.models-used;
+    in property <int> model-count <=> Pages.model-count;
+    in-out property <string> model-query <=> Pages.model-query;
+    in-out property <int> model-filter <=> Pages.model-filter;
+    in-out property <bool> model-compressed <=> Pages.model-compressed;
+    in property <bool> name-invalid <=> Pages.name-invalid;
+    in property <[string]> hotkey-parts <=> Pages.hotkey-parts;
+    in property <int> downloading <=> Pages.downloading;
+    in property <float> download-progress <=> Pages.download-progress;
     in-out property <string> hotkey;
-    in-out property <bool> close-to-tray: true;
-    in property <[string]> recording-limits;
-    in-out property <int> recording-limit-index: 2;
-    in-out property <bool> start-with-windows;
+    in-out property <bool> close-to-tray <=> Pages.close-to-tray;
+    in property <[string]> recording-limits <=> Pages.recording-limits;
+    in-out property <int> recording-limit-index <=> Pages.recording-limit-index;
+    in-out property <bool> start-with-windows <=> Pages.start-with-windows;
     in-out property <bool> compact;
     in-out property <length> list-y <=> Main.list-y;
     in-out property <length> list-height <=> Main.list-height;
@@ -242,9 +246,9 @@ export component AppWindow inherits Window {
     in property <[bool]> picked <=> Main.picked;
     in property <int> picked-count <=> Main.picked-count;
     // The merge page: the picked clips in merge order, and the new clip's name.
-    in property <[OrderRow]> merge-rows;
-    in-out property <string> merge-name;
-    in property <bool> merging;
+    in property <[OrderRow]> merge-rows <=> Pages.merge-rows;
+    in-out property <string> merge-name <=> Pages.merge-name;
+    in property <bool> merging <=> Pages.merging;
     callback merge-move(int, int);
     callback merge-remove(int);
     callback merge-play(int);
@@ -252,30 +256,30 @@ export component AppWindow inherits Window {
     // A merge finished: the status line and the new clip's name (empty on failure).
     callback merged(string, string);
     // A merged clip's parts, shown on its page; empty for an ordinary clip.
-    in property <[OrderRow]> parts;
-    in property <bool> parts-busy;
+    in property <[OrderRow]> parts <=> Pages.parts;
+    in property <bool> parts-busy <=> Pages.parts-busy;
     callback parts-move(int, int);
     callback part-take-out(int);
     // Renames part i of the open merged clip.
     callback rename-part(int, string);
     // The part the rename dialog (6) is for.
-    property <int> dialog-part;
+    property <int> dialog-part <=> Pages.dialog-part;
     // Reordering or taking out a part finished, with the status line.
     callback parts-done(string);
     // The status line, the last clip, and every new clip (one per line).
     callback imported(string, string, string);
     // A transcription run ended: whether it worked, and the line to show.
     callback transcribed(bool, string);
-    in-out property <bool> auto-transcribe;
+    in-out property <bool> auto-transcribe <=> Pages.auto-transcribe;
     callback auto-transcribe-changed(bool);
     // New recordings are named by the local AI; needs auto transcribe.
-    in-out property <bool> ai-names;
+    in-out property <bool> ai-names <=> Pages.ai-names;
     callback ai-names-changed(bool);
     // The AI named clip `old` in folder `dir`: `title` is the new name.
     callback ai-named(string, string, string);
     // Longer pauses are shortened to this after each transcription.
-    in property <[string]> max-pauses;
-    in-out property <int> max-pause-index;
+    in property <[string]> max-pauses <=> Pages.max-pauses;
+    in-out property <int> max-pause-index <=> Pages.max-pause-index;
     callback max-pause-changed(int);
     // The transcript editor's text as styled text, with the pause tags coloured.
     pure callback edit-markup(string) -> styled-text;
@@ -328,6 +332,18 @@ export component AppWindow inherits Window {
         running: false;
         triggered => { self.running = false; root.status = ""; }
     }
+    // The question in front of the page (see `dialog`), in words every skin shows.
+    property <bool> dialog-shown: root.dialog >= 4 || (root.dialog != 0 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length);
+    property <string> dialog-title: root.dialog == 1 ? "Rename clip" : root.dialog == 3 ? "Unsaved changes" : root.dialog == 4 ? "New project"
+        : root.dialog == 5 ? "Rename project" : root.dialog == 6 ? "Rename part"
+        : root.delete-count > 1 ? "Delete " + root.delete-count + " clips?"
+        : root.dialog-clip >= 0 && root.dialog-clip < root.clips.length ? "Delete " + root.clips[root.dialog-clip].name + "?" : "";
+    property <string> dialog-note: root.dialog == 3 ? "Leave without saving"
+        : root.dialog == 2 ? (root.delete-count > 1 ? "They go to the Recycle Bin" : "Goes to the Recycle Bin") : "";
+    property <string> dialog-field: root.dialog == 4 ? "Project name" : "New name";
+    property <string> dialog-ok: root.dialog == 1 || root.dialog == 5 || root.dialog == 6 ? "Rename" : root.dialog == 3 ? "Save" : root.dialog == 4 ? "Create" : "Delete";
+    property <bool> dialog-ok-enabled: (root.dialog != 1 && root.dialog < 4) || root.dialog-text != "";
+
     // Saving from the editor leaves it, so its unsaved-changes question goes too.
     changed page => {
         Tips.hide();
@@ -351,6 +367,11 @@ export component AppWindow inherits Window {
         root.dialog-clip = i;
         root.dialog-text = root.clips[i].name;
         root.dialog = 1;
+    }
+    function ask-rename-part(i: int) {
+        root.dialog-part = i;
+        root.dialog-text = root.parts[i].name;
+        root.dialog = 6;
     }
     function ask-delete(i: int) {
         root.dialog-clip = i;
@@ -478,7 +499,7 @@ export component AppWindow inherits Window {
         // ---------- Widget ----------
         // The widget: status with open window, the time with pause and record, and
         // the live level.
-        if compact: Rectangle {
+        if compact && Theme.skin == 0: Rectangle {
             background: Theme.card;
             border-radius: 18px;
             border-width: 1px;
@@ -570,6 +591,8 @@ export component AppWindow inherits Window {
             }
         }
 
+        if compact && Theme.skin == 1: TapeWidget { }
+
         // ---------- Clips (main) ----------
         // The theme's skin builds it (ui/skins); the state and actions are in Main.
         if !compact && page == 0 && Theme.skin == 0: ClassicMain {
@@ -592,7 +615,7 @@ export component AppWindow inherits Window {
         }
 
         // ---------- One clip ----------
-        if !compact && page == 1 && root.selected >= 0: VerticalLayout {
+        if !compact && page == 1 && root.selected >= 0 && Theme.skin == 0: VerticalLayout {
             TitleBar {
                 height: 38px;
                 minimize => { Main.minimize-window(); }
@@ -752,35 +775,11 @@ export component AppWindow inherits Window {
                                     }
                                 }
                             }
-                            wave-touch := TouchArea {
-                                property <length> at: self.mouse-x - 8px;
-                                mouse-cursor: abs(self.at - wave-box.start-x) <= 8px || abs(self.at - wave-box.end-x) <= 8px
-                                    ? MouseCursor.ew-resize : MouseCursor.pointer;
-                                pointer-event(e) => {
-                                    if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
-                                        wave-box.dragged = false;
-                                        wave-box.grab = abs(self.at - wave-box.start-x) <= 8px ? 1
-                                            : abs(self.at - wave-box.end-x) <= 8px ? 2 : 0;
-                                    }
-                                    if (e.kind == PointerEventKind.up && wave-box.grab != 0) {
-                                        if (wave-box.dragged) { root.trim-changed(root.trim-start, root.trim-end); }
-                                        wave-box.grab = 0;
-                                    }
-                                }
-                                moved => {
-                                    if (wave-box.grab == 1) {
-                                        root.trim-start = clamp(self.at / wave-box.inner-w, 0, root.trim-end - 0.01);
-                                        wave-box.dragged = true;
-                                    } else if (wave-box.grab == 2) {
-                                        root.trim-end = clamp(self.at / wave-box.inner-w, root.trim-start + 0.01, 1);
-                                        wave-box.dragged = true;
-                                    }
-                                }
-                                clicked => {
-                                    // Runs before the release above; `dragged` is reset on the next press.
-                                    if (!wave-box.dragged) { Main.seek-fraction(clamp(self.at / wave-box.inner-w, 0, 1)); }
-                                    keys.focus();
-                                }
+                            wave-touch := TrimTouch {
+                                grab <=> wave-box.grab;
+                                dragged <=> wave-box.dragged;
+                                trimmed(a, b) => { root.trim-changed(a, b); }
+                                tapped => { keys.focus(); }
                             }
                         }
                         if !root.narrow: HorizontalLayout {
@@ -945,11 +944,7 @@ export component AppWindow inherits Window {
                                 enabled: !root.parts-busy && !root.recording;
                                 moved(a, b) => { root.parts-move(a, b); }
                                 act(i) => { root.part-take-out(i); }
-                                rename(i) => {
-                                    root.dialog-part = i;
-                                    root.dialog-text = root.parts[i].name;
-                                    root.dialog = 6;
-                                }
+                                rename(i) => { root.ask-rename-part(i); }
                             }
                         }
                         }
@@ -1044,8 +1039,37 @@ export component AppWindow inherits Window {
             }
         }
 
+        if !compact && page == 1 && root.selected >= 0 && Theme.skin == 1: TapeClip {
+            narrow: root.narrow;
+            wide: root.wide;
+            go(p) => { root.go(p); }
+            refocus => { keys.focus(); }
+            leave-editor(p) => { root.leave-editor(p); }
+            start-edit => { root.start-edit(); }
+            ask-delete(i) => { root.ask-delete(i); }
+            rename-selected(t) => { root.rename-selected(t); }
+            toggle-play => { root.toggle-play(); }
+            skip(s) => { root.skip(s); }
+            speed-changed(i) => { root.speed-changed(i); }
+            trim-changed(a, b) => { root.trim-changed(a, b); }
+            clean-voice-changed(on) => { root.clean-voice-changed(on); }
+            parts-move(a, b) => { root.parts-move(a, b); }
+            part-take-out(i) => { root.part-take-out(i); }
+            rename-part(i) => { root.ask-rename-part(i); }
+            choose-lang(c) => { root.choose-lang(c); }
+            lang-filter(t) => { root.lang-filter(t); }
+            install-for(k) => { root.install-for(k); }
+            summarise => { root.summarise-selected(); }
+            edit-changed(t) => { root.edit-changed(t); }
+            apply-transcript(t) => { root.apply-transcript(t); }
+            transcribe => { root.transcribe-selected(); }
+            seek-word(i) => { root.seek-word(i); }
+            edit-markup(t) => { return root.edit-markup(t); }
+            plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+        }
+
         // ---------- Settings ----------
-        if !compact && page == 3: VerticalLayout {
+        if !compact && page == 3 && Theme.skin == 0: VerticalLayout {
             TitleBar {
                 minimize => { Main.minimize-window(); }
                 close => { Main.close-window(); }
@@ -1416,8 +1440,57 @@ export component AppWindow inherits Window {
             }
         }
 
+        if !compact && page == 3 && Theme.skin == 1: TapeSettings {
+            wide: root.wide;
+            back => { root.go(root.settings-back); }
+            go(p) => { root.go(p); }
+            refocus => { keys.focus(); }
+            theme-changed(i) => { root.theme-changed(i); }
+            mic-changed(i) => { root.mic-changed(i); }
+            system-changed(on) => { root.system-changed(on); }
+            recording-limit-changed(i) => { root.recording-limit-changed(i); }
+            hotkey-captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
+            hotkey-accepted(t) => { root.hotkey-accepted(t); }
+            open-folder => { root.open-folder(); }
+            change-folder => { root.change-folder(); }
+            template-edited(t) => { root.template-edited(t); }
+            template-accepted(t) => { root.template-accepted(t); }
+            export-format-changed(i) => { root.export-format-changed(i); }
+            clean-voice-changed(on) => { root.clean-voice-changed(on); }
+            language-changed(i) => { root.language-changed(i); }
+            auto-transcribe-changed(on) => { root.auto-transcribe-changed(on); }
+            ai-names-changed(on) => { root.ai-names-changed(on); }
+            max-pause-changed(i) => { root.max-pause-changed(i); }
+            ai-model-changed(i) => { root.ai-model-changed(i); }
+            download-ai(k) => { root.download-ai(k); }
+            close-to-tray-changed(on) => { root.close-to-tray-changed(on); }
+            start-with-windows-changed(on) => { root.start-with-windows-changed(on); }
+        }
+        if !compact && page == 4 && Theme.skin == 1: TapeModels {
+            wide: root.wide;
+            back => { root.go(root.models-back); }
+            filter-changed => { root.models-filter-changed(); }
+            use-model(i) => { root.use-model(i); }
+            cancel-download => { root.cancel-download(); }
+            download-model(i) => { root.download-model(i); }
+        }
+        if !compact && page == 5 && Theme.skin == 1: TapeMerge {
+            wide: root.wide;
+            go(p) => { root.go(p); }
+            move(a, b) => { root.merge-move(a, b); }
+            remove(i) => { root.merge-remove(i); }
+            play(i) => { root.merge-play(i); }
+            run(name) => { root.merge-run(name); }
+        }
+        if !compact && page == 6 && Theme.skin == 1: TapeAsk {
+            wide: root.wide;
+            go(p) => { root.go(p); }
+            ask(q, all) => { root.ask(q, all); }
+            open-source(i) => { root.open-source(i); }
+        }
+
         // ---------- Merge ----------
-        if !compact && page == 5: VerticalLayout {
+        if !compact && page == 5 && Theme.skin == 0: VerticalLayout {
             TitleBar {
                 minimize => { Main.minimize-window(); }
                 close => { Main.close-window(); }
@@ -1499,7 +1572,7 @@ export component AppWindow inherits Window {
         }
 
         // ---------- Ask ----------
-        if !compact && page == 6: VerticalLayout {
+        if !compact && page == 6 && Theme.skin == 0: VerticalLayout {
             TitleBar {
                 minimize => { Main.minimize-window(); }
                 close => { Main.close-window(); }
@@ -1600,7 +1673,7 @@ export component AppWindow inherits Window {
         }
 
         // ---------- Models ----------
-        if !compact && page == 4: VerticalLayout {
+        if !compact && page == 4 && Theme.skin == 0: VerticalLayout {
             TitleBar {
                 minimize => { Main.minimize-window(); }
                 close => { Main.close-window(); }
@@ -1787,7 +1860,7 @@ export component AppWindow inherits Window {
         }
 
         // New words take a while to speak: cover the window so that is obvious.
-        if root.speaking && !root.compact: Rectangle {
+        if root.speaking && !root.compact && Theme.skin == 0: Rectangle {
             x: 0;
             y: 0;
             width: parent.width;
@@ -1847,6 +1920,8 @@ export component AppWindow inherits Window {
         }
     }
 
+    if root.speaking && !root.compact && Theme.skin == 1: TapeSpeaking { cancel => { root.cancel-speaking(); } }
+
     if !compact: Rectangle {
         width: 100%;
         height: 100%;
@@ -1859,7 +1934,7 @@ export component AppWindow inherits Window {
     changed height => { Win.height = self.height; }
 
     // Files dragged over the window: a drop imports them.
-    if root.dropping && !root.compact: Rectangle {
+    if root.dropping && !root.compact && Theme.skin == 0: Rectangle {
         background: Theme.bg.with-alpha(0.88);
         Rectangle {
             x: 12px;
@@ -1887,7 +1962,19 @@ export component AppWindow inherits Window {
         }
     }
 
-    if root.dialog >= 4 || (root.dialog != 0 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length): Rectangle {
+    if root.dropping && !root.compact && Theme.skin == 1: TapeDrop { }
+    if root.dialog-shown && Theme.skin == 1: TapeDialog {
+        title: root.dialog-title;
+        note: root.dialog-note;
+        field: root.dialog-field;
+        ok: root.dialog-ok;
+        ok-enabled: root.dialog-ok-enabled;
+        clip-name: root.dialog == 2 && root.delete-count <= 1 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length ? root.clips[root.dialog-clip].name : "";
+        close => { root.close-dialog(); }
+        confirm => { root.confirm-dialog(); }
+        discard => { root.discard-edit(); }
+    }
+    if root.dialog-shown && Theme.skin == 0: Rectangle {
         background: #000000a6;
         // A click outside the box cancels.
         TouchArea { clicked => { root.close-dialog(); } }
@@ -1908,28 +1995,26 @@ export component AppWindow inherits Window {
                 padding: 20px;
                 spacing: 14px;
                 Text {
-                    text: root.dialog == 1 ? "Rename clip" : root.dialog == 3 ? "Unsaved changes" : root.dialog == 4 ? "New project"
-                        : root.dialog == 5 ? "Rename project" : root.dialog == 6 ? "Rename part"
-                        : root.delete-count > 1 ? "Delete " + root.delete-count + " clips?" : "Delete " + root.clips[root.dialog-clip].name + "?";
+                    text: root.dialog-title;
                     color: Theme.text;
                     font-size: 17px;
                     font-weight: 800;
                     overflow: elide;
                 }
                 if root.dialog == 3: Text {
-                    text: "Leave without saving";
+                    text: root.dialog-note;
                     color: Theme.muted;
                     font-size: 13px;
                     wrap: word-wrap;
                 }
                 if root.dialog == 2: Text {
-                    text: root.delete-count > 1 ? "They go to the Recycle Bin" : "Goes to the Recycle Bin";
+                    text: root.dialog-note;
                     color: Theme.muted;
                     font-size: 13px;
                     wrap: word-wrap;
                 }
                 if root.dialog == 1 || root.dialog >= 4: TextField {
-                    label: root.dialog == 4 ? "Project name" : "New name";
+                    label: root.dialog-field;
                     text <=> root.dialog-text;
                     init => { self.grab(); }
                     accepted => { root.confirm-dialog(); }
@@ -1947,8 +2032,8 @@ export component AppWindow inherits Window {
                     }
                     Btn {
                         primary: true;
-                        text: root.dialog == 1 || root.dialog == 5 || root.dialog == 6 ? "Rename" : root.dialog == 3 ? "Save" : root.dialog == 4 ? "Create" : "Delete";
-                        enabled: (root.dialog != 1 && root.dialog < 4) || root.dialog-text != "";
+                        text: root.dialog-ok;
+                        enabled: root.dialog-ok-enabled;
                         clicked => { root.confirm-dialog(); }
                     }
                 }

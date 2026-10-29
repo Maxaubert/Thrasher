@@ -18,7 +18,7 @@ mkdir -p "$OUT"
 
 # name, element, css width, css height
 case $SKIN in
-tape) PIECES="cassette:cassette:354:126 reels:reels:352:44 vu-face:vu-face:184:106 vu-over:vu-over:184:106
+tape) PIECES="cassette:cassette:354:126 cassette-clip:cassette-clip:354:126 reels:reels:352:44 vu-face:vu-face:184:106 vu-over:vu-over:184:106
   walnut:walnut-grain:153:4 alu:alu-lines:4:2 spine:spine-lines:4:5 grille:grille:7:4 dial:dial:52:52
   knob:knob:36:36 knob-sel:knob-sel:36:36 screw:screw:7:7 led:led:21:21" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;

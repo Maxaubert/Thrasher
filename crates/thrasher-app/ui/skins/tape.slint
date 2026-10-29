@@ -8,250 +8,8 @@
 // headless Edge; everything that moves or reacts is drawn here. The reels step through
 // a strip of frames on the Fx clock, which runs only while recording.
 
-import { Theme, Fx, Win, Main, Tips, Icon, ProjectMenu, TextField, Scroller, SearchRow, ClipMenu, WaveSeek, ClipRow } from "../common.slint";
-
-// The deck's colours, from the mockup.
-global Deck {
-    out property <color> cream: #efe3c8;
-    out property <color> cream2: #e2d3b2;
-    out property <color> ink: #2a1c12;
-    out property <color> ink-soft: #6b5644;
-    out property <color> alu-ink: #3b342c;
-    out property <color> red: #c9331f;
-    out property <color> amber: #f2a64a;
-    out property <color> chassis: #22170f;
-    out property <color> chassis2: #1a120c;
-    out property <color> slot: #120c08;
-    // The colour bands of the tape spines, in turn.
-    out property <[color]> bands: [#c9331f, #d99a2b, #3f7c74, #7a4a2a, #2f5a8a];
-    out property <brush> key-face: @linear-gradient(180deg, #ece7dc 0%, #c9c1b2 78%, #8f8778 78%, #6f685b 100%);
-    out property <brush> rec-face: @linear-gradient(180deg, #e2543a 0%, #c9331f 40%, #a72614 78%, #6e170b 78%, #55120a 100%);
-    out property <brush> rec-down: @linear-gradient(180deg, #c9452d 0%, #b22c18 40%, #921f10 82%, #6e170b 82%, #55120a 100%);
-}
-
-// Walnut: the title bar and the footer.
-component Walnut inherits Rectangle {
-    property <bool> hi: 1phx < 0.7px;
-    background: @linear-gradient(180deg, #714427 0%, #4c2b17 60%, #3d2212 100%);
-    Image {
-        width: 100%;
-        height: 100%;
-        source: root.hi ? @image-url("tape/walnut@2x.png") : @image-url("tape/walnut.png");
-        horizontal-tiling: repeat;
-        vertical-tiling: repeat;
-        horizontal-alignment: left;
-        vertical-alignment: top;
-    }
-    @children
-}
-
-// Brushed aluminium: the deck's faceplate.
-component Alu inherits Rectangle {
-    property <bool> hi: 1phx < 0.7px;
-    background: @linear-gradient(180deg, #dcd6ca 0%, #bdb5a7 70%, #a9a193 100%);
-    Image {
-        width: 100%;
-        height: 100%;
-        source: root.hi ? @image-url("tape/alu@2x.png") : @image-url("tape/alu.png");
-        horizontal-tiling: repeat;
-        vertical-tiling: repeat;
-        horizontal-alignment: left;
-        vertical-alignment: top;
-    }
-    // The bevel catching the light along the top.
-    Rectangle { y: 0; height: 1px; background: #ffffff80; }
-    @children
-}
-
-component Screw inherits Image {
-    width: 7px;
-    height: 7px;
-    source: @image-url("tape/screw@2x.png");
-    image-fit: fill;
-}
-
-// A well sunk into the faceplate: dark inside, shaded at the top, a light edge below.
-component Well inherits Rectangle {
-    in property <color> fill: #120c08;
-    in property <length> radius: 5px;
-    in property <length> pad: 5px;
-    Rectangle { y: 1px; border-radius: root.radius; background: #ffffff99; }
-    Rectangle { border-radius: root.radius; background: root.fill; }
-    Rectangle {
-        x: root.radius;
-        y: 0;
-        width: parent.width - 2 * root.radius;
-        height: min(6px, parent.height / 3);
-        background: @linear-gradient(180deg, #000000c0 0%, #00000000 100%);
-    }
-    Rectangle {
-        x: root.pad;
-        y: root.pad;
-        width: parent.width - 2 * root.pad;
-        height: parent.height - 2 * root.pad;
-        @children
-    }
-}
-
-// A small button on walnut: Settings, minimise and close.
-component WoodBtn inherits Rectangle {
-    in property <string> icon;
-    in property <string> label;
-    in property <string> tip: label;
-    in property <length> icon-size: 15px;
-    callback clicked;
-    width: 28px;
-    height: 26px;
-    border-radius: 4px;
-    background: t.has-hover ? #00000040 : transparent;
-    accessible-role: button;
-    accessible-label: root.label;
-    accessible-action-default => { root.clicked(); }
-    Icon {
-        name: root.icon;
-        tint: t.has-hover ? #fff3dc : #ecd9b5;
-        width: root.icon-size;
-        height: root.icon-size;
-    }
-    property <bool> hovering: t.has-hover;
-    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
-    t := TouchArea {
-        mouse-cursor: pointer;
-        clicked => { Tips.hide(); root.clicked(); }
-    }
-}
-
-// The title bar: a brass name plate on walnut, Settings, minimise and close.
-component Title inherits Walnut {
-    callback go(int);
-    height: 38px;
-    Rectangle { y: parent.height - 1px; height: 1px; background: #1a0f08; }
-    WindowMoveArea {
-        width: 100%;
-        height: 100%;
-    }
-    HorizontalLayout {
-        padding-left: 12px;
-        padding-right: 8px;
-        spacing: 6px;
-        VerticalLayout {
-            alignment: center;
-            Rectangle {
-                height: 22px;
-                width: plate.preferred-width;
-                background: @linear-gradient(180deg, #e3c58a 0%, #b48c4b 100%);
-                border-radius: 3px;
-                Rectangle { y: 0; height: 1px; background: #f6e2b4; }
-                Rectangle { y: parent.height; height: 1px; background: #00000066; }
-                plate := HorizontalLayout {
-                    padding-left: 8px;
-                    padding-right: 10px;
-                    spacing: 8px;
-                    alignment: start;
-                    VerticalLayout {
-                        alignment: center;
-                        Screw { }
-                    }
-                    Text {
-                        text: "THRASHER";
-                        color: #3a2610;
-                        font-family: "Oswald";
-                        font-size: 13px;
-                        font-weight: 600;
-                        letter-spacing: 3.6px;
-                        vertical-alignment: center;
-                    }
-                    Text {
-                        text: "STEREO";
-                        color: #3a2610b3;
-                        font-family: "Oswald";
-                        font-size: 9px;
-                        font-weight: 500;
-                        letter-spacing: 1.6px;
-                        vertical-alignment: center;
-                    }
-                }
-            }
-        }
-        Rectangle { horizontal-stretch: 1; }
-        VerticalLayout {
-            alignment: center;
-            WoodBtn { icon: "cog"; label: "Settings"; clicked => { root.go(3); } }
-        }
-        VerticalLayout {
-            alignment: center;
-            WoodBtn { icon: "minimize"; label: "Minimize"; icon-size: 13px; clicked => { Main.minimize-window(); } }
-        }
-        VerticalLayout {
-            alignment: center;
-            WoodBtn { icon: "close"; label: "Close"; icon-size: 13px; clicked => { Main.close-window(); } }
-        }
-    }
-}
-
-// The cassette in its window, the art kept to its shape and centred. The hubs turn
-// while recording; the label carries the microphone's name.
-component Cassette inherits Rectangle {
-    property <bool> hi: 1phx < 0.7px;
-    // The art is 280 by 100 units.
-    property <float> s: min(root.width / 280px, root.height / 100px);
-    property <bool> turning: Main.recording && !Main.paused;
-    // A frame of the hub strip: 8 frames turn a hub through 60 degrees, its repeat.
-    // The take-up reel on the right turns faster than the full one on the left.
-    property <int> left-frame: root.turning ? Math.mod(floor(Fx.t * 4), 8) : 0;
-    property <int> right-frame: root.turning ? Math.mod(floor(Fx.t * 5.7), 8) : 0;
-    property <int> frame-px: root.hi ? 88 : 44;
-    art := Rectangle {
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        width: 280px * root.s;
-        height: 100px * root.s;
-        Image {
-            width: 100%;
-            height: 100%;
-            source: root.hi ? @image-url("tape/cassette@2x.png") : @image-url("tape/cassette.png");
-            image-fit: fill;
-        }
-        Image {
-            x: (96 - 17) * 1px * root.s;
-            y: (46.5 - 17) * 1px * root.s;
-            width: 34px * root.s;
-            height: 34px * root.s;
-            source: root.hi ? @image-url("tape/reels@2x.png") : @image-url("tape/reels.png");
-            source-clip-x: root.left-frame * root.frame-px;
-            source-clip-y: 0;
-            source-clip-width: root.frame-px;
-            source-clip-height: root.frame-px;
-            image-fit: fill;
-        }
-        Image {
-            x: (184 - 17) * 1px * root.s;
-            y: (46.5 - 17) * 1px * root.s;
-            width: 34px * root.s;
-            height: 34px * root.s;
-            source: root.hi ? @image-url("tape/reels@2x.png") : @image-url("tape/reels.png");
-            source-clip-x: root.right-frame * root.frame-px;
-            source-clip-y: 0;
-            source-clip-width: root.frame-px;
-            source-clip-height: root.frame-px;
-            image-fit: fill;
-        }
-        Text {
-            x: 20px * root.s;
-            y: 74.5px * root.s;
-            width: 240px * root.s;
-            height: 13px * root.s;
-            text: Main.device-label;
-            color: #e9dfcb;
-            font-family: "Caveat";
-            font-weight: 700;
-            font-size: 13px * root.s;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-            overflow: elide;
-        }
-    }
-}
+import { Theme, Fx, Win, Main, Tips, Icon, ProjectMenu, TextField, Scroller, ClipMenu, WaveSeek, ClipRow, SearchHit, Deck } from "../common.slint";
+import { Walnut, Alu, Screw, Well, WoodBtn, Title, Cassette, Digits, Engraved, Key, Bars, Knob } from "tape-parts.slint";
 
 // The VU meter: the needle follows the input level while recording and rests left of
 // -20 otherwise. The face and the glass over the needle are PNGs; the needle is a line
@@ -297,55 +55,6 @@ component Vu inherits Rectangle {
     }
 }
 
-// The tape counter's figures, each on its own dark drum, ":" and "." narrower between.
-// The text is drawn whole in every drum and clipped, since a string cannot be split.
-component Digits inherits Rectangle {
-    in property <string> text;
-    in property <length> size: 15px;
-    in property <length> cell: 11px;
-    in property <length> sep: 5px;
-    property <int> count: root.text == "" ? 0 : root.text.character-count;
-    // JetBrains Mono's characters are 0.6 em wide.
-    property <length> advance: root.size * 0.6;
-    // Counted from the end, every third character from the second is a separator:
-    // "00:00.0", "1:02:03.4".
-    property <int> m: root.count - 2;
-    function is-sep(i: int) -> bool {
-        return i <= root.m && Math.mod(root.m - i, 3) == 0;
-    }
-    function seps-before(i: int) -> int {
-        return i > root.m ? floor(root.m / 3) + 1 : floor(root.m / 3) - floor((root.m - i) / 3);
-    }
-    function at(i: int) -> length {
-        return (i - root.seps-before(i)) * root.cell + root.seps-before(i) * root.sep + i * 1px;
-    }
-    width: root.at(root.count) - 1px;
-    accessible-role: AccessibleRole.text;
-    accessible-label: root.text;
-    for i in root.count: Rectangle {
-        x: root.at(i);
-        width: root.is-sep(i) ? root.sep : root.cell;
-        background: root.is-sep(i) ? transparent : @linear-gradient(180deg, #0c0907 0%, #2c231c 50%, #0c0907 100%);
-        // A window one character wide, so the neighbours stay hidden.
-        Rectangle {
-            width: min(root.advance, parent.width);
-            clip: true;
-            Text {
-                x: (parent.width - root.advance) / 2 - i * root.advance;
-                width: root.count * root.advance + 2px;
-                height: parent.height;
-                text: root.text;
-                color: root.is-sep(i) ? #8d7d6a : #f4ead6;
-                font-family: Theme.mono;
-                font-size: root.size;
-                font-weight: root.is-sep(i) ? 500 : 700;
-                vertical-alignment: center;
-                accessible-role: none;
-            }
-        }
-    }
-}
-
 // The lamp and the word over the counter.
 component Status inherits HorizontalLayout {
     property <bool> hi: 1phx < 0.7px;
@@ -372,15 +81,6 @@ component Status inherits HorizontalLayout {
         letter-spacing: 2.2px;
         vertical-alignment: center;
     }
-}
-
-// The engraved label over a part of the faceplate.
-component Engraved inherits Text {
-    color: #3b342c;
-    font-family: "Oswald";
-    font-size: 8.5px;
-    font-weight: 500;
-    letter-spacing: 2px;
 }
 
 // The counter: the lamp on top, then the engraved label and the figures.
@@ -412,78 +112,6 @@ component Counter inherits VerticalLayout {
         }
     }
     if !root.big: Rectangle { height: 0; }
-}
-
-// A piano key. REC is the red one; it stays down while recording.
-component Key inherits Rectangle {
-    in property <string> icon;
-    in property <string> text;
-    in property <string> label;
-    in property <string> tip: label;
-    in property <bool> rec;
-    in property <bool> latched;
-    in property <bool> enabled: true;
-    in property <bool> big;
-    callback clicked;
-    property <bool> down: (t.pressed && t.has-hover && root.enabled) || root.latched;
-    // The bed shares its width out by stretch alone.
-    min-width: 1px;
-    preferred-width: 1px;
-    horizontal-stretch: 1;
-    property <length> icon-size: root.rec ? (root.big ? 26px : 22px) : (root.big ? 20px : 17px);
-    accessible-role: button;
-    accessible-label: root.label;
-    accessible-action-default => { if (root.enabled) { root.clicked(); } }
-    face := Rectangle {
-        y: root.down ? 2px : 0;
-        height: parent.height - (root.down ? 2px : 0);
-        background: root.rec ? (root.latched ? Deck.rec-down : Deck.rec-face) : Deck.key-face;
-        opacity: root.enabled ? 1 : 0.55;
-        Rectangle { y: 0; height: 1px; background: root.rec ? #ff9a7f : #ffffff; }
-        if t.has-hover && root.enabled && !root.down: Rectangle { background: #ffffff12; }
-        VerticalLayout {
-            height: parent.height * 0.78;
-            y: 0;
-            alignment: center;
-            spacing: root.rec ? 5px : 4px;
-            HorizontalLayout {
-                alignment: center;
-                Icon {
-                    name: root.icon;
-                    tint: root.rec ? #fff3e6 : #3a3129;
-                    width: root.icon-size;
-                    height: root.icon-size;
-                }
-            }
-            Text {
-                text: root.text;
-                color: root.rec ? #fff3e6 : #3a3129;
-                font-family: "Oswald";
-                font-size: root.rec ? (root.big ? 12px : 10.5px) : (root.big ? 9px : 8px);
-                font-weight: root.rec ? 600 : 500;
-                letter-spacing: root.rec ? 3.2px : 1.6px;
-                horizontal-alignment: center;
-                // The key says it already.
-                accessible-role: none;
-            }
-        }
-        // The REC key's lamp, bright while recording.
-        if root.rec: Rectangle {
-            x: parent.width - 13px;
-            y: 6px;
-            width: 6px;
-            height: 6px;
-            border-radius: 3px;
-            background: root.latched ? #ffffff : #ffd8c8;
-        }
-    }
-    property <bool> hovering: t.has-hover;
-    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
-    t := TouchArea {
-        enabled: root.enabled;
-        mouse-cursor: pointer;
-        clicked => { Tips.hide(); root.clicked(); }
-    }
 }
 
 // The key bed: REC, then Import (Pause while recording), Ask and the widget.
@@ -819,60 +447,6 @@ component Toolbar inherits Rectangle {
     }
 }
 
-// A clip's small waveform as thin bars, about one per 3px.
-component Bars inherits Rectangle {
-    in property <[float]> values;
-    in property <float> progress: -1;
-    property <int> n: max(1, floor(root.width / 3px));
-    for i in root.n: Rectangle {
-        property <float> v: root.values.length > 0 ? root.values[floor(i * root.values.length / root.n)] : 0.06;
-        x: i * 3px;
-        width: 1.6px;
-        height: max(2px, self.v * root.height);
-        y: (root.height - self.height) / 2;
-        border-radius: 0.8px;
-        background: (i + 0.5) / root.n <= root.progress ? Deck.red : #5d4634;
-    }
-}
-
-// The round knob that plays a clip; amber on the highlighted one.
-component Knob inherits Rectangle {
-    in property <bool> lit;
-    in property <bool> pause;
-    in property <string> label;
-    in property <string> tip;
-    callback clicked;
-    property <bool> hi: 1phx < 0.7px;
-    accessible-role: button;
-    accessible-label: root.label;
-    accessible-action-default => { root.clicked(); }
-    // The art is 36 square around a 32 knob, its shadow below.
-    Image {
-        x: -root.width / 16;
-        y: -root.width / 32;
-        width: root.width * 36 / 32;
-        height: root.width * 36 / 32;
-        source: root.lit ? (root.hi ? @image-url("tape/knob-sel@2x.png") : @image-url("tape/knob-sel.png"))
-            : (root.hi ? @image-url("tape/knob@2x.png") : @image-url("tape/knob.png"));
-        image-fit: fill;
-    }
-    if t.has-hover: Rectangle { border-radius: root.width / 2; background: #ffffff1f; }
-    Icon {
-        x: (parent.width - self.width) / 2 + (root.pause ? 0 : 1px);
-        y: (parent.height - self.height) / 2 + (t.pressed ? 1px : 0);
-        name: root.pause ? "pause" : "play";
-        tint: root.lit ? #2a1406 : #2a1c12;
-        width: root.width * 0.4;
-        height: root.width * 0.4;
-    }
-    property <bool> hovering: t.has-hover;
-    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
-    t := TouchArea {
-        mouse-cursor: pointer;
-        clicked => { Tips.hide(); root.clicked(); }
-    }
-}
-
 // One clip on the shelf: the play knob and a hand-lettered tape spine with its colour
 // band, when it was made, the waveform, the length and the menu. The highlighted spine
 // slides out with an amber edge.
@@ -1124,6 +698,116 @@ component Row inherits Rectangle {
     }
 }
 
+// A search result as an index strip: the clip in hand lettering (and its project when
+// all projects are searched, extra hits as a red +2), then the words around the match
+// with an amber highlighter on it.
+component Hit inherits Rectangle {
+    in property <SearchHit> hit;
+    in property <int> index;
+    in property <bool> show-project;
+    in property <bool> big;
+    callback clicked;
+    property <bool> hi: 1phx < 0.7px;
+    height: 52px;
+    accessible-role: button;
+    accessible-label: root.hit.clip + ", " + root.hit.before + " " + root.hit.matched + " " + root.hit.after;
+    accessible-action-default => { root.clicked(); }
+    Rectangle { y: 1px; border-radius: 3px; background: #00000099; }
+    Rectangle { border-radius: 3px; background: t.has-hover ? Deck.spine-out : Deck.spine; }
+    Image {
+        width: 100%;
+        height: 100%;
+        source: root.hi ? @image-url("tape/spine@2x.png") : @image-url("tape/spine.png");
+        horizontal-tiling: repeat;
+        vertical-tiling: repeat;
+        horizontal-alignment: left;
+        vertical-alignment: top;
+    }
+    Rectangle { y: 0; height: 1px; background: #ffffff99; }
+    Rectangle {
+        x: 0;
+        width: 8px;
+        border-top-left-radius: 3px;
+        border-bottom-left-radius: 3px;
+        background: Deck.bands[Math.mod(root.index, 5)];
+    }
+    VerticalLayout {
+        x: 18px;
+        width: parent.width - 30px;
+        alignment: center;
+        spacing: 3px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: root.hit.clip;
+                color: Deck.hand;
+                font-family: "Caveat";
+                font-size: 20px;
+                font-weight: 700;
+                height: 20px;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if root.show-project: Text {
+                text: root.hit.project.to-uppercase();
+                color: Deck.ink-soft;
+                font-family: "Oswald";
+                font-size: 9.5px;
+                font-weight: 500;
+                letter-spacing: 1.3px;
+                vertical-alignment: center;
+            }
+            if root.hit.more > 0: Text {
+                text: "+" + root.hit.more;
+                color: Deck.red;
+                font-family: Theme.mono;
+                font-size: 10.5px;
+                font-weight: 700;
+                vertical-alignment: center;
+            }
+        }
+        if root.hit.matched != "": HorizontalLayout {
+            spacing: 4px;
+            if root.hit.before != "": Text {
+                text: root.hit.before;
+                color: Deck.ink-soft;
+                font-family: "Oswald";
+                font-size: 12px;
+                letter-spacing: 0.2px;
+                horizontal-stretch: 0;
+            }
+            Rectangle {
+                width: mark.preferred-width + 4px;
+                horizontal-stretch: 0;
+                Rectangle { y: 2px; height: parent.height - 3px; background: #f2a64abf; }
+                mark := Text {
+                    text: root.hit.matched;
+                    color: Deck.hand;
+                    font-family: "Oswald";
+                    font-size: 12px;
+                    font-weight: 600;
+                    letter-spacing: 0.2px;
+                    horizontal-alignment: center;
+                }
+            }
+            Text {
+                text: root.hit.after;
+                color: Deck.ink-soft;
+                font-family: "Oswald";
+                font-size: 12px;
+                letter-spacing: 0.2px;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
 // The shelf: the clips, or the search results while there is a query.
 component Shelf inherits VerticalLayout {
     in property <bool> big;
@@ -1138,10 +822,10 @@ component Shelf inherits VerticalLayout {
         fade: true;
         VerticalLayout {
             alignment: start;
-            padding-top: 6px;
-            padding-left: 12px;
-            padding-right: 12px;
-            spacing: 2px;
+            padding-top: root.big ? 10px : 6px;
+            padding-left: root.big ? 14px : 12px;
+            padding-right: root.big ? 22px : 12px;
+            spacing: root.big ? 4px : 2px;
             if Main.hits.length == 0: Text {
                 text: "No matches";
                 color: #9a8670;
@@ -1150,8 +834,10 @@ component Shelf inherits VerticalLayout {
                 font-size: 20px;
                 horizontal-alignment: center;
             }
-            for h[i] in Main.hits: SearchRow {
+            for h[i] in Main.hits: Hit {
                 hit: h;
+                index: i;
+                big: root.big;
                 show-project: Main.search-all;
                 clicked => { Main.open-hit(i); root.go(1); }
             }

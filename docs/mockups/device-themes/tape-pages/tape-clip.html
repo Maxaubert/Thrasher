@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tape Deck Clip Pages</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Oswald:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#140e0a;--chassis:#22170f;--chassis-2:#1a120c;--cream:#efe3c8;--cream-2:#e2d3b2;
+  --ink:#2a1c12;--ink-soft:#6b5644;--alu-ink:#3b342c;--red:#c9331f;--amber:#f2a64a;--brass:#c9a25e;--led:#ff5a3a;--slot:#120c08;
+  --mono:'JetBrains Mono',ui-monospace,monospace;--label:'Oswald','Arial Narrow',sans-serif;--hand:'Caveat','Comic Sans MS',cursive;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--cream);font-family:var(--label);padding:18px 24px 40px;min-height:100vh}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+svg{display:block}
+
+/* sheet structure */
+.top{margin-bottom:26px}
+.top h1{font-family:var(--hand);font-weight:700;font-size:46px;line-height:.9}
+.top h1 small{display:block;font-family:var(--label);font-weight:500;font-size:11px;letter-spacing:.32em;color:var(--brass);margin-bottom:6px}
+.top p{font-size:14px;color:#cdbb9b;margin-top:8px;max-width:900px}
+section.pg{margin:0 0 46px;padding-top:22px;border-top:1px solid #3a281a}
+.pg h2{font-family:var(--hand);font-weight:700;font-size:36px;line-height:1;color:var(--cream)}
+.pg h2 small{font-family:var(--label);font-size:11px;letter-spacing:.3em;color:var(--brass);margin-right:12px;vertical-align:8px}
+.pg .idea{font-size:14px;color:#cdbb9b;margin:6px 0 8px;letter-spacing:.02em}
+.pg ul{list-style:none;font-size:12.5px;color:#b9a585;display:grid;grid-template-columns:repeat(2,minmax(0,520px));gap:3px 26px;margin-bottom:16px}
+.pg li::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-right:8px;vertical-align:1px}
+.stage{display:flex;gap:36px;flex-wrap:wrap;align-items:flex-start}
+.cap{font-size:11px;letter-spacing:.24em;color:var(--brass);margin-bottom:8px;text-transform:uppercase}
+.states{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;margin-top:30px}
+.states .cap{color:#b9a585}
+
+/* window */
+.win{position:relative;height:620px;border-radius:10px;overflow:hidden;background:var(--chassis);
+  box-shadow:0 0 0 1px #000,0 20px 50px rgba(0,0,0,.55);display:flex;flex-direction:column}
+.portrait{width:400px}
+.wide{width:1000px}
+.panel{position:relative;width:400px;border-radius:8px;overflow:hidden;background:var(--chassis);box-shadow:0 0 0 1px #000,0 12px 30px rgba(0,0,0,.5)}
+
+.walnut{background:repeating-linear-gradient(90deg,rgba(0,0,0,.10) 0 2px,transparent 2px 9px),
+  repeating-linear-gradient(88deg,rgba(255,210,150,.05) 0 1px,transparent 1px 17px),linear-gradient(180deg,#714427,#4c2b17 60%,#3d2212)}
+.alu{background:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,rgba(0,0,0,.035) 1px 2px),linear-gradient(180deg,#dcd6ca,#bdb5a7 70%,#a9a193)}
+.screw{width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f0e4c8,#8a7a5e);position:absolute}
+.screw::after{content:"";position:absolute;left:1px;right:1px;top:3px;height:1px;background:#4a3a24;transform:rotate(35deg)}
+
+/* title bar */
+.tb{height:38px;flex:none;display:flex;align-items:center;padding:0 8px 0 10px;gap:8px;border-bottom:1px solid #1a0f08}
+.plate{display:flex;align-items:center;gap:8px;padding:3px 10px 3px 8px;border-radius:3px;
+  background:linear-gradient(180deg,#e3c58a,#b48c4b);box-shadow:inset 0 1px 0 #f6e2b4,0 1px 0 rgba(0,0,0,.4);color:#3a2610}
+.plate b{font-weight:600;font-size:13px;letter-spacing:.28em}
+.plate i{font-style:normal;font-size:9px;letter-spacing:.18em;opacity:.7}
+.plate .s{position:relative;width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f0e4c8,#8a7a5e)}
+.sp{flex:1}
+.tbtn{width:28px;height:26px;display:grid;place-items:center;border-radius:4px;color:#ecd9b5}
+.tbtn svg{width:15px;height:15px}
+/* eject back key */
+.eject{display:flex;align-items:center;gap:6px;height:26px;padding:0 10px 0 8px;border-radius:3px;color:#3a3129;
+  background:linear-gradient(180deg,#ece7dc,#c9c1b2 76%,#8f8778 76%,#6f685b);box-shadow:0 1px 2px #000,inset 0 1px 0 #fff;
+  font-size:10px;font-weight:600;letter-spacing:.24em}
+.eject svg{width:12px;height:12px;margin-top:-2px}
+
+/* piano keys */
+.k{position:relative;display:flex;align-items:center;justify-content:center;gap:5px;height:34px;padding:0 9px 4px;border-radius:2px 2px 4px 4px;color:#3a3129;
+  background:linear-gradient(180deg,#ece7dc,#c9c1b2 80%,#8f8778 80%,#6f685b);box-shadow:0 1px 0 #000,inset 0 1px 0 #fff;
+  font-size:9px;font-weight:500;letter-spacing:.2em;white-space:nowrap}
+.k svg{width:15px;height:15px}
+.k.on{background:linear-gradient(180deg,#d9d3c6,#bdb5a6 88%,#8f8778 88%,#6f685b);transform:translateY(2px);box-shadow:inset 0 1px 2px rgba(0,0,0,.35)}
+.k .lamp{width:6px;height:6px;border-radius:50%;background:#6b4a2a;box-shadow:inset 0 1px 1px #000;flex:none}
+.k.on .lamp{background:radial-gradient(circle at 35% 35%,#ffe0b0,var(--amber) 50%,#a2611f);box-shadow:0 0 5px rgba(242,166,74,.9)}
+.k.amber{background:linear-gradient(180deg,#f8c98a,var(--amber) 40%,#d4862c 80%,#8a531a 80%,#6c3f12);color:#2a1406;box-shadow:0 1px 0 #000,inset 0 1px 0 #ffe2b8}
+.k.red{background:linear-gradient(180deg,#e2543a,var(--red) 40%,#a72614 80%,#6e170b 80%,#55120a);color:#fff3e6;box-shadow:0 1px 0 #000,inset 0 1px 0 #ff9a7f}
+.k.off{opacity:.5}
+.k.dark{background:linear-gradient(180deg,#3a2d22,#2a1f17 80%,#17100b 80%,#0e0906);color:#e8cf9f;box-shadow:0 1px 0 #000,inset 0 1px 0 #4a3a2e}
+.k.sq{padding:0 0 4px;width:34px}
+.k .five{position:absolute;font-family:var(--mono);font-size:7px;font-weight:700;top:12px;color:#3a3129}
+.bank{display:flex;gap:3px;padding:3px;border-radius:4px;background:#0f0a06;box-shadow:0 1px 0 rgba(255,255,255,.6)}
+.bank.d{box-shadow:0 1px 0 rgba(255,220,170,.12)}
+
+/* deck parts */
+.deck{position:relative;flex:none;border-bottom:2px solid #0f0a06;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+.cass{border-radius:6px;padding:5px;background:#120c08;box-shadow:inset 0 2px 6px #000,0 1px 0 rgba(255,255,255,.6)}
+.cass svg{width:100%;height:100%}
+.reel{transform-box:fill-box;transform-origin:center;animation:spin 6s linear infinite}
+.reel.r2{animation-duration:4.2s}
+@keyframes spin{to{transform:rotate(360deg)}}
+.eng{font-size:8.5px;letter-spacing:.24em;color:var(--alu-ink);font-weight:500;text-transform:uppercase}
+.digits{display:inline-flex;gap:1px;align-items:center;padding:3px;border-radius:3px;background:#1b1410;box-shadow:inset 0 1px 3px #000,0 1px 0 rgba(255,255,255,.6)}
+.digits span{font-family:var(--mono);font-weight:700;font-size:15px;color:#f4ead6;background:linear-gradient(180deg,#0c0907,#2c231c 50%,#0c0907);width:11px;text-align:center;line-height:20px;border-radius:1px}
+.digits em{font-family:var(--mono);font-style:normal;color:#8d7d6a;font-size:12px;width:5px;text-align:center}
+.digits.big span{font-size:22px;width:16px;line-height:30px}
+.digits.big em{font-size:16px;width:7px}
+.of{font-family:var(--mono);font-size:11px;color:var(--alu-ink);font-weight:500}
+.meta{font-size:10px;letter-spacing:.12em;color:var(--alu-ink);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta b{font-family:var(--mono);font-weight:500;text-transform:none;letter-spacing:0}
+.mini{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:44px;height:38px;padding-bottom:4px;border-radius:2px 2px 4px 4px;color:#3a3129;
+  background:linear-gradient(180deg,#ece7dc,#c9c1b2 80%,#8f8778 80%,#6f685b);box-shadow:0 1px 0 #000,inset 0 1px 0 #fff;font-size:7.5px;letter-spacing:.18em;font-weight:500}
+.mini svg{width:13px;height:13px}
+.mini.del{color:#8e2012}
+
+/* tape seek strip */
+.tape{position:relative;border-radius:4px;background:#120c08;box-shadow:inset 0 2px 5px #000,0 1px 0 rgba(255,255,255,.6);padding:0 10px}
+.tape svg{width:100%;height:100%}
+.times{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--alu-ink);margin-top:3px;padding:0 4px}
+
+/* speed selector */
+.speed{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+.sel{display:flex;padding:2px;gap:2px;border-radius:3px;background:#1b1410;box-shadow:inset 0 1px 3px #000,0 1px 0 rgba(255,255,255,.6)}
+.sel span{font-family:var(--mono);font-size:9.5px;font-weight:700;color:#8d7d6a;width:28px;text-align:center;line-height:20px;border-radius:2px}
+.sel span.on{color:#2a1406;background:linear-gradient(180deg,#ffd49a,var(--amber) 60%,#c9802e);box-shadow:0 0 6px rgba(242,166,74,.5)}
+
+/* slide switch */
+.sw{width:34px;height:16px;border-radius:3px;background:#1b1410;box-shadow:inset 0 1px 3px #000,0 1px 0 rgba(255,255,255,.5);position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:12px;border-radius:2px;background:linear-gradient(180deg,#f4ecdc,#b7ae9c);box-shadow:0 1px 1px #000}
+.sw.on::after{left:17px}
+.sw.on{background:linear-gradient(90deg,#8a531a,#f2a64a);}
+.sw.dis{opacity:.45}
+
+/* transcript: rail + J-card */
+.tx{display:flex;flex-direction:column;min-height:0}
+.rail{display:flex;align-items:center;gap:6px;flex:none}
+.rail .ttl{font-size:10px;letter-spacing:.28em;color:#cdb68f;font-weight:500;flex:1}
+.tk{display:flex;align-items:center;justify-content:center;gap:5px;height:28px;min-width:30px;padding:0 7px 3px;border-radius:2px 2px 4px 4px;color:#3a3129;
+  background:linear-gradient(180deg,#ece7dc,#c9c1b2 80%,#8f8778 80%,#6f685b);box-shadow:0 1px 0 #000,inset 0 1px 0 #fff;font-size:8.5px;letter-spacing:.18em;font-weight:500}
+.tk svg{width:13px;height:13px}
+.tk.on{background:linear-gradient(180deg,#ffd49a,var(--amber) 60%,#c9802e 82%,#8a531a 82%,#6c3f12);color:#2a1406;transform:translateY(1px)}
+.tk.dim{opacity:.45}
+.marks{display:flex;align-items:center;gap:6px;font-size:8.5px;letter-spacing:.18em;color:#cdb68f;padding:0 4px}
+.jcard{position:relative;flex:1;min-height:0;border-radius:3px;color:var(--ink);overflow:hidden;
+  background:repeating-linear-gradient(0deg,rgba(120,90,50,.06) 0 1px,transparent 1px 5px),linear-gradient(180deg,#f4ead3,#e6d7b6);
+  box-shadow:0 1px 0 rgba(0,0,0,.6),0 0 0 1px #0d0805}
+.jcard .hd{height:20px;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:8px;letter-spacing:.24em;color:var(--ink-soft);
+  border-bottom:3px solid var(--red);box-shadow:0 2px 0 var(--amber)}
+.jcard .body{padding:8px 12px 10px 34px;font-family:var(--mono);font-size:12px;line-height:22px;color:#2f2117;
+  background:repeating-linear-gradient(180deg,transparent 0 21px,rgba(140,60,40,.18) 21px 22px);background-position:0 8px;min-height:100%}
+.jcard .margin{position:absolute;left:24px;top:23px;bottom:0;width:1px;background:rgba(201,51,31,.35)}
+.w.cur{background:var(--amber);color:#2a1406;border-radius:2px;box-shadow:0 0 0 2px var(--amber)}
+.tag{color:#c66a12;font-weight:700}
+.spk{color:#c66a12;font-style:italic}
+.pend{color:#a99880}
+.fail{color:var(--red);text-decoration:underline wavy rgba(201,51,31,.6)}
+.caret{display:inline-block;width:2px;height:15px;background:#d4862c;vertical-align:-3px;margin:0 -1px}
+.jcard.edit{box-shadow:0 0 0 2px var(--amber),0 0 14px rgba(242,166,74,.35)}
+.jcard.edit .body{background-color:transparent}
+.stampb{font-size:9px;letter-spacing:.14em;color:var(--red);border:1.5px solid var(--red);border-radius:2px;padding:0 5px;line-height:15px;transform:rotate(-3deg);text-transform:uppercase;font-weight:600;background:rgba(239,227,200,.9)}
+.empty .k{font-family:var(--label)}
+.empty{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:14px 14px 14px 34px;font-family:var(--hand);font-size:22px;color:var(--ink-soft)}
+.prog{height:8px;width:100%;border-radius:2px;background:#1b1410;box-shadow:inset 0 1px 2px #000;position:relative;overflow:hidden}
+.prog i{position:absolute;left:0;top:0;bottom:0;background:repeating-linear-gradient(90deg,#f2a64a 0 6px,#d4862c 6px 8px)}
+
+/* options strip */
+.opt{flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--chassis-2);border-top:1px solid #0d0805}
+.opt .l{font-size:10px;letter-spacing:.2em;color:#e3cfa9;font-weight:500}
+.opt .n{font-family:var(--hand);font-size:17px;color:#b9a585}
+
+/* footer */
+.foot{flex:none;height:54px;display:flex;align-items:center;gap:10px;padding:0 14px;border-top:1px solid #0d0805}
+.readout{flex:1;min-width:0;height:24px;display:flex;align-items:center;gap:7px;padding:0 9px;border-radius:2px;background:#120c08;box-shadow:inset 0 1px 3px #000,0 1px 0 rgba(255,220,170,.12);
+  font-family:var(--mono);font-size:10.5px;color:#e8cf9f;white-space:nowrap;overflow:hidden}
+.readout .led{width:7px;height:7px;border-radius:50%;flex:none;background:radial-gradient(circle at 35% 35%,#ffe0b0,var(--amber) 50%,#a2611f);box-shadow:0 0 5px rgba(242,166,74,.8)}
+.readout.blank{color:#5b4a3b}
+.readout.blank .led{background:#3a2a1c;box-shadow:none}
+.exp{width:128px;height:38px;flex:none}
+.exp .k{width:100%;height:38px;font-size:11px;font-weight:600;letter-spacing:.26em}
+.exp .k svg{width:13px;height:13px}
+.k.prog2{background:linear-gradient(180deg,#3a2d22,#2a1f17 80%,#17100b 80%,#0e0906);color:#f4ead6;font-family:var(--mono);letter-spacing:.05em;overflow:hidden}
+.k.prog2 .fill{position:absolute;left:0;top:0;bottom:4px;background:rgba(242,166,74,.38)}
+.k.prog2 span{position:relative;line-height:1}
+
+/* popups: index cards */
+.card{position:absolute;border-radius:3px;color:var(--ink);background:linear-gradient(180deg,#f7efdc,#eadcbd);
+  box-shadow:0 0 0 1px #0d0805,0 2px 0 rgba(0,0,0,.45),0 6px 0 rgba(0,0,0,.18),0 12px 0 rgba(0,0,0,.08)}
+.card .grp{font-size:8px;letter-spacing:.28em;color:var(--ink-soft);padding:6px 12px 2px;font-weight:500}
+.card .it{display:flex;align-items:center;gap:8px;height:30px;padding:0 12px;font-size:13px;letter-spacing:.04em}
+.card .it .nm2{flex:1}
+.card .it .tg{font-family:var(--mono);font-size:10px;color:var(--ink-soft)}
+.card .it.cur{font-weight:600}
+.card .it.cur::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--amber);box-shadow:0 0 4px var(--amber);margin-left:-10px;margin-right:-2px}
+.card .it.hov{background:rgba(242,166,74,.22)}
+.card .rule{height:1px;margin:3px 12px;background:rgba(107,86,68,.35)}
+.card .inst{font-size:10px;letter-spacing:.16em;color:var(--red);font-weight:600;border:1px solid var(--red);border-radius:2px;padding:0 5px;line-height:15px}
+.card .dot6{width:6px;height:6px;border-radius:50%;background:var(--ink-soft)}
+.field{display:flex;align-items:center;gap:7px;height:28px;margin:6px 8px;padding:0 9px;border-radius:2px;background:#fffaf0;box-shadow:inset 0 1px 2px rgba(0,0,0,.35);font-size:12px;color:var(--ink-soft)}
+.field svg{width:12px;height:12px}
+
+/* dialogs */
+.dim{position:absolute;inset:0;background:rgba(10,6,3,.66)}
+.dlg{left:50%;top:50%;width:330px;transform:translate(-50%,-58%);padding:16px 18px 14px}
+.dlg h3{font-family:var(--hand);font-weight:700;font-size:28px;line-height:1;color:#24170e}
+.dlg p{font-size:12px;letter-spacing:.06em;color:var(--ink-soft);margin-top:6px}
+.dlg .row{display:flex;justify-content:flex-end;gap:6px;margin-top:14px}
+.dlg .row .k{height:32px;font-size:9.5px}
+.dlg .bar{height:6px;border-radius:2px;background:#cbbd9f;box-shadow:inset 0 1px 2px rgba(0,0,0,.4);margin-top:12px;position:relative;overflow:hidden}
+.dlg .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--amber)}
+.lbl-edit{display:flex;align-items:center;height:30px;padding:0 10px;border-radius:2px;background:#fffaf0;box-shadow:inset 0 1px 2px rgba(0,0,0,.35),0 0 0 2px var(--amber);
+  font-family:var(--hand);font-weight:700;font-size:21px;color:#24170e;margin-top:12px}
+.lbl-edit .selt{background:rgba(242,166,74,.45)}
+
+/* shelf rows (order list) */
+.shelf{background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 48px),var(--chassis)}
+.orow{position:relative;display:flex;align-items:center;gap:7px;height:48px;padding:0 4px}
+.grip{width:14px;height:20px;flex:none;color:#8a7258}
+.num{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--amber);width:14px;text-align:center;flex:none}
+.knob{width:28px;height:28px;flex:none;border-radius:50%;display:grid;place-items:center;color:#2a1c12;
+  background:radial-gradient(circle at 35% 30%,#f3e9d4,#b7aa90 70%,#7d705a);box-shadow:0 1px 2px #000,inset 0 -1px 1px rgba(0,0,0,.3)}
+.knob svg{width:10px;height:10px;margin-left:1px}
+.knob.on{background:radial-gradient(circle at 35% 30%,#ffb47a,var(--amber) 55%,#a2611f);color:#2a1406}
+.knob.on svg{margin-left:0}
+.spine{flex:1;min-width:0;height:38px;display:flex;align-items:center;gap:8px;padding:0 4px 0 0;border-radius:3px;color:var(--ink);
+  background:repeating-linear-gradient(0deg,rgba(120,90,50,.07) 0 1px,transparent 1px 5px),linear-gradient(180deg,var(--cream),var(--cream-2));box-shadow:0 1px 0 rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.6)}
+.spine::before{content:"";width:22px;align-self:stretch;border-radius:3px 0 0 3px;flex:none;background:linear-gradient(90deg,var(--band) 0 70%,rgba(0,0,0,.15) 70% 74%,transparent 74%)}
+.spine .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.nm{font-family:var(--hand);font-weight:700;font-size:20px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#24170e}
+.note{font-family:var(--mono);font-size:10px;color:var(--ink-soft);white-space:nowrap}
+.xbtn,.dbtn{width:26px;height:26px;display:grid;place-items:center;color:#6b5644;flex:none;border-radius:3px}
+.xbtn svg{width:11px;height:11px}.dbtn svg{width:14px;height:14px}
+.orow.drag .spine{transform:translate(8px,-14px);background:repeating-linear-gradient(0deg,rgba(120,90,50,.07) 0 1px,transparent 1px 5px),linear-gradient(180deg,#fff6e2,#f1e2c1);
+  box-shadow:0 0 0 2px var(--amber),0 3px 0 rgba(0,0,0,.35),0 7px 0 rgba(0,0,0,.18),0 12px 0 rgba(0,0,0,.08)}
+.orow.gap{opacity:.55}
+.ghost{position:absolute;left:58px;right:34px;top:6px;height:36px;border-radius:3px;border:1.5px dashed rgba(242,166,74,.6)}
+.dymo{display:inline-flex;align-items:center;gap:7px;height:24px;padding:0 9px 0 10px;border-radius:3px;background:linear-gradient(180deg,#1b1b1d,#0b0b0c);color:#f5f1e8;
+  box-shadow:0 1px 2px #000,inset 0 1px 0 #3a3a3e;font-family:var(--mono);font-weight:700;font-size:11px;letter-spacing:.22em}
+.namefield{display:flex;align-items:center;height:36px;padding:0 12px;border-radius:3px;font-family:var(--hand);font-weight:700;font-size:23px;color:#24170e;
+  background:repeating-linear-gradient(0deg,rgba(120,90,50,.07) 0 1px,transparent 1px 5px),linear-gradient(180deg,#fffaf0,#efe3c8);box-shadow:inset 0 1px 3px rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.6)}
+.namefield.empty0{color:#a99880;font-weight:500}
+.hdr{display:flex;align-items:center;gap:10px;flex:none}
+.hdr h3{font-family:var(--hand);font-weight:700;font-size:32px;line-height:1;color:var(--cream);flex:1}
+.hdr .cnt{font-family:var(--mono);font-size:11px;color:#b9a585}
+.rbtn{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#3a3129;flex:none;
+  background:radial-gradient(circle at 35% 30%,#f3e9d4,#b7aa90 70%,#7d705a);box-shadow:0 1px 2px #000}
+.rbtn svg{width:14px;height:14px}
+.grille{border-radius:4px;background:repeating-linear-gradient(90deg,#1c140e 0 3px,transparent 3px 7px);opacity:.5}
+
+.still *,.still *::before,.still *::after{animation:none!important}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1><small>THRASHER THEME</small>Tape Deck clip pages</h1>
+  <p>The clip page loads the clip into the deck like a cassette. Transport, counter and tape path sit on the aluminium faceplate, the transcript is the typed insert card from the case, and every popup is a cream index card.</p>
+</header>
+
+<!-- ============ PAGE 1 ============ -->
+<section class="pg">
+  <h2><small>PAGE 1</small>One clip</h2>
+  <p class="idea">The clip is the cassette in the deck: its name is written on the label, and the deck plays it.</p>
+  <ul>
+    <li>Back to Clips is an Eject key in the title bar</li>
+    <li>Rename and Delete are small keys beside the tape counter</li>
+    <li>The waveform is the tape path with brass splice tabs as trim handles</li>
+    <li>Speed is a lit five step selector and Loop a latching key with a lamp</li>
+    <li>Transcript is the typed J card insert with a key rail above it</li>
+    <li>Export is the amber key in the walnut footer, status sits in a readout strip</li>
+  </ul>
+  <div class="stage">
+    <div><div class="cap">Portrait 400 x 620 · playing</div><div class="win portrait" id="p1"></div></div>
+    <div><div class="cap">Wide 1000 x 620 · playing</div><div class="win wide" id="w1"></div></div>
+  </div>
+  <div class="states" id="s1"></div>
+</section>
+
+<!-- ============ EDIT ============ -->
+<section class="pg">
+  <h2><small>PAGE 1 EDIT</small>Edit transcript</h2>
+  <p class="idea">The insert card rolls into the typewriter: the same card, now an amber framed sheet you type on.</p>
+  <ul>
+    <li>Card gets an amber frame and the caret is an amber typebar line</li>
+    <li>Pause tags are typed in amber like corrections</li>
+    <li>The change count is a red rubber stamp on the rail</li>
+    <li>Cancel and Save replace the rail keys, playback stops</li>
+    <li>Unsaved changes and Speaking new words are index cards over a dimmed deck</li>
+  </ul>
+  <div class="stage">
+    <div><div class="cap">Portrait 400 x 620 · editing</div><div class="win portrait" id="p2"></div></div>
+    <div><div class="cap">Wide 1000 x 620 · editing</div><div class="win wide" id="w2"></div></div>
+  </div>
+  <div class="states" id="s2"></div>
+</section>
+
+<!-- ============ PAGE 5 ============ -->
+<section class="pg">
+  <h2><small>PAGE 5</small>Merge</h2>
+  <p class="idea">A splicing bench: the picked tapes lie in a row, you shuffle them, then splice them into one new cassette.</p>
+  <ul>
+    <li>Order rows are tape spines with a grip, an amber place number and a play knob</li>
+    <li>Remove is a small x at the end of each spine</li>
+    <li>The new name is written on a blank cassette label</li>
+    <li>Merge is the red key, Cancel a plain key, both in the footer</li>
+    <li>Wide puts the splicing block and the name on the left deck panel</li>
+  </ul>
+  <div class="stage">
+    <div><div class="cap">Portrait 400 x 620</div><div class="win portrait" id="p5"></div></div>
+    <div><div class="cap">Wide 1000 x 620</div><div class="win wide" id="w5"></div></div>
+  </div>
+  <div class="states" id="s5"></div>
+</section>
+
+<script>
+const still = new URLSearchParams(location.search).has('still');
+if (still) document.documentElement.classList.add('still');
+const S='fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"';
+const I = {
+  min:`<svg viewBox="0 0 24 24" ${S} stroke-width="1.9"><path d="M6 12h12"/></svg>`,
+  close:`<svg viewBox="0 0 24 24" ${S} stroke-width="1.9"><path d="M7 7l10 10M17 7L7 17"/></svg>`,
+  x:`<svg viewBox="0 0 24 24" ${S} stroke-width="2.6"><path d="M7 7l10 10M17 7L7 17"/></svg>`,
+  eject:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 9H4z"/><rect x="4" y="16" width="16" height="3.2" rx=".8"/></svg>`,
+  back:`<svg viewBox="0 0 24 24" ${S} stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg>`,
+  pencil:`<svg viewBox="0 0 24 24" ${S} stroke-width="1.9"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>`,
+  trash:`<svg viewBox="0 0 24 24" ${S} stroke-width="1.9"><path d="M4 7h16M10 7V4.5h4V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/></svg>`,
+  play:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4.5v15a1 1 0 0 0 1.5.86l12.4-7.5a1 1 0 0 0 0-1.72L7.5 3.64A1 1 0 0 0 6 4.5z"/></svg>`,
+  pause:`<svg viewBox="0 0 24 24" fill="currentColor"><rect x="5.5" y="4" width="4.6" height="16" rx="1"/><rect x="13.9" y="4" width="4.6" height="16" rx="1"/></svg>`,
+  rew:`<svg viewBox="0 0 24 24" ${S} stroke-width="1.9"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 3.5v4.5h4.5"/></svg>`,
+  ff:`<svg viewBox="0 0 24 24" ${S} stroke-width="1.9"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></svg>`,
+  lang:`<svg viewBox="0 0 24 24" ${S} stroke-width="1.8"><path d="M4 5h9M8.5 3v2M6 5c1 3.5 3.5 6 6.5 7.5M11 5c-1 3.8-3.6 6.6-7 8"/><path d="M13 21l4-9 4 9M14.5 18h5"/></svg>`,
+  spark:`<svg viewBox="0 0 24 24" ${S} stroke-width="1.8"><path d="M10 3l1.8 5.2L17 10l-5.2 1.8L10 17l-1.8-5.2L3 10l5.2-1.8z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg>`,
+  copy:`<svg viewBox="0 0 24 24" ${S} stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg>`,
+  check:`<svg viewBox="0 0 24 24" ${S} stroke-width="2.6"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`,
+  up:`<svg viewBox="0 0 24 24" ${S} stroke-width="2.6"><path d="M12 19V5M6 11l6-6 6 6"/></svg>`,
+  grip:`<svg viewBox="0 0 14 20" fill="currentColor"><circle cx="4" cy="4" r="1.6"/><circle cx="10" cy="4" r="1.6"/><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="4" cy="16" r="1.6"/><circle cx="10" cy="16" r="1.6"/></svg>`,
+  dots:`<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>`,
+  search:`<svg viewBox="0 0 24 24" ${S} stroke-width="2"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>`
+};
+
+function rnd(seed){let s=seed*9301+49297;return()=>{s=(s*9301+49297)%233280;return s/233280}}
+/* the tape path: waveform, played part amber, trimmed parts dimmed, brass splice tabs */
+function tapeStrip(w,h,played,t0,t1,seed){
+  const r=rnd(seed),n=Math.floor(w/3.2);let b='';
+  for(let k=0;k<n;k++){const f=k/n,a=Math.max(2,(0.2+0.8*r())*(0.55+0.45*Math.sin(f*Math.PI*3+1)**2)*(h-14));
+    const col=f<played?'#f2a64a':'#a8937a';b+=`<rect x="${(k*3.2).toFixed(1)}" y="${((h-a)/2).toFixed(1)}" width="1.8" height="${a.toFixed(1)}" fill="${col}"/>`}
+  const tab=(x,on)=>`<rect x="${x-1.5}" y="0" width="3" height="${h}" fill="${on?'#e3c58a':'#6b5a48'}"/><rect x="${x-4.5}" y="${h/2-10}" width="9" height="20" rx="1" fill="${on?'url(#br)':'#6b5a48'}" stroke="#2a1c12" stroke-width=".8"/><rect x="${x-2.5}" y="${h/2-5}" width="5" height="1.2" fill="#2a1c12" opacity=".5"/><rect x="${x-2.5}" y="${h/2-1}" width="5" height="1.2" fill="#2a1c12" opacity=".5"/><rect x="${x-2.5}" y="${h/2+3}" width="5" height="1.2" fill="#2a1c12" opacity=".5"/>`;
+  const x0=t0*w,x1=t1*w,px=played*w;
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="none"><defs><linearGradient id="br" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#f0d9a2"/><stop offset="1" stop-color="#a47a3c"/></linearGradient></defs>
+  <rect x="0" y="${h/2-.5}" width="${w}" height="1" fill="#3b2a1c"/>${b}
+  <rect x="0" y="0" width="${x0}" height="${h}" fill="rgba(18,12,8,.72)"/><rect x="${x1}" y="0" width="${w-x1}" height="${h}" fill="rgba(18,12,8,.72)"/>
+  ${played>0?`<rect x="${px-1}" y="0" width="2" height="${h}" fill="#f4ead6"/>`:''}
+  ${tab(x0,t0>0.0005)}${tab(x1,t1<0.9995)}</svg>`;
+}
+
+function cassette(id,name,sub){
+  const hub=(cx,cls)=>{let t='';for(let k=0;k<6;k++)t+=`<rect x="${cx-1.6}" y="${48-11.5}" width="3.2" height="4" rx=".6" transform="rotate(${k*60} ${cx} 48)" fill="#e9dfcb"/>`;
+    return `<g class="reel ${cls}"><circle cx="${cx}" cy="48" r="11.5" fill="none" stroke="#e9dfcb" stroke-width="2.4"/>${t}</g>`};
+  return `<svg viewBox="0 0 280 100" preserveAspectRatio="xMidYMid meet">
+  <defs><clipPath id="win${id}"><rect x="62" y="35" width="156" height="27" rx="6"/></clipPath>
+  <linearGradient id="sh${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a3a2e"/><stop offset="1" stop-color="#2b2019"/></linearGradient></defs>
+  <rect x="6" y="3" width="268" height="94" rx="7" fill="url(#sh${id})" stroke="#0b0705"/>
+  <rect x="16" y="7" width="248" height="67" rx="4" fill="#efe3c8"/>
+  <text x="24" y="14" font-family="Oswald" font-size="5.5" letter-spacing="2" fill="#6b5644">SIDE A</text>
+  <text x="256" y="14" text-anchor="end" font-family="Oswald" font-size="5.5" letter-spacing="2" fill="#6b5644">C60</text>
+  <text x="140" y="27.5" text-anchor="middle" font-family="Caveat" font-weight="700" font-size="17" fill="#24170e">${name}</text>
+  <rect x="24" y="29.5" width="232" height=".7" fill="#b9a585"/>
+  <rect x="16" y="66" width="248" height="3" fill="#c9331f"/><rect x="16" y="70" width="248" height="1.6" fill="#d99a2b"/>
+  <rect x="58" y="32" width="164" height="33" rx="8" fill="#2a1d13"/>
+  <g clip-path="url(#win${id})"><rect x="62" y="35" width="156" height="27" fill="#3b2415"/>
+    <circle cx="96" cy="48" r="22" fill="#5b331b"/><circle cx="184" cy="48" r="28" fill="#5b331b"/>
+    <rect x="62" y="35" width="156" height="27" fill="rgba(242,166,74,.10)"/><rect x="62" y="35" width="156" height="5" fill="rgba(255,255,255,.08)"/></g>
+  ${hub(96,'r1')}${hub(184,'r2')}
+  <text x="140" y="86" text-anchor="middle" font-family="Oswald" font-size="6.5" letter-spacing="2.2" fill="#c9b99c">${sub}</text>
+  <path d="M86 97l8-8h92l8 8" fill="#1d1510" stroke="#0b0705"/>
+  <circle cx="13" cy="10" r="2" fill="#1d1510"/><circle cx="267" cy="10" r="2" fill="#1d1510"/><circle cx="13" cy="90" r="2" fill="#1d1510"/><circle cx="267" cy="90" r="2" fill="#1d1510"/>
+  </svg>`;
+}
+const digits=(s,big)=>`<div class="digits${big?' big':''}">${[...s].map(c=>/\d/.test(c)?`<span>${c}</span>`:`<em>${c}</em>`).join('')}</div>`;
+const tb=(back)=>`<div class="tb walnut">${back?`<button class="eject" title="Back to Clips">${I.eject}CLIPS</button>`:''}<div class="plate"><span class="s"></span><b>THRASHER</b><i>STEREO</i></div><div class="sp"></div>
+  <button class="tbtn" title="Minimize">${I.min}</button><button class="tbtn" title="Close">${I.close}</button></div>`;
+const screws=()=>`<span class="screw" style="left:6px;top:6px"></span><span class="screw" style="right:6px;top:6px"></span><span class="screw" style="left:6px;bottom:6px"></span><span class="screw" style="right:6px;bottom:6px"></span>`;
+
+const META='Sat 05:48 · 2:03 · mic · <b>clip_005.wav</b>';
+const WORDS='Okay so quick note before the session tonight. The mixer in studio two is still humming on channel four and I think it is the ground lift. Let us swap the cable first and test again on Monday. Also remind Nima about the invoice for the tapes.'.split(' ');
+function transcriptText(cur){return WORDS.map((w,i)=>i===cur?`<span class="w cur">${w}</span>`:w).join(' ')}
+const MARKED=`Okay so quick note before the session tonight. <span class="tag">[silence:1.5s]</span> The mixer in studio two is still humming on channel four and I think it is the <span class="spk">earth</span> lift. <span class="tag">[silence:2s]</span> Let us swap the cable first and test again on Monday. Also remind Nima about the invoice for the tapes.`;
+const EDIT=`Okay so quick note before the session tonight. <span class="tag">[silence:1.5s]</span> The mixer in studio two is still humming on channel four and I think it is the ground lift. <span class="tag">[silence:0.5s]</span> Let us swap the cable first and test again on Tuesday<span class="caret"></span>. Also remind Nima about the invoice for the session tapes.`;
+
+/* key rail over the J card */
+function rail(o={}){
+  if(o.editing) return `<div class="rail"><div class="ttl">TRANSCRIPT</div><span class="stampb">2 changes</span>
+    <button class="tk" title="Cancel">CANCEL</button><button class="tk on" title="Save" style="transform:none">${I.check}SAVE</button></div>`;
+  if(o.none) return `<div class="rail"><div class="ttl">TRANSCRIPT</div></div>`;
+  return `<div class="rail"><div class="ttl">TRANSCRIPT</div>
+   <button class="tk${o.lang?' on':''}" title="Translate">${I.lang}</button>
+   <button class="tk${o.sum?' on':''}" title="${o.sum?'Original':'Summary'}">${I.spark}</button>
+   <button class="tk${o.copied?' on':''}" title="Copy">${o.copied?I.check:I.copy}</button>
+   <div class="marks" style="${o.lang||o.sum?'opacity:.45':''}">SHOW MARKS<i class="sw${o.marks?' on':''}"></i></div>
+   <button class="tk${o.lang||o.sum?' dim':''}" title="Edit transcript">${I.pencil}EDIT</button></div>`;
+}
+function jcard(body,o={}){
+  return `<div class="jcard${o.editing?' edit':''}"><div class="hd"><span>${o.head||'INSERT'}</span><span>clip_005</span></div><div class="margin"></div>
+  ${o.raw?body:`<div class="body">${body}</div>`}</div>`;
+}
+function transport(o){
+  const big=o.big;
+  return `<div style="display:flex;align-items:flex-end;gap:${big?12:9}px">
+   <div class="bank"><button class="k sq" title="Back 5 seconds" style="${big?'width:44px;height:44px':''}">${I.rew}<i class="five" style="${big?'top:17px':''}">5</i></button>
+     <button class="k${o.playing?' on amber':''}" title="${o.playing?'Pause':'Play'}" style="width:${big?70:52}px;height:${big?44:34}px">${o.playing?I.pause:I.play}</button>
+     <button class="k sq" title="Forward 5 seconds" style="${big?'width:44px;height:44px':''}">${I.ff}<i class="five" style="${big?'top:17px':''}">5</i></button></div>
+   <div class="speed"><span class="eng">Speed</span><div class="sel" title="Speed">${['0.75','1.0','1.25','1.5','2.0'].map((s,i)=>`<span class="${i===(o.speed??1)?'on':''}" style="${big?'width:34px;line-height:24px;font-size:10.5px':''}">${s}</span>`).join('')}</div></div>
+   <div class="bank"><button class="k${o.loop?' on':''}" title="Loop" style="height:${big?44:34}px;${big?'padding:0 14px 4px':''}"><i class="lamp"></i>LOOP</button></div>
+  </div>`;
+}
+function footer(o={}){
+  let ex;
+  if(o.export===1) ex=`<button class="k prog2" title="Exporting 42%"><i class="fill" style="width:42%"></i><span>42%</span></button>`;
+  else if(o.export===2) ex=`<button class="k amber" title="Export">${I.check}DONE</button>`;
+  else ex=`<button class="k amber" title="Export">EXPORT ${I.up}</button>`;
+  const st=o.status;
+  return `<div class="foot walnut">${st?`<div class="readout"><i class="led"></i>${st}</div>`:`<div class="readout blank"><i class="led"></i>no messages</div>`}
+   ${o.noexport?o.right:`<div class="exp">${ex}</div>`}</div>`;
+}
+function optStrip(h,on){return `<div class="opt" style="height:${h}px"><i class="sw${on?' on':''}" title="Clean voice on export"></i><span class="l">CLEAN VOICE ON EXPORT</span><span class="n">Less noise</span></div>`}
+
+/* ---------- one clip, portrait ---------- */
+function clipPortrait(o={}){
+  const pos=o.editing?'0:00':'0:47', played=o.editing?0:0.38;
+  const tx = o.editing? rail({editing:1})+`<div style="height:6px"></div>`+jcard(EDIT,{editing:1,head:'TYPING'})
+            : rail(o)+`<div style="height:6px"></div>`+jcard(o.marks?MARKED:transcriptText(18),{});
+  return tb(true)+`<div class="deck alu" style="padding:10px 12px 10px">
+   <div style="display:flex;gap:8px;height:92px">
+     <div class="cass" style="flex:1">${cassette('p'+(o.editing?'e':''),'clip_005','MIC')}</div>
+     <div style="width:96px;display:flex;flex-direction:column;justify-content:space-between">
+       <div style="display:flex;gap:4px"><button class="mini" title="Rename">${I.pencil}RENAME</button><button class="mini del" title="Delete">${I.trash}DELETE</button></div>
+       <div><div class="eng" style="margin-bottom:2px">Counter</div>${digits(pos.padStart(5,'0'))}<div class="of" style="margin-top:2px">of 2:03</div></div>
+     </div>
+   </div>
+   <div class="meta" style="margin-top:6px">${META}</div>
+   <div class="tape" style="height:40px;margin-top:6px" title="Seek and trim">${tapeStrip(352,40,played,0.04,1,5)}</div>
+   <div style="margin-top:8px">${transport({playing:!o.editing,loop:false,speed:1})}</div>
+  </div>
+  <div class="tx" style="flex:1;padding:9px 12px 10px">${tx}</div>
+  ${optStrip(38,true)}${footer({status:o.editing?'':'Exported clip_005.flac'})}`;
+}
+/* ---------- one clip, wide ---------- */
+function clipWide(o={}){
+  const pos=o.editing?'0:00':'0:47', played=o.editing?0:0.38;
+  const tx = o.editing? rail({editing:1})+`<div style="height:8px"></div>`+jcard(EDIT,{editing:1,head:'TYPING'})
+            : rail(o)+`<div style="height:8px"></div>`+jcard(transcriptText(18));
+  return tb(true)+`<div style="flex:1;display:flex;min-height:0">
+   <div class="deck alu" style="width:460px;border-bottom:0;border-right:2px solid #0f0a06;padding:16px 18px;display:flex;flex-direction:column;gap:10px">${screws()}
+     <div class="cass" style="height:150px">${cassette('w'+(o.editing?'e':''),'clip_005','MIC')}</div>
+     <div style="display:flex;align-items:flex-end;gap:12px">
+       <div style="flex:1"><div class="eng" style="margin-bottom:4px">Tape counter</div><div style="display:flex;align-items:flex-end;gap:8px">${digits(pos.padStart(5,'0'),true)}<span class="of">of 2:03</span></div></div>
+       <button class="mini" title="Rename" style="width:54px;height:44px">${I.pencil}RENAME</button><button class="mini del" title="Delete" style="width:54px;height:44px">${I.trash}DELETE</button>
+     </div>
+     <div class="meta">${META}</div>
+     <div><div class="tape" style="height:62px" title="Seek and trim">${tapeStrip(404,62,played,0.04,1,5)}</div>
+       <div class="times"><span>${pos}</span><span>2:03</span></div></div>
+     ${transport({playing:!o.editing,speed:1,big:1})}
+     <div style="flex:1;display:flex;align-items:flex-end;gap:12px">
+       <div style="display:flex;flex-direction:column;gap:5px"><span class="eng">Options</span>
+         <div style="display:flex;align-items:center;gap:10px"><i class="sw on" title="Clean voice on export"></i><span style="font-size:11px;letter-spacing:.16em;color:var(--alu-ink);font-weight:500">CLEAN VOICE ON EXPORT</span></div>
+         <span style="font-family:var(--hand);font-size:18px;color:var(--ink-soft);line-height:1">Less noise</span></div>
+       <div class="grille" style="flex:1;height:50px"></div>
+     </div>
+   </div>
+   <div class="tx" style="flex:1;padding:16px 20px 14px">${tx}</div>
+  </div>${footer({status:o.editing?'':'Exported clip_005.flac'})}`;
+}
+
+document.getElementById('p1').innerHTML=clipPortrait();
+document.getElementById('w1').innerHTML=clipWide();
+document.getElementById('p2').innerHTML=clipPortrait({editing:1});
+document.getElementById('w2').innerHTML=clipWide({editing:1});
+
+/* ---------- page 1 states ---------- */
+const panel=(cap,h,inner,w=400)=>`<div><div class="cap">${cap}</div><div class="panel" style="height:${h}px;width:${w}px">${inner}</div></div>`;
+const s1=[];
+// rename inline
+s1.push(panel('A · Rename on the label',150,`<div class="alu" style="height:100%;padding:12px 14px;position:relative">
+  <div class="eng">Rename on the label</div>
+  <div class="lbl-edit"><span class="selt">clip_005</span><span class="caret"></span></div>
+  <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:12px"><div class="bank"><button class="k" title="Cancel">CANCEL</button><button class="k amber" title="Rename">RENAME</button></div></div>
+  <div class="meta" style="margin-top:8px">${META}</div></div>`));
+// export menu
+s1.push(panel('B · Export index card open',400,`<div style="position:absolute;inset:0;background:var(--chassis)"></div>
+  <div class="card" style="right:14px;bottom:62px;width:250px;padding:4px 0">
+   <div class="it hov"><span class="nm2">All files</span><span class="tg">folder</span></div><div class="rule"></div>
+   <div class="grp">AUDIO</div>
+   <div class="it cur"><span class="nm2">FLAC</span><span class="tg">lossless</span></div>
+   <div class="it"><span class="nm2">WAV</span><span class="tg">standard</span></div>
+   <div class="it"><span class="nm2">MP3</span><span class="tg">small</span></div><div class="rule"></div>
+   <div class="grp">TRANSCRIPT</div>
+   <div class="it"><span class="nm2">Text with times</span><span class="tg">txt</span></div>
+   <div class="it"><span class="nm2">Subtitles SRT</span><span class="tg">video</span></div>
+   <div class="it"><span class="nm2">Subtitles VTT</span><span class="tg">web</span></div>
+   <div class="it"><span class="nm2">Word timestamps</span><span class="tg">json</span></div></div>
+  <div style="position:absolute;left:0;right:0;bottom:0">${footer({status:''})}</div>`));
+// exporting / done
+s1.push(panel('C · Export key while exporting and done',120,`<div style="position:absolute;inset:0">${footer({export:1,status:'Exporting clip_005.flac'})}</div><div style="position:absolute;left:0;right:0;top:60px">${footer({export:2,status:'Exported clip_005.flac'})}</div>`));
+// no transcript / transcribing
+s1.push(panel('D · No transcript yet and transcribing',300,`<div class="tx" style="position:absolute;left:12px;right:12px;top:10px;height:134px">${rail({none:1})}<div style="height:6px"></div>${jcard(`<div class="empty">No transcript yet<div class="bank"><button class="k amber" title="Transcribe">TRANSCRIBE</button></div></div>`,{raw:1})}</div>
+  <div class="tx" style="position:absolute;left:12px;right:12px;top:156px;height:134px">${rail({none:1})}<div style="height:6px"></div>${jcard(`<div class="empty" style="width:100%;padding-right:16px">Transcribing 63%<div class="prog"><i style="width:63%"></i></div></div>`,{raw:1})}</div>`));
+// translate menu + summary
+s1.push(panel('E · Translate card and Summary view',400,`<div class="tx" style="position:absolute;left:12px;right:12px;top:10px;bottom:10px">${rail({sum:1})}<div style="height:6px"></div>${jcard('Studio two mixer hums on channel four. Likely the ground lift.<br><br>To do<br>Swap the cable and test again Monday<br>Remind Nima about the invoice',{head:'SUMMARY'})}</div>
+  <div class="card" style="right:22px;top:46px;width:250px;padding:2px 0 4px">
+   <div class="field">${I.search}Search</div>
+   <div class="it cur"><span class="nm2">Original</span></div>
+   <div class="it"><span class="nm2">Norwegian <span class="tg">Norsk</span></span><i class="dot6"></i></div>
+   <div class="it hov"><span class="nm2">German <span class="tg">Deutsch</span></span></div>
+   <div class="it"><span class="nm2">Spanish <span class="tg">Español</span></span></div>
+   <div class="it" style="color:#a99880"><span class="nm2">Japanese <span class="tg">日本語</span></span><span class="inst">INSTALL</span></div>
+   <div class="it" style="color:#a99880"><span class="nm2">Korean <span class="tg">한국어</span></span><span class="inst">INSTALL</span></div></div>`));
+// show marks + copied
+s1.push(panel('F · Show marks on and Copy done',262,`<div class="tx" style="position:absolute;left:12px;right:12px;top:10px;bottom:10px">${rail({marks:1,copied:1})}<div style="height:6px"></div>${jcard(MARKED.replace('the tapes','the <span class="pend">tapes</span>'))}</div>`));
+// delete dialog
+s1.push(panel('G · Delete card',260,`<div class="alu" style="position:absolute;inset:0"></div><div class="dim"></div>
+  <div class="card dlg"><h3>Delete clip_005</h3><p>Goes to the Recycle Bin</p><div class="row"><div class="bank" style="background:#cbbd9f;box-shadow:none"><button class="k" title="Cancel">CANCEL</button><button class="k red" title="Delete">DELETE</button></div></div></div>`));
+// merged clip parts
+s1.push(panel('H · Merged clip parts · PARTS WORKING while busy',300,`<div class="shelf" style="position:absolute;inset:0;padding:10px 12px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span style="font-size:10px;letter-spacing:.28em;color:#cdb68f">PARTS</span></div>
+  ${[['clip_005','2:03 · starts at 0:00','#d99a2b'],['clip_001','16:53 · starts at 2:03','#c9331f'],['Meeting (2)','0:02 · starts at 18:56','#3f7c74']].map((r,i)=>`<div class="orow"><i class="grip">${I.grip}</i><span class="num">${i+1}</span>
+   <div class="spine" style="--band:${r[2]}"><div class="t"><div class="nm">${r[0]}</div><div class="note">${r[1]}</div></div><button class="dbtn" title="Options">${I.dots}</button></div></div>`).join('')}
+  </div><div class="card" style="right:22px;top:118px;width:160px;padding:4px 0"><div class="it hov">Rename</div><div class="it">Remove</div></div>`));
+s1.push(panel('I · Rename part card',200,`<div class="alu" style="position:absolute;inset:0"></div><div class="dim"></div>
+  <div class="card dlg" style="transform:translate(-50%,-50%)"><h3>Rename part</h3><div class="field" style="margin:10px 0 0;font-family:var(--hand);font-size:19px;color:#24170e;font-weight:700;box-shadow:inset 0 1px 2px rgba(0,0,0,.35),0 0 0 2px var(--amber)">clip_001<span class="caret"></span></div>
+  <div class="row"><div class="bank" style="background:#cbbd9f;box-shadow:none"><button class="k" title="Cancel">CANCEL</button><button class="k amber" title="Rename">RENAME</button></div></div></div>`));
+document.getElementById('s1').innerHTML=s1.join('');
+
+/* ---------- edit states ---------- */
+const s2=[];
+s2.push(panel('A · Leaving with changes',260,`<div class="alu" style="position:absolute;inset:0"></div><div class="dim"></div>
+  <div class="card dlg" style="width:350px"><h3>Unsaved changes</h3><p>Leave without saving</p><div class="row"><div class="bank" style="background:#cbbd9f;box-shadow:none"><button class="k" title="Cancel">CANCEL</button><button class="k" title="Discard changes">DISCARD CHANGES</button><button class="k amber" title="Save">SAVE</button></div></div></div>`));
+s2.push(panel('B · Speaking new words after Save',260,`<div class="alu" style="position:absolute;inset:0"></div><div class="dim" style="background:rgba(0,0,0,.78)"></div>
+  <div class="card dlg" style="width:320px"><h3>Speaking new words</h3><p>Voice 2 of 3</p><div class="bar"><i style="width:58%"></i></div>
+   <div class="row" style="justify-content:space-between;align-items:center"><span style="font-family:var(--mono);font-size:12px;color:var(--ink-soft)">58%</span><div class="bank" style="background:#cbbd9f;box-shadow:none"><button class="k" title="Cancel">CANCEL</button></div></div></div>`));
+s2.push(panel('C · Save stays dim until something changed',56,`<div style="position:absolute;inset:0;padding:14px 12px"><div class="rail"><div class="ttl">TRANSCRIPT</div><button class="tk" title="Cancel">CANCEL</button><button class="tk on dim" title="Save" style="transform:none">${I.check}SAVE</button></div></div>`));
+document.getElementById('s2').innerHTML=s2.join('');
+
+/* ---------- merge ---------- */
+const MROWS=[['clip_005','2:03','#d99a2b'],['clip_001','16:53','#c9331f'],['Meeting (2)','0:02','#3f7c74']];
+function orderRows(playing,drag){
+  return MROWS.map((r,i)=>`<div class="orow${drag===i?' drag':''}">${drag===i?'':''}<i class="grip" title="Drag">${I.grip}</i><span class="num">${i+1}</span>
+   <button class="knob${playing===i?' on':''}" title="${playing===i?'Pause':'Play'}">${playing===i?I.pause:I.play}</button>
+   <div class="spine" style="--band:${r[2]}"><div class="t"><div class="nm">${r[0]}</div><div class="note">${r[1]}</div></div><button class="xbtn" title="Remove">${I.x}</button></div></div>`).join('');
+}
+const mergeKeys=(state)=>`<div class="bank"><button class="k" title="Cancel" style="height:38px">CANCEL</button><button class="k red${state==='busy'||state==='empty'?' off':''}" title="Merge" style="height:38px;width:150px;font-size:10.5px;font-weight:600;letter-spacing:.22em">${state==='busy'?'MERGING':'MERGE 3 CLIPS'}</button></div>`;
+document.getElementById('p5').innerHTML=tb(false)+`
+  <div style="padding:12px 14px 8px;background:var(--chassis-2);border-bottom:1px solid #0d0805" class="hdr"><button class="rbtn" title="Back">${I.back}</button><h3>Merge clips</h3><span class="cnt">3 clips</span></div>
+  <div class="shelf" style="flex:1;padding:10px 12px 0">
+    <div style="font-size:10px;letter-spacing:.28em;color:#cdb68f;margin:0 0 4px 4px">ORDER</div>
+    ${orderRows(0)}
+  </div>
+  <div class="deck alu" style="border-bottom:0;border-top:2px solid #0f0a06;padding:12px 14px 14px">
+    <div class="eng" style="margin-bottom:6px">New clip · Name</div>
+    <div class="namefield" title="Name of the merged clip">clip_005 merged</div>
+  </div>`+footer({status:'Merged 3 clips into clip_005 merged',noexport:1,right:mergeKeys()});
+
+document.getElementById('w5').innerHTML=tb(false)+`<div style="flex:1;display:flex;min-height:0">
+  <div class="deck alu" style="width:400px;border-bottom:0;border-right:2px solid #0f0a06;padding:16px 18px;display:flex;flex-direction:column;gap:14px">${screws()}
+    <div class="hdr"><button class="rbtn" title="Back">${I.back}</button><h3 style="color:var(--ink)">Merge clips</h3><span class="cnt" style="color:var(--alu-ink)">3 clips</span></div>
+    <div><div class="eng" style="margin-bottom:5px">Splicing block</div>
+     <div style="height:86px;border-radius:5px;background:linear-gradient(180deg,#8f877a,#6f685b);box-shadow:inset 0 2px 4px rgba(0,0,0,.5),0 1px 0 rgba(255,255,255,.6);position:relative">
+      <div style="position:absolute;left:12px;right:12px;top:34px;height:18px;background:#2a1d13;box-shadow:inset 0 2px 3px #000"></div>
+      <div style="position:absolute;left:16px;width:104px;top:37px;height:12px;background:#5b331b"></div>
+      <div style="position:absolute;left:122px;width:180px;top:37px;height:12px;background:#5b331b"></div>
+      <div style="position:absolute;left:304px;right:16px;top:37px;height:12px;background:#5b331b"></div>
+      <div style="position:absolute;left:112px;width:18px;top:35px;height:16px;background:rgba(239,227,200,.85)"></div>
+      <div style="position:absolute;left:295px;width:18px;top:35px;height:16px;background:rgba(239,227,200,.85)"></div>
+      <div style="position:absolute;left:40px;top:12px;width:8px;height:8px;border-radius:50%;background:#d99a2b"></div>
+      <div style="position:absolute;left:200px;top:12px;width:8px;height:8px;border-radius:50%;background:#c9331f"></div>
+      <div style="position:absolute;left:324px;top:12px;width:8px;height:8px;border-radius:50%;background:#3f7c74"></div>
+     </div></div>
+    <div><div class="eng" style="margin-bottom:5px">New clip</div>
+     <div class="cass" style="height:118px;position:relative">${cassette('m','clip_005 merged','NAME')}</div>
+     <div class="namefield" style="margin-top:10px" title="Name of the merged clip">clip_005 merged</div></div>
+    <div class="grille" style="flex:1;max-height:40px"></div>
+  </div>
+  <div class="shelf" style="flex:1;padding:16px 22px 0 14px">
+    <div style="font-size:10px;letter-spacing:.28em;color:#cdb68f;margin:0 0 6px 4px">ORDER</div>
+    ${orderRows(0)}
+  </div></div>`+footer({status:'Merged 3 clips into clip_005 merged',noexport:1,right:mergeKeys()});
+
+const s5=[];
+s5.push(panel('A · Dragging a tape to a new place',200,`<div class="shelf" style="position:absolute;inset:0;padding:22px 12px 0">${orderRows(-1,1)}</div>`));
+s5.push(panel('B · Merging and empty name',150,`<div class="alu" style="position:absolute;left:0;right:0;top:0;height:60px;padding:12px 14px"><div class="namefield empty0">Name</div></div>
+  <div style="position:absolute;left:0;right:0;bottom:0">${footer({status:'',noexport:1,right:mergeKeys('empty')})}</div>`));
+s5.push(panel('C · While merging',70,`<div style="position:absolute;inset:0">${footer({status:'Merging 3 clips',noexport:1,right:mergeKeys('busy')})}</div>`));
+document.getElementById('s5').innerHTML=s5.join('');
+</script>
+</body>
+</html>

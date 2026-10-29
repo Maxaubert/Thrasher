@@ -2,7 +2,7 @@
 # Cuts a device skin's art out of its element page with headless Edge, at 1x and 2x,
 # on a transparent background (docs/device-themes.md, "Recipe from the pilot").
 #
-#   sh tools/skin-art/cut.sh tape OUT_DIR
+#   sh tools/skin-art/cut.sh tape OUT_DIR    (or x-comic)
 #
 # reads tools/skin-art/<skin>.html and the piece list below, and writes OUT_DIR/<name>.png
 # and OUT_DIR/<name>@2x.png. Copy the ones the skin uses to crates/thrasher-app/ui/skins/<skin>/.
@@ -28,6 +28,9 @@ dv-os95) PIECES="desk:desk:4:4 checker:checker:2:2 floppy:floppy:16:15 balloon:b
   led:led:4:4 gear:gear:10:10 min:min:6:8 close:close:8:7 play:play:4:7 pause:pause:5:7 taskplay:taskplay:5:9
   taskpause:taskpause:5:9 dots:dots:2:10 arrow:arrow:7:4 mag:mag:10:10 spk:spk:9:8 thumb:thumb:11:18 logo:logo:13:12
   check:check:10:10" ;;
+x-comic) PIECES="logo:logo:214:52 picked:picked:60:26 rec-p:rec-p:128:128 rec-w:rec-w:200:200 stop-p:stop-p:256:128 stop-w:stop-w:400:200
+  meter-off-p:meter-off-p:118:38 meter-on-p:meter-on-p:118:38 meter-off-w:meter-off-w:178:56 meter-on-w:meter-on-w:178:56
+  dots:dots:7:7 dots-yellow:dots-yellow:6:6 dots-grey:dots-grey:5:5" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 

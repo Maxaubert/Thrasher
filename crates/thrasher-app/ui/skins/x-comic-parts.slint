@@ -1,0 +1,393 @@
+// The Comic Book's parts (docs/mockups/device-themes/x-comic.html): inked panels with
+// hard shadows, halftone dots, the ink icons, the POW burst, the BZZZZZZZZT meter and
+// the speech bubble. The fixed art is in x-comic/, cut by tools/skin-art (x-comic.html).
+// Kept apart from the main page so the other pages can use them when they get the look.
+
+import { Theme, Fx, Main, Tips } from "../common.slint";
+
+// The inks and papers of the page.
+export global Comic {
+    out property <color> ink: #141010;
+    out property <color> paper: #fdf4dc;
+    out property <color> paper2: #f6e8c3;
+    out property <color> red: #e3342f;
+    out property <color> yellow: #ffd43b;
+    out property <color> blue: #2a6fdb;
+    out property <color> cyan: #7cc6ee;
+    out property <color> grey: #b9ad93;
+    out property <color> sub: #6d6452;
+    out property <color> sub-on-yellow: #5a4400;
+}
+
+// A halftone tile, repeated: 0 cyan dots on white (the recorder), 1 orange dots on
+// yellow (the footer), 2 grey dots on white (the empty progress bar).
+export component Dots inherits Image {
+    in property <int> kind;
+    // A tile repeats at one image pixel per logical pixel, so the 1x tile keeps the
+    // mockup's period at every scale (a 2x tile would draw the dots twice as far apart).
+    source: root.kind == 1 ? @image-url("x-comic/dots-yellow.png")
+        : root.kind == 2 ? @image-url("x-comic/dots-grey.png")
+        : @image-url("x-comic/dots.png");
+    horizontal-tiling: repeat;
+    vertical-tiling: repeat;
+    horizontal-alignment: left;
+    vertical-alignment: top;
+    // A tile sized 100% would ask for a height from its width inside layouts.
+    preferred-width: 0;
+    preferred-height: 0;
+}
+
+// An inked box: a face with an ink outline and, when `off` is set, the hard shadow down
+// and right. `down` pushes the face onto its shadow (a pressed button). `dots` lays a
+// halftone inside the outline (see Dots, -1 none).
+export component Box inherits Rectangle {
+    in property <brush> face: #ffffff;
+    in property <length> line: 2.5px;
+    in property <length> radius: 0;
+    in property <length> off: 0;
+    in property <bool> down;
+    in property <int> dots: -1;
+    Rectangle {
+        visible: root.off > 0 && !root.down;
+        x: root.off;
+        y: root.off;
+        width: parent.width;
+        height: parent.height;
+        border-radius: root.radius;
+        background: Comic.ink;
+    }
+    Rectangle {
+        x: root.down ? root.off : 0;
+        y: root.down ? root.off : 0;
+        width: parent.width;
+        height: parent.height;
+        border-radius: root.radius;
+        background: root.face;
+        Dots {
+            visible: root.dots >= 0;
+            x: root.line;
+            y: root.line;
+            width: parent.width - 2 * root.line;
+            height: parent.height - 2 * root.line;
+            kind: root.dots;
+        }
+        Rectangle {
+            border-radius: root.radius;
+            border-width: root.line;
+            border-color: Comic.ink;
+        }
+        @children
+    }
+}
+
+// The mockup's ink icons, thicker than the app's own. On a 24 unit grid; `stroke` is in
+// grid units, so the line scales with the icon as in the mockup's SVGs.
+export component Glyph inherits Rectangle {
+    in property <string> name;
+    in property <color> tint: Comic.ink;
+    in property <float> stroke: 2.5;
+    property <bool> solid: root.name == "play" || root.name == "pause" || root.name == "stop" || root.name == "more" || root.name == "down";
+    width: 18px;
+    height: 18px;
+    Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        stroke: root.solid ? transparent : root.tint;
+        stroke-width: root.width * root.stroke / 24;
+        stroke-line-cap: round;
+        stroke-line-join: round;
+        fill: root.solid ? root.tint : root.name == "ask" ? #ffffff : transparent;
+        commands: root.name == "gear" ? "M 12 2.5 L 13.6 5.1 L 16.6 4.4 L 17.2 7.4 L 19.9 8.8 L 18.6 11.5 L 19.9 14.2 L 17.2 15.6 L 16.6 18.6 L 13.6 17.9 L 12 21.5 L 10.4 18.9 L 7.4 19.6 L 6.8 16.6 L 4.1 15.2 L 5.4 12 L 4.1 9.3 L 6.8 7.9 L 7.4 4.9 L 10.4 5.6 Z M 15.2 12 A 3.2 3.2 0 1 1 8.8 12 A 3.2 3.2 0 1 1 15.2 12 Z"
+            : root.name == "min" ? "M 5 13 L 19 13"
+            : root.name == "close" ? "M 6 6 L 18 18 M 18 6 L 6 18"
+            : root.name == "mic" ? "M 8.5 6.5 A 3.5 3.5 0 0 1 15.5 6.5 L 15.5 10.5 A 3.5 3.5 0 0 1 8.5 10.5 Z M 5.5 11 A 6.5 6.5 0 0 0 18.5 11 M 12 17.5 L 12 21 M 8.5 21 L 15.5 21"
+            : root.name == "down" ? "M 3 7 L 21 7 L 12 19 Z"
+            : root.name == "search" ? "M 16.5 10.5 A 6 6 0 1 1 4.5 10.5 A 6 6 0 1 1 16.5 10.5 Z M 15 15 L 20.5 20.5"
+            : root.name == "import" ? "M 12 3 L 12 14 M 7.5 9.5 L 12 14 L 16.5 9.5 M 4 15 L 4 19.5 L 20 19.5 L 20 15"
+            : root.name == "ask" ? "M 4 5.5 L 20 5.5 L 20 15.5 L 11 15.5 L 6 19.5 L 6 15.5 L 4 15.5 Z"
+            : root.name == "widget" ? "M 3.5 5 L 20.5 5 L 20.5 19 L 3.5 19 Z M 3.5 9 L 20.5 9"
+            : root.name == "play" ? "M 4.4 2.4 L 22.8 12 L 4.4 21.6 Z"
+            : root.name == "pause" ? "M 5 3 L 10 3 L 10 21 L 5 21 Z M 14 3 L 19 3 L 19 21 L 14 21 Z"
+            : root.name == "stop" ? "M 4 4 L 20 4 L 20 20 L 4 20 Z"
+            : root.name == "more" ? "M 14 3 A 2 2 0 1 1 10 3 A 2 2 0 1 1 14 3 Z M 14 12 A 2 2 0 1 1 10 12 A 2 2 0 1 1 14 12 Z M 14 21 A 2 2 0 1 1 10 21 A 2 2 0 1 1 14 21 Z"
+            : "M 0 0";
+    }
+    // The dots of Ask's bubble and the small window of the widget icon.
+    if root.name == "ask" || root.name == "widget": Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        stroke: root.name == "ask" ? root.tint : transparent;
+        stroke-width: root.width * root.stroke * 1.2 / 24;
+        stroke-line-cap: round;
+        fill: root.name == "widget" ? root.tint : transparent;
+        commands: root.name == "ask" ? "M 9 10.5 L 9.05 10.5 M 12 10.5 L 12.05 10.5 M 15 10.5 L 15.05 10.5"
+            : "M 12 12 L 17.5 12 L 17.5 16 L 12 16 Z";
+    }
+}
+
+// A square ink button with a hard shadow; it sinks onto the shadow while pressed.
+// `text` beside the icon in Bangers when there is room (the wide toolbar).
+export component InkBtn inherits Rectangle {
+    in property <string> icon;
+    in property <string> text;
+    in property <string> label;
+    in property <string> tip: label;
+    in property <brush> face: #ffffff;
+    in property <bool> round;
+    in property <bool> enabled: true;
+    in property <length> icon-size: 18px;
+    in property <length> font-size: 14px;
+    in property <length> line: 2.5px;
+    in property <length> off: 2px;
+    callback clicked;
+    property <bool> down: t.pressed && t.has-hover && root.enabled;
+    width: root.text == "" ? root.height : row.preferred-width;
+    horizontal-stretch: 0;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Box {
+        face: root.face;
+        line: root.line;
+        off: root.off;
+        down: root.down;
+        radius: root.round ? root.height / 2 : 0;
+        opacity: root.enabled ? 1 : 0.45;
+        // Hover: a light wash over the face.
+        if t.has-hover && root.enabled && !root.down: Rectangle {
+            x: root.line;
+            y: root.line;
+            width: parent.width - 2 * root.line;
+            height: parent.height - 2 * root.line;
+            border-radius: root.round ? self.height / 2 : 0;
+            background: #ffffff59;
+        }
+        row := HorizontalLayout {
+            padding-left: root.text == "" ? 0 : 9px;
+            padding-right: root.text == "" ? 0 : 9px;
+            spacing: 6px;
+            alignment: center;
+            VerticalLayout {
+                alignment: center;
+                Glyph { name: root.icon; width: root.icon-size; height: root.icon-size; }
+            }
+            if root.text != "": Text {
+                text: root.text;
+                color: Comic.ink;
+                font-family: "Bangers";
+                font-size: root.font-size;
+                letter-spacing: 1px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// A yellow caption box: status, the project, now showing. Its shadow is 2px.
+export component Caption inherits Box {
+    face: Comic.yellow;
+    off: 2px;
+}
+
+// The panel tag across a panel's top left corner, ink with yellow letters.
+export component Tag inherits Rectangle {
+    in property <string> text;
+    width: tag.preferred-width + 16px;
+    height: 19px;
+    background: Comic.ink;
+    tag := Text {
+        x: 8px;
+        y: 2px;
+        text: root.text;
+        color: Comic.yellow;
+        font-family: "Bangers";
+        font-size: 13px;
+        letter-spacing: 1.5px;
+        vertical-alignment: center;
+        height: parent.height - 2px;
+    }
+}
+
+// The speech bubble around the timer: an ellipse with a tail low on the right. The
+// path is in pixels, so the outline keeps its width at every size.
+export component Bubble inherits Rectangle {
+    in property <length> tail: 22px;
+    property <float> w: root.width / 1px;
+    property <float> h: root.height / 1px;
+    property <float> rx: root.w / 2 - 1.5;
+    property <float> ry: root.h / 2 - 1.5;
+    // The tail's roots and tip, a little inside the outline so the white covers it.
+    property <float> t: root.tail / 1px;
+    property <float> x1: root.w * 0.84 - root.t;
+    property <float> x2: root.x1 + root.t * 0.6;
+    pure function edge(x: float) -> float {
+        return root.h / 2 + root.ry * Math.sqrt(Math.max(0, 1 - Math.pow((x - root.w / 2) / root.rx, 2))) - 3;
+    }
+    Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: root.w;
+        viewbox-height: root.h;
+        fill: #ffffff;
+        stroke: Comic.ink;
+        stroke-width: 2.5px;
+        commands: "M 1.5 " + root.h / 2 + " A " + root.rx + " " + root.ry + " 0 1 1 " + (root.w - 1.5) + " " + root.h / 2
+            + " A " + root.rx + " " + root.ry + " 0 1 1 1.5 " + root.h / 2 + " Z";
+    }
+    Path {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.height + root.tail;
+        viewbox-width: root.w;
+        viewbox-height: root.h + root.t;
+        fill: #ffffff;
+        stroke: Comic.ink;
+        stroke-width: 2.5px;
+        stroke-line-join: round;
+        commands: "M " + root.x1 + " " + root.edge(root.x1) + " L " + (root.x1 + root.t * 1.1) + " " + (root.h + root.t * 0.78)
+            + " L " + root.x2 + " " + root.edge(root.x2);
+    }
+    @children
+}
+
+// The POW burst that records: REC, or STOP while recording, whose ink boils (two
+// frames on the Fx clock) while the take runs. It sinks 2px while pressed.
+export component Burst inherits Rectangle {
+    // The wide window's big burst (REC!), else the portrait one.
+    in property <bool> big;
+    property <bool> hi: 1phx < 0.7px;
+    property <bool> down: t.pressed && t.has-hover;
+    // The art is the burst plus 4 units for its shadow.
+    property <float> art: root.big ? 200 : 128;
+    property <int> frame: Main.recording && !Main.paused ? Math.mod(floor(Fx.t * 3), 2) : 0;
+    accessible-role: button;
+    accessible-label: Main.recording ? "Stop and save" : "Record";
+    accessible-action-default => { Main.toggle-record(); }
+    Image {
+        x: root.down ? 2px : 0;
+        y: root.down ? 2px : 0;
+        width: root.width;
+        height: root.height;
+        image-fit: fill;
+        source: Main.recording
+            ? (root.big ? (root.hi ? @image-url("x-comic/stop-w@2x.png") : @image-url("x-comic/stop-w.png"))
+                : (root.hi ? @image-url("x-comic/stop-p@2x.png") : @image-url("x-comic/stop-p.png")))
+            : (root.big ? (root.hi ? @image-url("x-comic/rec-w@2x.png") : @image-url("x-comic/rec-w.png"))
+                : (root.hi ? @image-url("x-comic/rec-p@2x.png") : @image-url("x-comic/rec-p.png")));
+        source-clip-x: Main.recording ? root.frame * root.art * (root.hi ? 2 : 1) : 0;
+        source-clip-y: 0;
+        source-clip-width: root.art * (root.hi ? 2 : 1);
+        source-clip-height: root.art * (root.hi ? 2 : 1);
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, Main.recording ? "Stop" : "Record", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); Main.toggle-record(); }
+    }
+}
+
+// The level meter as a sound effect: BZZZZZZZZT, lit from the left in yellow to red
+// as the input gets louder. The dark word is drawn whole, the lit one clipped at the
+// gap after the last lit letter.
+export component Meter inherits Rectangle {
+    in property <bool> big;
+    property <bool> hi: 1phx < 0.7px;
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;
+    property <int> lit: clamp(round(root.level * 11), 0, 10);
+    // Where each letter ends in the art (css px), from Bangers' advances (x-comic.html).
+    property <[float]> ends: root.big ? [14.6, 28.0, 42.4, 58.0, 74.7, 92.5, 111.4, 131.4, 152.6, 178]
+        : [10.8, 19.7, 29.4, 39.6, 50.5, 62.1, 74.3, 87.2, 100.7, 118];
+    property <float> art-w: root.big ? 178 : 118;
+    property <float> art-h: root.big ? 56 : 38;
+    property <float> s: root.width / (root.art-w * 1px);
+    height: root.width * root.art-h / root.art-w;
+    accessible-role: none;
+    Image {
+        width: 100%;
+        height: 100%;
+        image-fit: fill;
+        source: root.big ? (root.hi ? @image-url("x-comic/meter-off-w@2x.png") : @image-url("x-comic/meter-off-w.png"))
+            : (root.hi ? @image-url("x-comic/meter-off-p@2x.png") : @image-url("x-comic/meter-off-p.png"));
+    }
+    if root.lit > 0: Image {
+        x: 0;
+        y: 0;
+        width: root.ends[root.lit - 1] * 1px * root.s;
+        height: 100%;
+        image-fit: fill;
+        source: root.big ? (root.hi ? @image-url("x-comic/meter-on-w@2x.png") : @image-url("x-comic/meter-on-w.png"))
+            : (root.hi ? @image-url("x-comic/meter-on-p@2x.png") : @image-url("x-comic/meter-on-p.png"));
+        source-clip-x: 0;
+        source-clip-y: 0;
+        source-clip-width: root.ends[root.lit - 1] * (root.hi ? 2 : 1);
+        source-clip-height: root.art-h * (root.hi ? 2 : 1);
+    }
+}
+
+// A clip's small waveform as ink bars, one per 4px; the part played turns red.
+export component InkBars inherits Rectangle {
+    in property <[float]> values;
+    in property <float> progress: -1;
+    property <int> n: max(1, floor(root.width / 4px));
+    for i in root.n: Rectangle {
+        property <float> v: root.values.length > 0 ? root.values[floor(i * root.values.length / root.n)] : 0.06;
+        x: i * 4px;
+        width: 2.4px;
+        height: max(3px, self.v * root.height);
+        y: (root.height - self.height) / 2;
+        background: (i + 0.5) / root.n <= root.progress ? Comic.red : Comic.ink;
+    }
+}
+
+// The round play button of a row or the footer; red (white icon) when `hot`.
+export component PlayDot inherits Rectangle {
+    in property <bool> hot;
+    in property <bool> pause;
+    in property <brush> face: #ffffff;
+    in property <string> label;
+    in property <string> tip;
+    in property <bool> enabled: true;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Rectangle {
+        y: t.pressed && t.has-hover ? 1px : 0;
+        border-radius: root.width / 2;
+        background: root.hot ? Comic.red : root.face;
+        border-width: 2.5px;
+        border-color: Comic.ink;
+        opacity: root.enabled ? 1 : 0.6;
+        if t.has-hover && root.enabled: Rectangle { border-radius: root.width / 2; background: root.hot ? #ffffff26 : #0000000f; }
+        Glyph {
+            x: (parent.width - self.width) / 2 + (root.pause ? 0 : 1px);
+            name: root.pause ? "pause" : "play";
+            tint: root.hot ? #ffffff : Comic.ink;
+            width: root.width * 0.42;
+            height: root.width * 0.42;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}

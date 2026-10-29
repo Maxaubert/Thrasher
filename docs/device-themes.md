@@ -452,9 +452,10 @@ above its picker (the ornament sits at the window's foot).
 - Exe +2.0 MB (44.83 to 46.85 MB): art 0.41 MB, fonts 7 KB, the rest generated code.
 
 **Built in step 5, Quest Menu main page (2026-10-29):** `ui/skins/px-quest.slint` (skin 8,
-theme "Quest Menu", appended to `Theme.names`), art in `ui/skins/px-quest/` (23 PNGs, 4 KB)
+theme "Quest Menu", index 15 in `Theme.names`), art in `ui/skins/px-quest/` (23 PNGs, 4 KB)
 from `tools/skin-art/px-quest.html` (`sh tools/skin-art/cut.sh px-quest OUT`). Its other
 pages are the classic ones in its blue and gold palette (`Theme.pages` 0).
+- Settings gallery: its tile is the Quest Menu line in `Gallery.devices` (`ui/gallery.slint`), band #2f5fd0.
 - Every panel is a menu window; the recorder is a character card (mic sprite, status lamp,
   timer, IN bar, round REC); Import, Ask and the widget are a command menu, beside the
   project and search (portrait) or docked under the card (wide). While recording the

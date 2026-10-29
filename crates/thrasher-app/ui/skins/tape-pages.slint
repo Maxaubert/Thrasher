@@ -176,7 +176,7 @@ component NameLabel inherits Rectangle {
     in property <string> text;
     in property <color> band: Deck.red;
     in property <length> font-size: 26px;
-    width: name.preferred-width + 24px;
+    width: name.preferred-width + 30px;
     height: 32px;
     Rectangle { y: 1px; background: #00000080; }
     Rectangle { background: Deck.spine; }
@@ -362,7 +362,7 @@ component Speed inherits VerticalLayout {
             padding: 2px;
             spacing: 2px;
             for v[i] in ["0.75", "1.0", "1.25", "1.5", "2.0"]: Rectangle {
-                width: root.big ? 34px : 28px;
+                width: root.big ? 29px : 28px;
                 border-radius: 2px;
                 background: i == Pages.speed-index ? @linear-gradient(180deg, #ffd49a 0%, #f2a64a 60%, #c9802e 100%) : transparent;
                 accessible-role: button;
@@ -396,7 +396,9 @@ component Transport inherits HorizontalLayout {
     callback speed-changed(int);
     callback refocus();
     property <bool> playing: Main.active-clip == Main.selected && Main.playing;
-    spacing: root.big ? 12px : 9px;
+    // It keeps its height: spare height in the wide deck goes below it.
+    vertical-stretch: 0;
+    spacing: root.big ? 10px : 9px;
     alignment: start;
     Bank {
         height: (root.big ? 44px : 34px) + 6px;
@@ -852,6 +854,7 @@ export component ClipPage inherits VerticalLayout {
                     Cassette { title: root.name; label: "MIC"; turning: root.turning; }
                 }
                 if !Pages.renaming: HorizontalLayout {
+                    vertical-stretch: 0;
                     spacing: 6px;
                     ClipCounter { big: true; horizontal-stretch: 1; }
                     VerticalLayout {
@@ -864,10 +867,12 @@ export component ClipPage inherits VerticalLayout {
                     }
                 }
                 if Pages.renaming: RenameLabel {
+                    vertical-stretch: 0;
                     rename(t) => { root.rename(t); }
                     cancel => { Pages.renaming = false; root.refocus(); }
                 }
                 Text {
+                    vertical-stretch: 0;
                     text: Pages.detail-meta.to-uppercase();
                     color: Deck.alu-ink;
                     font-family: "Oswald";
@@ -875,7 +880,9 @@ export component ClipPage inherits VerticalLayout {
                     letter-spacing: 1.2px;
                     overflow: elide;
                 }
+                // The tape path keeps its height, so the transport sits right under it.
                 VerticalLayout {
+                    vertical-stretch: 0;
                     spacing: 3px;
                     TapeStrip {
                         height: 62px;
@@ -907,7 +914,7 @@ export component ClipPage inherits VerticalLayout {
                     speed-changed(i) => { root.speed-changed(i); }
                     refocus => { root.refocus(); }
                 }
-                Rectangle { min-height: 0; vertical-stretch: 0.2; }
+                Rectangle { min-height: 0; vertical-stretch: 1; }
                 HorizontalLayout {
                     spacing: 12px;
                     VerticalLayout {
@@ -1004,7 +1011,11 @@ export component ClipPage inherits VerticalLayout {
 // A rack unit: brushed aluminium screwed into the cabinet, its name engraved over a rule.
 // Brushed aluminium whose size comes from its content alone (the tile has no say).
 component Plain inherits Rectangle {
-    background: Deck.alu;
+    // Deck.alu as two plain gradients over its middle colour: the software renderer drew
+    // a dark rule near the 70% stop of the three-stop brush on these plates.
+    background: #bdb5a7;
+    Rectangle { height: parent.height * 0.7; background: @linear-gradient(180deg, #dcd6ca 0%, #bdb5a7 100%); }
+    Rectangle { y: parent.height * 0.7; height: parent.height * 0.3; background: @linear-gradient(180deg, #bdb5a7 0%, #a9a193 100%); }
     Image {
         width: 100%;
         height: 100%;

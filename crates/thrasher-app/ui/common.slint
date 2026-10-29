@@ -3240,7 +3240,8 @@ export component TranscriptCard inherits Rectangle {
                     }
                     // A searchable list of languages, Original first.
                     lang-menu := PopupWindow {
-                        x: lang-btn.width - self.width;
+                        // Tape Deck: it drops from under the key (mockup 1E). The others open leftwards.
+                        x: Theme.tape ? 0 : lang-btn.width - self.width;
                         y: lang-btn.height + 6px;
                         width: 250px;
                         height: 5px + 40px + 34px + min(root.langs.length, 7) * 34px + 5px;

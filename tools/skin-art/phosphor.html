@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+#a{position:absolute;left:0;top:0}
+</style></head><body><div id="a"></div>
+<script>
+// One element of the Phosphor mockup (docs/mockups/device-themes/phosphor.html), alone on
+// a transparent page, for cutting into PNGs. ?el=name&w=css-width&h=css-height
+// Everything else on the CRT (text, meter, scope, keys) is drawn live in Slint.
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+
+// The vignette at the four corners only, so the middle of the screen (where the timer and
+// the scope move) never has to blend it: ?el=vig-tl, vig-tr, vig-bl, vig-br.
+if (el && el.startsWith('vig-')) {
+  const at = {tl: '0% 0%', tr: '100% 0%', bl: '0% 100%', br: '100% 100%'}[el.slice(4)];
+  a.style.background = `radial-gradient(circle ${W}px at ${at},rgba(0,0,0,.34) 0,rgba(0,0,0,.16) 35%,rgba(0,0,0,.05) 65%,rgba(0,0,0,0) 100%)`;
+}
+// The glow of a lit block (the status lamp, the cursor), blurred beforehand since the
+// renderer has no live blur; the block itself is drawn over it.
+if (el === 'halo') a.innerHTML = `<div style="position:absolute;left:${W / 2 - 5}px;top:${H / 2 - 5}px;width:10px;height:10px;background:#4dff7a;filter:blur(4px);opacity:.9"></div>`;
+// The dashed rules between the sections (CSS 1px dashed: 3 on, 3 off), across and down.
+if (el === 'dash') a.style.background = 'repeating-linear-gradient(90deg,#16462a 0 3px,transparent 3px 6px)';
+if (el === 'vdash') a.style.background = 'repeating-linear-gradient(180deg,#16462a 0 3px,transparent 3px 6px)';
+// The light shade (the ░ of the meter and the player's bar): a 4px period with two
+// dots set diagonally, an eighth of it lit.
+if (el === 'dither') a.innerHTML = '<i style="position:absolute;left:0;top:0;width:1px;height:1px;background:#2a7a42"></i><i style="position:absolute;left:2px;top:2px;width:1px;height:1px;background:#2a7a42"></i>';
+</script></body></html>

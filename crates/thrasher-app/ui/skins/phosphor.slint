@@ -1,0 +1,1406 @@
+// The Phosphor main page: a green CRT terminal (docs/mockups/device-themes/phosphor.html).
+// The recorder is a status readout, the toolbar is a command prompt above the footer, the
+// icons are bracketed keys like [i] [?] [w], the meter and the waveforms are blocks, and
+// the highlighted clip is inverted video. Portrait windows stack the readout above the
+// list; wide ones put it on the left with a live scope.
+//
+// The tube's vignette (its four corners), the glow of a lit block, the dashed rules and
+// the light shade are PNGs in phosphor/ (1x and 2x), cut by tools/skin-art. Everything else,
+// the scanlines too, is drawn here. The status lamp blinks on the Fx clock, which runs only
+// while recording.
+
+import { Theme, Fx, Main, Tips, Icon, ProjectMenu, TextField, Scroller, ClipMenu, WaveSeek, ClipRow, SearchHit } from "../common.slint";
+
+// The colours of the tube, from the mockup.
+global Ph {
+    out property <color> bg: #050a06;
+    out property <color> bg2: #08120a;
+    out property <color> ph: #4dff7a;
+    out property <color> hi: #b6ffc8;
+    out property <color> mid: #2fbf55;
+    out property <color> dim: #1f7a38;
+    out property <color> faint: #123d1d;
+    out property <color> line: #16462a;
+    out property <color> amber: #ffb84d;
+    out property <string> mono: "IBM Plex Mono";
+    out property <string> crt: "VT323";
+}
+
+// A dashed rule, across or (`down`) down.
+component Dash inherits Rectangle {
+    in property <bool> down;
+    property <bool> hi: 1phx < 0.7px;
+    Image {
+        width: 100%;
+        height: 100%;
+        source: root.down ? (root.hi ? @image-url("phosphor/vdash@2x.png") : @image-url("phosphor/vdash.png"))
+            : (root.hi ? @image-url("phosphor/dash@2x.png") : @image-url("phosphor/dash.png"));
+        horizontal-tiling: repeat;
+        vertical-tiling: repeat;
+        horizontal-alignment: left;
+        vertical-alignment: top;
+    }
+}
+
+// The light shade (░): the meter's unlit cells and the player's bar.
+component Shade inherits Image {
+    property <bool> hi: 1phx < 0.7px;
+    source: root.hi ? @image-url("phosphor/dither@2x.png") : @image-url("phosphor/dither.png");
+    horizontal-tiling: repeat;
+    vertical-tiling: repeat;
+    horizontal-alignment: left;
+    vertical-alignment: top;
+}
+
+// A lit block with its glow: the status lamp and the prompt's cursor.
+component Block inherits Rectangle {
+    in property <color> ink: Ph.ph;
+    in property <bool> lit: true;
+    property <bool> hi: 1phx < 0.7px;
+    Image {
+        visible: root.lit;
+        x: -10px;
+        y: -10px;
+        width: root.width + 20px;
+        height: root.height + 20px;
+        source: root.hi ? @image-url("phosphor/halo@2x.png") : @image-url("phosphor/halo.png");
+        image-fit: fill;
+        opacity: root.ink == Ph.ph ? 1 : 0.5;
+    }
+    Rectangle { background: root.lit ? root.ink : Ph.faint; }
+}
+
+// Small pixel glyphs on a 16 unit grid: the microphone of the record key, stop and pause.
+component Glyph inherits Path {
+    in property <string> name;
+    in property <color> ink;
+    viewbox-width: 16;
+    viewbox-height: 16;
+    fill: root.ink;
+    stroke: transparent;
+    commands: root.name == "stop" ? "M4 4L12 4L12 12L4 12Z"
+        : root.name == "pause" ? "M4 3L7 3L7 13L4 13Z M9 3L12 3L12 13L9 13Z"
+        : root.name == "play" ? "M5 3L6 3L6 4L7 4L7 5L8 5L8 6L9 6L9 7L10 7L10 9L9 9L9 10L8 10L8 11L7 11L7 12L6 12L6 13L5 13Z"
+        : "M6 1L10 1L10 9L6 9Z M5 2L6 2L6 8L5 8Z M10 2L11 2L11 8L10 8Z M3 6L4 6L4 9L3 9Z M12 6L13 6L13 9L12 9Z M4 9L5 9L5 10L4 10Z M11 9L12 9L12 10L11 10Z M5 10L11 10L11 11L5 11Z M7 11L9 11L9 14L7 14Z M5 14L11 14L11 15L5 15Z";
+}
+
+// A key in brackets, "[s]et": the bracketed part, then the rest of the word, dimmer. A
+// hovered key turns to inverted video; `on` holds it so (a switch that is on).
+component Kbd inherits Rectangle {
+    in property <string> key;
+    in property <string> tail;
+    in property <string> label;
+    in property <string> tip: label;
+    in property <bool> enabled: true;
+    in property <bool> danger;
+    in property <bool> on;
+    in property <color> ink: Ph.hi;
+    in property <color> tail-ink: Ph.dim;
+    in property <length> size: 12px;
+    callback clicked;
+    property <bool> lit: (t.has-hover && root.enabled) || root.on;
+    width: row.preferred-width + 6px;
+    height: root.size + 8px;
+    border-radius: 2px;
+    background: root.lit ? (root.danger && !root.on ? Ph.amber : Ph.ph) : transparent;
+    opacity: root.enabled ? 1 : 0.4;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-checked: root.on;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    row := HorizontalLayout {
+        x: 3px;
+        width: self.preferred-width;
+        Text {
+            text: root.key;
+            color: root.lit ? Ph.bg : root.ink;
+            font-family: Ph.mono;
+            font-size: root.size;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Text {
+            text: root.tail;
+            color: root.lit ? Ph.bg2 : root.tail-ink;
+            font-family: Ph.mono;
+            font-size: root.size;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// A small label in caps, as over the sections ("IN", "LVL", "CLIPS").
+component Caps inherits Text {
+    color: Ph.dim;
+    font-family: Ph.mono;
+    font-size: 10px;
+    letter-spacing: 2px;
+    vertical-alignment: center;
+}
+
+// The title bar: the name, the tty, then Settings, minimise and close as keys.
+component Title inherits Rectangle {
+    in property <bool> wide;
+    callback go(int);
+    height: 34px;
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    Dash { y: parent.height - 1px; height: 1px; }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 10px;
+        spacing: 10px;
+        Text {
+            text: "THRASHER";
+            color: Ph.hi;
+            font-family: Ph.crt;
+            font-size: 24px;
+            letter-spacing: 2px;
+            vertical-alignment: center;
+        }
+        Text {
+            text: "tty0";
+            color: Ph.dim;
+            font-family: Ph.mono;
+            font-size: 10px;
+            letter-spacing: 1px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Rectangle { horizontal-stretch: 1; }
+        HorizontalLayout {
+            spacing: 6px;
+            VerticalLayout {
+                alignment: center;
+                Kbd { key: "[s]"; tail: root.wide ? "etup" : "et"; ink: Ph.mid; tail-ink: Ph.mid; label: "Settings"; clicked => { root.go(3); } }
+            }
+            VerticalLayout {
+                alignment: center;
+                Kbd { key: "[_]"; ink: Ph.mid; label: "Minimize"; clicked => { Main.minimize-window(); } }
+            }
+            VerticalLayout {
+                alignment: center;
+                Kbd { key: "[x]"; ink: Ph.mid; danger: true; label: "Close"; clicked => { Main.close-window(); } }
+            }
+        }
+    }
+}
+
+// The rule over the readout: "-- REC ------", cut off at the edge.
+// It is drawing only: a screen reader skips it.
+component Header inherits Rectangle {
+    in property <string> word: "REC";
+    horizontal-stretch: 1;
+    min-width: 0;
+    height: txt.preferred-height;
+    txt := Text {
+        x: 0;
+        width: 100%;
+        text: "-- " + root.word + " " + "------------------------------------------------------------------------------------------";
+        color: Ph.dim;
+        font-family: Ph.mono;
+        font-size: 10px;
+        letter-spacing: 2px;
+        overflow: clip;
+        accessible-role: none;
+    }
+}
+
+// The lamp and the word: READY, RECORDING (the lamp blinks) or PAUSED (amber).
+component Status inherits HorizontalLayout {
+    property <bool> blink: Main.recording && !Main.paused && Math.mod(floor(Fx.t), 2) == 1;
+    spacing: 7px;
+    alignment: start;
+    VerticalLayout {
+        alignment: center;
+        Block {
+            width: 8px;
+            height: 8px;
+            ink: Main.paused ? Ph.amber : Ph.ph;
+            lit: !root.blink;
+        }
+    }
+    Text {
+        text: Main.recording ? (Main.paused ? "PAUSED" : "RECORDING") : "READY";
+        color: Main.paused ? Ph.amber : Ph.hi;
+        font-family: Ph.mono;
+        font-size: 13px;
+        letter-spacing: 2px;
+        vertical-alignment: center;
+    }
+}
+
+// The timer in big CRT figures. No glow: faint copies one pixel out on each side looked
+// like it, but cost 4 to 6% of a core while recording (the timer redraws ten times a second).
+component Clock inherits Rectangle {
+    in property <length> size: 56px;
+    property <string> shown: Main.elapsed + Main.elapsed-tenth;
+    width: txt.preferred-width;
+    height: root.size * 0.86;
+    accessible-role: AccessibleRole.text;
+    accessible-label: root.shown;
+    txt := Text {
+        x: 0;
+        y: (parent.height - self.height) / 2;
+        text: root.shown;
+        color: Ph.hi;
+        font-family: Ph.crt;
+        font-size: root.size;
+        accessible-role: none;
+    }
+}
+
+// The input: "IN  Default microphone".
+component Input inherits HorizontalLayout {
+    spacing: 10px;
+    Caps { text: "IN"; width: 34px; }
+    Text {
+        text: Main.device-label;
+        color: Ph.mid;
+        font-family: Ph.mono;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+        horizontal-stretch: 1;
+    }
+}
+
+// The level: "LVL [██████░░░░] -22 dB", the top fifth in amber. It shows the input while
+// recording; at rest it is dark.
+component Meter inherits HorizontalLayout {
+    in property <int> cells: 22;
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;
+    // The live bars rest at 0.06; the meter starts above that.
+    property <int> on: round(max(root.level - 0.06, 0) / 0.94 * root.cells);
+    property <int> hot-at: round(root.cells * 0.8);
+    // Plex Mono's characters are 0.6 em wide, so a cell is one character of 13px.
+    property <length> cell: 7.8px;
+    spacing: 10px;
+    alignment: start;
+    Caps { text: "LVL"; width: 34px; }
+    HorizontalLayout {
+        Text { text: "["; color: Ph.dim; font-family: Ph.mono; font-size: 13px; vertical-alignment: center; accessible-role: none; }
+        Rectangle {
+            width: root.cells * root.cell;
+            accessible-role: AccessibleRole.progress-indicator;
+            accessible-label: "Level";
+            accessible-value-minimum: 0;
+            accessible-value-maximum: 1;
+            accessible-value: root.level;
+            Shade {
+                y: (parent.height - self.height) / 2;
+                height: 13px;
+                width: 100%;
+            }
+            Rectangle {
+                x: 0;
+                y: (parent.height - self.height) / 2;
+                width: min(root.on, root.hot-at) * root.cell;
+                height: 13px;
+                background: Ph.ph;
+            }
+            Rectangle {
+                x: root.hot-at * root.cell;
+                y: (parent.height - self.height) / 2;
+                width: max(root.on - root.hot-at, 0) * root.cell;
+                height: 13px;
+                background: Ph.amber;
+            }
+        }
+        Text { text: "]"; color: Ph.dim; font-family: Ph.mono; font-size: 13px; vertical-alignment: center; accessible-role: none; }
+    }
+    Text {
+        text: Main.recording && !Main.paused ? round(-60 + root.level * 60) + " dB" : "-- dB";
+        color: Ph.mid;
+        font-family: Ph.mono;
+        font-size: 11px;
+        width: 50px;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+}
+
+// The scope: the last seconds of the input as bars on a ruled ground, the loud tops amber.
+// It runs while recording; at rest it lies flat.
+component Scope inherits Rectangle {
+    property <int> n: 40;
+    property <length> gap: 2px;
+    property <length> bar: (root.width - (root.n - 1) * root.gap) / root.n;
+    property <bool> live: Main.recording && Main.live.length >= root.n * 2;
+    for i in 6: Rectangle {
+        y: root.height - 3px - (i + 1) * 14px;
+        height: 1px;
+        background: #4dff7a17;
+    }
+    for i in root.n: Rectangle {
+        property <float> v: root.live ? Main.live[Main.live.length - root.n * 2 + i * 2 + 1] : 0;
+        property <length> h: max(1, round(self.v * 48)) / 48 * (root.height - 4px);
+        x: i * (root.bar + root.gap);
+        y: root.height - 3px - self.h;
+        width: root.bar;
+        height: self.h;
+        background: Ph.ph;
+        Rectangle {
+            visible: parent.v > 0.82;
+            y: 0;
+            height: min(14px, parent.height);
+            background: Ph.amber;
+        }
+    }
+    Rectangle { y: parent.height - 1px; height: 1px; background: Ph.dim; }
+}
+
+// The record key: "REC [space]", "STOP" while recording. Inverted when hovered.
+component RecKey inherits Rectangle {
+    in property <length> size: 30px;
+    in property <string> word: "REC";
+    in property <length> mic: 18px;
+    callback refocus();
+    property <bool> lit: t.has-hover;
+    background: Ph.bg;
+    border-width: 1px;
+    border-color: Ph.ph;
+    accessible-role: button;
+    accessible-label: Main.recording ? "Stop and save" : "Record";
+    accessible-action-default => { Main.toggle-record(); }
+    Rectangle {
+        x: 4px;
+        y: 4px;
+        width: parent.width - 8px;
+        height: parent.height - 8px;
+        border-width: 1px;
+        border-color: root.lit ? Ph.bg2 : Ph.dim;
+        background: root.lit ? Ph.ph : #4dff7a0f;
+    }
+    HorizontalLayout {
+        alignment: center;
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            Glyph {
+                width: root.mic;
+                height: root.mic;
+                name: Main.recording ? "stop" : "mic";
+                ink: root.lit ? Ph.bg : Ph.hi;
+            }
+        }
+        Text {
+            text: Main.recording ? "STOP" : root.word;
+            color: root.lit ? Ph.bg : Ph.hi;
+            font-family: Ph.crt;
+            font-size: root.size;
+            letter-spacing: 4px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Text {
+            text: "[space]";
+            color: root.lit ? Ph.bg2 : Ph.dim;
+            font-family: Ph.mono;
+            font-size: 10px;
+            letter-spacing: 1px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, Main.recording ? "Stop" : "Record", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); Main.toggle-record(); root.refocus(); }
+    }
+}
+
+// Pause and resume while recording, beside the record key: "[p]ause".
+component PauseKey inherits Rectangle {
+    in property <length> size: 24px;
+    callback refocus();
+    property <bool> lit: t.has-hover || Main.paused;
+    background: Ph.bg;
+    border-width: 1px;
+    border-color: Main.paused ? Ph.amber : Ph.mid;
+    accessible-role: button;
+    accessible-label: Main.paused ? "Resume" : "Pause";
+    accessible-action-default => { Main.toggle-pause(); }
+    Rectangle {
+        x: 4px;
+        y: 4px;
+        width: parent.width - 8px;
+        height: parent.height - 8px;
+        border-width: 1px;
+        border-color: root.lit ? Ph.bg2 : Ph.dim;
+        background: root.lit ? (Main.paused ? Ph.amber : Ph.ph) : #4dff7a0a;
+    }
+    HorizontalLayout {
+        alignment: center;
+        spacing: 8px;
+        VerticalLayout {
+            alignment: center;
+            Glyph {
+                width: 14px;
+                height: 14px;
+                name: Main.paused ? "play" : "pause";
+                ink: root.lit ? Ph.bg : Ph.hi;
+            }
+        }
+        Text {
+            text: Main.paused ? "RESUME" : "PAUSE";
+            color: root.lit ? Ph.bg : Ph.hi;
+            font-family: Ph.crt;
+            font-size: root.size;
+            letter-spacing: 2px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Text {
+            text: "[p]";
+            color: root.lit ? Ph.bg2 : Ph.dim;
+            font-family: Ph.mono;
+            font-size: 10px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, Main.paused ? "Resume" : "Pause", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); Main.toggle-pause(); root.refocus(); }
+    }
+}
+
+// The record key, and the pause key beside it while recording.
+component Keys inherits HorizontalLayout {
+    in property <bool> big;
+    callback refocus();
+    spacing: 8px;
+    RecKey {
+        horizontal-stretch: 1;
+        size: root.big ? 40px : 30px;
+        word: root.big ? "RECORD" : "REC";
+        mic: root.big ? 24px : 18px;
+        refocus => { root.refocus(); }
+    }
+    // Wide enough for "RESUME [p]", so the key keeps its size when it changes.
+    if Main.recording: PauseKey {
+        width: root.big ? 150px : 138px;
+        size: root.big ? 28px : 24px;
+        refocus => { root.refocus(); }
+    }
+}
+
+// The readout in a portrait window: the rule, the lamp and the input beside the timer,
+// the level, then the record key. A tall window gets the scope too.
+component ReadoutFront inherits Rectangle {
+    in property <bool> tall;
+    callback refocus();
+    height: col.preferred-height + 1px;
+    Dash { y: parent.height - 1px; height: 1px; }
+    col := VerticalLayout {
+        height: parent.height - 1px;
+        padding-left: 14px;
+        padding-right: 14px;
+        padding-top: 12px;
+        padding-bottom: 12px;
+        HorizontalLayout { Header { } }
+        HorizontalLayout {
+            padding-top: 8px;
+            padding-bottom: 8px;
+            spacing: 10px;
+            VerticalLayout {
+                alignment: end;
+                spacing: 6px;
+                horizontal-stretch: 1;
+                Status { }
+                Input { }
+            }
+            VerticalLayout {
+                alignment: end;
+                Clock { size: root.tall ? 72px : 56px; }
+            }
+        }
+        Meter { }
+        if root.tall: VerticalLayout {
+            padding-top: 16px;
+            Scope { height: 84px; }
+        }
+        // The record key sits 12px under the meter, as in the mockup.
+        Rectangle { height: 12px; }
+        Keys {
+            height: 50px;
+            refocus => { root.refocus(); }
+        }
+    }
+}
+
+// The readout in a wide window, on the left: the lamp, the big timer, the input and the
+// level, the scope, a line about the format, and the record key at the bottom. A short
+// window drops the scope first.
+component ReadoutSide inherits Rectangle {
+    // The height it gets, worked out by MainPage (its own would loop through the layout).
+    in property <length> avail;
+    callback refocus();
+    width: 400px;
+    property <bool> roomy: root.avail >= 500px;
+    Dash { x: parent.width - 1px; width: 1px; down: true; }
+    VerticalLayout {
+        width: parent.width - 1px;
+        padding-left: 22px;
+        padding-right: 22px;
+        padding-top: 18px;
+        padding-bottom: 18px;
+        HorizontalLayout { Header { } }
+        HorizontalLayout { padding-top: 14px; Status { } }
+        HorizontalLayout {
+            padding-top: 12px;
+            padding-bottom: 6px;
+            Clock { size: root.avail >= 560px ? 108px : 84px; }
+        }
+        Input { }
+        HorizontalLayout { padding-top: 8px; Meter { cells: 28; } }
+        if root.roomy: VerticalLayout {
+            padding-top: 18px;
+            spacing: 8px;
+            Scope { height: 84px; }
+            Text {
+                text: "WAV     " + Main.clips.length + " CLIPS     " + (Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "").to-uppercase();
+                color: Ph.dim;
+                font-family: Ph.mono;
+                font-size: 10px;
+                letter-spacing: 1px;
+                overflow: elide;
+            }
+        }
+        Rectangle { vertical-stretch: 1; min-height: 12px; }
+        Keys {
+            big: true;
+            height: 76px;
+            refocus => { root.refocus(); }
+        }
+    }
+}
+
+// The project, "~/Inbox", as the prompt's working folder. ProjectMenu holds what it
+// offers; it opens upwards, the prompt being at the bottom.
+component Project inherits Rectangle {
+    callback refocus();
+    property <bool> enabled: !Main.recording;
+    property <string> name: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+    width: row.preferred-width + 6px;
+    height: 22px;
+    border-radius: 2px;
+    background: t.has-hover && root.enabled ? Ph.faint : transparent;
+    opacity: root.enabled ? 1 : 0.5;
+    accessible-role: combobox;
+    accessible-label: "Project";
+    accessible-value: root.name;
+    accessible-expandable: true;
+    accessible-action-default => { if (root.enabled) { menu.show(); } }
+    accessible-action-expand => { if (root.enabled) { menu.show(); } }
+    row := HorizontalLayout {
+        x: 3px;
+        width: self.preferred-width;
+        spacing: 2px;
+        Text {
+            text: "~/" + root.name;
+            color: Ph.hi;
+            font-family: Ph.mono;
+            font-size: 13px;
+            vertical-alignment: center;
+            max-width: 200px;
+            overflow: elide;
+        }
+        Icon {
+            name: "down";
+            tint: Ph.dim;
+            width: 10px;
+            height: 10px;
+            y: (parent.height - self.height) / 2 + 1px;
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { menu.show(); }
+    }
+    menu := ProjectMenu {
+        width: parent.width;
+        height: parent.height;
+        up: true;
+        projects: Main.projects;
+        current: Main.project;
+        has-clips: Main.clips.length > 0;
+        choose(i) => { Main.choose-project(i); root.refocus(); }
+        create => { Main.dialog-text = ""; Main.dialog = 4; }
+        rename => { Main.dialog-text = Main.projects[Main.project]; Main.dialog = 5; }
+        delete => { Main.delete-project(); root.refocus(); }
+        export => { Main.export-project(); root.refocus(); }
+    }
+}
+
+// The prompt line, the toolbar moved to the bottom: the project, "$", the search as a
+// command line with a block cursor, then [i]mport, [?]ask and [w]idget.
+component Prompt inherits Rectangle {
+    in property <bool> wide;
+    callback go(int);
+    callback refocus();
+    height: root.wide ? 40px : 38px;
+    background: Ph.bg2;
+    Rectangle { y: 0; height: 1px; background: Ph.dim; }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            Project { refocus => { root.refocus(); } }
+        }
+        Text {
+            text: root.wide ? "$ grep" : "$";
+            color: Ph.dim;
+            font-family: Ph.mono;
+            font-size: 13px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            field := TextField {
+                y: (parent.height - self.height) / 2;
+                height: 26px;
+                radius: 0;
+                fill: transparent;
+                rest-edge: transparent;
+                ink: Ph.hi;
+                hint: Ph.dim;
+                font-size: 13px;
+                family: Ph.mono;
+                side: 3px;
+                placeholder: "Search";
+                label: "Search clips";
+                takes-escape: true;
+                focus-ticket: Main.search-ticket;
+                text <=> Main.query;
+                edited(t) => { Main.search(t, Main.search-all); }
+                escaped => { Main.query = ""; Main.search("", Main.search-all); root.refocus(); }
+                accepted => { if (Main.hits.length > 0) { Main.open-hit(0); root.go(1); } }
+            }
+            // The resting cursor after the word, as on a terminal; typing hides it.
+            Block {
+                visible: Main.query == "" && !field.has-focus;
+                x: 3px + 6 * 7.8px + 1px;
+                y: (parent.height - self.height) / 2;
+                width: 8px;
+                height: 15px;
+            }
+        }
+        // Search every project instead of this one: the --all switch.
+        if Main.query != "" && Main.projects.length > 1: VerticalLayout {
+            alignment: center;
+            Kbd {
+                key: "--all";
+                accessible-role: checkbox;
+                on: Main.search-all;
+                label: "Search all projects";
+                tip: "All projects";
+                clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+            }
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            VerticalLayout {
+                alignment: center;
+                Kbd {
+                    key: "[i]";
+                    tail: root.wide ? "mport" : "";
+                    label: "Import audio or video";
+                    tip: "Import";
+                    enabled: !Main.recording;
+                    clicked => { Main.import-files(); }
+                }
+            }
+            if Main.can-ai: VerticalLayout {
+                alignment: center;
+                Kbd {
+                    key: "[?]";
+                    tail: root.wide ? "ask" : "";
+                    label: "Ask your clips";
+                    tip: "Ask";
+                    clicked => { root.go(6); }
+                }
+            }
+            VerticalLayout {
+                alignment: center;
+                Kbd {
+                    key: "[w]";
+                    tail: root.wide ? "idget" : "";
+                    label: "Small widget";
+                    tip: "Widget";
+                    clicked => { Main.compact-changed(true); }
+                }
+            }
+        }
+    }
+}
+
+// A clip's small waveform in blocks: each bar one of eight heights, like ▁ to █.
+component Blocks inherits Rectangle {
+    in property <[float]> values;
+    in property <int> n: 11;
+    in property <color> ink: Ph.mid;
+    in property <color> done: Ph.hi;
+    in property <float> progress: -1;
+    property <length> step: root.width / root.n;
+    for i in root.n: Rectangle {
+        property <float> v: root.values.length > 0 ? root.values[floor((i + 0.5) * root.values.length / root.n)] : 0;
+        property <int> q: 1 + floor(clamp(self.v, 0, 1) * 7.99);
+        x: i * root.step;
+        y: root.height - self.height;
+        width: root.step - 1px;
+        height: self.q / 8 * root.height;
+        background: (i + 0.5) / root.n <= root.progress ? root.done : root.ink;
+    }
+}
+
+// "[>]" that plays a clip, "[‖]" while it plays.
+component PlayKey inherits Rectangle {
+    in property <bool> pause;
+    in property <bool> inverted;
+    in property <string> label;
+    in property <string> tip;
+    in property <length> size: 13px;
+    in property <color> ink: Ph.mid;
+    callback clicked;
+    property <color> c: root.inverted ? Ph.bg : t.has-hover ? Ph.hi : root.ink;
+    width: 3 * root.size * 0.6 + 4px;
+    height: root.size + 8px;
+    border-radius: 2px;
+    background: t.has-hover && !root.inverted ? Ph.faint : transparent;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    HorizontalLayout {
+        x: 2px;
+        width: 3 * root.size * 0.6;
+        Text { text: "["; color: root.c; font-family: Ph.mono; font-size: root.size; vertical-alignment: center; accessible-role: none; }
+        Rectangle {
+            width: root.size * 0.6;
+            if !root.pause: Text { width: 100%; height: 100%; text: ">"; color: root.c; font-family: Ph.mono; font-size: root.size; vertical-alignment: center; accessible-role: none; }
+            if root.pause: Glyph {
+                y: (parent.height - self.height) / 2;
+                width: root.size * 0.6;
+                height: root.size * 0.6;
+                name: "pause";
+                ink: root.c;
+            }
+        }
+        Text { text: "]"; color: root.c; font-family: Ph.mono; font-size: root.size; vertical-alignment: center; accessible-role: none; }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// One clip: [>], the blocks, the name over when it was made (wide: the date in its own
+// column), the length and [:] for the menu. The highlighted clip is inverted video with a
+// glow; picked clips for a merge are lit faintly.
+component Row inherits Rectangle {
+    in property <int> index;
+    in property <ClipRow> item;
+    in property <bool> big;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    property <bool> selected: root.index == Main.selected;
+    property <bool> picked: Main.picked[root.index];
+    property <bool> active: root.index == Main.active-clip;
+    property <length> pad: root.big ? 18px : 14px;
+    property <length> wave-w: root.big ? 119px : 76px;
+    property <length> date-w: root.big ? 110px : 0;
+    property <length> len-w: root.big ? 80px : 62px;
+    property <color> ink: root.selected ? Ph.bg : Ph.hi;
+    property <color> soft: root.selected ? #050a06cc : Ph.dim;
+    height: root.big ? 48px : 46px;
+    accessible-role: list-item;
+    accessible-label: root.item.name + ", " + root.item.duration;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected || root.picked;
+    accessible-action-default => { root.select(false, false); }
+    function select(ctrl: bool, shift: bool) {
+        Main.pick(root.index, ctrl, shift);
+        root.refocus();
+    }
+    // The glow of the inverted row, stepped out above and below it.
+    if root.selected: Rectangle {
+        y: -6px;
+        height: parent.height + 12px;
+        background: #4dff7a10;
+    }
+    if root.selected: Rectangle {
+        y: -3px;
+        height: parent.height + 6px;
+        background: #4dff7a24;
+    }
+    Rectangle {
+        background: root.selected ? Ph.ph : root.picked ? Ph.faint : row-touch.has-hover ? #4dff7a12 : transparent;
+    }
+    row-touch := TouchArea {
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                root.select(e.modifiers.control, e.modifiers.shift);
+            }
+            // On release: the press that closes an open menu is used up by that menu.
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                menu.show-at(self.mouse-x, self.mouse-y);
+            }
+        }
+        // Opens just this clip, even out of several picked.
+        double-clicked => { root.select(false, false); Main.open-clip(root.index); root.go(1); }
+    }
+    HorizontalLayout {
+        padding-left: root.pad;
+        padding-right: root.pad;
+        spacing: 8px;
+        VerticalLayout {
+            alignment: center;
+            width: 30px;
+            PlayKey {
+                inverted: root.selected;
+                ink: root.active ? Ph.hi : Ph.mid;
+                pause: root.active && Main.playing;
+                label: (root.active && Main.playing ? "Pause " : "Play ") + root.item.name;
+                tip: root.active && Main.playing ? "Pause" : "Play";
+                clicked => { Main.play-clip(root.index); root.refocus(); }
+            }
+        }
+        // The blocks: a click on the highlighted clip moves its start, a double click
+        // plays from there.
+        Rectangle {
+            width: root.wave-w;
+            Blocks {
+                y: (parent.height - self.height) / 2;
+                height: root.big ? 20px : 16px;
+                n: root.big ? 17 : 11;
+                values: root.item.wave;
+                ink: root.selected ? Ph.bg : Ph.mid;
+                done: root.selected ? #050a0699 : Ph.hi;
+                progress: root.active ? Main.play-fraction : -1;
+            }
+            WaveSeek {
+                selected: root.selected;
+                active: root.active;
+                select(ctrl, shift) => { root.select(ctrl, shift); }
+                cue(f) => { Main.cue-clip(root.index, f); root.refocus(); }
+                play-at(f) => { Main.play-clip-at(root.index, f); root.refocus(); }
+                menu(x, y) => { menu.show-at(x - root.absolute-position.x, y - root.absolute-position.y); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            min-width: 0;
+            Text {
+                text: root.item.name;
+                color: root.ink;
+                font-family: Ph.mono;
+                font-size: 13px;
+                overflow: elide;
+            }
+            // Portrait: when, and "· transcribed"; wide: "transcribed" alone.
+            if !root.big || root.item.transcribed: HorizontalLayout {
+                spacing: 0;
+                if !root.big: Text {
+                    text: root.item.when;
+                    color: root.soft;
+                    font-family: Ph.mono;
+                    font-size: 10.5px;
+                    overflow: elide;
+                    horizontal-stretch: 0;
+                }
+                if root.item.transcribed: Text {
+                    text: root.big ? "transcribed" : " · transcribed";
+                    color: root.selected ? root.soft : Ph.mid;
+                    font-family: Ph.mono;
+                    font-size: 10.5px;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+                if !root.item.transcribed: Rectangle { horizontal-stretch: 1; }
+            }
+        }
+        if root.big: Text {
+            width: root.date-w;
+            text: root.item.when;
+            color: root.soft;
+            font-family: Ph.mono;
+            font-size: 10.5px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        Text {
+            width: root.len-w;
+            text: root.item.duration;
+            color: root.selected ? Ph.bg : Ph.ph;
+            font-family: Ph.mono;
+            font-size: 12px;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+        }
+        // [:], the menu: manage, rename, export, delete.
+        Rectangle {
+            width: 26px;
+            accessible-role: button;
+            accessible-label: "Menu for " + root.item.name;
+            accessible-action-default => { root.open-menu(); }
+            Rectangle {
+                x: parent.width - self.width;
+                y: (parent.height - self.height) / 2;
+                width: dots-text.preferred-width + 4px;
+                height: 20px;
+                border-radius: 2px;
+                background: dots.has-hover ? (root.selected ? Ph.bg : Ph.faint) : transparent;
+                dots-text := Text {
+                    width: 100%;
+                    height: 100%;
+                    text: "[:]";
+                    color: dots.has-hover ? (root.selected ? Ph.ph : Ph.hi) : root.selected ? Ph.bg : Ph.dim;
+                    font-family: Ph.mono;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                    horizontal-alignment: center;
+                    accessible-role: none;
+                }
+            }
+            property <bool> hovering: dots.has-hover;
+            changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
+            dots := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Tips.hide(); root.open-menu(); }
+            }
+        }
+    }
+    function open-menu() {
+        menu.show-at(root.width - root.pad - 210px, (root.height + 20px) / 2 + 4px);
+    }
+    menu := ClipMenu {
+        width: parent.width;
+        height: parent.height;
+        item: root.item;
+        merge-count: root.picked ? Main.picked-count : 0;
+        projects: Main.projects;
+        project: Main.project;
+        window-h: root.window-h;
+        merge => { Main.start-merge(); root.go(5); }
+        open => { Main.open-clip(root.index); root.go(1); }
+        rename => { root.ask-rename(root.index); }
+        export(kind) => { Main.selected = root.index; Main.export-as(kind); root.refocus(); }
+        delete => { root.ask-delete(root.index); }
+        move-to(p) => { Main.move-clip(root.index, p); root.refocus(); }
+    }
+}
+
+// A search result, as grep prints it: the clip (its project when all are searched, a
+// count of further hits), then the words around the match, the match inverted.
+component Hit inherits Rectangle {
+    in property <SearchHit> hit;
+    in property <bool> show-project;
+    in property <bool> big;
+    callback clicked;
+    height: 44px;
+    background: t.has-hover ? #4dff7a12 : transparent;
+    accessible-role: button;
+    accessible-label: root.hit.clip + ", " + root.hit.before + " " + root.hit.matched + " " + root.hit.after;
+    accessible-action-default => { root.clicked(); }
+    VerticalLayout {
+        padding-left: root.big ? 18px : 14px;
+        padding-right: root.big ? 18px : 14px;
+        alignment: center;
+        spacing: 3px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: (root.show-project ? root.hit.project + "/" : "") + root.hit.clip + (root.hit.matched != "" ? ":" : "");
+                color: Ph.hi;
+                font-family: Ph.mono;
+                font-size: 13px;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if root.hit.more > 0: Text {
+                text: "+" + root.hit.more;
+                color: Ph.amber;
+                font-family: Ph.mono;
+                font-size: 11px;
+                vertical-alignment: center;
+            }
+        }
+        if root.hit.matched != "": HorizontalLayout {
+            spacing: 0;
+            if root.hit.before != "": Text {
+                text: root.hit.before + " ";
+                color: Ph.mid;
+                font-family: Ph.mono;
+                font-size: 11px;
+                horizontal-stretch: 0;
+            }
+            Rectangle {
+                width: mark.preferred-width + 2px;
+                horizontal-stretch: 0;
+                background: Ph.ph;
+                mark := Text {
+                    text: root.hit.matched;
+                    color: Ph.bg;
+                    font-family: Ph.mono;
+                    font-size: 11px;
+                    horizontal-alignment: center;
+                }
+            }
+            Text {
+                text: " " + root.hit.after;
+                color: Ph.mid;
+                font-family: Ph.mono;
+                font-size: 11px;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The list: its header, then the clips, or the search results while there is a query.
+component List inherits VerticalLayout {
+    in property <bool> big;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    vertical-stretch: 1;
+    horizontal-stretch: 1;
+    padding-top: root.big ? 12px : 6px;
+    // The column heads.
+    HorizontalLayout {
+        padding-left: root.big ? 18px : 14px;
+        padding-right: root.big ? 18px : 14px;
+        padding-bottom: root.big ? 8px : 6px;
+        spacing: 8px;
+        if Main.query != "": Caps {
+            text: Main.hits.length == 0 ? "NO MATCHES" : "MATCHES " + Main.hits.length;
+            horizontal-stretch: 1;
+        }
+        if Main.query == "" && !root.big: Caps { text: "CLIPS " + Main.clips.length; horizontal-stretch: 1; }
+        if Main.query == "" && !root.big: Caps { text: "LEN"; }
+        if Main.query == "" && root.big: Rectangle { width: 30px; }
+        if Main.query == "" && root.big: Caps { text: "WAVE"; width: 119px; }
+        if Main.query == "" && root.big: Caps { text: "NAME"; horizontal-stretch: 1; }
+        if Main.query == "" && root.big: Caps { text: "DATE"; width: 110px; }
+        if Main.query == "" && root.big: Caps { text: "LEN"; width: 80px; horizontal-alignment: right; }
+        if Main.query == "" && root.big: Rectangle { width: 26px; }
+    }
+    if Main.query != "": Scroller {
+        vertical-stretch: 1;
+        fade: true;
+        VerticalLayout {
+            alignment: start;
+            for h[i] in Main.hits: Hit {
+                hit: h;
+                big: root.big;
+                show-project: Main.search-all;
+                clicked => { Main.open-hit(i); root.go(1); }
+            }
+        }
+    }
+    if Main.query == "": Scroller {
+        vertical-stretch: 1;
+        fade: true;
+        content-y <=> Main.list-y;
+        property <int> count: Main.clips.length;
+        init => { Main.list-height = self.visible-height; Main.clamp-list(); }
+        changed visible-height => { Main.list-height = self.visible-height; Main.clamp-list(); }
+        changed count => { Main.clamp-list(); }
+        VerticalLayout {
+            alignment: start;
+            if Main.clips.length == 0: Text {
+                text: "no clips yet";
+                color: Ph.dim;
+                font-family: Ph.mono;
+                font-size: 13px;
+                horizontal-alignment: center;
+            }
+            for clip[i] in Main.clips: Row {
+                index: i;
+                item: clip;
+                big: root.big;
+                window-h: root.window-h;
+                go(p) => { root.go(p); }
+                ask-rename(n) => { root.ask-rename(n); }
+                ask-delete(n) => { root.ask-delete(n); }
+                refocus => { root.refocus(); }
+            }
+        }
+    }
+}
+
+// Now playing: [>], the clip's name, its bar in light shade with the played part solid
+// (a click jumps there), and the time.
+component Player inherits Rectangle {
+    callback refocus();
+    property <int> shown: Main.active-clip >= 0 && Main.active-clip < Main.clips.length ? Main.active-clip
+        : Main.selected >= 0 && Main.selected < Main.clips.length ? Main.selected : -1;
+    property <bool> is-active: self.shown >= 0 && self.shown == Main.active-clip;
+    property <float> at: root.is-active ? clamp(Main.play-fraction, 0, 1) : 0;
+    vertical-stretch: 0;
+    height: 44px;
+    Dash { y: 0; height: 1px; }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            PlayKey {
+                ink: Ph.hi;
+                pause: root.is-active && Main.playing;
+                label: root.is-active && Main.playing ? "Pause" : "Play";
+                tip: root.is-active && Main.playing ? "Pause" : "Play";
+                opacity: root.shown >= 0 ? 1 : 0.6;
+                clicked => { if (root.shown >= 0) { Main.play-clip(root.shown); root.refocus(); } }
+            }
+        }
+        Text {
+            text: root.shown >= 0 ? Main.clips[root.shown].name : "Nothing playing";
+            color: root.shown >= 0 ? Ph.hi : Ph.dim;
+            font-family: Ph.mono;
+            font-size: 12px;
+            vertical-alignment: center;
+            overflow: elide;
+            max-width: 200px;
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            Rectangle {
+                y: (parent.height - self.height) / 2;
+                height: 12px;
+                Shade { width: 100%; height: 100%; }
+                Rectangle {
+                    x: 0;
+                    width: parent.width * root.at;
+                    background: Ph.mid;
+                }
+            }
+            // Click to jump; the whole height of the footer.
+            TouchArea {
+                enabled: root.shown >= 0;
+                mouse-cursor: pointer;
+                clicked => {
+                    Main.selected = root.shown;
+                    Main.seek-fraction(self.mouse-x / self.width);
+                    root.refocus();
+                }
+            }
+        }
+        Text {
+            text: root.shown < 0 ? "--:-- / --:--"
+                : (root.is-active ? Main.play-position : "0:00") + " / " + Main.clips[root.shown].duration;
+            color: Ph.mid;
+            font-family: Ph.mono;
+            font-size: 12px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// The main page. Portrait: the title bar, the readout, the list, the prompt and the footer,
+// top to bottom. Wide: the readout on the left beside the list, the prompt across the
+// window. The scanlines and the vignette lie over all of it.
+export component MainPage inherits Rectangle {
+    // The window's size classes, as AppWindow works them out.
+    in property <bool> narrow;
+    in property <bool> wide;
+    in property <bool> tall;
+    // Opens page p (see AppWindow.page).
+    callback go(int);
+    // The rename and delete questions for clip i.
+    callback ask-rename(int);
+    callback ask-delete(int);
+    // Gives the keyboard back to the window's shortcuts.
+    callback refocus();
+
+    property <length> pitch: root.wide ? 48px : 46px;
+    property <length> prompt-h: root.wide ? 40px : 38px;
+    property <bool> hi: 1phx < 0.7px;
+    init => { Main.row-h = root.pitch; }
+    changed pitch => { Main.row-h = root.pitch; Main.clamp-list(); }
+    background: Ph.bg;
+
+    VerticalLayout {
+        Title {
+            wide: root.wide;
+            go(p) => { root.go(p); }
+        }
+        if !root.wide: ReadoutFront {
+            tall: root.tall;
+            refocus => { root.refocus(); }
+        }
+        if !root.wide: List {
+            window-h: root.height;
+            go(p) => { root.go(p); }
+            ask-rename(n) => { root.ask-rename(n); }
+            ask-delete(n) => { root.ask-delete(n); }
+            refocus => { root.refocus(); }
+        }
+        if root.wide: HorizontalLayout {
+            vertical-stretch: 1;
+            ReadoutSide {
+                avail: root.height - 34px - root.prompt-h - 44px - (Main.export-state != 0 ? 30px : 0);
+                refocus => { root.refocus(); }
+            }
+            List {
+                big: true;
+                window-h: root.height;
+                go(p) => { root.go(p); }
+                ask-rename(n) => { root.ask-rename(n); }
+                ask-delete(n) => { root.ask-delete(n); }
+                refocus => { root.refocus(); }
+            }
+        }
+        Prompt {
+            wide: root.wide;
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+
+        // An export from the clip menu or the project menu: what it is, how far along,
+        // and a check when done. It takes its own room above the player.
+        if Main.export-state != 0: Rectangle {
+            vertical-stretch: 0;
+            height: 30px;
+            Dash { y: 0; height: 1px; }
+            HorizontalLayout {
+                padding-left: 12px;
+                padding-right: 12px;
+                spacing: 10px;
+                Text {
+                    text: (Main.export-state == 2 ? "> exported " : "> exporting ") + Main.export-name;
+                    color: Main.export-state == 2 ? Ph.hi : Ph.mid;
+                    font-family: Ph.mono;
+                    font-size: 12px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+                if Main.export-state == 1: Rectangle {
+                    width: 120px;
+                    height: 12px;
+                    y: (parent.height - self.height) / 2;
+                    Shade { width: 100%; height: 100%; }
+                    Rectangle {
+                        x: 0;
+                        width: parent.width * clamp(Main.export-progress, 0, 1);
+                        background: Ph.ph;
+                    }
+                }
+                Text {
+                    text: Main.export-state == 2 ? "[ok]" : round(Main.export-progress * 100) + "%";
+                    color: Main.export-state == 2 ? Ph.ph : Ph.mid;
+                    font-family: Ph.mono;
+                    font-size: 11px;
+                    vertical-alignment: center;
+                    width: 34px;
+                    horizontal-alignment: right;
+                }
+            }
+        }
+
+        Player { refocus => { root.refocus(); } }
+    }
+
+    // Messages float just above the prompt, in a box, so nothing moves when they come and go.
+    if Main.status != "": Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - 44px - (Main.export-state != 0 ? 30px : 0) - root.prompt-h - self.height - 8px;
+        width: min(msg.preferred-width + 24px, parent.width - 32px);
+        height: 26px;
+        background: Ph.bg2;
+        border-width: 1px;
+        border-color: Ph.ph;
+        msg := Text {
+            text: Main.status;
+            color: Ph.hi;
+            font-family: Ph.mono;
+            font-size: 12px;
+            overflow: elide;
+            x: 12px;
+            width: parent.width - 24px;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+
+    // The glass, over everything and never in the way: a dark scanline every third pixel,
+    // and the tube's vignette in the corners. The scanlines are plain lines, not a tiled
+    // image over the whole window: only a third of the pixels blend, so the moving
+    // readout stays cheap to redraw. Each line sits on whole device pixels.
+    for i in ceil(root.height / 3px): Rectangle {
+        y: round((i * 3px + 2px) / 1phx) * 1phx;
+        height: max(1phx, round(1px / 1phx) * 1phx);
+        background: #00000038;
+    }
+    Image {
+        x: 0;
+        y: 0;
+        width: 200px;
+        height: 200px;
+        source: root.hi ? @image-url("phosphor/vig-tl@2x.png") : @image-url("phosphor/vig-tl.png");
+        image-fit: fill;
+        accessible-role: none;
+    }
+    Image {
+        x: parent.width - 200px;
+        y: 0;
+        width: 200px;
+        height: 200px;
+        source: root.hi ? @image-url("phosphor/vig-tr@2x.png") : @image-url("phosphor/vig-tr.png");
+        image-fit: fill;
+        accessible-role: none;
+    }
+    Image {
+        x: 0;
+        y: parent.height - 200px;
+        width: 200px;
+        height: 200px;
+        source: root.hi ? @image-url("phosphor/vig-bl@2x.png") : @image-url("phosphor/vig-bl.png");
+        image-fit: fill;
+        accessible-role: none;
+    }
+    Image {
+        x: parent.width - 200px;
+        y: parent.height - 200px;
+        width: 200px;
+        height: 200px;
+        source: root.hi ? @image-url("phosphor/vig-br@2x.png") : @image-url("phosphor/vig-br.png");
+        image-fit: fill;
+        accessible-role: none;
+    }
+}

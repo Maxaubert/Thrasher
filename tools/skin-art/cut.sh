@@ -21,6 +21,7 @@ case $SKIN in
 tape) PIECES="cassette:cassette:354:126 cassette-clip:cassette-clip:354:126 reels:reels:352:44 vu-face:vu-face:184:106 vu-over:vu-over:184:106
   walnut:walnut-grain:153:4 alu:alu-lines:4:2 spine:spine-lines:4:5 grille:grille:7:4 dial:dial:52:52
   knob:knob:36:36 knob-sel:knob-sel:36:36 screw:screw:7:7 led:led:21:21" ;;
+phosphor) PIECES="vig-tl:vig-tl:200:200 vig-tr:vig-tr:200:200 vig-bl:vig-bl:200:200 vig-br:vig-br:200:200 halo:halo:30:30 dash:dash:6:1 vdash:vdash:1:6 dither:dither:4:4" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 

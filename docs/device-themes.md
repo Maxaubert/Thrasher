@@ -176,6 +176,47 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
   `opt-level = "s"` for the app crate only, the same change is +6.82 MB (29.73 to
   36.55 MB, and the whole exe 4.7 MB smaller). A choice for Max before the other skins.
 
+**Built in step 5, Phosphor main page (2026-10-29):**
+- `ui/skins/phosphor.slint` (skin 2, theme "Phosphor", palette 9). The other pages use the
+  classic blocks in the Phosphor palette for now: `app.slint` picks those with
+  `Theme.skin != 1` (was `== 0`), so every skin without its own pages falls back to them.
+- Shared changes, no visible change for the other looks: `TextField.has-focus` (the
+  prompt draws its own resting block cursor) and `ProjectMenu.up` (the picker sits in the
+  prompt at the bottom, so its menu opens upwards).
+- Fonts: VT323 (the title, the timer and the record key; its 5 has a flat top and reads
+  clearly) subset to Latin, 78 KB; IBM Plex Mono Regular, 136 KB, shipped **unmodified**:
+  its OFL names "Plex" as a Reserved Font Name, so a subset (a modified version) could not
+  keep the name. The mockup uses only the regular weight inside the window.
+- Art: 16 small PNGs, 43 KB (corner vignette, block glow, dashed rules, light shade).
+- Rust: `RECORDING_FPS` 4 for the lamp blinking while recording; `EFFECT_FPS` 0.
+
+**Lessons from Phosphor:**
+- **Overlays over the whole window are paid on every redraw.** The scanlines as a tiled
+  image plus the vignette as one stretched image took recording from 29% to 59% of a core
+  at 1100x700: the software renderer blends them over every dirty pixel, and a bigger
+  tile does not help. Scanlines as 1px `Rectangle`s on whole device pixels (only a third
+  of the pixels blend) and the vignette as four unscaled corner images brought it to 27%.
+- **Faking a glow with copies of a text** that changes (the timer, 10 times a second)
+  cost 4 to 6%; Phosphor has no timer glow. Static glows (the lamp, the cursor) are a
+  pre-blurred PNG behind the block.
+- **Text cells:** Plex Mono and VT323 are monospaced (0.6 em and 0.4 em), so the meter's
+  cells and the cursor after "Search" are placed by character count, like the tape counter.
+- **`accessible-role` must be a constant:** a key that is sometimes a checkbox sets it
+  where it is used (`--all`), not through a property.
+- **A size that depends on the window** must come from outside the layout: the wide
+  readout gets its height as `avail` from MainPage, or the timer size loops through it.
+- **Checks:** posted mouse moves do not raise hover in the hidden test window (no tooltip
+  shows in any look), and the wheel and scrollbar drag did not scroll there either; keys
+  do (arrows scroll the list). Search text must be typed as key presses (`vk`), not
+  `WM_CHAR`. Each parallel skin agent runs its own exe name (`thrasher-phos.exe`) and its
+  own copies of `win.ps1` and `press.ps1`, so they never kill each other's window.
+
+**Budgets measured on Phosphor** (test copy, 2.25x display, 10 s samples, 2026-10-29):
+- CPU idle 0.0 to 0.3% (Ember 0.3%); recording 17.2% at 520x700 (Ember 18.7%), 26.7% at
+  1100x700 (Ember 24.5%; the wide readout redraws its scope and the big timer).
+- Working set idle 43.6 vs Ember 40.2 MB (+3.4); wide 53.0 vs 48.2 MB (+4.8).
+- Exe +2.28 MB (44.83 to 47.11 MB): fonts 0.21 MB, art 0.04 MB, the rest generated code.
+
 ### Art
 
 - **Chrome and textures** (walnut, leatherette, brass, bezels, pixel frames) become small

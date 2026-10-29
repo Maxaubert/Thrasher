@@ -1,0 +1,1487 @@
+// The Desktop 95 main page: a tiny mid 90s desktop (docs/mockups/device-themes/dv-os95.html).
+// Grey bevels and a blue title bar; the recorder is a Sound Recorder window with a green
+// scope, an LED level and a big Rec key; Import, Ask and the widget are desktop icons;
+// the clips are a file list with columns; the taskbar is the player. Portrait windows put
+// the recorder top left with the icons beside it and the file window below; wide ones
+// put the recorder on the left with the icons under it and the file window on the right.
+//
+// The bevels, the scope and the meter are drawn here. The pixel icons and two tiles (the
+// desktop's dots and a checker) are PNGs in dv-os95/, cut from the mockup with headless
+// Edge (tools/skin-art). Nothing moves on a clock: the scope and the meter follow the live
+// level while recording, like the classic meter.
+
+import { Main, Tips, ProjectMenu, TextField, Scroller, ClipMenu, WaveSeek, ClipRow, SearchHit } from "../common.slint";
+
+// The mockup's colours.
+global Os {
+    out property <color> face: #c0c0c0;
+    out property <color> hi: #ffffff;
+    out property <color> lt: #dfdfdf;
+    out property <color> sh: #808080;
+    out property <color> dk: #0a0a0a;
+    out property <color> navy: #0a1f7a;
+    out property <color> desk: #127170;
+    out property <color> scope: #3cff6a;
+    out property <color> ink2: #333333;
+    out property <color> red: #e0201b;
+    out property <brush> active: @linear-gradient(90deg, #0a1f7a 0%, #2f8fd6 100%);
+    out property <brush> inactive: @linear-gradient(90deg, #7b7b7b 0%, #b4b4b4 100%);
+    out property <string> font: "Pixel 95";
+}
+
+// The two pixel lines round a box. Kind 0 raised (a window or a key), 1 pressed, 2 sunken
+// (a field), 3 thinly sunken (a status bar cell), 4 etched (a group box).
+component Bevel inherits Rectangle {
+    in property <int> kind;
+    property <color> o-tl: root.kind == 0 ? Os.hi : root.kind == 1 ? Os.dk : Os.sh;
+    property <color> o-br: root.kind == 0 ? Os.dk : Os.hi;
+    property <color> i-tl: root.kind == 0 ? Os.lt : root.kind == 1 ? Os.sh : root.kind == 2 ? Os.dk : Os.hi;
+    property <color> i-br: root.kind == 0 ? Os.sh : root.kind == 4 ? Os.sh : Os.lt;
+    Rectangle { visible: root.kind != 3; x: 1px; y: 1px; width: parent.width - 2px; height: 1px; background: root.i-tl; }
+    Rectangle { visible: root.kind != 3; x: 1px; y: 1px; width: 1px; height: parent.height - 2px; background: root.i-tl; }
+    Rectangle { visible: root.kind != 3; x: 1px; y: parent.height - 2px; width: parent.width - 2px; height: 1px; background: root.i-br; }
+    Rectangle { visible: root.kind != 3; x: parent.width - 2px; y: 1px; width: 1px; height: parent.height - 2px; background: root.i-br; }
+    Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: root.o-tl; }
+    Rectangle { x: 0; y: 0; width: 1px; height: parent.height; background: root.o-tl; }
+    Rectangle { x: 0; y: parent.height - 1px; width: parent.width; height: 1px; background: root.o-br; }
+    Rectangle { x: parent.width - 1px; y: 0; width: 1px; height: parent.height; background: root.o-br; }
+}
+
+// A pixel icon at a whole scale of its art, without smoothing.
+component Px inherits Image {
+    in property <float> s: 1;
+    width: self.source.width * root.s * 1px;
+    height: self.source.height * root.s * 1px;
+    image-fit: fill;
+    image-rendering: pixelated;
+}
+
+// The dotted focus line round the highlighted row or icon: a checker tile in one colour.
+component Dotted inherits Rectangle {
+    in property <color> tint: #ffffff;
+    property <bool> hi: 1phx < 0.7px;
+    property <image> tile: root.hi ? @image-url("dv-os95/checker@2x.png") : @image-url("dv-os95/checker.png");
+    Image { x: 0; y: 0; width: parent.width; height: 1px; source: root.tile; colorize: root.tint; horizontal-tiling: repeat; vertical-tiling: repeat; horizontal-alignment: left; vertical-alignment: top; }
+    Image { x: 0; y: parent.height - 1px; width: parent.width; height: 1px; source: root.tile; colorize: root.tint; horizontal-tiling: repeat; vertical-tiling: repeat; horizontal-alignment: left; vertical-alignment: top; }
+    Image { x: 0; y: 0; width: 1px; height: parent.height; source: root.tile; colorize: root.tint; horizontal-tiling: repeat; vertical-tiling: repeat; horizontal-alignment: left; vertical-alignment: top; }
+    Image { x: parent.width - 1px; y: 0; width: 1px; height: parent.height; source: root.tile; colorize: root.tint; horizontal-tiling: repeat; vertical-tiling: repeat; horizontal-alignment: left; vertical-alignment: top; }
+}
+
+// A grey push button. It stays pushed in while `latched`; the content moves a pixel down
+// and right when pressed.
+component Btn inherits Rectangle {
+    in property <string> label;
+    in property <string> tip: root.label;
+    in property <bool> latched;
+    in property <bool> enabled: true;
+    callback clicked;
+    property <bool> down: (t.pressed && t.has-hover && root.enabled) || root.latched;
+    background: Os.face;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Bevel { kind: root.down ? 1 : 0; }
+    Rectangle {
+        x: root.down ? 1px : 0;
+        y: root.down ? 1px : 0;
+        width: parent.width;
+        height: parent.height;
+        opacity: root.enabled ? 1 : 0.45;
+        @children
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => {
+        if (root.tip != "") {
+            Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height);
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// A pixel icon in the middle of its box.
+component Mid inherits Rectangle {
+    in property <image> source;
+    in property <float> s: 1;
+    Px {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        source: root.source;
+        s: root.s;
+    }
+}
+
+// A window on the desktop: the raised frame, its title bar and the body.
+component Window95 inherits Rectangle {
+    in property <string> title;
+    in property <image> icon;
+    in property <bool> active: true;
+    background: Os.face;
+    Bevel { kind: 0; }
+    Rectangle {
+        x: 3px;
+        y: 3px;
+        width: parent.width - 6px;
+        height: 18px;
+        background: root.active ? Os.active : Os.inactive;
+        HorizontalLayout {
+            padding-left: 4px;
+            padding-right: 4px;
+            spacing: 5px;
+            VerticalLayout {
+                alignment: center;
+                Px { source: root.icon; }
+            }
+            Text {
+                text: root.title;
+                color: root.active ? #ffffff : #e4e4e4;
+                font-family: Os.font;
+                font-weight: 700;
+                font-size: 12.5px;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    Rectangle {
+        x: 3px;
+        y: 21px;
+        width: parent.width - 6px;
+        height: parent.height - 24px;
+        @children
+    }
+}
+
+// The app's own title bar: the logo, the name, Settings, minimise and close.
+component Caption inherits Rectangle {
+    callback go(int);
+    height: 22px;
+    background: Os.active;
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    HorizontalLayout {
+        padding-left: 4px;
+        padding-right: 3px;
+        spacing: 5px;
+        VerticalLayout {
+            alignment: center;
+            Px { source: @image-url("dv-os95/logo.png"); }
+        }
+        HorizontalLayout {
+            horizontal-stretch: 1;
+            spacing: 8px;
+            Text {
+                text: "Thrasher";
+                color: #ffffff;
+                font-family: Os.font;
+                font-weight: 700;
+                font-size: 14px;
+                letter-spacing: 0.3px;
+                vertical-alignment: center;
+            }
+            Text {
+                y: 1px;
+                text: "Sound Recorder 95";
+                color: #bcd6f5;
+                font-family: Os.font;
+                font-size: 11px;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Btn {
+                width: 18px;
+                height: 16px;
+                label: "Settings";
+                clicked => { root.go(3); }
+                Mid { source: @image-url("dv-os95/gear.png"); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Btn {
+                width: 18px;
+                height: 16px;
+                label: "Minimize";
+                clicked => { Main.minimize-window(); }
+                Mid { source: @image-url("dv-os95/min.png"); }
+            }
+        }
+        Rectangle { width: 3px; }
+        VerticalLayout {
+            alignment: center;
+            Btn {
+                width: 18px;
+                height: 16px;
+                label: "Close";
+                clicked => { Main.close-window(); }
+                Mid { source: @image-url("dv-os95/close.png"); }
+            }
+        }
+    }
+}
+
+// The scope: a green trace on a dark grid. While recording, the trace's height follows
+// the live level along its width (the newest on the right) and its carrier shifts with
+// the latest level, so it lives like a scope; at rest it is a faint still wave.
+component Scope inherits Rectangle {
+    in property <bool> big;
+    property <bool> live: Main.recording && !Main.paused && Main.live.length > 0;
+    property <int> count: Main.live.length;
+    property <angle> phase: root.live ? Main.live[root.count - 1] * 37rad : 0rad;
+    background: #000000;
+    Bevel { kind: 2; }
+    inner := Rectangle {
+        x: 2px;
+        y: 2px;
+        width: parent.width - 4px;
+        height: parent.height - 4px;
+        clip: true;
+        property <length> mid: round(self.height / 2px) * 1px;
+        property <length> off: self.mid - floor(self.mid / 12px) * 12px;
+        property <int> n: max(2, floor(self.width / 2px));
+        for i in floor(inner.width / 16px) + 1: Rectangle {
+            x: i * 16px;
+            y: 0;
+            width: 1px;
+            height: inner.height;
+            background: #0b3417;
+        }
+        for j in floor(inner.height / 12px) + 1: Rectangle {
+            x: 0;
+            y: inner.off + j * 12px;
+            width: inner.width;
+            height: 1px;
+            background: #0b3417;
+        }
+        Rectangle { x: 0; y: inner.mid; width: inner.width; height: 1px; background: #145a26; }
+        // One column of the trace every 2px, from this point to the next: a pixel line.
+        for i in inner.n: Rectangle {
+            property <length> a: root.ty(i);
+            property <length> b: root.ty(i + 1);
+            x: i * 2px;
+            y: min(self.a, self.b) - 2px;
+            width: 2px;
+            height: abs(self.a - self.b) + 5px;
+            background: #3cff6a38;
+            Rectangle { x: 0; y: 2px; width: 2px; height: parent.height - 4px; background: Os.scope; }
+        }
+        Text {
+            x: 8px;
+            y: 3px;
+            text: "SCOPE";
+            color: #1d9c3f;
+            font-family: "VT323";
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+    }
+    // The level at point i of the trace: from the live bars when recording, else low.
+    pure function amp(i: int) -> float {
+        return root.live ? clamp((Main.live[floor(i / inner.n * (root.count - 1))] - 0.06) / 0.94 * 1.5, 0.03, 1) : 0.12;
+    }
+    pure function ty(i: int) -> length {
+        return inner.mid + inner.height * 0.38 * root.amp(i) * sin(i / inner.n * 180deg)
+            * (0.6 * sin(i / inner.n * 31rad + root.phase) + 0.3 * sin(i / inner.n * 83rad - root.phase * 1.3) + 0.15 * sin(i / inner.n * 190rad + root.phase * 2));
+    }
+}
+
+// The LED level: green, then yellow, then two red segments.
+component Level inherits Rectangle {
+    in property <bool> big;
+    in property <float> level;
+    property <int> segs: root.big ? 30 : 22;
+    property <int> on: round(root.segs * min(1, clamp((root.level - 0.06) / 0.94, 0, 1) * 1.15));
+    property <length> pitch: (self.width - 6px + 1px) / root.segs;
+    height: root.big ? 18px : 14px;
+    background: #000000;
+    Bevel { kind: 2; }
+    for i in root.segs: Rectangle {
+        property <bool> red: i >= root.segs - 2;
+        property <bool> yellow: !self.red && i >= root.segs - 6;
+        property <bool> lit: i < root.on;
+        x: 3px + i * root.pitch;
+        y: 3px;
+        width: root.pitch - 1px;
+        height: root.height - 6px;
+        background: self.red ? (self.lit ? #ff4a2a : #3a1208) : self.yellow ? (self.lit ? #ffe14d : #3a3410) : (self.lit ? Os.scope : #0d3a18);
+    }
+}
+
+// The input group: the level and the microphone (which Settings picks), and the scale on
+// a wide window.
+component InputGroup inherits Rectangle {
+    in property <bool> big;
+    in property <float> level;
+    Bevel { kind: 4; }
+    // The legend sits on the group's top line.
+    Rectangle {
+        x: 8px;
+        y: -7px;
+        width: legend.preferred-width + 8px;
+        height: 14px;
+        background: Os.face;
+        legend := Text {
+            text: "Input";
+            color: #000000;
+            font-family: Os.font;
+            font-size: 12px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    VerticalLayout {
+        padding-top: 12px;
+        padding-bottom: 7px;
+        padding-left: 8px;
+        padding-right: 8px;
+        spacing: 6px;
+        alignment: center;
+        Level { big: root.big; level: root.level; }
+        Rectangle {
+            height: 21px;
+            background: #ffffff;
+            Bevel { kind: 2; }
+            HorizontalLayout {
+                padding-left: 5px;
+                padding-right: 5px;
+                spacing: 5px;
+                VerticalLayout {
+                    alignment: center;
+                    Px { source: @image-url("dv-os95/mic.png"); }
+                }
+                Text {
+                    text: Main.device-label;
+                    color: #000000;
+                    font-family: Os.font;
+                    font-size: 12.5px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+            }
+        }
+        if root.big: HorizontalLayout {
+            alignment: space-between;
+            padding-left: 2px;
+            padding-right: 2px;
+            for t in ["-60", "-40", "-20", "-6", "0 dB"]: Text {
+                text: t;
+                color: Os.ink2;
+                font-family: Os.font;
+                font-size: 12px;
+            }
+        }
+    }
+}
+
+// The Sound Recorder window: the status and the timer, the scope, the input group, Rec
+// (Stop while recording) and Pause beside it while recording.
+component Recorder inherits Window95 {
+    in property <bool> big;
+    callback refocus();
+    title: "Sound Recorder";
+    icon: @image-url("dv-os95/mic.png");
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;
+    VerticalLayout {
+        padding-top: 6px;
+        padding-left: 4px;
+        padding-right: 4px;
+        padding-bottom: 4px;
+        spacing: 6px;
+        HorizontalLayout {
+            height: root.big ? 34px : 24px;
+            spacing: 6px;
+            Rectangle {
+                horizontal-stretch: 1;
+                Bevel { kind: 2; }
+                HorizontalLayout {
+                    padding-left: 8px;
+                    padding-right: 8px;
+                    spacing: 6px;
+                    VerticalLayout {
+                        alignment: center;
+                        Px {
+                            source: @image-url("dv-os95/led.png");
+                            s: 2;
+                            colorize: Main.recording ? (Main.paused ? #ffe14d : #ff4a2a) : Os.scope;
+                        }
+                    }
+                    Text {
+                        text: Main.recording ? (Main.paused ? "PAUSED" : "RECORDING") : "READY";
+                        color: #000000;
+                        font-family: Os.font;
+                        font-weight: 700;
+                        font-size: 13px;
+                        letter-spacing: 1px;
+                        vertical-alignment: center;
+                        overflow: elide;
+                        horizontal-stretch: 1;
+                    }
+                }
+            }
+            Rectangle {
+                width: root.big ? 150px : 104px;
+                background: #000000;
+                Bevel { kind: 2; }
+                Text {
+                    x: 10px;
+                    width: parent.width - 20px;
+                    height: parent.height;
+                    text: Main.elapsed + Main.elapsed-tenth;
+                    color: Os.scope;
+                    font-family: "VT323";
+                    // An hour or more is two characters longer: smaller in the small box.
+                    font-size: root.big ? 34px : Main.elapsed.character-count > 5 ? 22px : 24px;
+                    horizontal-alignment: right;
+                    vertical-alignment: center;
+                }
+            }
+        }
+        Scope {
+            big: root.big;
+            vertical-stretch: 1;
+        }
+        HorizontalLayout {
+            height: root.big ? 138px : 60px;
+            spacing: 6px;
+            InputGroup {
+                big: root.big;
+                level: root.level;
+                horizontal-stretch: 1;
+            }
+            if Main.recording: Btn {
+                width: root.big ? 72px : 58px;
+                latched: Main.paused;
+                label: Main.paused ? "Resume" : "Pause";
+                clicked => { Main.toggle-pause(); root.refocus(); }
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 5px;
+                    HorizontalLayout {
+                        alignment: center;
+                        Px { source: @image-url("dv-os95/recpause.png"); s: root.big ? 4 : 3; }
+                    }
+                    Text {
+                        text: Main.paused ? "Resume" : "Pause";
+                        color: #000000;
+                        font-family: Os.font;
+                        font-weight: 700;
+                        font-size: root.big ? 14px : 12px;
+                        horizontal-alignment: center;
+                        accessible-role: none;
+                    }
+                }
+            }
+            Btn {
+                width: root.big ? 112px : 74px;
+                latched: Main.recording;
+                label: Main.recording ? "Stop and save" : "Record";
+                tip: Main.recording ? "Stop" : "Record";
+                clicked => { Main.toggle-record(); root.refocus(); }
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 5px;
+                    HorizontalLayout {
+                        alignment: center;
+                        Px {
+                            source: Main.recording ? @image-url("dv-os95/stop.png") : @image-url("dv-os95/dot.png");
+                            s: root.big ? 4 : 3;
+                        }
+                    }
+                    Text {
+                        text: Main.recording ? "Stop" : "Rec";
+                        color: #000000;
+                        font-family: Os.font;
+                        font-weight: 700;
+                        font-size: 14px;
+                        horizontal-alignment: center;
+                        accessible-role: none;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// An icon on the desktop: the picture, and the name under it, which lights up navy with
+// a dotted line when hovered.
+component DeskIcon inherits Rectangle {
+    in property <image> icon;
+    in property <string> text;
+    in property <string> label;
+    in property <string> tip;
+    in property <bool> enabled: true;
+    callback clicked;
+    property <bool> hot: t.has-hover && root.enabled;
+    width: 72px;
+    height: 32px + 4px + 4px + name.preferred-height + 2px;
+    opacity: root.enabled ? 1 : 0.5;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Px {
+        x: (parent.width - self.width) / 2;
+        y: 2px;
+        source: root.icon;
+        s: 2;
+    }
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: 40px;
+        width: min(parent.width, name.preferred-width + 8px);
+        height: name.preferred-height + 2px;
+        background: root.hot ? Os.navy : Os.desk;
+        name := Text {
+            text: root.text;
+            color: #ffffff;
+            font-family: Os.font;
+            font-size: 12.5px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Dotted { visible: root.hot; }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// Import (while not recording), Ask (with the local AI) and the widget.
+component Icons inherits Rectangle {
+    in property <bool> across;
+    callback go(int);
+    width: lay.preferred-width;
+    height: lay.preferred-height;
+    lay := GridLayout {
+        spacing-horizontal: 22px;
+        spacing-vertical: 10px;
+        DeskIcon {
+            row: 0;
+            col: 0;
+            icon: @image-url("dv-os95/floppy.png");
+            text: "Import";
+            label: "Import audio or video";
+            tip: "Import";
+            enabled: !Main.recording;
+            clicked => { Main.import-files(); }
+        }
+        if Main.can-ai: DeskIcon {
+            row: root.across ? 0 : 1;
+            col: root.across ? 1 : 0;
+            icon: @image-url("dv-os95/balloon.png");
+            text: "Ask";
+            label: "Ask your clips";
+            tip: "Ask";
+            clicked => { root.go(6); }
+        }
+        DeskIcon {
+            row: root.across ? 0 : 2;
+            col: root.across ? 2 : 0;
+            icon: @image-url("dv-os95/widget.png");
+            text: "Widget";
+            label: "Small widget";
+            tip: "Widget";
+            clicked => { Main.compact-changed(true); }
+        }
+    }
+}
+
+// The project picker as a drop-down box with a folder. ProjectMenu holds what it offers.
+component ProjectBox inherits Rectangle {
+    callback refocus();
+    property <bool> enabled: !Main.recording;
+    property <string> name: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+    height: 21px;
+    background: #ffffff;
+    accessible-role: combobox;
+    accessible-label: "Project";
+    accessible-value: root.name;
+    accessible-expandable: true;
+    accessible-action-default => { if (root.enabled) { menu.show(); } }
+    accessible-action-expand => { if (root.enabled) { menu.show(); } }
+    Bevel { kind: 2; }
+    HorizontalLayout {
+        padding: 2px;
+        padding-left: 5px;
+        spacing: 5px;
+        VerticalLayout {
+            alignment: center;
+            Px { source: @image-url("dv-os95/folder.png"); }
+        }
+        Text {
+            text: root.name;
+            color: root.enabled ? #000000 : Os.sh;
+            font-family: Os.font;
+            font-size: 12.5px;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+        Rectangle {
+            width: 16px;
+            background: Os.face;
+            Bevel { kind: t.pressed && t.has-hover ? 1 : 0; }
+            Mid { source: @image-url("dv-os95/arrow.png"); }
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        clicked => { menu.show(); }
+    }
+    menu := ProjectMenu {
+        width: parent.width;
+        height: parent.height;
+        projects: Main.projects;
+        current: Main.project;
+        has-clips: Main.clips.length > 0;
+        choose(i) => { Main.choose-project(i); root.refocus(); }
+        create => { Main.dialog-text = ""; Main.dialog = 4; }
+        rename => { Main.dialog-text = Main.projects[Main.project]; Main.dialog = 5; }
+        delete => { Main.delete-project(); root.refocus(); }
+        export => { Main.export-project(); root.refocus(); }
+    }
+}
+
+// A column heading: a raised strip with its name.
+component Heading inherits Rectangle {
+    in property <string> text;
+    in property <bool> right;
+    background: Os.face;
+    Bevel { kind: 0; }
+    Text {
+        x: 6px;
+        width: parent.width - 12px;
+        height: parent.height;
+        text: root.text;
+        color: #000000;
+        font-family: Os.font;
+        font-size: 12px;
+        horizontal-alignment: root.right ? TextHorizontalAlignment.right : TextHorizontalAlignment.left;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// The column widths of the file list.
+struct Cols {
+    icon: length,
+    modified: length,
+    kind: length,
+    wave: length,
+    len: length,
+}
+
+// One clip in the file list: play, the file icon, the name (with a note when it has a
+// transcript and there is no Type column), when it was made, the type and the waveform
+// on a wide list, the length and the menu. The highlighted clip is navy with a dotted
+// line, the other picked ones navy.
+component Row inherits Rectangle {
+    in property <int> index;
+    in property <ClipRow> item;
+    in property <bool> big;
+    in property <Cols> cols;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    property <bool> selected: root.index == Main.selected;
+    property <bool> picked: Main.picked[root.index];
+    property <bool> active: root.index == Main.active-clip;
+    property <bool> lit: root.selected || root.picked;
+    property <color> ink: root.lit ? #ffffff : #000000;
+    property <color> ink2: root.lit ? #ffffff : Os.ink2;
+    height: root.big ? 32px : 26px;
+    background: root.lit ? Os.navy : transparent;
+    accessible-role: list-item;
+    accessible-label: root.item.name + ", " + root.item.duration;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.lit;
+    accessible-action-default => { root.select(false, false); }
+    function select(ctrl: bool, shift: bool) {
+        Main.pick(root.index, ctrl, shift);
+        root.refocus();
+    }
+    Dotted {
+        visible: root.selected;
+        tint: #ffe14d;
+    }
+    row-touch := TouchArea {
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                root.select(e.modifiers.control, e.modifiers.shift);
+            }
+            // On release: the press that closes an open menu is used up by that menu.
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                menu.show-at(self.mouse-x, self.mouse-y);
+            }
+        }
+        // Opens just this clip, even out of several picked.
+        double-clicked => { root.select(false, false); Main.open-clip(root.index); root.go(1); }
+    }
+    HorizontalLayout {
+        padding-right: 2px;
+        Rectangle {
+            width: 24px;
+            Btn {
+                x: 3px;
+                y: (parent.height - self.height) / 2;
+                width: 16px;
+                height: 16px;
+                label: (root.active && Main.playing ? "Pause " : "Play ") + root.item.name;
+                tip: root.active && Main.playing ? "Pause" : "Play";
+                clicked => { Main.play-clip(root.index); root.refocus(); }
+                Mid { source: root.active && Main.playing ? @image-url("dv-os95/pause.png") : @image-url("dv-os95/play.png"); }
+            }
+        }
+        Mid {
+            width: root.cols.icon;
+            source: @image-url("dv-os95/wave.png");
+        }
+        name-cell := Rectangle {
+            horizontal-stretch: 1;
+            property <bool> note: root.item.transcribed && root.cols.kind == 0;
+            name := Text {
+                x: 4px;
+                width: min(self.preferred-width, max(0px, name-cell.width - 6px - (name-cell.note ? 15px : 0)));
+                height: parent.height;
+                text: root.item.name;
+                color: root.ink;
+                font-family: Os.font;
+                font-size: 13px;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            if name-cell.note: Px {
+                x: name.x + name.width + 5px;
+                y: (parent.height - self.height) / 2;
+                source: @image-url("dv-os95/note.png");
+            }
+        }
+        Rectangle {
+            width: root.cols.modified;
+            Text {
+                x: 6px;
+                width: parent.width - 6px;
+                height: parent.height;
+                text: root.item.when;
+                color: root.ink2;
+                font-family: Os.font;
+                font-size: 12.5px;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+        if root.cols.kind > 0: Rectangle {
+            width: root.cols.kind;
+            Text {
+                x: 6px;
+                width: parent.width - 6px;
+                height: parent.height;
+                text: root.item.transcribed ? "Wave + text" : "Wave sound";
+                color: root.ink2;
+                font-family: Os.font;
+                font-size: 12.5px;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+        // The waveform: a click on the highlighted clip moves its start, a double click
+        // plays from there.
+        if root.cols.wave > 0: Rectangle {
+            width: root.cols.wave;
+            wave := Rectangle {
+                x: 6px;
+                y: (parent.height - self.height) / 2;
+                width: 54px;
+                height: 14px;
+                property <int> n: 18;
+                for i in wave.n: Rectangle {
+                    property <float> v: root.item.wave.length > 0 ? root.item.wave[floor(i * root.item.wave.length / wave.n)] : 0.06;
+                    x: i * 3px;
+                    width: 1.5px;
+                    height: max(2px, self.v * wave.height);
+                    y: (wave.height - self.height) / 2;
+                    background: root.active && (i + 0.5) / wave.n <= Main.play-fraction ? Os.red : root.lit ? #ffffff : Os.navy;
+                }
+                WaveSeek {
+                    selected: root.selected;
+                    active: root.active;
+                    select(ctrl, shift) => { root.select(ctrl, shift); }
+                    cue(f) => { Main.cue-clip(root.index, f); root.refocus(); }
+                    play-at(f) => { Main.play-clip-at(root.index, f); root.refocus(); }
+                    menu(x, y) => { menu.show-at(x - root.absolute-position.x, y - root.absolute-position.y); }
+                }
+            }
+        }
+        Rectangle {
+            width: root.cols.len;
+            Text {
+                width: parent.width - 6px;
+                height: parent.height;
+                text: root.item.duration;
+                color: root.ink;
+                font-family: Os.font;
+                font-size: 13px;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+            }
+        }
+        // The menu: manage, rename, export, delete.
+        Rectangle {
+            width: 18px;
+            Btn {
+                x: parent.width - self.width - 2px;
+                y: (parent.height - self.height) / 2;
+                width: 14px;
+                height: 16px;
+                label: "Menu for " + root.item.name;
+                tip: "More options";
+                clicked => { root.open-menu(); }
+                Mid { source: @image-url("dv-os95/dots.png"); }
+            }
+        }
+    }
+    function open-menu() {
+        menu.show-at(root.width - 8px - 210px, root.height / 2 + 10px);
+    }
+    menu := ClipMenu {
+        width: parent.width;
+        height: parent.height;
+        item: root.item;
+        merge-count: root.picked ? Main.picked-count : 0;
+        projects: Main.projects;
+        project: Main.project;
+        window-h: root.window-h;
+        merge => { Main.start-merge(); root.go(5); }
+        open => { Main.open-clip(root.index); root.go(1); }
+        rename => { root.ask-rename(root.index); }
+        export(kind) => { Main.selected = root.index; Main.export-as(kind); root.refocus(); }
+        delete => { root.ask-delete(root.index); }
+        move-to(p) => { Main.move-clip(root.index, p); root.refocus(); }
+    }
+}
+
+// A search result: the clip (and its project when all projects are searched, extra hits
+// as +2), then the words round the match with the match marked yellow.
+component Hit inherits Rectangle {
+    in property <SearchHit> hit;
+    in property <bool> show-project;
+    callback clicked;
+    property <bool> hot: t.has-hover;
+    height: 40px;
+    background: root.hot ? Os.navy : transparent;
+    accessible-role: button;
+    accessible-label: root.hit.clip + ", " + root.hit.before + " " + root.hit.matched + " " + root.hit.after;
+    accessible-action-default => { root.clicked(); }
+    VerticalLayout {
+        padding-left: 6px;
+        padding-right: 8px;
+        alignment: center;
+        spacing: 3px;
+        HorizontalLayout {
+            spacing: 6px;
+            VerticalLayout {
+                alignment: center;
+                Px { source: @image-url("dv-os95/wave.png"); }
+            }
+            Text {
+                text: root.hit.clip;
+                color: root.hot ? #ffffff : #000000;
+                font-family: Os.font;
+                font-weight: 700;
+                font-size: 13px;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if root.show-project: Text {
+                text: root.hit.project;
+                color: root.hot ? #ffffff : Os.ink2;
+                font-family: Os.font;
+                font-size: 12px;
+                vertical-alignment: center;
+            }
+            if root.hit.more > 0: Text {
+                text: "+" + root.hit.more;
+                color: root.hot ? #ffffff : Os.red;
+                font-family: Os.font;
+                font-weight: 700;
+                font-size: 12px;
+                vertical-alignment: center;
+            }
+        }
+        if root.hit.matched != "": HorizontalLayout {
+            spacing: 4px;
+            padding-left: 19px;
+            if root.hit.before != "": Text {
+                text: root.hit.before;
+                color: root.hot ? #ffffff : Os.ink2;
+                font-family: Os.font;
+                font-size: 12px;
+                horizontal-stretch: 0;
+            }
+            Rectangle {
+                width: mark.preferred-width + 4px;
+                horizontal-stretch: 0;
+                background: #ffe14d;
+                mark := Text {
+                    text: root.hit.matched;
+                    color: #000000;
+                    font-family: Os.font;
+                    font-size: 12px;
+                    horizontal-alignment: center;
+                }
+            }
+            Text {
+                text: root.hit.after;
+                color: root.hot ? #ffffff : Os.ink2;
+                font-family: Os.font;
+                font-size: 12px;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    t := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+// The file window: the project box and the search field, the list with its headings (or
+// the search results), and the status bar. A wider window adds the Wave and Type columns.
+component Explorer inherits Window95 {
+    in property <bool> big;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    active: false;
+    title: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+    icon: @image-url("dv-os95/folder.png");
+    property <Cols> cols: {
+        icon: root.big ? 22px : 20px,
+        modified: root.big ? 122px : 104px,
+        kind: root.width >= 560px ? 104px : 0,
+        wave: root.width >= 520px ? 66px : 0,
+        len: root.big ? 66px : 58px,
+    };
+    property <string> picked-text: Main.picked-count > 1 ? Main.picked-count + " selected"
+        : Main.selected < 0 || Main.selected >= Main.clips.length ? ""
+        : root.big ? Main.clips[Main.selected].name + " selected" : "1 selected";
+    VerticalLayout {
+        HorizontalLayout {
+            padding-top: 5px;
+            padding-bottom: 5px;
+            padding-left: 2px;
+            padding-right: 2px;
+            spacing: 6px;
+            ProjectBox {
+                width: 118px;
+                refocus => { root.refocus(); }
+            }
+            Rectangle {
+                horizontal-stretch: 1;
+                height: 21px;
+                background: #ffffff;
+                Bevel { kind: 2; }
+                HorizontalLayout {
+                    padding-left: 6px;
+                    padding-right: 2px;
+                    spacing: 6px;
+                    VerticalLayout {
+                        alignment: center;
+                        Px { source: @image-url("dv-os95/mag.png"); }
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        horizontal-stretch: 1;
+                        TextField {
+                            height: 17px;
+                            radius: 0;
+                            fill: transparent;
+                            rest-edge: transparent;
+                            ink: #000000;
+                            hint: #7a7a7a;
+                            font-size: 12.5px;
+                            family: Os.font;
+                            side: 0px;
+                            placeholder: "Search";
+                            label: "Search clips";
+                            takes-escape: true;
+                            focus-ticket: Main.search-ticket;
+                            text <=> Main.query;
+                            edited(t) => { Main.search(t, Main.search-all); }
+                            escaped => { Main.query = ""; Main.search("", Main.search-all); root.refocus(); }
+                            accepted => { if (Main.hits.length > 0) { Main.open-hit(0); root.go(1); } }
+                        }
+                    }
+                }
+            }
+            // Search every project instead of this one.
+            if Main.query != "" && Main.projects.length > 1: Rectangle {
+                width: all-row.preferred-width;
+                accessible-role: checkbox;
+                accessible-label: "Search all projects";
+                accessible-checked: Main.search-all;
+                accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+                all-row := HorizontalLayout {
+                    spacing: 5px;
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 13px;
+                            height: 13px;
+                            background: #ffffff;
+                            Bevel { kind: 2; }
+                            // A plain Image: a source clip on a Px instance would turn every Px
+                            // into a clipped image without the clip's defaults (Slint 1.18).
+                            if Main.search-all: Image {
+                                x: 2px;
+                                y: 2px;
+                                width: 9px;
+                                height: 9px;
+                                source: @image-url("dv-os95/check.png");
+                                source-clip-x: 1;
+                                source-clip-y: 1;
+                                source-clip-width: 8;
+                                source-clip-height: 8;
+                                image-fit: fill;
+                                image-rendering: pixelated;
+                            }
+                        }
+                    }
+                    Text {
+                        text: "All projects";
+                        color: #000000;
+                        font-family: Os.font;
+                        font-size: 12.5px;
+                        vertical-alignment: center;
+                    }
+                }
+                TouchArea {
+                    clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+                }
+            }
+        }
+        Rectangle {
+            vertical-stretch: 1;
+            background: #ffffff;
+            Bevel { kind: 2; }
+            VerticalLayout {
+                padding: 2px;
+                if Main.query == "": HorizontalLayout {
+                    height: 18px;
+                    padding-right: 2px;
+                    Heading { text: "Name"; horizontal-stretch: 1; }
+                    Heading { text: "Modified"; width: root.cols.modified; }
+                    if root.cols.kind > 0: Heading { text: "Type"; width: root.cols.kind; }
+                    if root.cols.wave > 0: Heading { text: "Wave"; width: root.cols.wave; }
+                    Heading { text: "Length"; right: true; width: root.cols.len; }
+                    Heading { width: 18px; }
+                }
+                if Main.query != "": Scroller {
+                    vertical-stretch: 1;
+                    VerticalLayout {
+                        alignment: start;
+                        if Main.hits.length == 0: Text {
+                            height: 28px;
+                            text: "No matches";
+                            color: Os.ink2;
+                            font-family: Os.font;
+                            font-size: 13px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        for h[i] in Main.hits: Hit {
+                            hit: h;
+                            show-project: Main.search-all;
+                            clicked => { Main.open-hit(i); root.go(1); }
+                        }
+                    }
+                }
+                if Main.query == "": Scroller {
+                    vertical-stretch: 1;
+                    content-y <=> Main.list-y;
+                    property <int> count: Main.clips.length;
+                    init => { Main.list-height = self.visible-height; Main.clamp-list(); }
+                    changed visible-height => { Main.list-height = self.visible-height; Main.clamp-list(); }
+                    changed count => { Main.clamp-list(); }
+                    VerticalLayout {
+                        alignment: start;
+                        if Main.clips.length == 0: Text {
+                            height: 28px;
+                            text: "This folder is empty";
+                            color: Os.ink2;
+                            font-family: Os.font;
+                            font-size: 13px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        for clip[i] in Main.clips: Row {
+                            index: i;
+                            item: clip;
+                            big: root.big;
+                            cols: root.cols;
+                            window-h: root.window-h;
+                            go(p) => { root.go(p); }
+                            ask-rename(n) => { root.ask-rename(n); }
+                            ask-delete(n) => { root.ask-delete(n); }
+                            refocus => { root.refocus(); }
+                        }
+                    }
+                }
+            }
+        }
+        HorizontalLayout {
+            padding-top: 3px;
+            spacing: 3px;
+            height: 22px;
+            Rectangle {
+                horizontal-stretch: 1;
+                Bevel { kind: 3; }
+                Text {
+                    x: 7px;
+                    width: parent.width - 14px;
+                    height: parent.height;
+                    text: (Main.clips.length == 1 ? "1 clip" : Main.clips.length + " clips")
+                        + (root.big ? "   " + Main.transcribed-count + " transcribed" : "");
+                    color: #000000;
+                    font-family: Os.font;
+                    font-size: 12px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+            Rectangle {
+                width: max(72px, min(sel.preferred-width + 14px, root.width / 2));
+                Bevel { kind: 3; }
+                sel := Text {
+                    x: 7px;
+                    width: parent.width - 14px;
+                    height: parent.height;
+                    text: root.picked-text;
+                    color: #000000;
+                    font-family: Os.font;
+                    font-size: 12px;
+                    vertical-alignment: center;
+                    horizontal-alignment: right;
+                    overflow: elide;
+                }
+            }
+        }
+    }
+}
+
+// The taskbar is the player: Play, the clip in the player (else the highlighted one) on a
+// pushed-in button, a slider whose thumb shows where it is (a click jumps there), and the
+// time in the tray.
+component Taskbar inherits Rectangle {
+    in property <bool> big;
+    callback refocus();
+    property <bool> hi: 1phx < 0.7px;
+    property <int> shown: Main.active-clip >= 0 && Main.active-clip < Main.clips.length ? Main.active-clip
+        : Main.selected >= 0 && Main.selected < Main.clips.length ? Main.selected : -1;
+    property <bool> is-active: self.shown >= 0 && self.shown == Main.active-clip;
+    property <float> at: root.is-active ? clamp(Main.play-fraction, 0, 1) : 0;
+    height: 30px;
+    background: Os.face;
+    Rectangle { y: 0; height: 1px; background: Os.lt; }
+    Rectangle { y: 1px; height: 1px; background: Os.hi; }
+    HorizontalLayout {
+        padding-left: 3px;
+        padding-right: 3px;
+        padding-top: 4px;
+        padding-bottom: 3px;
+        spacing: 4px;
+        Btn {
+            width: play-row.preferred-width;
+            enabled: root.shown >= 0;
+            label: root.is-active && Main.playing ? "Pause" : "Play";
+            clicked => { Main.play-clip(root.shown); root.refocus(); }
+            play-row := HorizontalLayout {
+                padding-left: 7px;
+                padding-right: 9px;
+                spacing: 6px;
+                VerticalLayout {
+                    alignment: center;
+                    Px { source: root.is-active && Main.playing ? @image-url("dv-os95/taskpause.png") : @image-url("dv-os95/taskplay.png"); s: 1.6; }
+                }
+                Text {
+                    text: root.is-active && Main.playing ? "Pause" : "Play";
+                    color: #000000;
+                    font-family: Os.font;
+                    font-weight: 700;
+                    font-size: 14px;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+            }
+        }
+        Rectangle {
+            width: 2px;
+            Rectangle { x: 0; width: 1px; background: Os.sh; }
+            Rectangle { x: 1px; width: 1px; background: Os.hi; }
+        }
+        // What is in the player, on a pushed-in task button.
+        job := Rectangle {
+            width: root.big ? 240px : 126px;
+            background: Os.face;
+            Image {
+                x: 2px;
+                y: 2px;
+                width: parent.width - 4px;
+                height: parent.height - 4px;
+                source: root.hi ? @image-url("dv-os95/checker@2x.png") : @image-url("dv-os95/checker.png");
+                horizontal-tiling: repeat;
+                vertical-tiling: repeat;
+                horizontal-alignment: left;
+                vertical-alignment: top;
+            }
+            Bevel { kind: 1; }
+            Px {
+                x: 8px;
+                y: (parent.height - self.height) / 2;
+                source: @image-url("dv-os95/spk.png");
+            }
+            Rectangle {
+                x: 23px;
+                y: (parent.height - self.height) / 2;
+                width: min(job-text.preferred-width + 4px, parent.width - 23px - 6px);
+                height: job-text.preferred-height;
+                background: Os.face;
+                job-text := Text {
+                    x: 2px;
+                    width: parent.width - 4px;
+                    text: root.shown >= 0 ? Main.clips[root.shown].name : "Nothing playing";
+                    color: #000000;
+                    font-family: Os.font;
+                    font-size: 12.5px;
+                    overflow: elide;
+                }
+            }
+        }
+        // The slider: a sunken groove and the pointed grey thumb.
+        Rectangle {
+            horizontal-stretch: 1;
+            Rectangle {
+                x: 8px;
+                y: (parent.height - 4px) / 2;
+                width: parent.width - 16px;
+                height: 4px;
+                Bevel { kind: 2; }
+            }
+            Px {
+                x: 8px + (parent.width - 16px) * root.at - self.width / 2;
+                y: (parent.height - self.height) / 2;
+                source: @image-url("dv-os95/thumb.png");
+                opacity: root.shown >= 0 ? 1 : 0.7;
+            }
+            TouchArea {
+                enabled: root.shown >= 0;
+                clicked => {
+                    Main.selected = root.shown;
+                    Main.seek-fraction(clamp((self.mouse-x - 8px) / (self.width - 16px), 0, 1));
+                    root.refocus();
+                }
+            }
+        }
+        Rectangle {
+            width: tray.preferred-width;
+            Bevel { kind: 3; }
+            tray := HorizontalLayout {
+                padding-left: 8px;
+                padding-right: 8px;
+                spacing: 6px;
+                if root.big: VerticalLayout {
+                    alignment: center;
+                    Px { source: @image-url("dv-os95/logo.png"); }
+                }
+                Text {
+                    text: root.shown < 0 ? "--:-- / --:--"
+                        : (root.is-active ? Main.play-position : "0:00") + " / " + Main.clips[root.shown].duration;
+                    color: #000000;
+                    font-family: Os.font;
+                    font-size: 12.5px;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}
+
+// An export from the clip menu or the project menu, as a small progress window above the
+// taskbar: what it is, a blocky progress bar, and a check when done.
+component ExportStrip inherits Rectangle {
+    background: Os.face;
+    Bevel { kind: 0; }
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        padding-top: 3px;
+        padding-bottom: 3px;
+        spacing: 8px;
+        if Main.export-state == 2: VerticalLayout {
+            alignment: center;
+            Px { source: @image-url("dv-os95/check.png"); }
+        }
+        Text {
+            text: (Main.export-state == 2 ? "Exported " : "Exporting ") + Main.export-name;
+            color: #000000;
+            font-family: Os.font;
+            font-size: 12.5px;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+        if Main.export-state == 1: Rectangle {
+            width: 124px;
+            background: #ffffff;
+            Bevel { kind: 3; }
+            property <int> blocks: floor(clamp(Main.export-progress, 0, 1) * 15);
+            for i in self.blocks: Rectangle {
+                x: 3px + i * 8px;
+                y: 3px;
+                width: 6px;
+                height: parent.height - 6px;
+                background: Os.navy;
+            }
+        }
+        if Main.export-state == 1: Text {
+            text: round(Main.export-progress * 100) + "%";
+            color: #000000;
+            font-family: Os.font;
+            font-size: 12px;
+            vertical-alignment: center;
+            width: 34px;
+            horizontal-alignment: right;
+        }
+    }
+}
+
+// The main page: the app as a window with its title bar and a teal desktop that holds the
+// Sound Recorder, the icons, the file window and the taskbar.
+export component MainPage inherits Rectangle {
+    // The window's size classes, as AppWindow works them out.
+    in property <bool> narrow;
+    in property <bool> wide;
+    in property <bool> tall;
+    // Opens page p (see AppWindow.page).
+    callback go(int);
+    // The rename and delete questions for clip i.
+    callback ask-rename(int);
+    callback ask-delete(int);
+    // Gives the keyboard back to the window's shortcuts.
+    callback refocus();
+
+    property <length> pitch: root.wide ? 32px : 26px;
+    init => { Main.row-h = root.pitch; }
+    changed pitch => { Main.row-h = root.pitch; Main.clamp-list(); }
+
+    background: Os.face;
+    Bevel { kind: 0; }
+    Caption {
+        x: 3px;
+        y: 3px;
+        width: parent.width - 6px;
+        go(p) => { root.go(p); }
+    }
+    desk := Rectangle {
+        x: 3px;
+        y: 27px;
+        width: parent.width - 6px;
+        height: parent.height - 30px;
+        background: Os.desk;
+        clip: true;
+        property <bool> hi: 1phx < 0.7px;
+        property <length> rec-w: root.wide ? 394px : min(440px, self.width - 92px);
+        property <length> rec-h: root.wide ? clamp(self.height - 206px, 240px, 520px) : root.tall ? 240px : 200px;
+        property <length> export-h: Main.export-state != 0 ? 32px : 0;
+        property <length> files-y: root.wide ? 8px : 6px + self.rec-h + 7px;
+        Image {
+            width: 100%;
+            height: 100%;
+            source: desk.hi ? @image-url("dv-os95/desk@2x.png") : @image-url("dv-os95/desk.png");
+            horizontal-tiling: repeat;
+            vertical-tiling: repeat;
+            horizontal-alignment: left;
+            vertical-alignment: top;
+        }
+        Recorder {
+            x: root.wide ? 8px : 6px;
+            y: root.wide ? 8px : 6px;
+            width: desk.rec-w;
+            height: desk.rec-h;
+            big: root.wide;
+            refocus => { root.refocus(); }
+        }
+        Icons {
+            x: root.wide ? 14px : 6px + desk.rec-w + 6px;
+            y: root.wide ? 8px + desk.rec-h + 18px : 10px;
+            across: root.wide;
+            go(p) => { root.go(p); }
+        }
+        Explorer {
+            x: root.wide ? 414px : 6px;
+            y: desk.files-y;
+            width: root.wide ? desk.width - 422px : desk.width - 12px;
+            height: desk.height - 36px - desk.export-h - desk.files-y;
+            big: root.wide;
+            window-h: root.height;
+            go(p) => { root.go(p); }
+            ask-rename(n) => { root.ask-rename(n); }
+            ask-delete(n) => { root.ask-delete(n); }
+            refocus => { root.refocus(); }
+        }
+        if Main.export-state != 0: ExportStrip {
+            x: root.wide ? 414px : 6px;
+            y: desk.height - 30px - 4px - 28px;
+            width: root.wide ? desk.width - 422px : desk.width - 12px;
+            height: 28px;
+        }
+        Taskbar {
+            x: 0;
+            y: desk.height - 30px;
+            width: desk.width;
+            big: root.wide;
+            refocus => { root.refocus(); }
+        }
+        // Messages float just above the taskbar as a yellow tip, so nothing moves when
+        // they come and go.
+        if Main.status != "": Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: desk.height - 30px - 8px - self.height;
+            width: min(msg.preferred-width + 20px, parent.width - 32px);
+            height: 24px;
+            background: #ffffe1;
+            border-width: 1px;
+            border-color: #000000;
+            msg := Text {
+                x: 10px;
+                width: parent.width - 20px;
+                height: parent.height;
+                text: Main.status;
+                color: #000000;
+                font-family: Os.font;
+                font-size: 12.5px;
+                overflow: elide;
+                vertical-alignment: center;
+                horizontal-alignment: center;
+            }
+        }
+    }
+}

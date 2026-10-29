@@ -153,7 +153,7 @@ export struct Palette {
 // settings page switches it.
 export global Theme {
     in-out property <int> current: 0;
-    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor"];
+    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95"];
     property <[Palette]> palettes: [
         // Ember
         { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618, card-line: #00000000 },
@@ -175,6 +175,9 @@ export global Theme {
         { bg: #22170f, card: #2b1d13, row: #2a1c12, raised: #3a281a, line: #2e2016, line-soft: #281b12, edge: #4a3524, text: #efe3c8, text2: #e2d3b2, muted: #b9a585, dim: #9a8670, accent: #f2a64a, accent-hover: #f6b765, on-accent: #2a1406, wave: #6b5644, wave-dim: #5d4634, track: #120c08, danger: #ff8f7a, hover: #3a281a, hover-soft: #33231a, row-hover: #2a1c12, picked: #3a2a18, popup: #2b1d13, popup-edge: #5a4230, knob: #8a7a5e, faint: #7a6a58, fainter: #4a3a2c, rec-rest: #6d4a33, divider: #2a1c12, border: #3a2a1d, card-edge: #3a2a1d, footer: #1a120c, press: #4a3018, card-line: #00000000 },
         // Phosphor: green phosphor on a black tube, amber for warnings (its main page is ui/skins/phosphor.slint).
         { bg: #050a06, card: #08120a, row: #0a160c, raised: #0e1f12, line: #16462a, line-soft: #0f2a17, edge: #1f7a38, text: #b6ffc8, text2: #7de89a, muted: #3fcf66, dim: #2a8f45, accent: #4dff7a, accent-hover: #b6ffc8, on-accent: #050a06, wave: #1f7a38, wave-dim: #123d1d, track: #123d1d, danger: #ffb84d, hover: #0f2a17, hover-soft: #0c2213, row-hover: #0a1a0d, picked: #123d1d, popup: #08120a, popup-edge: #1f7a38, knob: #2fbf55, faint: #1f7a38, fainter: #123d1d, rec-rest: #123d1d, divider: #0f2a17, border: #16462a, card-edge: #16462a, footer: #08120a, press: #1f7a38, card-line: #16462a },
+        // Desktop 95: grey bevels and navy, for the pages it does not draw itself yet (its
+        // main page is ui/skins/dv-os95.slint).
+        { bg: #c0c0c0, card: #d4d4d4, row: #cacaca, raised: #dfdfdf, line: #a4a4a4, line-soft: #b4b4b4, edge: #808080, text: #000000, text2: #141414, muted: #333333, dim: #474747, accent: #0a1f7a, accent-hover: #1c3fa8, on-accent: #ffffff, wave: #7a7a7a, wave-dim: #949494, track: #a6a6a6, danger: #a40000, hover: #b4bde0, hover-soft: #cfcfcf, row-hover: #c8c8c8, picked: #b9c3e6, popup: #d4d4d4, popup-edge: #808080, knob: #f4f4f4, faint: #5a5a5a, fainter: #8a8a8a, rec-rest: #8a96c4, divider: #b0b0b0, border: #808080, card-edge: #9a9a9a, footer: #b8b8b8, press: #a9b5de, card-line: #808080 },
     ];
     out property <color> bg: root.palettes[root.current].bg;
     out property <color> card: root.palettes[root.current].card;
@@ -220,9 +223,12 @@ export global Theme {
     out property <string> mono: "JetBrains Mono";
     // How the main page is built, one per palette in the order of `names`: 0 classic,
     // the look in ui/skins/classic.slint; 1 Tape Deck, ui/skins/tape.slint; 2 Phosphor,
-    // ui/skins/phosphor.slint (its other pages are classic for now).
-    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2];
+    // ui/skins/phosphor.slint; 3 Desktop 95, ui/skins/dv-os95.slint.
+    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3];
     out property <int> skin: root.skins[root.current];
+    // How the other pages are built: 1 Tape Deck's (skins/tape-pages.slint), else 0, the
+    // classic pages in the theme's palette (also for skins whose pages are not built yet).
+    out property <int> pages: root.skin == 1 ? 1 : 0;
     // The Tape Deck skin: the shared widgets below draw their deck look for it.
     out property <bool> tape: root.skin == 1;
 }
@@ -3780,6 +3786,8 @@ export global Main {
 
     // The clips of the project shown and the highlighted one, or -1.
     in property <[ClipRow]> clips;
+    // How many of them have a transcript (the Desktop 95 status bar shows it).
+    in property <int> transcribed-count;
     in-out property <int> selected: -1;
     // Clip loaded in the player (playing or paused), or -1.
     in property <int> active-clip: -1;

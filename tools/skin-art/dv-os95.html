@@ -1,0 +1,83 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+svg{display:block}
+#a{position:absolute;left:0;top:0}
+</style></head><body><div id="a"></div>
+<script>
+// One element of the Desktop 95 mockup (docs/mockups/device-themes/dv-os95.html), alone
+// on a transparent page, for cutting into PNGs. ?el=name&w=css-width&h=css-height
+// The pixel icons are drawn one css pixel per art pixel; Slint scales them up with
+// `image-rendering: pixelated`, so only their 1x cut is used.
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+
+// The mockup's palette and pixel maps (dv-os95.html), plus stop, pause and a white lamp.
+const PAL = {k:'#000',w:'#fff',g:'#c0c0c0',G:'#808080',b:'#1c3fa8',B:'#5f86e0',y:'#ffe14d',Y:'#c9a200',r:'#e0201b',d:'#8a0d0a',
+  e:'#3cff6a',n:'#0a1f7a',o:'#ff8a1a',O:'#ffd27a'};
+function px(rows) {
+  const h = rows.length, w = Math.max(...rows.map(r => r.length));
+  let out = '';
+  rows.forEach((r, y) => { let x = 0; while (x < r.length) { const c = r[x]; if (c === '.') { x++; continue }
+    let e = x; while (e < r.length && r[e] === c) e++;
+    out += `<rect x="${x}" y="${y}" width="${e - x}" height="1" fill="${PAL[c]}"/>`; x = e } });
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges">${out}</svg>`;
+}
+const I = {
+floppy:["kkkkkkkkkkkkkkk.","kbbggggggggbbbk.","kbbggkkggggbbbk.","kbbggkkggggbbbk.","kbbggggggggbbbk.","kbbbbbbbbbbbbbk.","kbbbbbbbbbbbbbk.",
+  "kbwwwwwwwwwwwbk.","kbwwwwwrwwwwwbk.","kbwwwwwrwwwwwbk.","kbwwwrrrrrwwwbk.","kbwwwwrrrwwwwbk.","kbwwwwwrwwwwwbk.","kbwwwwwwwwwwwbk.","kkkkkkkkkkkkkkk."],
+balloon:["................","..kkkkkkkkkkkk..",".kyyyyyyyyyyyyk.","kyyyyyyyyyyyyyyk","kyyyyyyyyyyyyyyk","kyykkyykkyykkyyk","kyykkyykkyykkyyk","kyyyyyyyyyyyyyyk",
+  ".kYYYYYYYYYYYYk.","..kkkkyykkkkkk..",".....kyk........","....kyk.........","...kk..........."],
+widget:["kkkkkkkkkkkkkkkk","knnnnnnnnnnnnwwk","knnnnnnnnnnnnwwk","kkkkkkkkkkkkkkkk","kggggggggggggggk","kgkkkkkkkkkkkkgk","kgkkkkkkekkkkkgk","kgkkekkeeekekkgk",
+  "kgkeeeeeeeeeeegk","kgkkekkeeekekkgk","kgkkkkkkekkkkkgk","kgkkkkkkkkkkkkgk","kggggggggggggggk","kkkkkkkkkkkkkkkk"],
+wave:["kkkkkkkkkk...","kwwwwwwwwkk..","kwwwwwwwwkwk.","kwwwwwwwwkkkk","kwwwwwwwwwwwk","kwwwwwbwwwwwk","kwwbwwbwbwwwk","kwbbbbbbbbbwk",
+  "kwwbwwbwbwwwk","kwwwwwbwwwwwk","kwwwwwwwwwwwk","kwwwwwwwwwwwk","kkkkkkkkkkkkk"],
+note:["kkkkkkkkkk","kwwwwwwwwk","kwbbbbbbwk","kwwwwwwwwk","kwbbbbbwwk","kwwwwwwwwk","kwbbbbbbwk","kwwwwwwwwk","kwbbbwwwwk","kwwwwwwwwk","kkkkkkkkkk"],
+folder:[".kkkk...........","kOOOOk..........","kyyyyykkkkkkkkk.","kyOOOOOOOOOOOOk.","kyyyyyyyyyyyyyk.","kyyyyyyyyyyyyyk.","kyyyyyyyyyyyyyk.",
+  "kyyyyyyyyyyyyyk.","kyyyyyyyyyyyyyk.","kYYYYYYYYYYYYYk.","kkkkkkkkkkkkkkk."],
+mic:["..kkkk..",".kGggGk.",".kGwgGk.",".kGwgGk.",".kGggGk.","k.kkkk.k","k......k",".k....k.","..kkkk..","...kk...","..kkkk.."],
+dot:["....rrrr....","..rrrrrrrr..",".rrwwrrrrrr.",".rwwrrrrrrr.","rrwrrrrrrrrr","rrrrrrrrrrrr","rrrrrrrrrrrd","rrrrrrrrrrrd",
+  ".rrrrrrrrrd.",".rrrrrrrrdd.","..rddddddd..","....dddd...."],
+stop:["............","............","..kkkkkkkk..","..kkkkkkkk..","..kkkkkkkk..","..kkkkkkkk..","..kkkkkkkk..","..kkkkkkkk..",
+  "..kkkkkkkk..","..kkkkkkkk..","............","............"],
+recpause:["............","............","...kkk.kkk..","...kkk.kkk..","...kkk.kkk..","...kkk.kkk..","...kkk.kkk..","...kkk.kkk..",
+  "...kkk.kkk..","...kkk.kkk..","............","............"],
+led:[".ww.","wwww","wwww",".ww."],
+gear:["....kk....",".k.kkkk.k.","..kkkkkk..",".kkk..kkk.","kkk....kkk","kkk....kkk",".kkk..kkk.","..kkkkkk..",".k.kkkk.k.","....kk...."],
+min:["......","......","......","......","......","......","kkkkkk","kkkkkk"],
+close:["kk....kk",".kk..kk.","..kkkk..","...kk...","..kkkk..",".kk..kk.","kk....kk"],
+play:["k...","kk..","kkk.","kkkk","kkk.","kk..","k..."],
+pause:["kk.kk","kk.kk","kk.kk","kk.kk","kk.kk","kk.kk","kk.kk"],
+taskplay:["k....","kk...","kkk..","kkkk.","kkkkk","kkkk.","kkk..","kk...","k...."],
+taskpause:["kk.kk","kk.kk","kk.kk","kk.kk","kk.kk","kk.kk","kk.kk","kk.kk","kk.kk"],
+dots:["kk","kk","..","..","kk","kk","..","..","kk","kk"],
+arrow:["kkkkkkk",".kkkkk.","..kkk..","...k..."],
+mag:[".kkkk.....","k....k....","k....k....","k....k....","k....k....",".kkkk.....",".....kk...","......kk..",".......kk.","........kk"],
+spk:["...kk....","..kgk..k.","kkggk.k.k","kgggk.k.k","kgggk.k.k","kkggk.k.k","..kgk..k.","...kk...."],
+thumb:["wwwwwwwwwwk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk",
+  "wggggggggGk",".wggggggGk.","..wggggGk..","...wggGk...","....wGk....",".....k....."],
+check:["kkkkkkkkkk","kwwwwwwwwk","kwwwwwwwkk","kwwwwwwkkk","kkwwwwkkwk","kkkwwkkwwk","kwkkkkwwwk","kwwkkwwwwk","kwwwwwwwwk","kkkkkkkkkk"],
+};
+// The title bar's logo: level bars in orange.
+function logo() {
+  const hs = [4, 8, 12, 7, 10, 5, 3], H = 12, W = hs.length * 2 - 1, rows = [];
+  for (let y = 0; y < H; y++) { let r = ''; for (let x = 0; x < W; x++) { if (x % 2) { r += '.'; continue }
+    const h = hs[x / 2], top = Math.floor((H - h) / 2); r += (y >= top && y < top + h) ? (y < top + 2 ? 'O' : 'o') : '.' } rows.push(r) }
+  return rows;
+}
+I.logo = logo();
+
+if (I[el]) a.innerHTML = px(I[el]);
+if (el === 'desk') {
+  // One period of the desktop's dot pattern (the teal is a Slint colour under it).
+  a.innerHTML = `<div style="width:${W}px;height:${H}px;background-image:radial-gradient(rgba(0,0,0,.13) 1px,transparent 1.2px);background-size:4px 4px"></div>`;
+}
+if (el === 'checker') {
+  // A 2 by 2 checker in white: the pressed taskbar button, and (colourised) the dotted
+  // focus line of the highlighted row.
+  a.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 2 2" shape-rendering="crispEdges"><rect x="0" y="0" width="1" height="1" fill="#fff"/><rect x="1" y="1" width="1" height="1" fill="#fff"/></svg>`;
+}
+</script>
+</body></html>

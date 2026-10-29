@@ -22,6 +22,12 @@ tape) PIECES="cassette:cassette:354:126 cassette-clip:cassette-clip:354:126 reel
   walnut:walnut-grain:153:4 alu:alu-lines:4:2 spine:spine-lines:4:5 grille:grille:7:4 dial:dial:52:52
   knob:knob:36:36 knob-sel:knob-sel:36:36 screw:screw:7:7 led:led:21:21" ;;
 phosphor) PIECES="vig-tl:vig-tl:200:200 vig-tr:vig-tr:200:200 vig-bl:vig-bl:200:200 vig-br:vig-br:200:200 halo:halo:30:30 dash:dash:6:1 vdash:vdash:1:6 dither:dither:4:4" ;;
+# Desktop 95: two tiles (1x and 2x used) and pixel icons (only the 1x cut is used).
+dv-os95) PIECES="desk:desk:4:4 checker:checker:2:2 floppy:floppy:16:15 balloon:balloon:16:13 widget:widget:16:14
+  wave:wave:13:13 note:note:10:11 folder:folder:16:11 mic:mic:8:11 dot:dot:12:12 stop:stop:12:12 recpause:recpause:12:12
+  led:led:4:4 gear:gear:10:10 min:min:6:8 close:close:8:7 play:play:4:7 pause:pause:5:7 taskplay:taskplay:5:9
+  taskpause:taskpause:5:9 dots:dots:2:10 arrow:arrow:7:4 mag:mag:10:10 spk:spk:9:8 thumb:thumb:11:18 logo:logo:13:12
+  check:check:10:10" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 

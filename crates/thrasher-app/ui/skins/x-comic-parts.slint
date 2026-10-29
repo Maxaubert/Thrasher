@@ -269,6 +269,8 @@ export component Bubble inherits Rectangle {
 export component Burst inherits Rectangle {
     // The wide window's big burst (REC!), else the portrait one.
     in property <bool> big;
+    // Gives the keyboard back to the window's shortcuts after a click.
+    callback refocus();
     property <bool> hi: 1phx < 0.7px;
     property <bool> down: t.pressed && t.has-hover;
     // The art is the burst plus 4 units for its shadow.
@@ -276,7 +278,7 @@ export component Burst inherits Rectangle {
     property <int> frame: Main.recording && !Main.paused ? Math.mod(floor(Fx.t * 3), 2) : 0;
     accessible-role: button;
     accessible-label: Main.recording ? "Stop and save" : "Record";
-    accessible-action-default => { Main.toggle-record(); }
+    accessible-action-default => { Main.toggle-record(); root.refocus(); }
     Image {
         x: root.down ? 2px : 0;
         y: root.down ? 2px : 0;
@@ -297,7 +299,7 @@ export component Burst inherits Rectangle {
     changed hovering => { Tips.hover(self.hovering, Main.recording ? "Stop" : "Record", self.absolute-position, self.width, self.height); }
     t := TouchArea {
         mouse-cursor: pointer;
-        clicked => { Tips.hide(); Main.toggle-record(); }
+        clicked => { Tips.hide(); Main.toggle-record(); root.refocus(); }
     }
 }
 

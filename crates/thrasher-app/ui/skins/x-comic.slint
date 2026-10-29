@@ -164,12 +164,13 @@ component Device inherits Box {
 // Pause or Resume while recording, a small caption under the burst.
 component PauseChip inherits Rectangle {
     in property <bool> big;
+    callback refocus();
     property <bool> down: t.pressed && t.has-hover;
     width: chip.preferred-width;
     height: root.big ? 24px : 20px;
     accessible-role: button;
     accessible-label: Main.paused ? "Resume" : "Pause";
-    accessible-action-default => { Main.toggle-pause(); }
+    accessible-action-default => { Main.toggle-pause(); root.refocus(); }
     Box {
         line: 2px;
         off: 2px;
@@ -199,7 +200,7 @@ component PauseChip inherits Rectangle {
     changed hovering => { Tips.hover(self.hovering, Main.paused ? "Resume" : "Pause", self.absolute-position, self.width, self.height); }
     t := TouchArea {
         mouse-cursor: pointer;
-        clicked => { Tips.hide(); Main.toggle-pause(); }
+        clicked => { Tips.hide(); Main.toggle-pause(); root.refocus(); }
     }
 }
 
@@ -216,9 +217,11 @@ component BurstSpot inherits Rectangle {
         y: (parent.height - root.chip-h - self.height) / 2;
         width: root.d;
         height: root.d;
+        refocus => { root.refocus(); }
     }
     if Main.recording: PauseChip {
         big: root.big;
+        refocus => { root.refocus(); }
         x: (parent.width - self.width) / 2;
         y: (parent.height - root.chip-h + root.d) / 2 - (root.big ? 6px : 6px);
     }
@@ -228,6 +231,7 @@ component BurstSpot inherits Rectangle {
 // the microphone on the left, the burst on the right.
 component RecFront inherits Box {
     in property <bool> tall;
+    callback refocus();
     line: 3px;
     dots: 0;
     height: root.tall ? 196px : 164px;
@@ -251,6 +255,7 @@ component RecFront inherits Box {
         BurstSpot {
             width: root.tall ? 160px : 128px;
             most: root.tall ? 160px : 128px;
+            refocus => { root.refocus(); }
         }
     }
 }
@@ -258,6 +263,7 @@ component RecFront inherits Box {
 // The splash panel in a wide window: the caption, the timer, the big burst, the meter
 // and the microphone, top to bottom. The burst gives up room first.
 component RecSide inherits Box {
+    callback refocus();
     line: 3px;
     dots: 0;
     Tag { x: 0; y: 0; text: "MEANWHILE AT THE MIC"; }
@@ -274,6 +280,7 @@ component RecSide inherits Box {
             vertical-stretch: 1;
             min-height: 90px;
             most: 200px;
+            refocus => { root.refocus(); }
         }
         HorizontalLayout { alignment: center; Meter { big: true; width: 178px; } }
         HorizontalLayout { alignment: center; Device { big: true; max-w: 320px; } }
@@ -283,12 +290,15 @@ component RecSide inherits Box {
 // The project picker as a yellow caption box. ProjectMenu holds what it offers.
 component Picker inherits Rectangle {
     in property <bool> big;
+    // The most room the toolbar leaves it; the name elides past that.
+    in property <length> most: 100000px;
     callback refocus();
     property <bool> enabled: !Main.recording;
     property <string> name: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
-    width: row.preferred-width;
+    width: min(row.preferred-width, root.most);
     accessible-role: combobox;
     accessible-label: "Project";
+    accessible-enabled: root.enabled;
     accessible-value: root.name;
     accessible-expandable: true;
     accessible-action-default => { if (root.enabled) { menu.show(); } }
@@ -308,6 +318,7 @@ component Picker inherits Rectangle {
                 font-size: root.big ? 18px : 17px;
                 letter-spacing: 1.2px;
                 vertical-alignment: center;
+                min-width: 16px;
                 max-width: 200px;
                 overflow: elide;
             }
@@ -337,118 +348,141 @@ component Picker inherits Rectangle {
 }
 
 // The toolbar: the project caption, the search thought bubble, then Import, Ask and
-// the widget. The wide toolbar spells the buttons out.
+// the widget. The wide toolbar spells the buttons out while that leaves the project
+// its room. The project's name gives way first, so nothing leaves the window.
 component Toolbar inherits HorizontalLayout {
     in property <bool> big;
+    // The toolbar's width as the page works it out (its own width would loop back
+    // through the layout).
+    in property <length> avail;
     callback go(int);
     callback refocus();
     // Where the search bubble starts, for its thought circles (drawn by the list).
-    out property <length> search-x: search.x;
+    out property <length> search-x: middle.x + search.x;
     property <length> item-h: root.big ? 40px : 36px;
+    // Room for "Search", or for the query beside All projects.
+    property <length> search-min: Main.query != "" ? 80px : 100px;
+    // Everything but the project and the buttons: the search bubble at its smallest,
+    // All projects when it shows, and the gaps.
+    property <length> rest: root.padding-right + middle.min-width + 2 * root.spacing;
+    // The spelled-out buttons are about 290px.
+    property <bool> words: root.big && root.avail - root.rest - 290px >= 90px;
     height: root.big ? 44px : 40px;
     spacing: root.big ? 8px : 6px;
     padding-right: 2px;
     VerticalLayout {
         alignment: center;
-        Picker { height: root.item-h; big: root.big; refocus => { root.refocus(); } }
-    }
-    search := VerticalLayout {
-        alignment: center;
-        horizontal-stretch: 1;
-        min-width: 90px;
-        Box {
+        Picker {
             height: root.item-h;
-            radius: root.item-h / 2;
-            line: 2.5px;
-            TextField {
-                x: 2.5px;
-                y: 2.5px;
-                width: parent.width - 5px;
-                height: parent.height - 5px;
-                radius: (root.item-h - 5px) / 2;
-                fill: #ffffff;
-                rest-edge: #ffffff;
-                ink: Comic.ink;
-                hint: #8a7f69;
-                font-size: 13.5px;
-                family: "Comic Neue";
-                side: 11px;
-                icon: "search";
-                placeholder: "Search";
-                label: "Search clips";
-                takes-escape: true;
-                focus-ticket: Main.search-ticket;
-                text <=> Main.query;
-                edited(t) => { Main.search(t, Main.search-all); }
-                escaped => { Main.query = ""; Main.search("", Main.search-all); root.refocus(); }
-                accepted => { if (Main.hits.length > 0) { Main.open-hit(0); root.go(1); } }
-            }
+            big: root.big;
+            most: max(60px, root.avail - root.rest - tools.preferred-width);
+            refocus => { root.refocus(); }
         }
     }
-    // Search every project instead of this one.
-    if Main.query != "" && Main.projects.length > 1: VerticalLayout {
-        alignment: center;
-        Rectangle {
-            width: all-text.preferred-width + 18px;
-            height: root.big ? 28px : 24px;
-            accessible-role: checkbox;
-            accessible-label: "Search all projects";
-            accessible-checked: Main.search-all;
-            accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+    middle := HorizontalLayout {
+        horizontal-stretch: 1;
+        spacing: root.spacing;
+        search := VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            min-width: root.search-min;
             Box {
-                line: 2px;
-                off: 2px;
-                face: Main.search-all ? Comic.yellow : #ffffff;
-                all-text := Text {
-                    x: 9px;
-                    height: parent.height;
-                    text: "ALL PROJECTS";
-                    color: Comic.ink;
-                    font-family: "Bangers";
-                    font-size: 12px;
-                    letter-spacing: 1px;
-                    vertical-alignment: center;
+                height: root.item-h;
+                radius: root.item-h / 2;
+                line: 2.5px;
+                TextField {
+                    x: 2.5px;
+                    y: 2.5px;
+                    width: parent.width - 5px;
+                    height: parent.height - 5px;
+                    radius: (root.item-h - 5px) / 2;
+                    fill: #ffffff;
+                    rest-edge: #ffffff;
+                    ink: Comic.ink;
+                    hint: #8a7f69;
+                    font-size: 13.5px;
+                    family: "Comic Neue";
+                    side: 11px;
+                    icon: "search";
+                    placeholder: "Search";
+                    label: "Search clips";
+                    takes-escape: true;
+                    focus-ticket: Main.search-ticket;
+                    text <=> Main.query;
+                    edited(t) => { Main.search(t, Main.search-all); }
+                    escaped => { Main.query = ""; Main.search("", Main.search-all); root.refocus(); }
+                    accepted => { if (Main.hits.length > 0) { Main.open-hit(0); root.go(1); } }
                 }
             }
-            TouchArea {
-                mouse-cursor: pointer;
-                clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+        }
+        // Search every project instead of this one.
+        if Main.query != "" && Main.projects.length > 1: VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: all-text.preferred-width + 18px;
+                height: root.big ? 28px : 24px;
+                accessible-role: checkbox;
+                accessible-label: "Search all projects";
+                accessible-checked: Main.search-all;
+                accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+                Box {
+                    line: 2px;
+                    off: 2px;
+                    face: Main.search-all ? Comic.yellow : #ffffff;
+                    all-text := Text {
+                        x: 9px;
+                        height: parent.height;
+                        text: "ALL PROJECTS";
+                        color: Comic.ink;
+                        font-family: "Bangers";
+                        font-size: 12px;
+                        letter-spacing: 1px;
+                        vertical-alignment: center;
+                    }
+                }
+                TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+                }
             }
         }
     }
-    VerticalLayout {
-        alignment: center;
-        InkBtn {
-            height: root.item-h;
-            icon: "import";
-            text: root.big ? "IMPORT" : "";
-            label: "Import audio or video";
-            tip: "Import";
-            enabled: !Main.recording;
-            clicked => { Main.import-files(); }
+    tools := HorizontalLayout {
+        spacing: root.spacing;
+        VerticalLayout {
+            alignment: center;
+            InkBtn {
+                height: root.item-h;
+                icon: "import";
+                text: root.words ? "IMPORT" : "";
+                label: "Import audio or video";
+                tip: "Import";
+                enabled: !Main.recording;
+                clicked => { Main.import-files(); }
+            }
         }
-    }
-    if Main.can-ai: VerticalLayout {
-        alignment: center;
-        InkBtn {
-            height: root.item-h;
-            icon: "ask";
-            text: root.big ? "ASK" : "";
-            face: Comic.cyan;
-            label: "Ask your clips";
-            tip: "Ask";
-            clicked => { root.go(6); }
+        if Main.can-ai: VerticalLayout {
+            alignment: center;
+            InkBtn {
+                height: root.item-h;
+                icon: "ask";
+                text: root.words ? "ASK" : "";
+                face: Comic.cyan;
+                label: "Ask your clips";
+                tip: "Ask";
+                clicked => { root.go(6); }
+            }
         }
-    }
-    VerticalLayout {
-        alignment: center;
-        InkBtn {
-            height: root.item-h;
-            icon: "widget";
-            text: root.big ? "WIDGET" : "";
-            label: "Small widget";
-            tip: "Widget";
-            clicked => { Main.compact-changed(true); }
+        VerticalLayout {
+            alignment: center;
+            InkBtn {
+                height: root.item-h;
+                icon: "widget";
+                text: root.words ? "WIDGET" : "";
+                label: "Small widget";
+                tip: "Widget";
+                clicked => { Main.compact-changed(true); }
+            }
         }
     }
 }
@@ -599,9 +633,17 @@ component Row inherits Rectangle {
                         font-weight: 700;
                         font-size: root.big ? 11.5px : 10.5px;
                         vertical-alignment: center;
-                        horizontal-stretch: 1;
                     }
-                    if !root.item.transcribed: Rectangle { horizontal-stretch: 1; }
+                    // The computer's sound was recorded too, as the classic row says.
+                    if root.item.has-system: Text {
+                        text: " · + system";
+                        color: root.pop ? Comic.sub-on-yellow : Comic.sub;
+                        font-family: "Comic Neue";
+                        font-weight: 700;
+                        font-size: root.big ? 11.5px : 10.5px;
+                        vertical-alignment: center;
+                    }
+                    Rectangle { horizontal-stretch: 1; }
                 }
             }
             Text {
@@ -1083,8 +1125,9 @@ export component MainPage inherits VerticalLayout {
         padding-top: 7px;
         padding-bottom: 9px;
         spacing: 7px;
-        RecFront { tall: root.tall; }
+        RecFront { tall: root.tall; refocus => { root.refocus(); } }
         bar := Toolbar {
+            avail: root.width - 18px;
             go(p) => { root.go(p); }
             refocus => { root.refocus(); }
         }
@@ -1109,12 +1152,13 @@ export component MainPage inherits VerticalLayout {
         HorizontalLayout {
             vertical-stretch: 1;
             spacing: 9px;
-            RecSide { width: (root.width - 31px) * 0.4; }
+            RecSide { width: (root.width - 31px) * 0.4; refocus => { root.refocus(); } }
             VerticalLayout {
                 horizontal-stretch: 1;
                 spacing: 9px;
                 wbar := Toolbar {
                     big: true;
+                    avail: root.width - 31px - (root.width - 31px) * 0.4;
                     go(p) => { root.go(p); }
                     refocus => { root.refocus(); }
                 }

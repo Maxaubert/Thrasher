@@ -162,6 +162,13 @@ skin needs, with the same outlines and metrics).
     panel): the later sibling draws it, with the position handed over (`search-x`).
   - **Padding inside the list:** take it out of `Main.list-height`, or keyboard scrolling
     leaves the last row half hidden.
+  - **A toolbar shares its room** (review, 2026-10-29): a long project name plus All
+    projects pushed Widget out of the window. The project caption takes at most what
+    the rest leaves (`Toolbar.avail`, worked out by the page, since the toolbar's own
+    width loops back through the layout) and elides; the wide toolbar drops the button
+    words when they do not fit. Check skins with a long project name and a query.
+  - **Same row facts as the classic page:** a clip with the computer's sound says
+    "+ system"; the burst and Pause give the keyboard back (`refocus`) after a click.
   - **Checks:** a posted `WM_CHAR` does not type in winit (post `WM_KEYDOWN` with the
     virtual key); a posted wheel needs a mouse move first; tooltips did not show in
     PrintWindow shots for any theme. Never press Import in a headless check: it opens

@@ -3677,10 +3677,6 @@ fn main() -> Result<(), slint::PlatformError> {
     Ok(())
 }
 
-/// Logs when the window stops responding for a noticeable time. Checks four times a
-/// second, so an idle window stays nearly free.
-/// Imports `files` into `library` on a worker thread; the window's `imported`
-/// callback shows the result.
 /// The settings gallery's tiles: the classic themes, and the device skins that have a
 /// line in `Gallery.devices` and a name in `Theme.names`, in the order of the names.
 fn fill_gallery(ui: &AppWindow) {
@@ -3707,6 +3703,10 @@ fn fill_gallery(ui: &AppWindow) {
     gallery.set_shown(ModelRc::new(VecModel::from(shown)));
 }
 
+/// Logs when the window stops responding for a noticeable time. Checks four times a
+/// second, so an idle window stays nearly free.
+/// Imports `files` into `library` on a worker thread; the window's `imported`
+/// callback shows the result.
 fn import_paths(ui: &AppWindow, library: Library, files: Vec<std::path::PathBuf>) {
     if files.is_empty() {
         return;

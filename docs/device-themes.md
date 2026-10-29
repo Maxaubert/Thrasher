@@ -447,14 +447,17 @@ across the whole page when it is wide, the other cards stay in their columns und
   Page Up and Page Down jump, Up and Down go to the other group, Enter or Space picks.
 - Ember look: framed picture, the name under it, accent frame and check on the current
   one. Tape Deck look: a sunk well and a cassette label with the theme's colour band,
-  amber well and lit lamp on the current one. The theme switches on click, no Apply.
+  amber well and lit lamp on the current one, red frame on the focused one. The theme
+  switches on click, no Apply. A tile scrolled into view (by key or on opening) clears the
+  edge fade; the Ember fade is solid strips on whole device pixels, as a see-through
+  gradient left bright specks on tile edges in the software renderer.
 - Device art: `ui/skins/thumbs/<skin>.png` and `<skin>@2x.png` for all 15 skins (2x when
   `1phx < 0.7px`, like the other skin art), cut by `python tools/skin-art/thumbs.py`
   from `mockups/device-themes/<skin>.png` (the wide window, 1000x620, scaled and quantised
   to 64 colours). Re-run it when a mockup screenshot changes.
 - Rust (`fill_gallery` in `main.rs`) lists the classic themes (`Theme.skins` 0) and the
   device lines whose name is in `Theme.names`, in that order, with their place there.
-- Cost: exe +0.32 MB (55.54 to 55.88 MB, with 6 device tiles). Main pages of all 14
+- Cost: exe +0.36 MB (55.54 to 55.91 MB, with 6 device tiles). Main pages of all 14
   themes unchanged (static ones pixel for pixel; the animated ones differ only by their
   animation, as much as two runs of the old build do).
 

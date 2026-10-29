@@ -326,16 +326,19 @@ component Spoke inherits Rectangle {
         width: root.width * 0.46;
         height: root.width * 0.46;
     }
+    // The caption shrinks with the wheel (36px is its full size), so neighbours on a
+    // short window do not run into each other.
+    property <float> cs: min(1, root.width / 36px);
     if root.caption != "": Text {
         x: (parent.width - 60px) / 2;
-        y: parent.height + 5px;
+        y: parent.height + 5px * root.cs;
         width: 60px;
         text: root.caption;
         color: Dash.faint;
         font-family: "Manrope";
-        font-size: 8px;
+        font-size: max(6.5px, 8px * root.cs);
         font-weight: 700;
-        letter-spacing: 0.64px;
+        letter-spacing: 0.64px * root.cs;
         horizontal-alignment: center;
         accessible-role: none;
     }
@@ -461,12 +464,13 @@ component Wheel inherits Rectangle {
 }
 
 // The driver display in a portrait window: the arc on the left, the wheel on the right,
-// each centred in its half. It grows a little with a wider or taller window.
+// each centred in its half. It grows a little with a wider or taller window, but never
+// past what fits side by side (188 + 200 units and a margin).
 component ClusterFront inherits Rectangle {
     in property <bool> tall;
     callback go(int);
     callback refocus();
-    property <float> k: max(root.tall ? 1.15 : 1, clamp(1 + (root.width - 520px) / 1500px, 1, 1.12));
+    property <float> k: min((root.width - 16px) / 388px, max(root.tall ? 1.15 : 1, clamp(1 + (root.width - 520px) / 1500px, 1, 1.12)));
     height: 196px * root.k;
     background: @linear-gradient(180deg, #12171d 0%, #0c0e11 100%);
     Gauge {
@@ -850,6 +854,27 @@ component Row inherits Rectangle {
                         cc := Text {
                             text: "TRANSCRIBED";
                             color: Dash.ice;
+                            font-family: "Manrope";
+                            font-size: 8.5px;
+                            font-weight: 800;
+                            letter-spacing: 0.68px;
+                            vertical-alignment: center;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+                // The sound of the computer was recorded too.
+                if root.item.has-system: VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: sc.preferred-width + 8px;
+                        height: 13px;
+                        border-radius: 4px;
+                        border-width: 1px;
+                        border-color: Dash.line2;
+                        sc := Text {
+                            text: "SYSTEM";
+                            color: Dash.dim;
                             font-family: "Manrope";
                             font-size: 8.5px;
                             font-weight: 800;

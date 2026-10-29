@@ -517,9 +517,12 @@ amber palette (`Theme.pages` 0).
   arrow keys do and its OK plays or pauses, like the footer's play. Keys 4 to # only show.
 - Portrait windows under 540 px high keep only keys 1 2 3 of the keypad; wide windows under
   400 px of LCD leave out the big mic, and the right wing's gaps close up on short windows.
-- Fonts: Chakra Petch 600 and 700 (keys and brand), Silkscreen 400 (LCD small caps, used at
-  8 px only, where one font pixel is one px), VT323 (LCD words) and "Brick Figures" for the
-  timer (`tools/skin-art/dv-brick-fonts.py`), all OFL, Latin subset, 66 KB.
+- Fonts: Chakra Petch 600 and 700 (keys and brand), "Brick Caps" (Silkscreen 400 with a square
+  5, since its own 5 differs from its S by two pixels; LCD small caps, used at 8 px only, where
+  one font pixel is one px), VT323 (LCD words) and "Brick Figures" for the timer
+  (`tools/skin-art/dv-brick-fonts.py`), all OFL, Latin subset, 66 KB.
+- Wide rows give up the waveform as the list narrows (18 bars from 340 px of row, 10 from 280
+  px, none below), so the clip names keep their room at the 820 px minimum.
 - Rust: `RECORDING_FPS` 4 for the status dot blinking while recording; `EFFECT_FPS` 0.
 - Shared, no visible change elsewhere: `Scroller.bar` (off: the skin draws its own scrollbar)
   and `TextField.select-fill` / `select-ink` (the LCD inverts selected text).

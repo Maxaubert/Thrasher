@@ -35,7 +35,7 @@ global Brick {
     out property <color> on-red: #ffe7e2;
     out property <color> close: #f08a7c;
     out property <string> words: "VT323";
-    out property <string> caps: "Silkscreen";
+    out property <string> caps: "Brick Caps";
     out property <string> keys: "Chakra Petch";
     out property <string> figures: "Brick Figures";
 }
@@ -212,7 +212,8 @@ component Digit inherits Text {
     accessible-role: none;
 }
 
-// The small caps of the LCD (Silkscreen draws one font pixel per px at 8px).
+// The small caps of the LCD (Brick Caps, Silkscreen with a square 5, draws one font pixel
+// per px at 8px).
 component Caps inherits Text {
     color: Brick.ink;
     font-family: Brick.caps;
@@ -445,7 +446,7 @@ component Stat inherits HorizontalLayout {
         width: tag.preferred-width + 8px;
         height: 11px;
         background: Brick.ink;
-        // Silkscreen's capitals are 5 px high; this sets them in the middle of the tag.
+        // Brick Caps capitals are 5 px high; this sets them in the middle of the tag.
         tag := Text {
             x: 4px;
             y: (parent.height - 10px) / 2 - 0.5px;
@@ -822,6 +823,8 @@ component Row inherits Rectangle {
     in property <ClipRow> item;
     in property <bool> big;
     in property <length> window-h;
+    // The row's width, from the LCD (its own would be a binding loop).
+    in property <length> span;
     callback go(int);
     callback ask-rename(int);
     callback ask-delete(int);
@@ -831,6 +834,8 @@ component Row inherits Rectangle {
     property <bool> active: root.index == Main.active-clip;
     property <bool> lit: root.selected || root.picked;
     property <color> fg: root.lit ? Brick.lcd1 : Brick.ink;
+    // The waveform's bars: fewer, then none, as the row narrows, so the name keeps its room.
+    property <int> bars: root.big ? (root.span >= 340px ? 18 : root.span >= 280px ? 10 : 0) : (root.span >= 300px ? 10 : 0);
     height: root.big ? 41px : 26px;
     background: root.selected ? Brick.ink : root.picked ? Brick.ink2 : row-touch.has-hover ? Brick.ghost : transparent;
     accessible-role: list-item;
@@ -866,7 +871,7 @@ component Row inherits Rectangle {
     HorizontalLayout {
         padding-left: root.big ? 6px : 3px;
         padding-right: root.big ? 8px : 4px;
-        spacing: root.big ? 10px : 7px;
+        spacing: root.big ? (root.bars > 0 ? 10px : 6px) : 7px;
         // Play.
         Rectangle {
             width: 14px;
@@ -894,10 +899,10 @@ component Row inherits Rectangle {
         }
         // The waveform, what has played solid: a click on the highlighted clip moves its
         // start, a double click plays from there.
-        VerticalLayout {
+        if root.bars > 0: VerticalLayout {
             alignment: center;
             wave := Rectangle {
-                property <int> n: root.big ? 18 : 10;
+                property <int> n: root.bars;
                 width: wave.n * 3px - 1px;
                 height: root.big ? 16px : 12px;
                 for i in wave.n: Rectangle {
@@ -1083,6 +1088,8 @@ component Hit inherits Rectangle {
 component List inherits HorizontalLayout {
     in property <bool> big;
     in property <length> window-h;
+    // A row's width (the list less its scrollbar), from the LCD.
+    in property <length> span;
     callback go(int);
     callback ask-rename(int);
     callback ask-delete(int);
@@ -1140,6 +1147,7 @@ component List inherits HorizontalLayout {
                     item: clip;
                     big: root.big;
                     window-h: root.window-h;
+                    span: root.span;
                     go(p) => { root.go(p); }
                     ask-rename(n) => { root.ask-rename(n); }
                     ask-delete(n) => { root.ask-delete(n); }
@@ -1356,6 +1364,8 @@ component Lcd inherits Rectangle {
         source: @image-url("dv-brick/t-grid.png");
         tint: #3b1f0512;
     }
+    // The wide recorder column.
+    property <length> side-w: clamp((root.width - 24px) * 0.34, 150px, 232px);
     property <length> foot-top: root.height - (root.big ? 20px : 18px) - (root.big ? 38px : 30px) - (Main.export-state != 0 ? (root.big ? 26px : 22px) : 0);
     if !root.big: VerticalLayout {
         VerticalLayout {
@@ -1377,6 +1387,7 @@ component Lcd inherits Rectangle {
             List {
                 vertical-stretch: 1;
                 window-h: root.window-h;
+                span: root.width - 16px - 9px;
                 go(p) => { root.go(p); }
                 ask-rename(n) => { root.ask-rename(n); }
                 ask-delete(n) => { root.ask-delete(n); }
@@ -1395,7 +1406,7 @@ component Lcd inherits Rectangle {
             spacing: 14px;
             vertical-stretch: 1;
             RecSide {
-                width: clamp((root.width - 24px) * 0.34, 150px, 232px);
+                width: root.side-w;
                 mic: root.height >= 400px;
             }
             VerticalLayout {
@@ -1406,7 +1417,7 @@ component Lcd inherits Rectangle {
                     Tools {
                         big: true;
                         height: 28px;
-                        avail: root.width - 24px - clamp((root.width - 24px) * 0.34, 150px, 232px) - 14px;
+                        avail: root.width - 24px - root.side-w - 14px;
                         go(p) => { root.go(p); }
                         refocus => { root.refocus(); }
                     }
@@ -1415,6 +1426,7 @@ component Lcd inherits Rectangle {
                     big: true;
                     vertical-stretch: 1;
                     window-h: root.window-h;
+                    span: root.width - 24px - root.side-w - 14px - 9px;
                     go(p) => { root.go(p); }
                     ask-rename(n) => { root.ask-rename(n); }
                     ask-delete(n) => { root.ask-delete(n); }
@@ -2110,7 +2122,7 @@ export component MainPage inherits Rectangle {
         x: root.width - 30px - 136px;
         y: root.wing-y + 196px + 46px * root.k;
         width: 136px;
-        text: "CALL TO RECORD";
+        text: !Main.recording ? "CALL TO RECORD" : Main.paused ? "CALL TO RESUME" : "CALL TO PAUSE";
     }
     if root.wide: EndKey {
         big: true;

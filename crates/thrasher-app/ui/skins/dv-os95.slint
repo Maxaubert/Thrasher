@@ -439,7 +439,8 @@ component Recorder inherits Window95 {
                     text: Main.elapsed + Main.elapsed-tenth;
                     color: Os.scope;
                     font-family: "VT323";
-                    font-size: root.big ? 34px : 24px;
+                    // An hour or more is two characters longer: smaller in the small box.
+                    font-size: root.big ? 34px : Main.elapsed.character-count > 5 ? 22px : 24px;
                     horizontal-alignment: right;
                     vertical-alignment: center;
                 }
@@ -975,7 +976,7 @@ component Explorer inherits Window95 {
     property <Cols> cols: {
         icon: root.big ? 22px : 20px,
         modified: root.big ? 122px : 104px,
-        kind: root.width >= 600px ? 104px : 0,
+        kind: root.width >= 560px ? 104px : 0,
         wave: root.width >= 520px ? 66px : 0,
         len: root.big ? 66px : 58px,
     };
@@ -1157,7 +1158,8 @@ component Explorer inherits Window95 {
                     x: 7px;
                     width: parent.width - 14px;
                     height: parent.height;
-                    text: Main.clips.length == 1 ? "1 clip" : Main.clips.length + " clips";
+                    text: (Main.clips.length == 1 ? "1 clip" : Main.clips.length + " clips")
+                        + (root.big ? "   " + Main.transcribed-count + " transcribed" : "");
                     color: #000000;
                     font-family: Os.font;
                     font-size: 12px;

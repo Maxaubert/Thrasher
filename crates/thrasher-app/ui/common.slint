@@ -3786,6 +3786,8 @@ export global Main {
 
     // The clips of the project shown and the highlighted one, or -1.
     in property <[ClipRow]> clips;
+    // How many of them have a transcript (the Desktop 95 status bar shows it).
+    in property <int> transcribed-count;
     in-out property <int> selected: -1;
     // Clip loaded in the player (playing or paused), or -1.
     in property <int> active-clip: -1;

@@ -130,6 +130,9 @@ skin needs, with the same outlines and metrics).
   `Theme.pages`. Desktop 95's palette is grey and navy for those pages.
 - The scope and the LED level follow `Main.live` like the classic meter, so the skin needs
   no clock (`EFFECT_FPS` and `RECORDING_FPS` 0). Nothing else moves.
+- `Main.transcribed-count` (set in `refresh_clips`) gives the wide status bar its
+  "N transcribed". The Type column shows from a 560px file window, so the mockup's 1000px
+  wide window has Type and Wave.
 
 ### Recipe from the pilot (follow it for the other skins)
 
@@ -259,6 +262,8 @@ skin needs, with the same outlines and metrics).
   and 14.8% (Ember 20.3% and 24.5%).
 - Working set idle 42.6 MB vs Ember 39.9 MB (+2.7); wide 49.2 vs 48.1 MB (+1.1).
 - Exe +1.98 MB (44.83 to 46.81 MB): fonts 80 KB, art 3 KB, the rest generated code.
+- Review re-check: idle 0% at both sizes (Ember 0% and 0.3%), recording 7.8% and 11.7%
+  (Ember 16.9% and 22.9%), working set 39.2 and 48.3 MB (Ember 38.0 and 46.3 MB).
 
 ### Art
 

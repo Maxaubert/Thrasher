@@ -490,6 +490,9 @@ impl App {
                 }
             })
             .collect();
+        let transcribed = rows.iter().filter(|r| r.transcribed).count();
+        ui.global::<Main>()
+            .set_transcribed_count(transcribed as i32);
         ui.set_clips(ModelRc::new(VecModel::from(rows)));
         self.picked = vec![false; self.clips.len()];
         self.anchor = None;

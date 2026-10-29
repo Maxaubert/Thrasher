@@ -37,6 +37,11 @@ import "./fonts/QuestFigures-400.ttf";
 import "./fonts/ChakraPetch-600.ttf";
 import "./fonts/ChakraPetch-700.ttf";
 import "./fonts/BrickFigures-700.ttf";
+import "./fonts/BarlowCondensed-600.ttf";
+import "./fonts/BarlowCondensed-700.ttf";
+import "./fonts/CourierPrime-400.ttf";
+import "./fonts/CourierPrime-700.ttf";
+import "./fonts/MemoSegments-400.ttf";
 import {
     ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Tips, Theme, Fx, Main, Pages, Win, Tour, TourPoint, Snow, TrimTouch,
     Icon, Tip, Btn, IconBtn, Toggle, Wave, BackLink, ExportButton, ResizeEdge, TitleBar, OrderList, PageHeader, Select,
@@ -53,6 +58,7 @@ import { MainPage as DashMain } from "skins/x-dash.slint";
 import { MainPage as PocketMain } from "skins/px-pocket.slint";
 import { MainPage as QuestMain } from "skins/px-quest.slint";
 import { MainPage as BrickMain } from "skins/dv-brick.slint";
+import { MainPage as AnswerMain } from "skins/dv-answer.slint";
 import {
     ClipPage as TapeClip, SettingsPage as TapeSettings, ModelsPage as TapeModels, MergePage as TapeMerge, AskPage as TapeAsk,
     Widget as TapeWidget, Dialog as TapeDialog, Speaking as TapeSpeaking, Drop as TapeDrop,
@@ -709,6 +715,15 @@ export component AppWindow inherits Window {
             refocus => { keys.focus(); }
         }
         if !compact && page == 0 && Theme.skin == 9: BrickMain {
+            narrow: root.narrow;
+            wide: root.wide;
+            tall: root.tall;
+            go(p) => { root.go(p); }
+            ask-rename(i) => { root.ask-rename(i); }
+            ask-delete(i) => { root.ask-delete(i); }
+            refocus => { keys.focus(); }
+        }
+        if !compact && page == 0 && Theme.skin == 10: AnswerMain {
             narrow: root.narrow;
             wide: root.wide;
             tall: root.tall;

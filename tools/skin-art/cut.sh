@@ -71,6 +71,20 @@ dv-brick) PIECES="kp-menu-l:kp-menu-l:30:42 kp-menu-m:kp-menu-m:1:42 kp-menu-r:k
   i-pause14:i-pause14:14:14 i-pause16:i-pause16:16:16 i-pause18:i-pause18:18:18 i-play18:i-play18:18:18
   x-mic:x-mic:12:16 x-micsm:x-micsm:7:8 x-tri:x-tri:8:8 x-trid:x-trid:8:8 t-dot:t-dot:2:1 t-dash:t-dash:6:1 t-dashv:t-dashv:1:6
   t-rule:t-rule:1:3 t-grid:t-grid:3:3 t-micdots:t-micdots:4:4" ;;
+# Answering Machine: parts of variable width in three slices (-l, -m, -r); the grille
+# of the wide window is cut short and built up from its rows (see Grille in dv-answer.slint).
+dv-answer) PIECES="disp-p-l:disp-p-l:14:100 disp-p-m:disp-p-m:2:100 disp-p-r:disp-p-r:14:100
+  disp-w-l:disp-w-l:14:132 disp-w-m:disp-w-m:2:132 disp-w-r:disp-w-r:14:132
+  mw-p-l:mw-p-l:10:46 mw-p-m:mw-p-m:2:46 mw-p-r:mw-p-r:10:46 mw-w-l:mw-w-l:10:68 mw-w-m:mw-w-m:2:68 mw-w-r:mw-w-r:10:68
+  rec-w-l:rec-w-l:24:90 rec-w-m:rec-w-m:2:90 rec-w-r:rec-w-r:24:90 key-w-l:key-w-l:24:90 key-w-m:key-w-m:2:90 key-w-r:key-w-r:24:90
+  pick-p-l:pick-p-l:10:36 pick-p-m:pick-p-m:2:36 pick-p-r:pick-p-r:10:36 pick-w-l:pick-w-l:10:40 pick-w-m:pick-w-m:2:40 pick-w-r:pick-w-r:10:40
+  srch-p-l:srch-p-l:17:34 srch-p-m:srch-p-m:2:34 srch-p-r:srch-p-r:17:34 srch-w-l:srch-w-l:19:38 srch-w-m:srch-w-m:2:38 srch-w-r:srch-w-r:19:38
+  strip-l:strip-l:8:28 strip-m:strip-m:2:28 strip-r:strip-r:8:28 track-l:track-l:4:8 track-m:track-m:2:8 track-r:track-r:4:8
+  rec-p:rec-p:120:104 tk:tk:62:56 play-p:play-p:84:70 play-w:play-w:98:70 nub:nub:36:34
+  pb-s:pb-s:34:34 pb-s-red:pb-s-red:34:34 pb-l:pb-l:42:42 pb-l-red:pb-l-red:42:42 thumb:thumb:15:20
+  grille-p:grille-p:94:80 grille-w:grille-w:256:39 keys:keys:366:98 led-on:led-on:16:16 led-off:led-off:16:16
+  dot-ready:dot-ready:15:15 dot-rec:dot-rec:15:15 dot-pause:dot-pause:15:15
+  mc-p:mc-p:148:84 mc-w:mc-w:214:110 reel-p:reel-p:128:16 reel-w:reel-w:176:22" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 

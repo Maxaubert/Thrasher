@@ -97,6 +97,7 @@ component Lab inherits Text {
     letter-spacing: 1.8px;
     vertical-alignment: center;
     accessible-role: none;
+    accessible-label: "";
 }
 
 // Red seven segment figures over their unlit segments. `ghost` is the same layout as
@@ -375,7 +376,6 @@ component Display inherits Rectangle {
                 font-family: "Courier Prime";
                 font-size: root.big ? 13px : 11.5px;
                 overflow: elide;
-                accessible-role: none;
             }
         }
     }
@@ -479,6 +479,7 @@ component Under inherits Text {
     letter-spacing: 1.53px;
     horizontal-alignment: center;
     accessible-role: none;
+    accessible-label: "";
 }
 
 // REC, which stops and saves while recording.
@@ -1217,7 +1218,6 @@ component Stamp inherits Rectangle {
         font-weight: 600;
         letter-spacing: root.big ? 1.08px : 0.96px;
         vertical-alignment: center;
-        accessible-role: none;
     }
 }
 
@@ -1229,6 +1229,8 @@ component Row inherits Rectangle {
     in property <ClipRow> item;
     in property <bool> big;
     in property <length> window-h;
+    // The width of the log, from the page (the row's own width would loop through the layout).
+    in property <length> row-w;
     callback go(int);
     callback ask-rename(int);
     callback ask-delete(int);
@@ -1238,6 +1240,10 @@ component Row inherits Rectangle {
     property <bool> active: root.index == Main.active-clip;
     property <bool> lit: root.selected || root.picked;
     property <string> num: (root.index < 9 ? "0" : "") + (root.index + 1);
+    // The waveform gives way to the name in a narrow log (a wide window just over 820px):
+    // the name keeps at least 150px (110px in portrait); a wave under 40px goes.
+    property <length> wave-room: root.row-w - (root.big ? 238px + 150px : 154px + 110px);
+    property <length> wave-w: root.wave-room >= 40px ? min(root.big ? 132px : 44px, root.wave-room) : 0;
     height: root.big ? 54px : 31px;
     accessible-role: list-item;
     accessible-label: root.item.name + ", " + root.item.duration;
@@ -1364,12 +1370,12 @@ component Row inherits Rectangle {
         }
         // The waveform: a click on the highlighted message moves its start, a double
         // click plays from there.
-        VerticalLayout {
+        if root.wave-w > 0: VerticalLayout {
             alignment: center;
             Wave {
-                width: root.big ? 132px : 44px;
+                width: root.wave-w;
                 height: root.big ? 24px : 16px;
-                n: root.big ? 34 : 14;
+                n: max(8, round(root.wave-w / (root.big ? 132px : 44px) * (root.big ? 34 : 14)));
                 values: root.item.wave;
                 lit: root.selected;
                 progress: root.active ? Main.play-fraction : -1;
@@ -1475,6 +1481,8 @@ component Hit inherits Rectangle {
             if root.show-project: Lab {
                 text: root.hit.project.to-uppercase();
                 color: Am.print-soft;
+                accessible-role: text;
+                accessible-label: root.hit.project;
             }
             if root.hit.more > 0: Text {
                 text: "+" + root.hit.more;
@@ -1523,6 +1531,7 @@ component Hit inherits Rectangle {
 component Log inherits Rectangle {
     in property <bool> big;
     in property <length> window-h;
+    in property <length> row-w;
     callback go(int);
     callback ask-rename(int);
     callback ask-delete(int);
@@ -1620,6 +1629,7 @@ component Log inherits Rectangle {
                     item: clip;
                     big: root.big;
                     window-h: root.window-h;
+                    row-w: root.row-w;
                     go(p) => { root.go(p); }
                     ask-rename(n) => { root.ask-rename(n); }
                     ask-delete(n) => { root.ask-delete(n); }
@@ -1811,6 +1821,7 @@ export component MainPage inherits Rectangle {
             padding-right: 10px;
             Log {
                 window-h: root.height;
+                row-w: root.width - 20px;
                 go(p) => { root.go(p); }
                 ask-rename(n) => { root.ask-rename(n); }
                 ask-delete(n) => { root.ask-delete(n); }
@@ -1838,6 +1849,7 @@ export component MainPage inherits Rectangle {
                     big: true;
                     vertical-stretch: 1;
                     window-h: root.height;
+                    row-w: root.width - 404px - 32px;
                     go(p) => { root.go(p); }
                     ask-rename(n) => { root.ask-rename(n); }
                     ask-delete(n) => { root.ask-delete(n); }

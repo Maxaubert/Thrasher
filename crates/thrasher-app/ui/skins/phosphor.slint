@@ -197,17 +197,23 @@ component Title inherits Rectangle {
 }
 
 // The rule over the readout: "-- REC ------", cut off at the edge.
-component Header inherits Text {
+// It is drawing only: a screen reader skips it.
+component Header inherits Rectangle {
     in property <string> word: "REC";
-    text: "-- " + root.word + " " + "------------------------------------------------------------------------------------------";
-    color: Ph.dim;
-    font-family: Ph.mono;
-    font-size: 10px;
-    letter-spacing: 2px;
-    overflow: clip;
     horizontal-stretch: 1;
     min-width: 0;
-    accessible-role: none;
+    height: txt.preferred-height;
+    txt := Text {
+        x: 0;
+        width: 100%;
+        text: "-- " + root.word + " " + "------------------------------------------------------------------------------------------";
+        color: Ph.dim;
+        font-family: Ph.mono;
+        font-size: 10px;
+        letter-spacing: 2px;
+        overflow: clip;
+        accessible-role: none;
+    }
 }
 
 // The lamp and the word: READY, RECORDING (the lamp blinks) or PAUSED (amber).
@@ -485,8 +491,9 @@ component Keys inherits HorizontalLayout {
         mic: root.big ? 24px : 18px;
         refocus => { root.refocus(); }
     }
+    // Wide enough for "RESUME [p]", so the key keeps its size when it changes.
     if Main.recording: PauseKey {
-        width: root.big ? 132px : 118px;
+        width: root.big ? 150px : 138px;
         size: root.big ? 28px : 24px;
         refocus => { root.refocus(); }
     }

@@ -120,6 +120,17 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
 - Art: one new piece, `cassette-clip` (the cassette with a writing line for the clip's
   name), 22 KB at 1x and 2x. `cut.sh` reproduces all 28 PNGs.
 
+**Built in step 5, Desktop 95 main page (2026-10-29):** `ui/skins/dv-os95.slint` (skin 3,
+theme "Desktop 95", index 10 in `Theme.names`), art in `ui/skins/dv-os95/`, fonts Pixel 95
+and VT323 (the same `VT323-400.ttf` as Phosphor: its Latin subset covers the ASCII this
+skin needs, with the same outlines and metrics).
+- `Theme.pages` says how the other pages are built: 1 for Tape Deck, else 0, the classic
+  pages in the theme's palette. A skin whose other pages are not built yet keeps them
+  classic this way; `app.slint` picks the main page by `Theme.skin` and the rest by
+  `Theme.pages`. Desktop 95's palette is grey and navy for those pages.
+- The scope and the LED level follow `Main.live` like the classic meter, so the skin needs
+  no clock (`EFFECT_FPS` and `RECORDING_FPS` 0). Nothing else moves.
+
 ### Recipe from the pilot (follow it for the other skins)
 
 - **Art:** an element page `tools/skin-art/<skin>.html` draws each fixed piece of the
@@ -158,6 +169,31 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
   `ink` for the selection in the deck look.
 - **Slint:** `parent.parent` is not allowed; name the element instead.
 
+**Lessons from Desktop 95** (step 5, 2026-10-29):
+- **Pixel art:** the icons are cut at 1x only and drawn with `image-rendering: pixelated`
+  at a whole scale (`Px` in `dv-os95.slint`). One white PNG plus `colorize` gives the LED
+  in three colours and the dotted focus line in any colour.
+- **Bevels** are eight one-pixel rectangles (`Bevel`: raised, pressed, sunken, thin,
+  etched); no PNG needed.
+- **A clipped Image crashes the software renderer** (Slint 1.18): setting `source-clip-*`
+  on one instance of a component that inherits `Image` turns every instance into a
+  clipped image without the clip's defaults, the source rect is empty, and the renderer
+  panics (`target_pixel_buffer.rs:116`, range end out of range). Use a plain `Image` for
+  the clipped one.
+- **Fonts:** Pixelify Sans' 5 reads as S, so `tools/skin-art/dv-os95-fonts.py` redraws the
+  5 from pixel rectangles measured on its glyph grid (400 and 700) and renames the family
+  "Pixel 95" (OFL, no reserved name). `hinting = False` in the subsetter halves a pixel
+  font (Slint does not use TrueType hinting); VT323 shows only the timer, so it is
+  printable ASCII only.
+- **A live trace without a clock:** a 2px column per point from this point to the next
+  makes a connected pixel line; its height follows the live bars and its carrier shifts
+  with the latest level, so it moves only when `Main.live` changes.
+- **Checks:** posted mouse moves do not show tooltips in the headless copy (for any theme),
+  and posted characters do not reach a `TextField`; set its text with UI Automation's
+  ValuePattern instead. Read UI Automation boxes a second after a change, or the click
+  lands where the element was. Give each parallel agent's test copy its own exe name
+  (`thrasher-os95.exe`), since the scripts stop the copy by process name.
+
 **Budgets measured on the pilot** (test copy, 2.25x display, 10 s samples):
 - CPU idle 0.2% (Ember 0.3%); recording 12.7% at 520x700 (Ember 18.4%), 18.4% at
   1100x700 (Ember 22.8%).
@@ -178,8 +214,8 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
 
 **Built in step 5, Phosphor main page (2026-10-29):**
 - `ui/skins/phosphor.slint` (skin 2, theme "Phosphor", palette 9). The other pages use the
-  classic blocks in the Phosphor palette for now: `app.slint` picks those with
-  `Theme.skin != 1` (was `== 0`), so every skin without its own pages falls back to them.
+  classic blocks in the Phosphor palette for now: `app.slint` picks those by `Theme.pages`
+  (0 for every skin without its own pages; see Desktop 95), so they fall back to them.
 - Shared changes, no visible change for the other looks: `TextField.has-focus` (the
   prompt draws its own resting block cursor) and `ProjectMenu.up` (the picker sits in the
   prompt at the bottom, so its menu opens upwards).
@@ -216,6 +252,13 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
   1100x700 (Ember 24.5%; the wide readout redraws its scope and the big timer).
 - Working set idle 43.6 vs Ember 40.2 MB (+3.4); wide 53.0 vs 48.2 MB (+4.8).
 - Exe +2.28 MB (44.83 to 47.11 MB): fonts 0.21 MB, art 0.04 MB, the rest generated code.
+
+**Budgets measured on Desktop 95** (main page, test copy, 2.25x display, 10 s samples,
+2026-10-29):
+- CPU idle 0.3% at 520x700 and 0.6% at 1100x700 (Ember 0.2% and 0.0%); recording 8.4%
+  and 14.8% (Ember 20.3% and 24.5%).
+- Working set idle 42.6 MB vs Ember 39.9 MB (+2.7); wide 49.2 vs 48.1 MB (+1.1).
+- Exe +1.98 MB (44.83 to 46.81 MB): fonts 80 KB, art 3 KB, the rest generated code.
 
 ### Art
 

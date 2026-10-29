@@ -18,6 +18,8 @@ import "./fonts/Oswald-500.ttf";
 import "./fonts/Oswald-600.ttf";
 import "./fonts/VT323-400.ttf";
 import "./fonts/IBMPlexMono-Regular.ttf";
+import "./fonts/Pixel95-400.ttf";
+import "./fonts/Pixel95-700.ttf";
 import {
     ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Tips, Theme, Fx, Main, Pages, Win, Tour, TourPoint, Snow, TrimTouch,
     Icon, Tip, Btn, IconBtn, Toggle, Wave, BackLink, ExportButton, ResizeEdge, TitleBar, OrderList, PageHeader, Select,
@@ -26,6 +28,7 @@ import {
 import { MainPage as ClassicMain } from "skins/classic.slint";
 import { MainPage as TapeMain } from "skins/tape.slint";
 import { MainPage as PhosphorMain } from "skins/phosphor.slint";
+import { MainPage as Os95Main } from "skins/dv-os95.slint";
 import {
     ClipPage as TapeClip, SettingsPage as TapeSettings, ModelsPage as TapeModels, MergePage as TapeMerge, AskPage as TapeAsk,
     Widget as TapeWidget, Dialog as TapeDialog, Speaking as TapeSpeaking, Drop as TapeDrop,
@@ -502,7 +505,7 @@ export component AppWindow inherits Window {
         // ---------- Widget ----------
         // The widget: status with open window, the time with pause and record, and
         // the live level.
-        if compact && Theme.skin != 1: Rectangle {
+        if compact && Theme.pages == 0: Rectangle {
             background: Theme.card;
             border-radius: 18px;
             border-width: 1px;
@@ -594,7 +597,7 @@ export component AppWindow inherits Window {
             }
         }
 
-        if compact && Theme.skin == 1: TapeWidget { }
+        if compact && Theme.pages == 1: TapeWidget { }
 
         // ---------- Clips (main) ----------
         // The theme's skin builds it (ui/skins); the state and actions are in Main.
@@ -625,9 +628,18 @@ export component AppWindow inherits Window {
             ask-delete(i) => { root.ask-delete(i); }
             refocus => { keys.focus(); }
         }
+        if !compact && page == 0 && Theme.skin == 3: Os95Main {
+            narrow: root.narrow;
+            wide: root.wide;
+            tall: root.tall;
+            go(p) => { root.go(p); }
+            ask-rename(i) => { root.ask-rename(i); }
+            ask-delete(i) => { root.ask-delete(i); }
+            refocus => { keys.focus(); }
+        }
 
         // ---------- One clip ----------
-        if !compact && page == 1 && root.selected >= 0 && Theme.skin != 1: VerticalLayout {
+        if !compact && page == 1 && root.selected >= 0 && Theme.pages == 0: VerticalLayout {
             TitleBar {
                 height: 38px;
                 minimize => { Main.minimize-window(); }
@@ -1051,7 +1063,7 @@ export component AppWindow inherits Window {
             }
         }
 
-        if !compact && page == 1 && root.selected >= 0 && Theme.skin == 1: TapeClip {
+        if !compact && page == 1 && root.selected >= 0 && Theme.pages == 1: TapeClip {
             narrow: root.narrow;
             wide: root.wide;
             go(p) => { root.go(p); }
@@ -1081,7 +1093,7 @@ export component AppWindow inherits Window {
         }
 
         // ---------- Settings ----------
-        if !compact && page == 3 && Theme.skin != 1: VerticalLayout {
+        if !compact && page == 3 && Theme.pages == 0: VerticalLayout {
             TitleBar {
                 minimize => { Main.minimize-window(); }
                 close => { Main.close-window(); }
@@ -1452,7 +1464,7 @@ export component AppWindow inherits Window {
             }
         }
 
-        if !compact && page == 3 && Theme.skin == 1: TapeSettings {
+        if !compact && page == 3 && Theme.pages == 1: TapeSettings {
             wide: root.wide;
             back => { root.go(root.settings-back); }
             go(p) => { root.go(p); }
@@ -1478,7 +1490,7 @@ export component AppWindow inherits Window {
             close-to-tray-changed(on) => { root.close-to-tray-changed(on); }
             start-with-windows-changed(on) => { root.start-with-windows-changed(on); }
         }
-        if !compact && page == 4 && Theme.skin == 1: TapeModels {
+        if !compact && page == 4 && Theme.pages == 1: TapeModels {
             wide: root.wide;
             back => { root.go(root.models-back); }
             filter-changed => { root.models-filter-changed(); }
@@ -1486,7 +1498,7 @@ export component AppWindow inherits Window {
             cancel-download => { root.cancel-download(); }
             download-model(i) => { root.download-model(i); }
         }
-        if !compact && page == 5 && Theme.skin == 1: TapeMerge {
+        if !compact && page == 5 && Theme.pages == 1: TapeMerge {
             wide: root.wide;
             go(p) => { root.go(p); }
             move(a, b) => { root.merge-move(a, b); }
@@ -1494,7 +1506,7 @@ export component AppWindow inherits Window {
             play(i) => { root.merge-play(i); }
             run(name) => { root.merge-run(name); }
         }
-        if !compact && page == 6 && Theme.skin == 1: TapeAsk {
+        if !compact && page == 6 && Theme.pages == 1: TapeAsk {
             wide: root.wide;
             go(p) => { root.go(p); }
             ask(q, all) => { root.ask(q, all); }
@@ -1502,7 +1514,7 @@ export component AppWindow inherits Window {
         }
 
         // ---------- Merge ----------
-        if !compact && page == 5 && Theme.skin != 1: VerticalLayout {
+        if !compact && page == 5 && Theme.pages == 0: VerticalLayout {
             TitleBar {
                 minimize => { Main.minimize-window(); }
                 close => { Main.close-window(); }
@@ -1584,7 +1596,7 @@ export component AppWindow inherits Window {
         }
 
         // ---------- Ask ----------
-        if !compact && page == 6 && Theme.skin != 1: VerticalLayout {
+        if !compact && page == 6 && Theme.pages == 0: VerticalLayout {
             TitleBar {
                 minimize => { Main.minimize-window(); }
                 close => { Main.close-window(); }
@@ -1685,7 +1697,7 @@ export component AppWindow inherits Window {
         }
 
         // ---------- Models ----------
-        if !compact && page == 4 && Theme.skin != 1: VerticalLayout {
+        if !compact && page == 4 && Theme.pages == 0: VerticalLayout {
             TitleBar {
                 minimize => { Main.minimize-window(); }
                 close => { Main.close-window(); }
@@ -1872,7 +1884,7 @@ export component AppWindow inherits Window {
         }
 
         // New words take a while to speak: cover the window so that is obvious.
-        if root.speaking && !root.compact && Theme.skin != 1: Rectangle {
+        if root.speaking && !root.compact && Theme.pages == 0: Rectangle {
             x: 0;
             y: 0;
             width: parent.width;
@@ -1932,7 +1944,7 @@ export component AppWindow inherits Window {
         }
     }
 
-    if root.speaking && !root.compact && Theme.skin == 1: TapeSpeaking { cancel => { root.cancel-speaking(); } }
+    if root.speaking && !root.compact && Theme.pages == 1: TapeSpeaking { cancel => { root.cancel-speaking(); } }
 
     if !compact: Rectangle {
         width: 100%;
@@ -1946,7 +1958,7 @@ export component AppWindow inherits Window {
     changed height => { Win.height = self.height; }
 
     // Files dragged over the window: a drop imports them.
-    if root.dropping && !root.compact && Theme.skin != 1: Rectangle {
+    if root.dropping && !root.compact && Theme.pages == 0: Rectangle {
         background: Theme.bg.with-alpha(0.88);
         Rectangle {
             x: 12px;
@@ -1974,8 +1986,8 @@ export component AppWindow inherits Window {
         }
     }
 
-    if root.dropping && !root.compact && Theme.skin == 1: TapeDrop { }
-    if root.dialog-shown && Theme.skin == 1: TapeDialog {
+    if root.dropping && !root.compact && Theme.pages == 1: TapeDrop { }
+    if root.dialog-shown && Theme.pages == 1: TapeDialog {
         title: root.dialog-title;
         note: root.dialog-note;
         field: root.dialog-field;
@@ -1986,7 +1998,7 @@ export component AppWindow inherits Window {
         confirm => { root.confirm-dialog(); }
         discard => { root.discard-edit(); }
     }
-    if root.dialog-shown && Theme.skin != 1: Rectangle {
+    if root.dialog-shown && Theme.pages == 0: Rectangle {
         background: #000000a6;
         // A click outside the box cancels.
         TouchArea { clicked => { root.close-dialog(); } }

@@ -28,6 +28,8 @@ import "./fonts/Manrope-500.ttf";
 import "./fonts/Manrope-700.ttf";
 import "./fonts/Manrope-800.ttf";
 import "./fonts/JetBrainsMono-300.ttf";
+import "./fonts/Jersey10-400.ttf";
+import "./fonts/PocketSmall-400.ttf";
 import {
     ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Tips, Theme, Fx, Main, Pages, Win, Tour, TourPoint, Snow, TrimTouch,
     Icon, Tip, Btn, IconBtn, Toggle, Wave, BackLink, ExportButton, ResizeEdge, TitleBar, OrderList, PageHeader, Select,
@@ -41,6 +43,7 @@ import { MainPage as Os95Main } from "skins/dv-os95.slint";
 import { MainPage as ComicMain } from "skins/x-comic.slint";
 import { MainPage as SpatialMain } from "skins/x-spatial.slint";
 import { MainPage as DashMain } from "skins/x-dash.slint";
+import { MainPage as PocketMain } from "skins/px-pocket.slint";
 import {
     ClipPage as TapeClip, SettingsPage as TapeSettings, ModelsPage as TapeModels, MergePage as TapeMerge, AskPage as TapeAsk,
     Widget as TapeWidget, Dialog as TapeDialog, Speaking as TapeSpeaking, Drop as TapeDrop,
@@ -670,6 +673,15 @@ export component AppWindow inherits Window {
             refocus => { keys.focus(); }
         }
         if !compact && page == 0 && Theme.skin == 6: DashMain {
+            narrow: root.narrow;
+            wide: root.wide;
+            tall: root.tall;
+            go(p) => { root.go(p); }
+            ask-rename(i) => { root.ask-rename(i); }
+            ask-delete(i) => { root.ask-delete(i); }
+            refocus => { keys.focus(); }
+        }
+        if !compact && page == 0 && Theme.skin == 7: PocketMain {
             narrow: root.narrow;
             wide: root.wide;
             tall: root.tall;

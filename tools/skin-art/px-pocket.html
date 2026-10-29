@@ -1,0 +1,126 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+svg{display:block}
+#a{position:absolute;left:0;top:0}
+</style></head><body><div id="a"></div>
+<script>
+// One element of the Pocket mockup (docs/mockups/device-themes/px-pocket.html), alone on
+// a transparent page, for cutting into PNGs. ?el=name&w=css-width&h=css-height
+// Everything is drawn one css pixel per art pixel; Slint scales it up with
+// `image-rendering: pixelated` at whole device pixels, so only the 1x cut is used.
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+
+// The mockup's colours: the four LCD shades, the rubber keys, the sprite accents. The
+// single colour icons are white, so Slint can tint them (`colorize`).
+const PAL = {'#':'#fff', '0':'#c3ce7b', '1':'#8d9d49', '2':'#4e6127', '3':'#1a2710',
+  k:'#2f3c1a', h:'#4e6127', l:'#18210c', o:'#0e1407', s:'#6e8436', a:'#6b7a3a'};
+function px(rows) {
+  const h = rows.length, w = Math.max(...rows.map(r => r.length));
+  let out = '';
+  rows.forEach((r, y) => { let x = 0; while (x < r.length) { const c = r[x]; if (c === '.' || c === ' ') { x++; continue }
+    let e = x; while (e < r.length && r[e] === c) e++;
+    out += `<rect x="${x}" y="${y}" width="${e - x}" height="1" fill="${PAL[c]}"/>`; x = e } });
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges">${out}</svg>`;
+}
+
+// The mockup's icons, plus pause, stop and a check that it did not need.
+const I = {
+  mic:   ["...###...","..#####..","..#####..","..#####..","..#####..","#.#####.#","#..###..#",".#.....#.","..#####..","....#....","..#####.."],
+  mics:  [".###.","#####","#####","#####",".###.","..#..",".###."],
+  gear:  ["....#....",".#.###.#.","..#####..",".###.###.","###...###",".###.###.","..#####..",".#.###.#.","....#...."],
+  min:   [".......",".......",".......",".......",".......","#######","#######"],
+  close: ["##...##","###.###",".#####.","..###..",".#####.","###.###","##...##"],
+  imp:   ["....#....","....#....","....#....","..#.#.#..","...###...","....#....","#.......#","#.......#","#########"],
+  ask:   [".#######.","#.......#","#.#.#.#.#","#.......#",".###.###.","...#.#...","....#...."],
+  wid:   ["#########","#########","#.......#","#.......#","#...#####","#...#####","#...#####","#########"],
+  play:  ["#.....","###...","#####.","######","#####.","###...","#....."],
+  pause: ["##..##","##..##","##..##","##..##","##..##","##..##","##..##"],
+  stop:  ["#######","#######","#######","#######","#######","#######","#######"],
+  dots:  ["##","##","..","##","##","..","##","##"],
+  down:  ["#######",".#####.","..###..","...#..."],
+  find:  [".####...","#....#..","#....#..","#....#..","#....#..",".####...",".....##.","......##"],
+  cur:   ["#...","##..","###.","####","###.","##..","#..."],
+  check: [".......#","......##","#....##.","##..##..",".####...","..##...."],
+};
+// The big microphone of the wide recorder, in LCD shades.
+I.sprite = [
+".....333333.....","....31111113....","...3101111113...","...3101111123...","...3111111123...","...3333333333...",
+"...3101111123...","...3111111123...","...3333333333...","...3101111123...","...3111111123...","...3111111223...",
+"....31122223....",".3...333333...3.",".3............3.",".33..........33.","..33........33..","...3333333333...",
+".......33.......",".......33.......",".......33.......","....33333333....","...3222222223...","...3333333333..."];
+
+// A round rubber key of d pixels: outline, a lit upper left rim, a dark lower right rim,
+// one hard highlight (the mockup's circleMap).
+function circleMap(d){
+  const r = d/2, rows = [];
+  for (let y = 0; y < d; y++){
+    let s = '';
+    for (let x = 0; x < d; x++){
+      const dx = x + .5 - r, dy = y + .5 - r, q = dx*dx + dy*dy;
+      if (q > r*r) { s += '.'; continue; }
+      if (q > (r-1)*(r-1)) { s += 'o'; continue; }
+      if (q > (r-2)*(r-2)) { s += (dx + dy < 0) ? 'h' : 'l'; continue; }
+      s += 'k';
+    }
+    rows.push(s);
+  }
+  const sy = Math.round(d*.28), sx = Math.round(d*.28);
+  rows[sy] = rows[sy].slice(0, sx) + 'ss' + rows[sy].slice(sx + 2);
+  return rows;
+}
+// The D pad, n pixels with arms a wide (the mockup's dpadMap).
+function dpadMap(n, a){
+  const lo = (n - a)/2, hi = lo + a - 1, c = (n - 1)/2;
+  const inC = (x, y) => x >= 0 && y >= 0 && x < n && y < n && ((x >= lo && x <= hi) || (y >= lo && y <= hi));
+  const g = [];
+  for (let y = 0; y < n; y++){
+    const r = [];
+    for (let x = 0; x < n; x++){
+      if (!inC(x, y)) { r.push('.'); continue; }
+      if (!inC(x-1,y) || !inC(x+1,y) || !inC(x,y-1) || !inC(x,y+1)) { r.push('o'); continue; }
+      if (!inC(x,y-2)) { r.push('h'); continue; }
+      if (!inC(x,y+2)) { r.push('l'); continue; }
+      r.push('k');
+    }
+    g.push(r);
+  }
+  const set = (x, y, ch) => g[y][x] = ch;
+  set(c,2,'a'); for (let i=-1;i<=1;i++) set(c+i,3,'a');
+  set(c,n-3,'a'); for (let i=-1;i<=1;i++) set(c+i,n-4,'a');
+  set(2,c,'a'); for (let i=-1;i<=1;i++) set(3,c+i,'a');
+  set(n-3,c,'a'); for (let i=-1;i<=1;i++) set(n-4,c+i,'a');
+  for (let y=-1;y<=1;y++) for (let x=-1;x<=1;x++) set(c+x,c+y,'l');
+  return g.map(r => r.join(''));
+}
+I['key-12'] = circleMap(12);
+I['key-11'] = circleMap(11);
+I['key-16'] = circleMap(16);
+I.dpad = dpadMap(19, 7);
+
+// Tiles, one period each: the 2px dither checkers (LCD light, LCD dark, the separator),
+// the LCD's pixel grid, and the dotted rules.
+const T = {
+  'dith':  ["1100","1100","0011","0011"],
+  'sep':   ["3311","3311","1133","1133"],
+  'rule-row': ["11..","11.."],
+  'rule-col': ["11","11","..",".."],
+  'rule-sur': ["##.."],
+};
+if (I[el]) a.innerHTML = px(I[el]);
+if (T[el]) {
+  const P2 = Object.assign({}, PAL, {'#': '#5a5d50'});
+  const rows = T[el], h = rows.length, w = rows[0].length;
+  let out = '';
+  rows.forEach((r, y) => [...r].forEach((c, x) => { if (c !== '.') out += `<rect x="${x}" y="${y}" width="1" height="1" fill="${P2[c]}"/>`; }));
+  a.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges">${out}</svg>`;
+}
+if (el === 'grid') {
+  // The LCD's pixel grid: a line of ink at 7% every 2px both ways.
+  a.innerHTML = `<svg width="2" height="2" viewBox="0 0 2 2" shape-rendering="crispEdges"><rect x="0" y="0" width="2" height="1" fill="rgba(26,39,16,.07)"/><rect x="0" y="0" width="1" height="2" fill="rgba(26,39,16,.07)"/></svg>`;
+}
+</script>
+</body></html>

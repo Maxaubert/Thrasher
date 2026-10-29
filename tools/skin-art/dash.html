@@ -1,0 +1,82 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Manrope;font-weight:700;src:url(../../crates/thrasher-app/ui/fonts/Manrope-700.ttf)}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+svg{display:block}
+#a{position:absolute;left:0;top:0}
+</style></head><body><div id="a"></div>
+<script>
+// One element of the Car Dashboard mockup (docs/mockups/device-themes/x-dash.html), alone
+// on a transparent page, for cutting into PNGs. ?el=name&w=css-width&h=css-height
+// The gauge's value arc and tip, the timer, the icons and all text but the gauge's scale
+// are drawn live in Slint (ui/skins/x-dash.slint).
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+const svg = (vb, body) => `<svg width="${W}" height="${H}" viewBox="${vb}" preserveAspectRatio="xMidYMid meet">${body}</svg>`;
+const pt = (cx, cy, r, d) => { d = d * Math.PI / 180; return [cx + r * Math.cos(d), cy + r * Math.sin(d)]; };
+const arcD = (cx, cy, r) => { const p = pt(cx, cy, r, 135), q = pt(cx, cy, r, 45); return `M${p[0].toFixed(2)} ${p[1].toFixed(2)}A${r} ${r} 0 1 1 ${q[0].toFixed(2)} ${q[1].toFixed(2)}`; };
+
+// The gauge's scale on a 200 unit box: 41 ticks over 270 degrees (the last five red),
+// the faint outer ring and the dark track the value arc runs in. Wide: dB labels too.
+if (el === 'gauge-p' || el === 'gauge-w') {
+  const cx = 100, cy = 100; let t = '';
+  for (let i = 0; i <= 40; i++) {
+    const d = 135 + i * 270 / 40, maj = i % 5 == 0, [x1, y1] = pt(cx, cy, maj ? 86 : 89, d), [x2, y2] = pt(cx, cy, 93, d);
+    t += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${i >= 36 ? '#ff4d5e' : maj ? '#7d8894' : '#3a424c'}" stroke-width="${maj ? 1.4 : .8}"/>`;
+  }
+  let lb = '';
+  if (el === 'gauge-w') [['-48', 0], ['-36', .25], ['-24', .5], ['-12', .75], ['0', 1]].forEach(([s, f]) => {
+    const [x, y] = pt(cx, cy, 63, 135 + f * 270);
+    lb += `<text x="${x.toFixed(1)}" y="${(y + 2.5).toFixed(1)}" text-anchor="middle" font-family="Manrope" font-weight="700" font-size="7" fill="#56606c">${s}</text>`;
+  });
+  a.innerHTML = svg('0 0 200 200', `${t}${lb}
+   <path d="${arcD(cx, cy, 98)}" fill="none" stroke="rgba(98,210,255,.08)" stroke-width="1"/>
+   <path d="${arcD(cx, cy, 80)}" fill="none" stroke="#1a2027" stroke-width="7" stroke-linecap="round"/>`);
+}
+
+// The steering wheel: rim, spokes, the two button plates and the hub; the record button
+// and the spoke buttons go on top. Portrait 200x192, wide 400x244 (cut off below).
+const wheel = (o) => {
+  const { w, h, cx, cy, R, sw, spokeH, hubR } = o;
+  return svg(`0 0 ${w} ${h}`, `<defs>
+   <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b323b"/><stop offset=".5" stop-color="#15191e"/><stop offset="1" stop-color="#0e1114"/></linearGradient>
+   <linearGradient id="sp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2228"/><stop offset="1" stop-color="#111418"/></linearGradient>
+   <radialGradient id="hub" cx=".5" cy=".35" r=".7"><stop offset="0" stop-color="#2a3038"/><stop offset="1" stop-color="#12151a"/></radialGradient></defs>
+   <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="url(#rim)" stroke-width="${sw}"/>
+   <circle cx="${cx}" cy="${cy}" r="${R + sw / 2 - 1}" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+   <path d="M${cx - R} ${cy - spokeH / 2} H${cx + R} V${cy + spokeH / 2} H${cx - R} Z" fill="url(#sp)"/>
+   <path d="M${cx - spokeH * .45} ${cy} L${cx - spokeH * .3} ${cy + R} H${cx + spokeH * .3} L${cx + spokeH * .45} ${cy} Z" fill="url(#sp)"/>
+   ${o.plates.map(p => `<rect x="${p[0]}" y="${p[1]}" width="${p[2]}" height="${p[3]}" rx="${Math.min(p[2], p[3]) / 2}" fill="#0f1215" stroke="#262c34"/>`).join('')}
+   <circle cx="${cx}" cy="${cy}" r="${hubR - .5}" fill="url(#hub)" stroke="#2f363f"/>`);
+};
+if (el === 'wheel-p') a.innerHTML = wheel({ w: 200, h: 192, cx: 100, cy: 96, R: 84, sw: 13, spokeH: 30, hubR: 31, plates: [[28, 62, 36, 68], [136, 62, 36, 68]] });
+if (el === 'wheel-w') a.innerHTML = wheel({ w: 400, h: 244, cx: 200, cy: 178, R: 168, sw: 22, spokeH: 46, hubR: 50, plates: [[56, 146, 106, 64], [238, 146, 106, 64]] });
+
+// The record button on the hub, 76 across, with its red glow (26 around it).
+const disc = (d, bg, shadow) => `<div style="position:absolute;left:${(W - d) / 2}px;top:${(H - d) / 2}px;width:${d}px;height:${d}px;border-radius:50%;background:${bg};box-shadow:${shadow}"></div>`;
+if (el === 'rec') a.innerHTML = disc(76, 'radial-gradient(circle at 50% 30%,#ff7380,#e0283c 60%,#a5162a)',
+  '0 0 0 3px rgba(255,77,94,.14),0 0 22px rgba(255,77,94,.35),inset 0 1px 0 rgba(255,255,255,.35)');
+// While recording: a brighter ring and glow.
+if (el === 'rec-on') a.innerHTML = disc(76, 'radial-gradient(circle at 50% 30%,#ff8a95,#ec3348 60%,#b01a2f)',
+  '0 0 0 4px rgba(255,77,94,.32),0 0 26px rgba(255,77,94,.6),inset 0 1px 0 rgba(255,255,255,.4)');
+// A spoke button, 36 across with its edge, and its shadow.
+if (el === 'sbtn') a.innerHTML = disc(34, 'linear-gradient(180deg,#262c34,#171b20)',
+  '0 0 0 1px #333b45,inset 0 1px 0 rgba(255,255,255,.08),0 2px 4px rgba(0,0,0,.5)');
+
+// The source chip's icon: a folder on the ice gradient.
+if (el === 'chip') a.innerHTML = `<div style="position:absolute;inset:0;border-radius:6px;background:linear-gradient(135deg,#3a8dff,#62d2ff);display:grid;place-items:center">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="#04121c"><path d="M3 7a2 2 0 0 1 2-2h4.2l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>`;
+// The media card's cover: stripes and a note.
+if (el === 'cover') a.innerHTML = `<div style="position:absolute;inset:0;border-radius:8px;background:repeating-linear-gradient(135deg,#161a1f 0 6px,#12151a 6px 12px);border:1px solid rgba(255,255,255,.07);display:grid;place-items:center;color:#56606c">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg></div>`;
+// The brand mark: a little gauge.
+if (el === 'logo') a.innerHTML = svg('0 0 16 16', `<defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#3a8dff"/><stop offset="1" stop-color="#62d2ff"/></linearGradient></defs>
+  <path d="M2 11a6 6 0 0 1 12 0" fill="none" stroke="url(#lg)" stroke-width="2" stroke-linecap="round"/><path d="M8 11 11 6.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>`);
+// The status lamp, 6 across in a 22 box for its glow: ready, recording, paused.
+const lamp = (c, g) => disc(6, c, `0 0 8px ${g}`);
+if (el === 'lamp-ok') a.innerHTML = lamp('#47e0a0', 'rgba(71,224,160,.7)');
+if (el === 'lamp-rec') a.innerHTML = lamp('#ff4d5e', 'rgba(255,77,94,.8)');
+if (el === 'lamp-pause') a.innerHTML = lamp('#62d2ff', 'rgba(98,210,255,.7)');
+</script></body></html>

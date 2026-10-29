@@ -174,6 +174,42 @@ skin needs, with the same outlines and metrics).
     PrintWindow shots for any theme. Never press Import in a headless check: it opens
     the system file dialog on screen.
 
+**Built in step 5, Car Dashboard main page (2026-10-29):** `ui/skins/x-dash.slint` (skin 6,
+theme "Car Dashboard", index 13 in `Theme.names`), art in `ui/skins/dash/` (26 PNGs, 0.36 MB)
+from `tools/skin-art/dash.html` (`sh tools/skin-art/cut.sh dash OUT`).
+- The recorder is the driver display: an arc meter (-48 to 0 dB) with the timer in the middle,
+  and a steering wheel whose hub is Record. The spoke buttons are Import (Pause while
+  recording), Ask, the widget and Settings (the gear left the title bar, as in the mockup).
+  The project picker is the screen's source chip; the clips are a playlist on a glass screen.
+- Its other pages, the widget and the overlays are the classic ones in its palette
+  (`Theme.pages` 0, from Desktop 95); the main page is picked by `Theme.skin`.
+- Nothing moves but the meter, so its `RECORDING_FPS` is 0.
+- Fonts: Manrope 500, 700 and 800 (a 600 request takes 700) and JetBrains Mono 300 for the
+  timer. No existing text asks for less than 400, so the new light weight changes nothing
+  (Ember and Tape Deck shots match pixel for pixel).
+
+**Lessons from the Car Dashboard:**
+- **Arcs:** a `Path` with an SVG `A` command and a `@linear-gradient` stroke renders fine in
+  the software renderer. Work out the end point with `cos`/`sin` on the 200 unit box and set
+  the large-arc flag when the sweep passes 180 degrees. `stroke-width` is in px, not
+  viewbox units, so scale it by hand.
+- **No `animate` on a meter that spans a big area:** the level already comes 30 times a
+  second, and the animation redrew the whole gauge every frame in between. Taking it out
+  cut recording CPU from 24.5% to 9.4% at 520x700 (36.9% to 11.4% wide).
+- **A rounded gradient highlight:** gradients ignore `border-radius`, so the selected row is
+  a solid left cap (left corners rounded), a square gradient in the middle and a solid right
+  cap, with a rounded border on top.
+- **Tests:** a posted `WM_CHAR` does not type into a Slint field; post `WM_KEYDOWN` with the
+  virtual key (`win.ps1 -Action vk`). Run the test copy under its own process name (here
+  `thrasher-dash.exe`) with its own scratch `THRASHER_DIR` and `THRASHER_SETTINGS`, since the
+  shared scripts kill every `thrasher-test` and parallel agents would stop each other's.
+
+**Budgets measured on the Car Dashboard** (test copy, 2.25x display, 10 s samples):
+- CPU idle 0.0 to 0.3% (Ember 0.2 to 0.3%); recording 9.4% at 520x700 (Ember 20.8%) and
+  11.4% at 1100x700 (Ember 26.4%).
+- Working set idle 46.1 vs Ember 41.3 MB (+4.8); wide 54.2 vs 49.1 MB (+5.1).
+- Exe +2.11 MB (44.83 to 46.95 MB): fonts 0.16 MB, art 0.36 MB, the rest generated code.
+
 ### Recipe from the pilot (follow it for the other skins)
 
 - **Art:** an element page `tools/skin-art/<skin>.html` draws each fixed piece of the

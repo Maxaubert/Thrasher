@@ -1,0 +1,1396 @@
+// The Car Dashboard main page: a calm electric car cockpit (docs/mockups/device-themes/
+// x-dash.html). The recorder is the driver display, the level meter a speed style arc
+// with the timer as the readout; Record is the steering wheel's hub and Import, Ask, the
+// widget and Settings sit on the spoke buttons; the clips are a media playlist on a glass
+// centre screen, and the footer is the now playing card. Portrait windows put the arc
+// and the wheel side by side above the screen; wide ones put the driver display on the
+// left.
+//
+// Fixed art is PNGs in dash/ (1x and 2x), cut from tools/skin-art/dash.html with headless
+// Edge; the value arc, the timer, the icons and the text are drawn here. Nothing moves
+// but the meter, which follows the level the app sends while recording, so the Fx clock
+// is not used.
+
+import { Theme, Main, Tips, Icon, ProjectMenu, TextField, Scroller, ClipMenu, WaveSeek, ClipRow, SearchHit } from "../common.slint";
+
+// The cockpit's colours, from the mockup.
+global Dash {
+    out property <color> body: #0c0e11;
+    out property <color> glass: #13171c;
+    out property <color> glass2: #181d23;
+    out property <color> well: #0e1115;
+    out property <color> line: #ffffff12;
+    out property <color> line2: #ffffff1f;
+    out property <color> text: #eef2f6;
+    out property <color> text2: #c9d2dc;
+    out property <color> dim: #8a95a3;
+    out property <color> faint: #56606c;
+    out property <color> ice: #62d2ff;
+    out property <color> ice2: #3a8dff;
+    out property <color> ink: #04121c;
+    out property <color> rec: #ff4d5e;
+    out property <color> ok: #47e0a0;
+    out property <color> track: #1c2229;
+    // The tints of the playlist's cover tiles, in turn.
+    out property <[color]> hues: [#3a8dff, #62d2ff, #9b7bff, #47e0a0];
+}
+
+// A piece of art, the 2x cut when the display is dense.
+component Art inherits Image {
+    in property <image> lo;
+    in property <image> hi;
+    source: 1phx < 0.7px ? root.hi : root.lo;
+    image-fit: fill;
+}
+
+// Minimise and close.
+component WinKey inherits Rectangle {
+    in property <string> icon;
+    in property <string> label;
+    callback clicked;
+    width: 30px;
+    height: 26px;
+    border-radius: 6px;
+    background: t.has-hover ? #ffffff0f : transparent;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Icon {
+        name: root.icon;
+        tint: t.has-hover ? Dash.text : Dash.dim;
+        width: 12px;
+        height: 12px;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The title bar: the brand, (wide) the mode words, minimise and close. Settings moved
+// to the wheel.
+component Title inherits Rectangle {
+    in property <bool> wide;
+    height: 34px;
+    background: Dash.body;
+    Rectangle { y: parent.height - 1px; height: 1px; background: Dash.line; }
+    // The light along the top edge.
+    Rectangle {
+        y: 0;
+        height: 1px;
+        opacity: 0.9;
+        background: @linear-gradient(90deg, #3a8dff00 0%, #3a8dff 25%, #62d2ff 50%, #9b7bff 75%, #9b7bff00 100%);
+    }
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 6px;
+        spacing: 10px;
+        HorizontalLayout {
+            spacing: 8px;
+            horizontal-stretch: 0;
+            VerticalLayout {
+                alignment: center;
+                Art {
+                    width: 16px;
+                    height: 16px;
+                    lo: @image-url("dash/logo.png");
+                    hi: @image-url("dash/logo@2x.png");
+                }
+            }
+            Text {
+                text: "THRASHER";
+                color: Dash.text;
+                font-family: "Manrope";
+                font-size: 11px;
+                font-weight: 800;
+                letter-spacing: 3.1px;
+                vertical-alignment: center;
+            }
+        }
+        HorizontalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 14px;
+            if root.wide: HorizontalLayout {
+                spacing: 4px;
+                Text {
+                    text: "REC";
+                    color: Dash.dim;
+                    font-family: "Manrope";
+                    font-size: 10px;
+                    font-weight: 700;
+                    letter-spacing: 1.4px;
+                    vertical-alignment: center;
+                }
+                Text {
+                    text: "MODE";
+                    color: Dash.faint;
+                    font-family: "Manrope";
+                    font-size: 10px;
+                    font-weight: 700;
+                    letter-spacing: 1.4px;
+                    vertical-alignment: center;
+                }
+            }
+            if root.wide: Text {
+                text: "LOCAL ONLY";
+                color: Dash.faint;
+                font-family: "Manrope";
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 1.4px;
+                vertical-alignment: center;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            WinKey { icon: "minimize"; label: "Minimize"; clicked => { Main.minimize-window(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            WinKey { icon: "close"; label: "Close"; clicked => { Main.close-window(); } }
+        }
+    }
+}
+
+// The arc meter, square: the scale is a PNG on a 200 unit box, the value arc a path
+// whose end comes from the level and the tip a dot there. The middle shows the state,
+// the timer and the microphone.
+component Gauge inherits Rectangle {
+    // Wide: the dB labels on the scale and bigger type.
+    in property <bool> big;
+    property <float> s: root.width / (root.big ? 270px : 188px);
+    // The level the app sends runs from -60 dB (0) to 0 dB (1); the scale shows -48 to 0.
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;
+    property <float> f: clamp((root.level * 60 - 12) / 48, 0, 1);
+    // No animation: the level comes 30 times a second, and every step of an animation
+    // would redraw the whole gauge.
+    property <angle> end: (135 + 270 * root.f) * 1deg;
+    // Points on the 200 unit box.
+    property <float> ex: 100 + 80 * cos(root.end);
+    property <float> ey: 100 + 80 * sin(root.end);
+    property <float> u: root.width / 200px;
+    accessible-role: AccessibleRole.text;
+    accessible-label: (Main.recording ? (Main.paused ? "Paused " : "Recording ") : "Ready ") + Main.elapsed + Main.elapsed-tenth;
+    Art {
+        width: 100%;
+        height: 100%;
+        lo: root.big ? @image-url("dash/gauge-w.png") : @image-url("dash/gauge-p.png");
+        hi: root.big ? @image-url("dash/gauge-w@2x.png") : @image-url("dash/gauge-p@2x.png");
+    }
+    if root.f > 0.004: Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 200;
+        viewbox-height: 200;
+        stroke: @linear-gradient(45deg, #3a8dff 0%, #62d2ff 70%, #e9fbff 100%);
+        stroke-width: 7px * root.u;
+        stroke-line-cap: round;
+        commands: "M 43.4315 156.5685 A 80 80 0 " + (root.f > 2 / 3 ? "1" : "0") + " 1 " + root.ex + " " + root.ey;
+    }
+    // The tip: a white dot in a soft ice ring.
+    Rectangle {
+        x: root.ex * root.u * 1px - self.width / 2;
+        y: root.ey * root.u * 1px - self.height / 2;
+        width: 15px * root.u;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: #62d2ff80;
+        Rectangle {
+            width: 11px * root.u;
+            height: self.width;
+            border-radius: self.width / 2;
+            background: #b1e9ff;
+        }
+        Rectangle {
+            width: 7px * root.u;
+            height: self.width;
+            border-radius: self.width / 2;
+            background: #ffffff;
+        }
+    }
+    VerticalLayout {
+        alignment: center;
+        spacing: 0;
+        HorizontalLayout {
+            alignment: center;
+            spacing: 6px * root.s - 2px;
+            padding-bottom: (root.big ? 6px : 4px) * root.s;
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 6px;
+                    height: 6px;
+                    Art {
+                        x: -8px;
+                        y: -8px;
+                        width: 22px;
+                        height: 22px;
+                        lo: !Main.recording ? @image-url("dash/lamp-ok.png") : Main.paused ? @image-url("dash/lamp-pause.png") : @image-url("dash/lamp-rec.png");
+                        hi: !Main.recording ? @image-url("dash/lamp-ok@2x.png") : Main.paused ? @image-url("dash/lamp-pause@2x.png") : @image-url("dash/lamp-rec@2x.png");
+                    }
+                }
+            }
+            Text {
+                text: Main.recording ? (Main.paused ? "PAUSED" : "RECORDING") : "READY";
+                color: !Main.recording ? Dash.ok : Main.paused ? Dash.ice : Dash.rec;
+                font-family: "Manrope";
+                font-size: (root.big ? 10px : 9px) * root.s;
+                font-weight: 800;
+                letter-spacing: (root.big ? 2.4px : 2.16px) * root.s;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+        Text {
+            text: Main.elapsed + Main.elapsed-tenth;
+            color: #ffffff;
+            font-family: Theme.mono;
+            font-size: (root.big ? 42px : 27px) * root.s;
+            font-weight: 300;
+            letter-spacing: (root.big ? -0.84px : -0.54px) * root.s;
+            horizontal-alignment: center;
+            accessible-role: none;
+        }
+        Text {
+            text: "ELAPSED";
+            color: Dash.faint;
+            font-family: "Manrope";
+            font-size: (root.big ? 10px : 9px) * root.s;
+            font-weight: 700;
+            letter-spacing: (root.big ? 3px : 2.7px) * root.s;
+            horizontal-alignment: center;
+            accessible-role: none;
+        }
+    }
+    // The microphone, low in the arc's opening.
+    HorizontalLayout {
+        y: root.height - (root.big ? 22px : 14px) * root.s - self.height;
+        height: 16px;
+        alignment: center;
+        spacing: 5px;
+        Icon {
+            name: "mic";
+            tint: Dash.ice;
+            width: 11px;
+            height: 11px;
+            y: (parent.height - self.height) / 2;
+        }
+        Text {
+            text: Main.device-label;
+            color: Dash.dim;
+            font-family: "Manrope";
+            font-size: root.big ? 11.5px : 10px;
+            font-weight: 700;
+            vertical-alignment: center;
+            max-width: root.width * 0.62;
+            overflow: elide;
+        }
+    }
+}
+
+// A round spoke button.
+component Spoke inherits Rectangle {
+    in property <string> icon;
+    in property <string> label;
+    in property <string> tip: label;
+    // The word under it (wide).
+    in property <string> caption;
+    in property <bool> lit;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Art {
+        x: -root.width / 12;
+        y: -root.width / 12;
+        width: root.width * 42 / 36;
+        height: root.width * 42 / 36;
+        lo: @image-url("dash/sbtn.png");
+        hi: @image-url("dash/sbtn@2x.png");
+    }
+    if t.has-hover || root.lit: Rectangle {
+        border-radius: root.width / 2;
+        background: root.lit ? #62d2ff26 : t.pressed ? #ffffff08 : #ffffff14;
+    }
+    Icon {
+        y: (parent.height - self.height) / 2 + (t.pressed ? 1px : 0);
+        name: root.icon;
+        tint: root.lit ? Dash.ice : t.has-hover ? #ffffff : #d7dee6;
+        width: root.width * 0.46;
+        height: root.width * 0.46;
+    }
+    // The caption shrinks with the wheel (36px is its full size), so neighbours on a
+    // short window do not run into each other.
+    property <float> cs: min(1, root.width / 36px);
+    if root.caption != "": Text {
+        x: (parent.width - 60px) / 2;
+        y: parent.height + 5px * root.cs;
+        width: 60px;
+        text: root.caption;
+        color: Dash.faint;
+        font-family: "Manrope";
+        font-size: max(6.5px, 8px * root.cs);
+        font-weight: 700;
+        letter-spacing: 0.64px * root.cs;
+        horizontal-alignment: center;
+        accessible-role: none;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The steering wheel: Record on the hub; Import (Pause while recording) and Ask on the
+// left spoke, the widget and Settings on the right. Portrait 200x192, wide 400x244 (its
+// lower half cut off), scaled to the width it gets.
+component Wheel inherits Rectangle {
+    in property <bool> big;
+    callback go(int);
+    callback refocus();
+    property <float> k: root.width / (root.big ? 400px : 200px);
+    property <length> cx: (root.big ? 200px : 100px) * root.k;
+    property <length> cy: (root.big ? 178px : 96px) * root.k;
+    property <length> rec-d: (root.big ? 76px : 48px) * root.k;
+    property <length> btn: (root.big ? 36px : 28px) * root.k;
+    // Where the spoke buttons sit, on the wheel's own units: two on each plate, or one in
+    // the middle of the left plate when Ask is not offered.
+    function px(x: float) -> length { return x * 1px * root.k; }
+    Art {
+        width: 100%;
+        height: 100%;
+        lo: root.big ? @image-url("dash/wheel-w.png") : @image-url("dash/wheel-p.png");
+        hi: root.big ? @image-url("dash/wheel-w@2x.png") : @image-url("dash/wheel-p@2x.png");
+    }
+    // Record, on the hub.
+    Rectangle {
+        x: root.cx - root.rec-d / 2;
+        y: root.cy - root.rec-d / 2;
+        width: root.rec-d;
+        height: root.rec-d;
+        accessible-role: button;
+        accessible-label: Main.recording ? "Stop and save" : "Record";
+        accessible-action-default => { Main.toggle-record(); root.refocus(); }
+        Art {
+            x: -parent.width * 26 / 76;
+            y: -parent.height * 26 / 76;
+            width: parent.width * 128 / 76;
+            height: parent.height * 128 / 76;
+            lo: Main.recording ? @image-url("dash/rec-on.png") : @image-url("dash/rec.png");
+            hi: Main.recording ? @image-url("dash/rec-on@2x.png") : @image-url("dash/rec@2x.png");
+        }
+        if rt.has-hover: Rectangle {
+            border-radius: parent.width / 2;
+            background: rt.pressed ? #00000026 : #ffffff1a;
+        }
+        Icon {
+            y: (parent.height - self.height) / 2 + (rt.pressed ? 1px : 0);
+            name: Main.recording ? "stop" : "mic";
+            tint: #ffffff;
+            width: parent.width * (Main.recording ? 0.34 : 0.4);
+            height: self.width;
+        }
+        property <bool> hovering: rt.has-hover;
+        changed hovering => { Tips.hover(self.hovering, Main.recording ? "Stop" : "Record", self.absolute-position, self.width, self.height); }
+        rt := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { Tips.hide(); Main.toggle-record(); root.refocus(); }
+        }
+    }
+    // Import, or Pause while recording (Import is not offered then).
+    if !Main.recording: Spoke {
+        x: root.px(root.big ? (Main.can-ai ? 84 : 109) : 46) - root.btn / 2;
+        y: root.px(root.big ? 168 : (Main.can-ai ? 80 : 96)) - root.btn / 2;
+        width: root.btn;
+        height: root.btn;
+        icon: "import";
+        label: "Import audio or video";
+        tip: "Import";
+        caption: root.big ? "IMPORT" : "";
+        clicked => { Main.import-files(); }
+    }
+    if Main.recording: Spoke {
+        x: root.px(root.big ? (Main.can-ai ? 84 : 109) : 46) - root.btn / 2;
+        y: root.px(root.big ? 168 : (Main.can-ai ? 80 : 96)) - root.btn / 2;
+        width: root.btn;
+        height: root.btn;
+        icon: Main.paused ? "play" : "pause";
+        label: Main.paused ? "Resume" : "Pause";
+        caption: root.big ? (Main.paused ? "RESUME" : "PAUSE") : "";
+        lit: Main.paused;
+        clicked => { Main.toggle-pause(); root.refocus(); }
+    }
+    if Main.can-ai: Spoke {
+        x: root.px(root.big ? 134 : 46) - root.btn / 2;
+        y: root.px(root.big ? 168 : 112) - root.btn / 2;
+        width: root.btn;
+        height: root.btn;
+        icon: "message";
+        label: "Ask your clips";
+        tip: "Ask";
+        caption: root.big ? "ASK" : "";
+        clicked => { root.go(6); }
+    }
+    Spoke {
+        x: root.px(root.big ? 266 : 154) - root.btn / 2;
+        y: root.px(root.big ? 168 : 80) - root.btn / 2;
+        width: root.btn;
+        height: root.btn;
+        icon: "pip";
+        label: "Small widget";
+        tip: "Widget";
+        caption: root.big ? "WIDGET" : "";
+        clicked => { Main.compact-changed(true); }
+    }
+    Spoke {
+        x: root.px(root.big ? 316 : 154) - root.btn / 2;
+        y: root.px(root.big ? 168 : 112) - root.btn / 2;
+        width: root.btn;
+        height: root.btn;
+        icon: "cog";
+        label: "Settings";
+        caption: root.big ? "SETTINGS" : "";
+        clicked => { root.go(3); }
+    }
+}
+
+// The driver display in a portrait window: the arc on the left, the wheel on the right,
+// each centred in its half. It grows a little with a wider or taller window, but never
+// past what fits side by side (188 + 200 units and a margin).
+component ClusterFront inherits Rectangle {
+    in property <bool> tall;
+    callback go(int);
+    callback refocus();
+    property <float> k: min((root.width - 16px) / 388px, max(root.tall ? 1.15 : 1, clamp(1 + (root.width - 520px) / 1500px, 1, 1.12)));
+    height: 196px * root.k;
+    background: @linear-gradient(180deg, #12171d 0%, #0c0e11 100%);
+    Gauge {
+        x: max(4px, (parent.width / 2 - self.width) / 2);
+        y: 4px * root.k;
+        width: 188px * root.k;
+        height: self.width;
+    }
+    Wheel {
+        x: min(parent.width - self.width - 4px, parent.width / 2 + (parent.width / 2 - self.width) / 2);
+        y: 2px * root.k;
+        width: 200px * root.k;
+        height: 192px * root.k;
+        go(p) => { root.go(p); }
+        refocus => { root.refocus(); }
+    }
+}
+
+// The driver display in a wide window, on the left: the big arc, the wheel below it.
+// Both give up size together when the window is short.
+component ClusterSide inherits Rectangle {
+    callback go(int);
+    callback refocus();
+    property <float> k: min(1, root.height / 520px);
+    property <length> wheel-top: root.height - 244px * root.k;
+    width: 400px;
+    background: @linear-gradient(180deg, #12171d 0%, #0c0e11 60%);
+    Rectangle { x: parent.width - 1px; width: 1px; background: Dash.line; }
+    Gauge {
+        big: true;
+        width: 270px * root.k;
+        height: self.width;
+        x: (parent.width - self.width) / 2;
+        y: max(14px * root.k, (root.wheel-top + 8px * root.k - self.height) / 2);
+    }
+    Wheel {
+        big: true;
+        width: 400px * root.k;
+        height: 244px * root.k;
+        x: (parent.width - self.width) / 2;
+        y: root.wheel-top;
+        go(p) => { root.go(p); }
+        refocus => { root.refocus(); }
+    }
+}
+
+// The project picker as the screen's source chip. ProjectMenu holds what it offers.
+component Source inherits Rectangle {
+    in property <bool> big;
+    callback refocus();
+    property <bool> enabled: !Main.recording;
+    width: row.preferred-width;
+    height: root.big ? 36px : 32px;
+    border-radius: 9px;
+    background: t.has-hover && root.enabled ? #1e242b : Dash.glass2;
+    border-width: 1px;
+    border-color: Dash.line2;
+    opacity: root.enabled ? 1 : 0.6;
+    accessible-role: combobox;
+    accessible-label: "Project";
+    accessible-value: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+    accessible-expandable: true;
+    accessible-action-default => { if (root.enabled) { menu.show(); } }
+    accessible-action-expand => { if (root.enabled) { menu.show(); } }
+    row := HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 10px;
+        spacing: 7px;
+        VerticalLayout {
+            alignment: center;
+            Art {
+                width: 20px;
+                height: 20px;
+                lo: @image-url("dash/chip.png");
+                hi: @image-url("dash/chip@2x.png");
+            }
+        }
+        Text {
+            text: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+            color: Dash.text;
+            font-family: "Manrope";
+            font-size: 12.5px;
+            font-weight: 700;
+            vertical-alignment: center;
+            max-width: 200px;
+            overflow: elide;
+        }
+        Icon {
+            name: "down";
+            tint: Dash.dim;
+            width: 10px;
+            height: 10px;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { menu.show(); }
+    }
+    menu := ProjectMenu {
+        width: parent.width;
+        height: parent.height;
+        projects: Main.projects;
+        current: Main.project;
+        has-clips: Main.clips.length > 0;
+        choose(i) => { Main.choose-project(i); root.refocus(); }
+        create => { Main.dialog-text = ""; Main.dialog = 4; }
+        rename => { Main.dialog-text = Main.projects[Main.project]; Main.dialog = 5; }
+        delete => { Main.delete-project(); root.refocus(); }
+        export => { Main.export-project(); root.refocus(); }
+    }
+}
+
+// The screen's top row: the source chip, the search field and, while searching with more
+// than one project, the switch to search them all.
+component Tool inherits HorizontalLayout {
+    in property <bool> big;
+    callback go(int);
+    callback refocus();
+    padding-left: root.big ? 12px : 10px;
+    padding-right: root.big ? 12px : 10px;
+    padding-top: root.big ? 12px : 10px;
+    padding-bottom: root.big ? 10px : 8px;
+    spacing: 8px;
+    Source { big: root.big; refocus => { root.refocus(); } }
+    TextField {
+        height: root.big ? 36px : 32px;
+        horizontal-stretch: 1;
+        radius: 9px;
+        fill: Dash.well;
+        rest-edge: Dash.line;
+        ink: Dash.text;
+        hint: Dash.faint;
+        font-size: 12.5px;
+        family: "Manrope";
+        side: 12px;
+        icon: "search";
+        placeholder: "Search";
+        label: "Search clips";
+        takes-escape: true;
+        focus-ticket: Main.search-ticket;
+        text <=> Main.query;
+        edited(t) => { Main.search(t, Main.search-all); }
+        escaped => { Main.query = ""; Main.search("", Main.search-all); root.refocus(); }
+        accepted => { if (Main.hits.length > 0) { Main.open-hit(0); root.go(1); } }
+    }
+    if Main.query != "" && Main.projects.length > 1: VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: all-text.preferred-width + 20px;
+            height: root.big ? 36px : 32px;
+            border-radius: 9px;
+            background: Main.search-all ? #62d2ff1f : Dash.glass2;
+            border-width: 1px;
+            border-color: Main.search-all ? #62d2ff59 : Dash.line2;
+            accessible-role: checkbox;
+            accessible-label: "Search all projects";
+            accessible-checked: Main.search-all;
+            accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+            all-text := Text {
+                x: 10px;
+                y: (parent.height - self.height) / 2;
+                text: "ALL PROJECTS";
+                color: Main.search-all ? Dash.ice : Dash.dim;
+                font-family: "Manrope";
+                font-size: 9.5px;
+                font-weight: 800;
+                letter-spacing: 1.2px;
+            }
+            TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+            }
+        }
+    }
+}
+
+// A clip's waveform on its cover tile, as thin bars in the tile's tint; what has played
+// is bright.
+component Tile inherits Rectangle {
+    in property <[float]> values;
+    in property <color> hue;
+    in property <float> progress: -1;
+    in property <bool> lit;
+    border-radius: 7px;
+    background: root.hue.with-alpha(0.1);
+    border-width: 1px;
+    border-color: root.lit ? #62d2ff59 : Dash.line;
+    property <length> wave-w: root.width * 0.8;
+    // 14 bars, as in the mockup.
+    property <int> n: 14;
+    property <length> step: root.wave-w / root.n;
+    for i in root.n: Rectangle {
+        property <float> v: root.values.length > 0 ? root.values[floor(i * root.values.length / root.n)] : 0.06;
+        x: (root.width - root.wave-w) / 2 + i * root.step + (root.step - self.width) / 2;
+        width: root.step * 0.6;
+        height: max(2px, root.height * (0.12 + 0.44 * self.v));
+        y: (root.height - self.height) / 2;
+        border-radius: 0.6px;
+        background: (i + 0.5) / root.n <= root.progress ? #ffffff : root.hue;
+    }
+}
+
+// One clip in the playlist: play, its cover tile, the name with when it was made and
+// whether it is transcribed, the length and the menu. The highlighted one is lit ice.
+component Row inherits Rectangle {
+    in property <int> index;
+    in property <ClipRow> item;
+    in property <bool> big;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    property <bool> selected: root.index == Main.selected;
+    property <bool> picked: Main.picked[root.index];
+    property <bool> active: root.index == Main.active-clip;
+    property <bool> lit: root.selected || root.picked;
+    property <length> tile: root.big ? 36px : 32px;
+    height: root.big ? 50px : 46px;
+    accessible-role: list-item;
+    accessible-label: root.item.name + ", " + root.item.duration;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected || root.picked;
+    accessible-action-default => { root.select(false, false); }
+    function select(ctrl: bool, shift: bool) {
+        Main.pick(root.index, ctrl, shift);
+        root.refocus();
+    }
+    // The highlight: a gradient from blue to ice. Gradients ignore rounded corners in
+    // the software renderer, so the round ends are solid caps.
+    if root.lit: Rectangle {
+        opacity: root.selected ? 1 : 0.6;
+        Rectangle {
+            x: 0;
+            width: 10px;
+            border-top-left-radius: 10px;
+            border-bottom-left-radius: 10px;
+            background: #3a8dff33;
+        }
+        Rectangle {
+            x: 10px;
+            width: parent.width - 20px;
+            background: @linear-gradient(90deg, #3a8dff33 0%, #62d2ff0f 100%);
+        }
+        Rectangle {
+            x: parent.width - 10px;
+            width: 10px;
+            border-top-right-radius: 10px;
+            border-bottom-right-radius: 10px;
+            background: #62d2ff0f;
+        }
+        Rectangle {
+            border-radius: 10px;
+            border-width: 1px;
+            border-color: #62d2ff4d;
+        }
+    }
+    if !root.lit && row-touch.has-hover: Rectangle {
+        border-radius: 10px;
+        background: #ffffff08;
+    }
+    // The lit edge on the left, with its glow.
+    if root.selected: Rectangle {
+        x: -3px;
+        y: 7px;
+        width: 7px;
+        height: parent.height - 14px;
+        border-radius: 3.5px;
+        background: #62d2ff33;
+    }
+    if root.selected: Rectangle {
+        x: -1px;
+        y: 9px;
+        width: 3px;
+        height: parent.height - 18px;
+        border-radius: 1.5px;
+        background: Dash.ice;
+    }
+    row-touch := TouchArea {
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                root.select(e.modifiers.control, e.modifiers.shift);
+            }
+            // On release: the press that closes an open menu is used up by that menu.
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                menu.show-at(self.mouse-x, self.mouse-y);
+            }
+        }
+        // Opens just this clip, even out of several picked.
+        double-clicked => { root.select(false, false); Main.open-clip(root.index); root.go(1); }
+    }
+    HorizontalLayout {
+        padding-left: 6px;
+        padding-right: 6px;
+        spacing: 10px;
+        // Play.
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 28px;
+                height: 28px;
+                border-radius: 14px;
+                background: root.selected ? (pt.has-hover ? #8adfff : Dash.ice) : pt.has-hover ? #ffffff14 : transparent;
+                border-width: 1px;
+                border-color: root.selected ? Dash.ice : Dash.line2;
+                accessible-role: button;
+                accessible-label: (root.active && Main.playing ? "Pause " : "Play ") + root.item.name;
+                accessible-action-default => { Main.play-clip(root.index); root.refocus(); }
+                Icon {
+                    x: (parent.width - self.width) / 2 + (root.active && Main.playing ? 0 : 1px);
+                    y: (parent.height - self.height) / 2 + (pt.pressed ? 1px : 0);
+                    name: root.active && Main.playing ? "pause" : "play";
+                    tint: root.selected ? Dash.ink : Dash.text;
+                    width: 10px;
+                    height: 10px;
+                }
+                property <bool> hovering: pt.has-hover;
+                changed hovering => { Tips.hover(self.hovering, root.active && Main.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+                pt := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { Tips.hide(); Main.play-clip(root.index); root.refocus(); }
+                }
+            }
+        }
+        // The cover tile with the waveform: a click on the highlighted clip moves its
+        // start, a double click plays from there.
+        VerticalLayout {
+            alignment: center;
+            Tile {
+                width: root.tile;
+                height: root.tile;
+                values: root.item.wave;
+                hue: Dash.hues[Math.mod(root.index, 4)];
+                lit: root.lit;
+                progress: root.active ? Main.play-fraction : -1;
+                WaveSeek {
+                    selected: root.selected;
+                    active: root.active;
+                    select(ctrl, shift) => { root.select(ctrl, shift); }
+                    cue(f) => { Main.cue-clip(root.index, f); root.refocus(); }
+                    play-at(f) => { Main.play-clip-at(root.index, f); root.refocus(); }
+                    menu(x, y) => { menu.show-at(x - root.absolute-position.x, y - root.absolute-position.y); }
+                }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 1px;
+            horizontal-stretch: 1;
+            Text {
+                text: root.item.name;
+                color: root.active ? Dash.ice : Dash.text;
+                font-family: "Manrope";
+                font-size: 13px;
+                font-weight: 700;
+                overflow: elide;
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                alignment: start;
+                Text {
+                    text: root.item.when;
+                    color: Dash.dim;
+                    font-family: "Manrope";
+                    font-size: 10.5px;
+                    font-weight: 500;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                if root.item.transcribed: VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: cc.preferred-width + 8px;
+                        height: 13px;
+                        border-radius: 4px;
+                        border-width: 1px;
+                        border-color: #62d2ff59;
+                        cc := Text {
+                            text: "TRANSCRIBED";
+                            color: Dash.ice;
+                            font-family: "Manrope";
+                            font-size: 8.5px;
+                            font-weight: 800;
+                            letter-spacing: 0.68px;
+                            vertical-alignment: center;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+                // The sound of the computer was recorded too.
+                if root.item.has-system: VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: sc.preferred-width + 8px;
+                        height: 13px;
+                        border-radius: 4px;
+                        border-width: 1px;
+                        border-color: Dash.line2;
+                        sc := Text {
+                            text: "SYSTEM";
+                            color: Dash.dim;
+                            font-family: "Manrope";
+                            font-size: 8.5px;
+                            font-weight: 800;
+                            letter-spacing: 0.68px;
+                            vertical-alignment: center;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+        Text {
+            text: root.item.duration;
+            color: Dash.text2;
+            font-family: Theme.mono;
+            font-size: 11.5px;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+        }
+        // The three-dot menu: manage, rename, export, delete.
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 22px;
+                height: 28px;
+                border-radius: 6px;
+                background: dots.has-hover ? #ffffff0f : transparent;
+                accessible-role: button;
+                accessible-label: "Menu for " + root.item.name;
+                accessible-action-default => { root.open-menu(); }
+                Icon {
+                    name: "dots";
+                    tint: dots.has-hover ? Dash.text : Dash.faint;
+                    width: 14px;
+                    height: 14px;
+                }
+                property <bool> hovering: dots.has-hover;
+                changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
+                dots := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { Tips.hide(); root.open-menu(); }
+                }
+            }
+        }
+    }
+    function open-menu() {
+        menu.show-at(root.width - 8px - 210px, (root.height + 28px) / 2 + 4px);
+    }
+    menu := ClipMenu {
+        width: parent.width;
+        height: parent.height;
+        item: root.item;
+        merge-count: root.picked ? Main.picked-count : 0;
+        projects: Main.projects;
+        project: Main.project;
+        window-h: root.window-h;
+        merge => { Main.start-merge(); root.go(5); }
+        open => { Main.open-clip(root.index); root.go(1); }
+        rename => { root.ask-rename(root.index); }
+        export(kind) => { Main.selected = root.index; Main.export-as(kind); root.refocus(); }
+        delete => { root.ask-delete(root.index); }
+        move-to(p) => { Main.move-clip(root.index, p); root.refocus(); }
+    }
+}
+
+// A search result: the clip (and its project when all are searched, extra hits as +2),
+// then the words around the match with the match in ice.
+component Hit inherits Rectangle {
+    in property <SearchHit> hit;
+    in property <bool> show-project;
+    callback clicked;
+    height: 52px;
+    border-radius: 10px;
+    background: t.has-hover ? #ffffff0a : transparent;
+    accessible-role: button;
+    accessible-label: root.hit.clip + ", " + root.hit.before + " " + root.hit.matched + " " + root.hit.after;
+    accessible-action-default => { root.clicked(); }
+    VerticalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        alignment: center;
+        spacing: 3px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: root.hit.clip;
+                color: Dash.text;
+                font-family: "Manrope";
+                font-size: 13px;
+                font-weight: 700;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if root.show-project: Text {
+                text: root.hit.project.to-uppercase();
+                color: Dash.faint;
+                font-family: "Manrope";
+                font-size: 9px;
+                font-weight: 800;
+                letter-spacing: 1.6px;
+                vertical-alignment: center;
+            }
+            if root.hit.more > 0: Text {
+                text: "+" + root.hit.more;
+                color: Dash.ice;
+                font-family: Theme.mono;
+                font-size: 10.5px;
+                vertical-alignment: center;
+            }
+        }
+        if root.hit.matched != "": HorizontalLayout {
+            spacing: 4px;
+            if root.hit.before != "": Text {
+                text: root.hit.before;
+                color: Dash.dim;
+                font-family: "Manrope";
+                font-size: 11.5px;
+                font-weight: 500;
+                horizontal-stretch: 0;
+            }
+            Text {
+                text: root.hit.matched;
+                color: Dash.ice;
+                font-family: "Manrope";
+                font-size: 11.5px;
+                font-weight: 800;
+                horizontal-stretch: 0;
+            }
+            Text {
+                text: root.hit.after;
+                color: Dash.dim;
+                font-family: "Manrope";
+                font-size: 11.5px;
+                font-weight: 500;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The small caps over the list: what it is and how many.
+component ListHead inherits HorizontalLayout {
+    in property <bool> big;
+    padding-left: root.big ? 16px : 14px;
+    padding-right: root.big ? 16px : 14px;
+    padding-top: 2px;
+    padding-bottom: root.big ? 8px : 6px;
+    property <int> count: Main.query != "" ? Main.hits.length : Main.clips.length;
+    Text {
+        text: Main.query != "" ? "RESULTS" : "PLAYLIST";
+        color: Dash.faint;
+        font-family: "Manrope";
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 2.34px;
+        horizontal-stretch: 1;
+        accessible-role: none;
+    }
+    Text {
+        text: root.count + (Main.query != "" ? (root.count == 1 ? " MATCH" : " MATCHES") : (root.count == 1 ? " CLIP" : " CLIPS"));
+        color: Dash.faint;
+        font-family: "Manrope";
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 2.34px;
+        accessible-role: none;
+    }
+}
+
+// The glass centre screen: the tool row, the list head and the playlist (or the search
+// results while there is a query).
+component Screen inherits Rectangle {
+    in property <bool> big;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    background: Dash.glass;
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: Dash.line;
+    VerticalLayout {
+        padding: 1px;
+        padding-bottom: 6px;
+        Tool {
+            big: root.big;
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+        ListHead { big: root.big; }
+        if Main.query != "": Scroller {
+            vertical-stretch: 1;
+            VerticalLayout {
+                alignment: start;
+                padding-left: root.big ? 8px : 6px;
+                padding-right: root.big ? 12px : 10px;
+                spacing: 2px;
+                if Main.hits.length == 0: Text {
+                    text: "No matches";
+                    color: Dash.faint;
+                    font-family: "Manrope";
+                    font-size: 13px;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                }
+                for h[i] in Main.hits: Hit {
+                    hit: h;
+                    show-project: Main.search-all;
+                    clicked => { Main.open-hit(i); root.go(1); }
+                }
+            }
+        }
+        if Main.query == "": Scroller {
+            vertical-stretch: 1;
+            content-y <=> Main.list-y;
+            property <int> count: Main.clips.length;
+            init => { Main.list-height = self.visible-height; Main.clamp-list(); }
+            changed visible-height => { Main.list-height = self.visible-height; Main.clamp-list(); }
+            changed count => { Main.clamp-list(); }
+            VerticalLayout {
+                alignment: start;
+                padding-left: root.big ? 8px : 6px;
+                padding-right: root.big ? 12px : 10px;
+                if Main.clips.length == 0: Text {
+                    text: "No clips yet";
+                    color: Dash.faint;
+                    font-family: "Manrope";
+                    font-size: 13px;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                }
+                for clip[i] in Main.clips: Row {
+                    index: i;
+                    item: clip;
+                    big: root.big;
+                    window-h: root.window-h;
+                    go(p) => { root.go(p); }
+                    ask-rename(n) => { root.ask-rename(n); }
+                    ask-delete(n) => { root.ask-delete(n); }
+                    refocus => { root.refocus(); }
+                }
+            }
+        }
+    }
+}
+
+// Now playing: play, the cover, the clip in the player (else the highlighted one, else
+// nothing yet), the time, and the progress line along the bottom; a click on it jumps.
+component Player inherits Rectangle {
+    in property <bool> big;
+    property <int> shown: Main.active-clip >= 0 && Main.active-clip < Main.clips.length ? Main.active-clip
+        : Main.selected >= 0 && Main.selected < Main.clips.length ? Main.selected : -1;
+    property <bool> is-active: self.shown >= 0 && self.shown == Main.active-clip;
+    property <float> at: root.is-active ? clamp(Main.play-fraction, 0, 1) : 0;
+    callback refocus();
+    vertical-stretch: 0;
+    height: root.big ? 68px : 66px;
+    background: @linear-gradient(180deg, #101317 0%, #0b0d10 100%);
+    Rectangle { y: 0; height: 1px; background: Dash.line; }
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        padding-bottom: 6px;
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 38px;
+                height: 38px;
+                border-radius: 19px;
+                background: pk.has-hover && root.shown >= 0 ? #ffffff : #f2f5f8;
+                opacity: root.shown >= 0 ? 1 : 0.85;
+                accessible-role: button;
+                accessible-label: root.is-active && Main.playing ? "Pause" : "Play";
+                accessible-action-default => { if (root.shown >= 0) { Main.play-clip(root.shown); } }
+                Icon {
+                    x: (parent.width - self.width) / 2 + (root.is-active && Main.playing ? 0 : 1px);
+                    y: (parent.height - self.height) / 2 + (pk.pressed ? 1px : 0);
+                    name: root.is-active && Main.playing ? "pause" : "play";
+                    tint: #0b0d10;
+                    width: 13px;
+                    height: 13px;
+                }
+                property <bool> hovering: pk.has-hover;
+                changed hovering => { Tips.hover(self.hovering, root.is-active && Main.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+                pk := TouchArea {
+                    enabled: root.shown >= 0;
+                    mouse-cursor: pointer;
+                    clicked => { Tips.hide(); Main.play-clip(root.shown); root.refocus(); }
+                }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Art {
+                width: 38px;
+                height: 38px;
+                lo: @image-url("dash/cover.png");
+                hi: @image-url("dash/cover@2x.png");
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text {
+                text: root.shown >= 0 ? Main.clips[root.shown].name : "Nothing playing";
+                color: root.is-active ? Dash.text : #cdd5de;
+                font-family: "Manrope";
+                font-size: 13px;
+                font-weight: 700;
+                overflow: elide;
+            }
+            Text {
+                text: "NOW PLAYING";
+                color: root.is-active && Main.playing ? Dash.ice : Dash.faint;
+                font-family: "Manrope";
+                font-size: 9px;
+                font-weight: 800;
+                letter-spacing: 2.16px;
+            }
+        }
+        Text {
+            text: root.shown < 0 ? "--:-- / --:--"
+                : (root.is-active ? Main.play-position : "0:00") + " / " + Main.clips[root.shown].duration;
+            color: Dash.dim;
+            font-family: Theme.mono;
+            font-size: 11.5px;
+            vertical-alignment: center;
+        }
+    }
+    Rectangle {
+        x: 14px;
+        y: parent.height - 12px;
+        width: parent.width - 28px;
+        height: 3px;
+        border-radius: 1.5px;
+        background: Dash.track;
+        Rectangle {
+            x: 0;
+            width: 4.5px + (parent.width - 9px) * root.at;
+            border-radius: 1.5px;
+            background: root.is-active ? Dash.ice : transparent;
+        }
+        Rectangle {
+            x: (parent.width - 9px) * root.at;
+            y: -3px;
+            width: 9px;
+            height: 9px;
+            border-radius: 4.5px;
+            background: #dfe6ee;
+        }
+        // Click to jump; taller than the line so it is easy to hit.
+        TouchArea {
+            y: -8px;
+            height: parent.height + 16px;
+            enabled: root.shown >= 0;
+            mouse-cursor: pointer;
+            clicked => {
+                Main.selected = root.shown;
+                Main.seek-fraction(self.mouse-x / self.width);
+                root.refocus();
+            }
+        }
+    }
+}
+
+// The main page. Portrait: the title bar, the driver display, the centre screen and the
+// media card, top to bottom. Wide: the driver display on the left, the screen on the
+// right, between the title bar and the media card.
+export component MainPage inherits VerticalLayout {
+    // The window's size classes, as AppWindow works them out.
+    in property <bool> narrow;
+    in property <bool> wide;
+    in property <bool> tall;
+    // Opens page p (see AppWindow.page).
+    callback go(int);
+    // The rename and delete questions for clip i.
+    callback ask-rename(int);
+    callback ask-delete(int);
+    // Gives the keyboard back to the window's shortcuts.
+    callback refocus();
+
+    property <length> pitch: root.wide ? 50px : 46px;
+    init => { Main.row-h = root.pitch; }
+    changed pitch => { Main.row-h = root.pitch; Main.clamp-list(); }
+
+    Title { wide: root.wide; }
+
+    if !root.wide: ClusterFront {
+        tall: root.tall;
+        go(p) => { root.go(p); }
+        refocus => { root.refocus(); }
+    }
+    if !root.wide: HorizontalLayout {
+        vertical-stretch: 1;
+        padding-left: 10px;
+        padding-right: 10px;
+        padding-bottom: 10px;
+        Screen {
+            window-h: root.height;
+            go(p) => { root.go(p); }
+            ask-rename(n) => { root.ask-rename(n); }
+            ask-delete(n) => { root.ask-delete(n); }
+            refocus => { root.refocus(); }
+        }
+    }
+    if root.wide: HorizontalLayout {
+        vertical-stretch: 1;
+        ClusterSide {
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+        HorizontalLayout {
+            horizontal-stretch: 1;
+            padding: 12px;
+            Screen {
+                big: true;
+                window-h: root.height;
+                go(p) => { root.go(p); }
+                ask-rename(n) => { root.ask-rename(n); }
+                ask-delete(n) => { root.ask-delete(n); }
+                refocus => { root.refocus(); }
+            }
+        }
+    }
+
+    // An export from the clip menu or the project menu: what it is, how far along,
+    // and a check when done. It takes its own room above the player.
+    if Main.export-state != 0: Rectangle {
+        vertical-stretch: 0;
+        height: 30px;
+        background: #0b0d10;
+        Rectangle { y: 0; height: 1px; background: Dash.line; }
+        HorizontalLayout {
+            padding-left: 14px;
+            padding-right: 14px;
+            spacing: 10px;
+            if Main.export-state == 2: Icon {
+                name: "check";
+                tint: Dash.ok;
+                width: 12px;
+                height: 12px;
+                y: (parent.height - self.height) / 2;
+            }
+            Text {
+                text: (Main.export-state == 2 ? "Exported " : "Exporting ") + Main.export-name;
+                color: Dash.text2;
+                font-family: "Manrope";
+                font-size: 12px;
+                font-weight: 500;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if Main.export-state == 1: Rectangle {
+                width: 120px;
+                height: 3px;
+                y: (parent.height - self.height) / 2;
+                border-radius: 1.5px;
+                background: Dash.track;
+                Rectangle {
+                    x: 0;
+                    width: parent.width * clamp(Main.export-progress, 0, 1);
+                    border-radius: 1.5px;
+                    background: Dash.ice;
+                    animate width { duration: 150ms; }
+                }
+            }
+            if Main.export-state == 1: Text {
+                text: round(Main.export-progress * 100) + "%";
+                color: Dash.dim;
+                font-family: Theme.mono;
+                font-size: 11px;
+                vertical-alignment: center;
+                width: 34px;
+                horizontal-alignment: right;
+            }
+        }
+    }
+
+    Player {
+        big: root.wide;
+        refocus => { root.refocus(); }
+    }
+
+    // Messages float just above the media card, so nothing moves when they come and go.
+    Rectangle {
+        height: 0;
+        if Main.status != "": Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: -(root.wide ? 68px : 66px) - self.height - 8px;
+            width: min(msg.preferred-width + 28px, parent.width - 32px);
+            height: 28px;
+            border-radius: 14px;
+            background: #181d23f2;
+            border-width: 1px;
+            border-color: Dash.line2;
+            msg := Text {
+                text: Main.status;
+                color: Dash.text;
+                font-family: "Manrope";
+                font-size: 12px;
+                font-weight: 500;
+                overflow: elide;
+                x: 14px;
+                width: parent.width - 28px;
+                vertical-alignment: center;
+                horizontal-alignment: center;
+            }
+        }
+    }
+}

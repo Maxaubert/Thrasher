@@ -170,7 +170,7 @@ pub fn show_models(ui: &AppWindow, active: &str) {
         ui.get_model_compressed(),
     );
     let mut rows = Vec::new();
-    for group in models::Group::ALL {
+    for (g, group) in models::Group::ALL.into_iter().enumerate() {
         let shown: Vec<(usize, &models::ModelInfo)> = CATALOG
             .iter()
             .enumerate()
@@ -184,6 +184,7 @@ pub fn show_models(ui: &AppWindow, active: &str) {
             title: group.title().into(),
             by: group.by().into(),
             index: -1,
+            group: g as i32,
             ..Default::default()
         });
         let n = shown.len();
@@ -200,6 +201,7 @@ pub fn show_models(ui: &AppWindow, active: &str) {
                 active: m.id == active,
                 first: k == 0,
                 last: k + 1 == n,
+                group: g as i32,
             });
         }
     }

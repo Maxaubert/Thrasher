@@ -16,6 +16,8 @@ export struct ModelRow {
     active: bool,
     first: bool,
     last: bool,
+    // Which group of the catalog it is in, for skins that colour the groups.
+    group: int,
 }
 
 export struct WordRow {
@@ -218,6 +220,93 @@ export global Theme {
     // the look in ui/skins/classic.slint; 1 Tape Deck, ui/skins/tape.slint.
     out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1];
     out property <int> skin: root.skins[root.current];
+    // The Tape Deck skin: the shared widgets below draw their deck look for it.
+    out property <bool> tape: root.skin == 1;
+}
+
+// The Tape Deck's colours and key faces, from its mockups (docs/mockups/device-themes/
+// tape.html and tape-pages/). Here, so the shared widgets can draw the deck look too.
+export global Deck {
+    out property <color> cream: #efe3c8;
+    out property <color> cream2: #e2d3b2;
+    out property <color> ink: #2a1c12;
+    out property <color> ink-soft: #6b5644;
+    out property <color> hand: #24170e;
+    out property <color> alu-ink: #3b342c;
+    out property <color> key-ink: #3a3129;
+    out property <color> red: #c9331f;
+    out property <color> amber: #f2a64a;
+    out property <color> chassis: #22170f;
+    out property <color> chassis2: #1a120c;
+    out property <color> slot: #120c08;
+    out property <color> rail: #cdb68f;
+    // The colour bands of the tape spines, in turn.
+    out property <[color]> bands: [#c9331f, #d99a2b, #3f7c74, #7a4a2a, #2f5a8a];
+    out property <brush> key-face: @linear-gradient(180deg, #ece7dc 0%, #c9c1b2 78%, #8f8778 78%, #6f685b 100%);
+    out property <brush> key-down: @linear-gradient(180deg, #d9d3c6 0%, #bdb5a6 88%, #8f8778 88%, #6f685b 100%);
+    out property <brush> latch-down: @linear-gradient(180deg, #b9b1a3 0%, #a39b8d 86%, #6f685b 86%, #5c5549 100%);
+    out property <brush> amber-face: @linear-gradient(180deg, #ffc27a 0%, #f2a64a 40%, #cf8424 78%, #8a5414 78%, #6e430f 100%);
+    out property <brush> rec-face: @linear-gradient(180deg, #e2543a 0%, #c9331f 40%, #a72614 78%, #6e170b 78%, #55120a 100%);
+    out property <brush> rec-down: @linear-gradient(180deg, #c9452d 0%, #b22c18 40%, #921f10 82%, #6e170b 82%, #55120a 100%);
+    out property <brush> dark-face: @linear-gradient(180deg, #3a2d22 0%, #2a1f17 80%, #17100b 80%, #0e0906 100%);
+    out property <brush> cream-card: @linear-gradient(180deg, #f4ead3 0%, #e2d3b2 100%);
+    out property <brush> cream-sub: @linear-gradient(180deg, #e9dbbc 0%, #d8c7a2 100%);
+    out property <brush> spine: @linear-gradient(180deg, #efe3c8 0%, #e2d3b2 100%);
+    out property <brush> spine-out: @linear-gradient(180deg, #fff6e2 0%, #f1e2c1 100%);
+    out property <brush> alu: @linear-gradient(180deg, #dcd6ca 0%, #bdb5a7 70%, #a9a193 100%);
+    out property <brush> dymo: @linear-gradient(180deg, #1b1b1d 0%, #0b0b0c 100%);
+    out property <brush> dymo-red: @linear-gradient(180deg, #d4442c 0%, #a72614 100%);
+    out property <brush> brass: @linear-gradient(180deg, #e3c58a 0%, #b48c4b 100%);
+}
+
+// The card a menu sits on: the dark popup, or for Tape Deck a cream J-card insert with
+// the red and amber rule of the cassette label along its top. `sub` is a submenu card.
+export component MenuCard inherits Rectangle {
+    in property <bool> sub;
+    in property <length> shadow-y: 6px;
+    background: Theme.tape ? transparent : root.sub ? Theme.raised : Theme.popup;
+    border-radius: Theme.tape ? 0 : 10px;
+    border-width: Theme.tape ? 0 : 1px;
+    border-color: Theme.edge;
+    drop-shadow-blur: Theme.tape ? 0 : 20px;
+    drop-shadow-offset-y: root.shadow-y;
+    drop-shadow-color: #00000099;
+    if Theme.tape: Rectangle {
+        background: #0d0805;
+        Rectangle {
+            x: 1px;
+            y: 1px;
+            width: parent.width - 2px;
+            height: parent.height - 2px;
+            background: root.sub ? Deck.cream-sub : Deck.cream-card;
+        }
+        Rectangle { x: 1px; y: 1px; width: parent.width - 2px; height: 2px; background: Deck.red; }
+        Rectangle { x: 1px; y: 3px; width: parent.width - 2px; height: 1px; background: Deck.amber; }
+    }
+    @children
+}
+
+// A key face of the deck, the face shifted down while it is held. `kind`: 0 cream,
+// 1 amber, 2 red, 3 dark; `down` holds it (a latched key); `lip` is where the face ends
+// and its front edge starts, as a part of the height. Used by the shared widgets.
+export component DeckKey inherits Rectangle {
+    in property <int> kind;
+    in property <bool> down;
+    in property <bool> pressed;
+    in property <bool> hover;
+    in property <bool> enabled: true;
+    in property <bool> shadow: true;
+    property <bool> sunk: root.down || (root.pressed && root.enabled);
+    Rectangle { visible: root.shadow; y: 1px; background: #000000b0; }
+    Rectangle {
+        y: root.sunk ? 1px : 0;
+        height: parent.height - (root.sunk ? 1px : 0);
+        background: root.kind == 1 ? Deck.amber-face : root.kind == 2 ? (root.down ? Deck.rec-down : Deck.rec-face)
+            : root.kind == 3 ? Deck.dark-face : root.down ? Deck.latch-down : Deck.key-face;
+        opacity: root.enabled ? 1 : 0.45;
+        Rectangle { y: 0; height: 1px; background: root.kind == 1 ? #ffe0b0 : root.kind == 2 ? #ff9a7f : root.kind == 3 ? #4a3a2e : root.down ? #00000030 : #ffffff; }
+        Rectangle { visible: root.hover && root.enabled && !root.sunk; background: #ffffff14; }
+    }
 }
 
 // The clock of the theme effects, in seconds. The app advances it while an effect
@@ -277,17 +366,31 @@ export component Icon inherits Path {
         : name == "languages" ? "m5 8 6 6 M4 14l6-6 2-3 M2 5h12 M7 2h1 M22 22l-5-10-5 10 M14 18h6"
         : name == "copy" ? "M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2z M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
         : name == "list" ? "M8 6h13 M8 12h13 M8 18h13 M3 6h1 M3 12h1 M3 18h1"
+        // Tape Deck.
+        : name == "plus" ? "M 12 5 L 12 19 M 5 12 L 19 12"
+        : name == "export" ? "M 12 15 L 12 4 M 7 9 L 12 4 L 17 9 M 4 19 L 20 19"
+        : name == "eject" ? "M 5 14 L 12 6 L 19 14 Z M 5 18 L 19 18"
         : "";
 }
 
 // What a tooltip looks like: a small dark bubble with a thin warm edge.
 export component Tip inherits Rectangle {
     in property <string> text;
-    background: Theme.popup.with-alpha(0.95);
-    border-radius: 7px;
-    border-width: 1px;
+    // Tape Deck: a cream paper tag with a red edge and a stepped shadow.
+    Rectangle { visible: Theme.tape; x: 1px; y: 2px; background: #00000059; }
+    Rectangle { visible: Theme.tape; x: 1px; y: 4px; height: parent.height - 2px; background: #00000026; }
+    Rectangle {
+        visible: Theme.tape;
+        background: Deck.cream-card;
+        border-width: 1px;
+        border-color: Deck.ink;
+        Rectangle { x: 0; width: 3px; background: Deck.red; }
+    }
+    background: Theme.tape ? transparent : Theme.popup.with-alpha(0.95);
+    border-radius: Theme.tape ? 0 : 7px;
+    border-width: Theme.tape ? 0 : 1px;
     border-color: Theme.popup-edge;
-    drop-shadow-blur: 14px;
+    drop-shadow-blur: Theme.tape ? 0 : 14px;
     drop-shadow-offset-y: 4px;
     drop-shadow-color: #00000099;
     width: bubble.preferred-width;
@@ -299,9 +402,11 @@ export component Tip inherits Rectangle {
         padding-bottom: 5px;
         Text {
             text: root.text;
-            color: Theme.text2;
-            font-size: 12px;
+            color: Theme.tape ? Deck.ink : Theme.text2;
+            font-family: Theme.tape ? "Oswald" : "Inter Tight";
+            font-size: Theme.tape ? 11.5px : 12px;
             font-weight: 500;
+            letter-spacing: Theme.tape ? 0.6px : 0;
         }
     }
 }
@@ -314,22 +419,52 @@ export component Btn inherits Rectangle {
     in property <bool> on;
     in property <bool> enabled: true;
     in property <length> font-size: 13px;
+    // Tape Deck: the red key (Delete, Merge) instead of the amber one.
+    in property <bool> red;
     callback clicked;
     height: 36px;
-    min-width: label.preferred-width + 26px;
-    border-radius: 9px;
-    background: primary ? (t.has-hover && enabled ? Theme.accent-hover : Theme.accent) : (t.has-hover && enabled ? Theme.raised : transparent);
-    border-width: primary ? 0 : 1px;
+    min-width: label.preferred-width + (Theme.tape ? 24px : 26px);
+    border-radius: Theme.tape ? 0 : 9px;
+    background: Theme.tape ? transparent : primary ? (t.has-hover && enabled ? Theme.accent-hover : Theme.accent) : (t.has-hover && enabled ? Theme.raised : transparent);
+    border-width: primary || Theme.tape ? 0 : 1px;
     border-color: on ? Theme.accent : Theme.edge;
-    opacity: enabled ? 1 : 0.4;
+    opacity: enabled || Theme.tape ? 1 : 0.4;
     accessible-role: button;
     accessible-label: text;
     accessible-action-default => { if (enabled) { root.clicked(); } }
+    // Tape Deck: a piano key, amber for the main action, red for deleting.
+    DeckKey {
+        visible: Theme.tape;
+        kind: root.red ? 2 : root.primary ? 1 : 0;
+        down: root.on;
+        pressed: t.pressed && t.has-hover;
+        hover: t.has-hover;
+        enabled: root.enabled;
+    }
+    Text {
+        visible: Theme.tape;
+        y: (t.pressed && t.has-hover && root.enabled) || root.on ? 1px : 0;
+        width: parent.width;
+        height: parent.height * 0.78;
+        text: root.text.to-uppercase();
+        color: root.red ? #fff3e6 : root.primary ? #2a1406 : Deck.key-ink;
+        opacity: root.enabled ? 1 : 0.5;
+        font-family: "Oswald";
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 2.2px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
     label := Text {
-        text: root.text;
+        visible: !Theme.tape;
+        text: Theme.tape ? root.text.to-uppercase() : root.text;
         color: primary ? Theme.on-accent : danger ? Theme.danger : on ? Theme.accent : Theme.text;
-        font-size: root.font-size;
-        font-weight: primary ? 800 : 500;
+        font-family: Theme.tape ? "Oswald" : "Inter Tight";
+        font-size: Theme.tape ? 10px : root.font-size;
+        font-weight: Theme.tape ? 600 : primary ? 800 : 500;
+        letter-spacing: Theme.tape ? 2.2px : 0;
         horizontal-alignment: center;
         vertical-alignment: center;
     }
@@ -358,15 +493,33 @@ export component IconBtn inherits Rectangle {
     callback clicked;
     width: size;
     height: size;
-    border-radius: radius;
-    background: filled ? (t.has-hover ? Theme.accent-hover : Theme.accent) : t.has-hover && enabled ? Theme.raised : transparent;
-    border-width: outlined ? 1px : 0;
+    border-radius: Theme.tape ? 0 : radius;
+    background: Theme.tape ? transparent : filled ? (t.has-hover ? Theme.accent-hover : Theme.accent) : t.has-hover && enabled ? Theme.raised : transparent;
+    border-width: outlined && !Theme.tape ? 1px : 0;
     border-color: Theme.edge;
-    opacity: enabled ? 1 : 0.4;
+    opacity: enabled || Theme.tape ? 1 : 0.4;
     accessible-role: button;
     accessible-label: label;
     accessible-action-default => { if (enabled) { root.clicked(); } }
+    // Tape Deck: a small square key, amber while it is on.
+    DeckKey {
+        visible: Theme.tape;
+        kind: root.filled || root.active ? 1 : 0;
+        pressed: t.pressed && t.has-hover;
+        hover: t.has-hover;
+        enabled: root.enabled;
+    }
     Icon {
+        visible: Theme.tape;
+        y: (parent.height * 0.8 - self.height) / 2 + (t.pressed && t.has-hover && root.enabled ? 1px : 0);
+        name: root.icon;
+        tint: root.filled || root.active ? #2a1406 : Deck.key-ink;
+        opacity: root.enabled ? 1 : 0.5;
+        width: root.icon-size;
+        height: root.icon-size;
+    }
+    Icon {
+        visible: !Theme.tape;
         name: root.icon;
         tint: t.has-hover && !root.filled && !root.active ? Theme.text : root.tint;
         width: root.icon-size;
@@ -390,17 +543,45 @@ export component Toggle inherits Rectangle {
     in property <bool> enabled: true;
     callback toggled(bool);
     property <bool> on: root.checked && root.enabled;
-    width: 38px;
-    height: 22px;
-    border-radius: 11px;
-    background: on ? Theme.accent : Theme.track;
+    width: Theme.tape ? 53px : 38px;
+    height: Theme.tape ? 18px : 22px;
+    border-radius: Theme.tape ? 0 : 11px;
+    background: Theme.tape ? transparent : on ? Theme.accent : Theme.track;
     opacity: root.enabled ? 1 : 0.45;
     accessible-role: checkbox;
     accessible-checkable: true;
     accessible-checked: on;
     accessible-label: label;
     accessible-action-default => { if (root.enabled) { root.checked = !root.checked; root.toggled(root.checked); } }
+    // Tape Deck: a slide switch in a sunk slot, with a lamp that lights when it is on.
     Rectangle {
+        visible: Theme.tape;
+        x: 0;
+        y: 5px;
+        width: 8px;
+        height: 8px;
+        border-radius: 4px;
+        background: root.on ? @radial-gradient(circle, #fff0c8 0%, #f2a64a 45%, #9a5a14 100%) : @radial-gradient(circle, #6a5a48 0%, #3a2f25 60%, #211912 100%);
+    }
+    Rectangle {
+        visible: Theme.tape;
+        x: 15px;
+        width: 38px;
+        Rectangle { y: 1px; background: #ffffff80; }
+        Rectangle { height: parent.height; background: root.on ? #3a2410 : #1b1410; }
+        Rectangle { y: 0; height: 2px; background: #00000080; }
+        Rectangle {
+            x: root.on ? 20px : 2px;
+            y: 2px;
+            width: 16px;
+            height: 14px;
+            background: Deck.key-face;
+            Rectangle { y: 0; height: 1px; background: #ffffff; }
+            animate x { duration: 120ms; easing: ease-out; }
+        }
+    }
+    Rectangle {
+        visible: !Theme.tape;
         x: root.on ? root.width - self.width - 3px : 3px;
         y: 3px;
         width: 16px;
@@ -445,28 +626,41 @@ export component ExportItem inherits Rectangle {
     in property <bool> current;
     callback clicked;
     height: 34px;
-    border-radius: 6px;
-    background: t.has-hover ? Theme.hover : transparent;
+    border-radius: Theme.tape ? 0 : 6px;
+    // Tape Deck: an amber highlighter stroke under the hovered line.
+    background: Theme.tape ? transparent : t.has-hover ? Theme.hover : transparent;
     accessible-role: button;
     accessible-label: "Export " + text;
     accessible-action-default => { root.clicked(); }
+    Rectangle { visible: Theme.tape && t.has-hover; y: 7px; height: 20px; background: Deck.amber.with-alpha(0.5); }
+    Rectangle {
+        visible: Theme.tape && root.current;
+        x: 3px;
+        y: (parent.height - self.height) / 2;
+        width: 6px;
+        height: 6px;
+        border-radius: 3px;
+        background: Deck.amber;
+    }
     HorizontalLayout {
-        padding-left: 10px;
-        padding-right: 10px;
+        padding-left: Theme.tape ? 12px : 10px;
+        padding-right: Theme.tape ? 12px : 10px;
         spacing: 10px;
         Text {
             text: root.text;
-            color: t.has-hover || root.current ? Theme.text : Theme.text2;
+            color: Theme.tape ? Deck.ink : t.has-hover || root.current ? Theme.text : Theme.text2;
+            font-family: Theme.tape ? "Oswald" : "Inter Tight";
             font-size: 13px;
             font-weight: root.current ? 600 : 400;
+            letter-spacing: Theme.tape ? 0.5px : 0;
             vertical-alignment: center;
             horizontal-stretch: 1;
         }
         Text {
             text: root.tag;
-            color: Theme.dim;
+            color: Theme.tape ? Deck.ink-soft : Theme.dim;
             font-family: Theme.mono;
-            font-size: 11px;
+            font-size: Theme.tape ? 10.5px : 11px;
             vertical-alignment: center;
         }
     }
@@ -486,16 +680,17 @@ export component ExportChoices inherits VerticalLayout {
     ExportItem { text: "All files"; tag: "folder"; clicked => { root.choose(7); } }
     Rectangle {
         height: 9px;
-        Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+        Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.tape ? #2a1c1240 : Theme.edge; }
     }
     HorizontalLayout {
         padding-left: 10px;
         height: 24px;
         Text {
             text: "AUDIO";
-            color: Theme.dim;
+            color: Theme.tape ? Deck.ink-soft : Theme.dim;
             font-family: Theme.mono;
-            font-size: 10px;
+            font-size: Theme.tape ? 9.5px : 10px;
+            letter-spacing: Theme.tape ? 1.7px : 0;
             vertical-alignment: center;
         }
     }
@@ -504,16 +699,17 @@ export component ExportChoices inherits VerticalLayout {
     ExportItem { text: "MP3"; tag: "small"; current: root.format == 2; clicked => { root.choose(2); } }
     if root.subtitles: Rectangle {
         height: 9px;
-        Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+        Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.tape ? #2a1c1240 : Theme.edge; }
     }
     if root.subtitles: HorizontalLayout {
         padding-left: 10px;
         height: 24px;
         Text {
             text: "TRANSCRIPT";
-            color: Theme.dim;
+            color: Theme.tape ? Deck.ink-soft : Theme.dim;
             font-family: Theme.mono;
-            font-size: 10px;
+            font-size: Theme.tape ? 9.5px : 10px;
+            letter-spacing: Theme.tape ? 1.7px : 0;
             vertical-alignment: center;
         }
     }
@@ -545,37 +741,53 @@ export component MenuRow inherits Rectangle {
     in property <bool> enabled: true;
     // The row a submenu belongs to stays lit while its submenu is open.
     in property <bool> lit;
+    // Tape Deck only: an icon before the text, and the plain hover of the project drawer.
+    in property <string> icon;
+    in property <bool> drawer;
     out property <bool> hovered: t.has-hover;
     callback clicked;
     height: 34px;
-    border-radius: 6px;
-    background: (t.has-hover || root.lit) && root.enabled ? Theme.hover : transparent;
+    border-radius: Theme.tape ? 0 : 6px;
+    background: Theme.tape ? transparent : (t.has-hover || root.lit) && root.enabled ? Theme.hover : transparent;
     opacity: root.enabled ? 1 : 0.4;
     accessible-role: button;
     accessible-label: text;
     accessible-checked: root.checked;
     accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    // Tape Deck: an amber highlighter stroke under the hovered line.
+    Rectangle { visible: Theme.tape && !root.drawer && (t.has-hover || root.lit) && root.enabled; y: 7px; height: 20px; background: Deck.amber.with-alpha(0.5); }
+    Rectangle { visible: Theme.tape && root.drawer && t.has-hover && root.enabled; background: #00000014; }
     HorizontalLayout {
         padding-left: 10px;
         padding-right: 8px;
-        spacing: 10px;
+        spacing: Theme.tape && root.icon != "" ? 9px : 10px;
+        if Theme.tape && root.icon != "": Icon {
+            name: root.icon;
+            tint: root.danger ? Deck.red : Deck.alu-ink;
+            width: 13px;
+            height: 13px;
+            y: (parent.height - self.height) / 2;
+        }
         Text {
             text: root.text;
-            color: root.danger ? Theme.danger : t.has-hover ? Theme.text : Theme.text2;
+            color: Theme.tape ? (root.danger ? Deck.red : Deck.ink) : root.danger ? Theme.danger : t.has-hover ? Theme.text : Theme.text2;
+            font-family: Theme.tape ? "Oswald" : "Inter Tight";
             font-size: 13px;
+            font-weight: Theme.tape && root.checked ? 600 : 400;
+            letter-spacing: Theme.tape ? 0.5px : 0;
             vertical-alignment: center;
             horizontal-stretch: 1;
         }
         if root.more: Icon {
             name: "chevron";
-            tint: Theme.dim;
+            tint: Theme.tape ? Deck.ink-soft : Theme.dim;
             width: 13px;
             height: 13px;
             y: (parent.height - self.height) / 2;
         }
         if root.checked: Icon {
             name: "check";
-            tint: Theme.accent;
+            tint: Theme.tape ? Deck.red : Theme.accent;
             width: 13px;
             height: 13px;
             y: (parent.height - self.height) / 2;
@@ -608,14 +820,83 @@ export component ProjectMenu inherits Rectangle {
         width: 220px;
         height: root.shown-rows * 34px + 9px + (root.current > 0 ? 4 : 2) * 34px + 10px;
         close-policy: close-on-click-outside;
-        Rectangle {
-            background: Theme.popup;
-            border-radius: 10px;
+        // Tape Deck: an aluminium drawer of label tapes, the current project on red tape.
+        if Theme.tape: Rectangle {
+            background: Deck.alu;
             border-width: 1px;
-            border-color: Theme.edge;
-            drop-shadow-blur: 20px;
-            drop-shadow-offset-y: 6px;
-            drop-shadow-color: #00000099;
+            border-color: #0f0a06;
+            Image {
+                x: 1px;
+                y: 1px;
+                width: parent.width - 2px;
+                height: parent.height - 2px;
+                source: 1phx < 0.7px ? @image-url("skins/tape/alu@2x.png") : @image-url("skins/tape/alu.png");
+                horizontal-tiling: repeat;
+                vertical-tiling: repeat;
+                horizontal-alignment: left;
+                vertical-alignment: top;
+            }
+            Rectangle { x: 1px; y: 1px; width: parent.width - 2px; height: 1px; background: #ffffff99; }
+            VerticalLayout {
+                padding: 5px;
+                Flickable {
+                    height: root.shown-rows * 34px;
+                    content-height: root.projects.length * 34px;
+                    for p[i] in root.projects: Rectangle {
+                        y: i * 34px;
+                        width: parent.width;
+                        height: 34px;
+                        background: pt.has-hover ? #00000014 : transparent;
+                        accessible-role: button;
+                        accessible-label: p;
+                        accessible-checked: i == root.current;
+                        accessible-action-default => { root.choose(i); popup.close(); }
+                        Rectangle {
+                            x: 8px;
+                            y: 6px;
+                            width: strip.preferred-width + 18px;
+                            height: 22px;
+                            border-radius: 2px;
+                            background: i == root.current ? Deck.dymo-red : Deck.dymo;
+                            Rectangle { y: parent.height; height: 1px; background: #00000080; }
+                            strip := Text {
+                                text: p.to-uppercase();
+                                color: #f5f1e8;
+                                font-family: Theme.mono;
+                                font-size: 11px;
+                                font-weight: 700;
+                                letter-spacing: 2.4px;
+                                vertical-alignment: center;
+                                horizontal-alignment: center;
+                                accessible-role: none;
+                            }
+                        }
+                        if i == root.current: Icon {
+                            x: parent.width - 21px;
+                            y: (parent.height - self.height) / 2;
+                            name: "check";
+                            tint: Deck.red;
+                            width: 13px;
+                            height: 13px;
+                        }
+                        pt := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.choose(i); popup.close(); }
+                        }
+                    }
+                }
+                Rectangle {
+                    height: 9px;
+                    Rectangle { x: 10px; y: 4px; width: parent.width - 20px; height: 1px; background: #00000047; }
+                    Rectangle { x: 10px; y: 5px; width: parent.width - 20px; height: 1px; background: #ffffff8c; }
+                }
+                MenuRow { drawer: true; icon: "plus"; text: "New project"; clicked => { root.create(); popup.close(); } }
+                if root.current > 0: MenuRow { drawer: true; icon: "pencil"; text: "Rename project"; clicked => { root.rename(); popup.close(); } }
+                MenuRow { drawer: true; icon: "export"; text: "Export project"; enabled: root.has-clips; clicked => { root.export(); popup.close(); } }
+                if root.current > 0: MenuRow { drawer: true; icon: "trash"; text: "Delete project"; danger: true; enabled: !root.has-clips; clicked => { root.delete(); popup.close(); } }
+            }
+        }
+        if !Theme.tape: MenuCard {
             VerticalLayout {
                 padding: 5px;
                 Flickable {
@@ -631,7 +912,7 @@ export component ProjectMenu inherits Rectangle {
                 }
                 Rectangle {
                     height: 9px;
-                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.tape ? #2a1c1240 : Theme.edge; }
                 }
                 MenuRow { text: "New project"; clicked => { root.create(); popup.close(); } }
                 if root.current > 0: MenuRow { text: "Rename project"; clicked => { root.rename(); popup.close(); } }
@@ -763,18 +1044,11 @@ export component ClipMenu inherits Rectangle {
         width: root.main-w + (root.sub != 0 ? root.sub-w + 4px : 0);
         height: max(root.lift + root.main-h, root.sub != 0 ? root.sub-y + root.sub-h : 0);
         close-policy: close-on-click-outside;
-        Rectangle {
+        MenuCard {
             x: root.sub != 0 && root.sub-left ? root.sub-w + 4px : 0;
             y: root.lift;
             width: root.main-w;
             height: root.main-h;
-            background: Theme.popup;
-            border-radius: 10px;
-            border-width: 1px;
-            border-color: Theme.edge;
-            drop-shadow-blur: 20px;
-            drop-shadow-offset-y: 6px;
-            drop-shadow-color: #00000099;
             VerticalLayout {
                 padding: 5px;
                 if root.merge-count >= 2: MenuRow {
@@ -784,7 +1058,7 @@ export component ClipMenu inherits Rectangle {
                 }
                 if root.merge-count >= 2: Rectangle {
                     height: 9px;
-                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.tape ? #2a1c1240 : Theme.edge; }
                 }
                 MenuRow {
                     text: "Manage";
@@ -812,7 +1086,7 @@ export component ClipMenu inherits Rectangle {
                 }
                 Rectangle {
                     height: 9px;
-                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.edge; }
+                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.tape ? #2a1c1240 : Theme.edge; }
                 }
                 MenuRow {
                     text: "Delete";
@@ -823,18 +1097,12 @@ export component ClipMenu inherits Rectangle {
             }
         }
         // The submenu, level with its row.
-        if root.sub != 0: Rectangle {
+        if root.sub != 0: MenuCard {
             x: root.sub-left ? 0 : root.main-w + 4px;
             y: root.sub-y;
             width: root.sub-w;
             height: root.sub-h;
-            background: Theme.raised;
-            border-radius: 10px;
-            border-width: 1px;
-            border-color: Theme.edge;
-            drop-shadow-blur: 20px;
-            drop-shadow-offset-y: 6px;
-            drop-shadow-color: #00000099;
+            sub: true;
             if root.sub == 1: VerticalLayout {
                 padding: 5px;
                 ExportChoices {
@@ -1124,15 +1392,63 @@ export component ExportButton inherits Rectangle {
     }
     height: 36px;
     width: max(label.preferred-width + 60px, 128px);
-    border-radius: 9px;
-    clip: true;
-    background: root.state == 1 ? Theme.raised : t.has-hover ? Theme.accent-hover : Theme.accent;
+    border-radius: Theme.tape ? 0 : 9px;
+    clip: !Theme.tape;
+    background: Theme.tape ? transparent : root.state == 1 ? Theme.raised : t.has-hover ? Theme.accent-hover : Theme.accent;
+    // Tape Deck: the amber key; while exporting a dark key that fills with amber.
+    DeckKey {
+        visible: Theme.tape;
+        kind: root.state == 1 ? 3 : 1;
+        pressed: t.pressed && t.has-hover;
+        hover: t.has-hover;
+    }
+    Rectangle {
+        visible: Theme.tape && root.state == 1;
+        x: 0;
+        y: 0;
+        width: parent.width * clamp(root.progress, 0, 1);
+        height: parent.height * 0.8;
+        background: Deck.amber.with-alpha(0.38);
+        animate width { duration: 150ms; }
+    }
+    if Theme.tape: HorizontalLayout {
+        y: t.pressed && t.has-hover ? 1px : 0;
+        height: parent.height * 0.8;
+        alignment: center;
+        spacing: 7px;
+        if root.state == 2: Icon {
+            name: "check";
+            tint: #2a1406;
+            width: 13px;
+            height: 13px;
+            y: (parent.height - self.height) / 2;
+            stroke-width: 2.5px;
+        }
+        Text {
+            text: root.state == 1 ? round(root.progress * 100) + "%" : root.state == 2 ? "DONE" : "EXPORT";
+            color: root.state == 1 ? #f4ead6 : #2a1406;
+            font-family: root.state == 1 ? Theme.mono : "Oswald";
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: root.state == 1 ? 0.5px : 2.9px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        if root.state == 0: Icon {
+            name: "up";
+            tint: #2a1406;
+            width: 13px;
+            height: 13px;
+            y: (parent.height - self.height) / 2;
+            stroke-width: 2.5px;
+        }
+    }
     accessible-role: button;
     accessible-label: root.state == 1 ? "Exporting " + round(root.progress * 100) + "%" : "Export";
     accessible-expandable: true;
     accessible-action-default => { popup.show(); }
     accessible-action-expand => { popup.show(); }
-    if root.state == 1: Rectangle {
+    if root.state == 1 && !Theme.tape: Rectangle {
         x: 0;
         width: parent.width * clamp(root.progress, 0, 1);
         background: Theme.accent.with-alpha(0.35);
@@ -1145,7 +1461,7 @@ export component ExportButton inherits Rectangle {
         alignment: root.state == 0 ? LayoutAlignment.stretch : LayoutAlignment.center;
         if root.state == 2: Icon {
             name: "check";
-            tint: Theme.on-accent;
+            tint: Theme.tape ? transparent : Theme.on-accent;
             width: 13px;
             height: 13px;
             y: (parent.height - self.height) / 2;
@@ -1153,7 +1469,7 @@ export component ExportButton inherits Rectangle {
         }
         label := Text {
             text: root.state == 1 ? round(root.progress * 100) + "%" : root.state == 2 ? "Done" : "Export";
-            color: root.state == 1 ? Theme.text : Theme.on-accent;
+            color: Theme.tape ? transparent : root.state == 1 ? Theme.text : Theme.on-accent;
             font-family: root.state == 1 ? Theme.mono : "Inter Tight";
             font-size: 13px;
             font-weight: 800;
@@ -1161,7 +1477,7 @@ export component ExportButton inherits Rectangle {
         }
         if root.state == 0: Icon {
             name: "up";
-            tint: Theme.on-accent;
+            tint: Theme.tape ? transparent : Theme.on-accent;
             width: 13px;
             height: 13px;
             y: (parent.height - self.height) / 2;
@@ -1181,14 +1497,7 @@ export component ExportButton inherits Rectangle {
         width: 250px;
         height: 10px + ExportSize.audio + (root.subtitles ? ExportSize.transcript : 0);
         close-policy: close-on-click-outside;
-        Rectangle {
-            background: Theme.popup;
-            border-radius: 10px;
-            border-width: 1px;
-            border-color: Theme.edge;
-            drop-shadow-blur: 20px;
-            drop-shadow-offset-y: 6px;
-            drop-shadow-color: #00000099;
+        MenuCard {
             VerticalLayout {
                 padding: 5px;
                 ExportChoices {
@@ -1283,7 +1592,8 @@ export component OrderList inherits Rectangle {
     callback moved(int, int);
     callback act(int);
     callback play(int);
-    property <length> row-h: 50px;
+    property <length> row-h: Theme.tape ? 48px : 50px;
+    property <bool> hi: 1phx < 0.7px;
     property <int> dragging: -1;
     property <length> drag-dy;
     property <int> target: root.dragging < 0 ? -1 : clamp(round((root.dragging * root.row-h + root.drag-dy) / root.row-h), 0, root.rows.length - 1);
@@ -1325,14 +1635,139 @@ export component OrderList inherits Rectangle {
         animate y { duration: root.dragging >= 0 && i != root.dragging ? 150ms : 0ms; easing: ease-out; }
         height: root.row-h;
         z: i == root.dragging ? 1 : 0;
-        border-radius: 10px;
-        background: i == root.dragging ? Theme.raised : transparent;
-        border-width: i == root.dragging ? 1px : 0;
+        border-radius: Theme.tape ? 0 : 10px;
+        background: i == root.dragging && !Theme.tape ? Theme.raised : transparent;
+        border-width: i == root.dragging && !Theme.tape ? 1px : 0;
         border-color: Theme.edge;
-        drop-shadow-blur: i == root.dragging ? 16px : 0;
-        drop-shadow-offset-y: i == root.dragging ? 6px : 0;
+        drop-shadow-blur: i == root.dragging && !Theme.tape ? 16px : 0;
+        drop-shadow-offset-y: i == root.dragging && !Theme.tape ? 6px : 0;
         drop-shadow-color: #00000099;
-        HorizontalLayout {
+        // Tape Deck: a tape spine with a grip, its place in amber and a play knob.
+        if Theme.tape: tr := Rectangle {
+            property <bool> lifted: i == root.dragging;
+            property <bool> playing: r.name == root.playing-name;
+            property <length> spine-x: root.playable ? 76px : 40px;
+            Icon {
+                x: 4px;
+                y: (parent.height - self.height) / 2;
+                name: "grip";
+                tint: #8a7258;
+                width: 14px;
+                height: 18px;
+            }
+            Text {
+                x: 20px;
+                width: 16px;
+                height: parent.height;
+                text: (i == root.dragging ? root.target : root.dragging >= 0 && i > root.dragging && i <= root.target ? i - 1 : root.dragging >= 0 && i < root.dragging && i >= root.target ? i + 1 : i) + 1;
+                color: Deck.amber;
+                font-family: Theme.mono;
+                font-size: 12px;
+                font-weight: 700;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            if root.playable: Rectangle {
+                x: 42px;
+                y: (parent.height - self.height) / 2;
+                width: 28px;
+                height: 28px;
+                accessible-role: button;
+                accessible-label: (tr.playing ? "Pause " : "Play ") + r.name;
+                accessible-action-default => { root.play(i); }
+                Image {
+                    x: -2px;
+                    y: -1px;
+                    width: 32px;
+                    height: 32px;
+                    source: tr.playing ? (root.hi ? @image-url("skins/tape/knob-sel@2x.png") : @image-url("skins/tape/knob-sel.png"))
+                        : (root.hi ? @image-url("skins/tape/knob@2x.png") : @image-url("skins/tape/knob.png"));
+                    image-fit: fill;
+                }
+                if kt.has-hover: Rectangle { border-radius: 14px; background: #ffffff1f; }
+                Icon {
+                    x: (parent.width - self.width) / 2 + (tr.playing ? 0 : 1px);
+                    name: tr.playing ? "pause" : "play";
+                    tint: tr.playing ? #2a1406 : Deck.ink;
+                    width: 10px;
+                    height: 10px;
+                }
+                property <bool> hovering: kt.has-hover;
+                changed hovering => { Tips.hover(self.hovering, tr.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+                kt := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { Tips.hide(); root.play(i); }
+                }
+            }
+            Rectangle {
+                x: parent.spine-x + (parent.lifted ? 8px : 0);
+                y: 5px;
+                width: parent.width - parent.spine-x;
+                height: 38px;
+                if tr.lifted: Rectangle { x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px; background: Deck.amber; }
+                if tr.lifted: Rectangle { y: parent.height + 2px; height: 4px; background: #00000059; }
+                Rectangle { y: 1px; background: #00000099; }
+                Rectangle { border-radius: 3px; background: tr.lifted ? Deck.spine-out : Deck.spine; }
+                Image {
+                    width: 100%;
+                    height: 100%;
+                    source: root.hi ? @image-url("skins/tape/spine@2x.png") : @image-url("skins/tape/spine.png");
+                    horizontal-tiling: repeat;
+                    vertical-tiling: repeat;
+                    horizontal-alignment: left;
+                    vertical-alignment: top;
+                }
+                Rectangle { x: 0; width: 15.4px; border-top-left-radius: 3px; border-bottom-left-radius: 3px; background: Deck.bands[Math.mod(i, 5)]; }
+                Rectangle { x: 15.4px; width: 1px; background: #00000026; }
+                VerticalLayout {
+                    x: 30px;
+                    width: parent.width - 30px - 32px;
+                    alignment: center;
+                    spacing: 1px;
+                    Text {
+                        text: r.name;
+                        color: Deck.hand;
+                        font-family: "Caveat";
+                        font-size: 20px;
+                        font-weight: 700;
+                        height: 20px;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    if r.note != "": Text { text: r.note; color: Deck.ink-soft; font-family: Theme.mono; font-size: 10px; overflow: elide; }
+                }
+                if root.removable || root.menu: Rectangle {
+                    x: parent.width - 30px;
+                    y: (parent.height - self.height) / 2;
+                    width: 26px;
+                    height: 26px;
+                    border-radius: 3px;
+                    background: et.has-hover && root.enabled ? #0000001a : transparent;
+                    opacity: root.enabled ? 1 : 0.4;
+                    accessible-role: button;
+                    accessible-label: root.menu ? "Options for " + r.name : "Remove " + r.name;
+                    accessible-action-default => { if (root.enabled) { et.act(); } }
+                    Icon {
+                        name: root.menu ? "dots" : "close";
+                        tint: et.has-hover ? Deck.ink : Deck.ink-soft;
+                        width: root.menu ? 14px : 11px;
+                        height: root.menu ? 14px : 11px;
+                    }
+                    property <bool> hovering: et.has-hover;
+                    changed hovering => { Tips.hover(self.hovering, root.menu ? "Options" : "Remove", self.absolute-position, self.width, self.height); }
+                    et := TouchArea {
+                        enabled: root.enabled;
+                        mouse-cursor: pointer;
+                        function act() {
+                            Tips.hide();
+                            if (root.menu) { root.menu-row = i; row-menu.show(); } else { root.act(i); }
+                        }
+                        clicked => { self.act(); }
+                    }
+                }
+            }
+        }
+        if !Theme.tape: HorizontalLayout {
             padding-left: 10px;
             padding-right: 8px;
             spacing: 10px;
@@ -1416,7 +1851,7 @@ export component OrderList inherits Rectangle {
                 }
             }
         }
-        if i < root.rows.length - 1 && root.dragging < 0: Rectangle {
+        if i < root.rows.length - 1 && root.dragging < 0 && !Theme.tape: Rectangle {
             x: 10px;
             y: parent.height - 1px;
             width: parent.width - 20px;
@@ -1431,14 +1866,7 @@ export component OrderList inherits Rectangle {
         width: 160px;
         height: 2 * 34px + 10px;
         close-policy: close-on-click-outside;
-        Rectangle {
-            background: Theme.popup;
-            border-radius: 10px;
-            border-width: 1px;
-            border-color: Theme.edge;
-            drop-shadow-blur: 20px;
-            drop-shadow-offset-y: 6px;
-            drop-shadow-color: #00000099;
+        MenuCard {
             VerticalLayout {
                 padding: 5px;
                 MenuRow {
@@ -1510,13 +1938,19 @@ export component Select inherits Rectangle {
         keys.focus();
         popup.show();
     }
+    // The width the current choice needs, for skins that size the box to it.
+    out property <length> natural: shown.preferred-width + (Theme.tape ? 46px : 42px);
+    property <length> row-h: Theme.tape ? 26px : 32px;
     width: 200px;
     height: 32px;
-    border-radius: 8px;
+    border-radius: Theme.tape ? 2px : 8px;
     border-width: keys.has-focus ? 1px : 0;
-    border-color: Theme.edge;
-    background: t.has-hover && enabled ? Theme.hover-soft : Theme.raised;
+    border-color: Theme.tape ? Deck.amber : Theme.edge;
+    // Tape Deck: a black Dymo label strip.
+    background: Theme.tape ? (t.has-hover && enabled ? @linear-gradient(180deg, #2a2a2d 0%, #141416 100%) : Deck.dymo)
+        : t.has-hover && enabled ? Theme.hover-soft : Theme.raised;
     opacity: enabled ? 1 : 0.45;
+    Rectangle { visible: Theme.tape; y: 0; x: 1px; width: parent.width - 2px; height: 1px; background: #3a3a3e; }
     accessible-role: combobox;
     accessible-label: label;
     accessible-value: current-index >= 0 && current-index < model.length ? model[current-index] : "";
@@ -1533,20 +1967,24 @@ export component Select inherits Rectangle {
         }
     }
     HorizontalLayout {
-        padding-left: 12px;
-        padding-right: 9px;
-        spacing: 8px;
-        Text {
-            text: root.current-index >= 0 && root.current-index < root.model.length ? root.model[root.current-index] : "";
-            color: Theme.text;
-            font-size: 13px;
+        padding-left: Theme.tape ? 9px : 12px;
+        padding-right: Theme.tape ? 7px : 9px;
+        spacing: Theme.tape ? 6px : 8px;
+        shown := Text {
+            text: root.current-index >= 0 && root.current-index < root.model.length
+                ? (Theme.tape ? root.model[root.current-index].to-uppercase() : root.model[root.current-index]) : "";
+            color: Theme.tape ? #f5f1e8 : Theme.text;
+            font-family: Theme.tape ? Theme.mono : "Inter Tight";
+            font-size: Theme.tape ? 11px : 13px;
+            font-weight: Theme.tape ? 700 : 400;
+            letter-spacing: Theme.tape ? 1px : 0;
             vertical-alignment: center;
             horizontal-stretch: 1;
             overflow: elide;
         }
         Icon {
-            name: "updown";
-            tint: Theme.muted;
+            name: Theme.tape ? "down" : "updown";
+            tint: Theme.tape ? #f5f1e8 : Theme.muted;
             width: 12px;
             height: 12px;
             y: (parent.height - self.height) / 2;
@@ -1558,7 +1996,7 @@ export component Select inherits Rectangle {
         clicked => { root.open(); }
     }
     // Opens below the box, or above it when it would not fit below; never over it.
-    property <length> list-height: min(root.model.length * 32px + 10px, 298px);
+    property <length> list-height: min(root.model.length * root.row-h + (Theme.tape ? 6px : 10px), 298px);
     property <bool> upwards: root.absolute-position.y + root.height + 4px + self.list-height > Win.height
         && root.absolute-position.y - 4px - self.list-height >= 0;
     popup := PopupWindow {
@@ -1568,11 +2006,12 @@ export component Select inherits Rectangle {
         height: root.list-height;
         close-policy: close-on-click-outside;
         Rectangle {
-            background: Theme.popup;
-            border-radius: 10px;
+            // Tape Deck: a strip of black label tape, the current choice amber.
+            background: Theme.tape ? #0b0b0c : Theme.popup;
+            border-radius: Theme.tape ? 0 : 10px;
             border-width: 1px;
-            border-color: Theme.edge;
-            drop-shadow-blur: 20px;
+            border-color: Theme.tape ? #000000 : Theme.edge;
+            drop-shadow-blur: Theme.tape ? 0 : 20px;
             drop-shadow-offset-y: 8px;
             drop-shadow-color: #00000099;
             FocusScope {
@@ -1581,9 +2020,9 @@ export component Select inherits Rectangle {
                     if (e.text == Key.UpArrow || e.text == Key.DownArrow) {
                         root.step(e.text == Key.UpArrow ? -1 : 1);
                         // Keep the picked row in view.
-                        let top = root.current-index * 32px;
+                        let top = root.current-index * root.row-h;
                         if (top < -list.content-y) { list.content-y = -top; }
-                        if (top + 32px > -list.content-y + list.height) { list.content-y = list.height - top - 32px; }
+                        if (top + root.row-h > -list.content-y + list.height) { list.content-y = list.height - top - root.row-h; }
                         return accept;
                     }
                     if (e.text == Key.Return || e.text == Key.Escape || e.text == " ") {
@@ -1595,29 +2034,33 @@ export component Select inherits Rectangle {
                 }
             }
             list := Flickable {
-                x: 5px;
-                y: 5px;
-                width: parent.width - 10px;
-                height: parent.height - 10px;
-                content-height: root.model.length * 32px;
+                x: Theme.tape ? 0 : 5px;
+                y: Theme.tape ? 3px : 5px;
+                width: parent.width - (Theme.tape ? 0 : 10px);
+                height: parent.height - (Theme.tape ? 6px : 10px);
+                content-height: root.model.length * root.row-h;
                 for item[i] in root.model: Rectangle {
-                    y: i * 32px;
-                    height: 32px;
-                    border-radius: 6px;
-                    background: i == root.current-index ? Theme.hover : it.has-hover ? Theme.hover-soft : transparent;
+                    y: i * root.row-h;
+                    height: root.row-h;
+                    border-radius: Theme.tape ? 0 : 6px;
+                    background: Theme.tape ? (i == root.current-index ? Deck.amber : it.has-hover ? #2a2a2d : transparent)
+                        : i == root.current-index ? Theme.hover : it.has-hover ? Theme.hover-soft : transparent;
                     HorizontalLayout {
                         padding-left: 10px;
                         padding-right: 10px;
                         spacing: 8px;
                         Text {
-                            text: item;
-                            color: i == root.current-index ? Theme.text : Theme.text2;
-                            font-size: 13px;
+                            text: Theme.tape ? item.to-uppercase() : item;
+                            color: Theme.tape ? (i == root.current-index ? #2a1406 : #d9d3c6) : i == root.current-index ? Theme.text : Theme.text2;
+                            font-family: Theme.tape ? Theme.mono : "Inter Tight";
+                            font-weight: Theme.tape ? 700 : 400;
+                            letter-spacing: Theme.tape ? 1.4px : 0;
+                            font-size: Theme.tape ? 10.5px : 13px;
                             vertical-alignment: center;
                             horizontal-stretch: 1;
                             overflow: elide;
                         }
-                        if i == root.current-index: Icon {
+                        if i == root.current-index && !Theme.tape: Icon {
                             name: "check";
                             tint: Theme.accent;
                             width: 13px;
@@ -1719,7 +2162,7 @@ export component TextField inherits Rectangle {
                 font-size: root.font-size;
                 font-family: root.family;
                 selection-background-color: Theme.accent.with-alpha(0.4);
-                selection-foreground-color: Theme.text;
+                selection-foreground-color: Theme.tape ? root.ink : Theme.text;
                 accessible-label: root.label;
                 edited => { root.edited(self.text); }
                 accepted => { root.accepted(self.text); }
@@ -1858,12 +2301,15 @@ export component ShortcutBox inherits Rectangle {
     callback cleared();
     callback done();
     property <bool> listening: fs.has-focus;
-    width: 200px;
-    height: 32px;
-    border-radius: 8px;
-    background: listening ? Theme.accent.with-alpha(0.08) : t.has-hover ? Theme.hover-soft : Theme.raised;
+    width: Theme.tape ? 140px : 200px;
+    height: Theme.tape ? 28px : 32px;
+    border-radius: Theme.tape ? 0 : 8px;
+    // Tape Deck: a sunk well with real key caps.
+    background: Theme.tape ? #1b1410 : listening ? Theme.accent.with-alpha(0.08) : t.has-hover ? Theme.hover-soft : Theme.raised;
     border-width: 1px;
     border-color: listening ? Theme.accent : transparent;
+    Rectangle { visible: Theme.tape; y: 0; height: 2px; background: #00000080; }
+    Rectangle { visible: Theme.tape; y: parent.height; height: 1px; background: #ffffff99; }
     accessible-role: button;
     accessible-label: label;
     accessible-action-default => { fs.focus(); }
@@ -1892,14 +2338,46 @@ export component ShortcutBox inherits Rectangle {
             background: Theme.accent;
             y: (parent.height - self.height) / 2;
         }
-        Text { text: "Press the keys"; color: Theme.accent; font-size: 13px; font-weight: 600; vertical-alignment: center; }
+        Text {
+            text: Theme.tape ? "PRESS THE KEYS" : "Press the keys";
+            color: Theme.accent;
+            font-family: Theme.tape ? "Oswald" : "Inter Tight";
+            font-size: Theme.tape ? 11px : 13px;
+            font-weight: Theme.tape ? 500 : 600;
+            letter-spacing: Theme.tape ? 2px : 0;
+            vertical-alignment: center;
+        }
     }
     if !root.listening && root.keys.length == 0: Text {
-        text: "Not set";
-        color: Theme.dim;
-        font-size: 13px;
+        text: Theme.tape ? "NOT SET" : "Not set";
+        color: Theme.tape ? #8d7d6a : Theme.dim;
+        font-family: Theme.tape ? "Oswald" : "Inter Tight";
+        font-size: Theme.tape ? 11px : 13px;
+        letter-spacing: Theme.tape ? 2px : 0;
     }
-    if !root.listening && root.keys.length > 0: HorizontalLayout {
+    if !root.listening && root.keys.length > 0 && Theme.tape: HorizontalLayout {
+        alignment: center;
+        spacing: 4px;
+        for k in root.keys: Rectangle {
+            width: tcap.preferred-width + 10px;
+            height: 19px;
+            y: (parent.height - self.height) / 2;
+            background: @linear-gradient(180deg, #f4efe4 0%, #d4ccbd 75%, #8f8778 75%, #6f685b 100%);
+            Rectangle { y: 0; height: 1px; background: #ffffff; }
+            tcap := Text {
+                y: 0;
+                height: parent.height * 0.78;
+                vertical-alignment: center;
+                horizontal-alignment: center;
+                text: k.to-uppercase();
+                color: Deck.key-ink;
+                font-family: Theme.mono;
+                font-size: 9.5px;
+                font-weight: 700;
+            }
+        }
+    }
+    if !root.listening && root.keys.length > 0 && !Theme.tape: HorizontalLayout {
         alignment: center;
         spacing: 4px;
         for k in root.keys: Rectangle {
@@ -2671,37 +3149,52 @@ export component TranscriptCard inherits Rectangle {
     property <bool> copied;
     // Where the editor's cursor is, and how tall it is.
     property <Point> caret;
-    property <length> caret-h: 20px;
-        border-radius: 14px;
-        border-width: 1px;
+    property <length> caret-h: Theme.tape ? measure.preferred-height : 20px;
+    // Tape Deck: the clip's name on the insert card, and the ruled lines of the card,
+    // which scroll with the text (the shown view reports how far it is scrolled).
+    in property <string> clip-name;
+    property <length> scroll-y;
+    property <length> line-h: measure.preferred-height;
+    property <length> rule-pitch: root.original-view && !root.editing ? root.line-h + 5px : root.line-h;
+    property <length> rule-off: root.scroll-y - root.rule-pitch * floor(root.scroll-y / root.rule-pitch);
+    measure := Text { visible: false; text: "Xg"; font-family: Theme.mono; font-size: 12px; }
+        border-radius: Theme.tape ? 0 : 14px;
+        border-width: Theme.tape ? 0 : 1px;
         border-color: root.editing ? Theme.accent : Theme.card-edge;
         VerticalLayout {
-            padding: 18px;
-            padding-top: 12px;
-            padding-bottom: 12px;
-            spacing: 8px;
+            padding: Theme.tape ? 0 : 18px;
+            padding-top: Theme.tape ? 0 : 12px;
+            padding-bottom: Theme.tape ? 0 : 12px;
+            spacing: Theme.tape ? 6px : 8px;
             HorizontalLayout {
                 height: 28px;
+                spacing: Theme.tape ? 5px : 0;
                 Text {
                     text: "TRANSCRIPT";
-                    color: Theme.muted;
-                    font-size: 12px;
-                    font-weight: 800;
-                    letter-spacing: 0.7px;
+                    color: Theme.tape ? Deck.rail : Theme.muted;
+                    font-family: Theme.tape ? "Oswald" : "Inter Tight";
+                    font-size: Theme.tape ? 10px : 12px;
+                    font-weight: Theme.tape ? 500 : 800;
+                    letter-spacing: Theme.tape ? 2.8px : 0.7px;
                     vertical-alignment: center;
                     horizontal-stretch: 1;
                 }
+                // Tape Deck: the change count is a red rubber stamp.
                 if root.editing && root.edit-badge != "": Rectangle {
-                    width: badge.preferred-width + 16px;
-                    height: 20px;
+                    width: badge.preferred-width + (Theme.tape ? 12px : 16px);
+                    height: Theme.tape ? 17px : 20px;
                     y: (parent.height - self.height) / 2;
-                    border-radius: 10px;
-                    background: Theme.accent;
+                    border-radius: Theme.tape ? 2px : 10px;
+                    background: Theme.tape ? #efe3c8e6 : Theme.accent;
+                    border-width: Theme.tape ? 1.5px : 0;
+                    border-color: Deck.red;
                     badge := Text {
-                        text: root.edit-badge;
-                        color: Theme.on-accent;
-                        font-size: 11px;
-                        font-weight: 800;
+                        text: Theme.tape ? root.edit-badge.to-uppercase() : root.edit-badge;
+                        color: Theme.tape ? Deck.red : Theme.on-accent;
+                        font-family: Theme.tape ? "Oswald" : "Inter Tight";
+                        font-size: Theme.tape ? 9px : 11px;
+                        font-weight: Theme.tape ? 600 : 800;
+                        letter-spacing: Theme.tape ? 1.3px : 0;
                     }
                 }
                 if root.editing: HorizontalLayout {
@@ -2752,20 +3245,19 @@ export component TranscriptCard inherits Rectangle {
                         width: 250px;
                         height: 5px + 40px + 34px + min(root.langs.length, 7) * 34px + 5px;
                         close-policy: close-on-click-outside;
-                        Rectangle {
-                            background: Theme.popup;
-                            border-radius: 10px;
-                            border-width: 1px;
-                            border-color: Theme.edge;
-                            drop-shadow-blur: 20px;
-                            drop-shadow-offset-y: 6px;
-                            drop-shadow-color: #00000099;
+                        MenuCard {
                             VerticalLayout {
                                 padding: 5px;
                                 VerticalLayout {
                                     padding-bottom: 6px;
                                     TextField {
-                                        height: 34px;
+                                        height: Theme.tape ? 28px : 34px;
+                                        radius: Theme.tape ? 2px : 8px;
+                                        fill: Theme.tape ? #fffaf0 : Theme.field;
+                                        rest-edge: Theme.tape ? #8f8778 : Theme.edge;
+                                        ink: Theme.tape ? Deck.ink : Theme.text;
+                                        hint: Theme.tape ? Deck.ink-soft : Theme.dim;
+                                        font-size: Theme.tape ? 12px : 13px;
                                         icon: "search";
                                         placeholder: "Search";
                                         label: "Search languages";
@@ -2786,7 +3278,7 @@ export component TranscriptCard inherits Rectangle {
                                         width: parent.width;
                                         height: 34px;
                                         border-radius: 6px;
-                                        background: row-t.has-hover && l.ready ? Theme.hover : transparent;
+                                        background: row-t.has-hover && l.ready ? (Theme.tape ? Deck.amber.with-alpha(0.3) : Theme.hover) : transparent;
                                         accessible-role: button;
                                         accessible-label: l.ready ? l.name : l.name + ", install";
                                         accessible-action-default => { if (l.ready) { root.choose-lang(l.code); root.show-summary = false; lang-menu.close(); } else { root.install-for(l.install); lang-menu.close(); } }
@@ -2801,13 +3293,14 @@ export component TranscriptCard inherits Rectangle {
                                             spacing: 8px;
                                             Text {
                                                 text: l.name;
-                                                color: l.ready ? Theme.text2 : Theme.dim;
+                                                color: Theme.tape ? (l.ready ? Deck.ink : #a99880) : l.ready ? Theme.text2 : Theme.dim;
+                                                font-family: Theme.tape ? "Oswald" : "Inter Tight";
                                                 font-size: 13px;
                                                 vertical-alignment: center;
                                             }
                                             Text {
                                                 text: l.native != l.name ? l.native : "";
-                                                color: Theme.dim;
+                                                color: Theme.tape ? Deck.ink-soft : Theme.dim;
                                                 opacity: l.ready ? 1 : 0.6;
                                                 font-size: 11px;
                                                 vertical-alignment: center;
@@ -2819,11 +3312,11 @@ export component TranscriptCard inherits Rectangle {
                                                 height: 6px;
                                                 y: (parent.height - self.height) / 2;
                                                 border-radius: 3px;
-                                                background: Theme.muted;
+                                                background: Theme.tape ? Deck.ink-soft : Theme.muted;
                                             }
                                             if root.shown-lang == l.code && root.lang-view: Icon {
                                                 name: "check";
-                                                tint: Theme.accent;
+                                                tint: Theme.tape ? Deck.red : Theme.accent;
                                                 width: 13px;
                                                 height: 13px;
                                                 y: (parent.height - self.height) / 2;
@@ -2833,15 +3326,19 @@ export component TranscriptCard inherits Rectangle {
                                                 width: install-text.preferred-width + 12px;
                                                 height: 22px;
                                                 y: (parent.height - self.height) / 2;
-                                                border-radius: 5px;
-                                                background: install-t.has-hover ? Theme.accent.with-alpha(0.14) : transparent;
+                                                border-radius: Theme.tape ? 2px : 5px;
+                                                border-width: Theme.tape ? 1px : 0;
+                                                border-color: Deck.red;
+                                                background: install-t.has-hover ? (Theme.tape ? Deck.red.with-alpha(0.12) : Theme.accent.with-alpha(0.14)) : transparent;
                                                 install-text := Text {
                                                     x: 6px;
                                                     y: (parent.height - self.height) / 2;
-                                                    text: "Install";
-                                                    color: Theme.accent;
-                                                    font-size: 12px;
+                                                    text: Theme.tape ? "INSTALL" : "Install";
+                                                    color: Theme.tape ? Deck.red : Theme.accent;
+                                                    font-family: Theme.tape ? "Oswald" : "Inter Tight";
+                                                    font-size: Theme.tape ? 10px : 12px;
                                                     font-weight: 600;
+                                                    letter-spacing: Theme.tape ? 1.6px : 0;
                                                 }
                                                 install-t := TouchArea {
                                                     mouse-cursor: pointer;
@@ -2898,13 +3395,16 @@ export component TranscriptCard inherits Rectangle {
                 }
                 if root.transcript != "" && !root.transcribing && !root.editing: HorizontalLayout {
                     horizontal-stretch: 0;
-                    spacing: 8px;
-                    padding-right: 10px;
+                    spacing: Theme.tape ? 6px : 8px;
+                    padding-right: Theme.tape ? 4px : 10px;
+                    padding-left: Theme.tape ? 4px : 0;
                     opacity: root.original-view ? 1 : 0.45;
                     Text {
-                        text: "Show marks";
-                        color: Theme.muted;
-                        font-size: 12px;
+                        text: Theme.tape ? "SHOW MARKS" : "Show marks";
+                        color: Theme.tape ? Deck.rail : Theme.muted;
+                        font-family: Theme.tape ? "Oswald" : "Inter Tight";
+                        font-size: Theme.tape ? 8.5px : 12px;
+                        letter-spacing: Theme.tape ? 1.5px : 0;
                         vertical-alignment: center;
                     }
                     VerticalLayout {
@@ -2918,19 +3418,35 @@ export component TranscriptCard inherits Rectangle {
                 }
                 if root.transcript != "" && !root.transcribing && !root.editing: Rectangle {
                     width: edit-row.preferred-width + 20px;
-                    height: 26px;
-                    y: 1px;
-                    border-radius: 7px;
+                    height: Theme.tape ? 28px : 26px;
+                    y: Theme.tape ? 0 : 1px;
+                    border-radius: Theme.tape ? 0 : 7px;
                     opacity: root.original-view ? 1 : 0.45;
-                    background: edit-touch.has-hover && root.original-view ? Theme.hover : Theme.raised;
+                    background: Theme.tape ? transparent : edit-touch.has-hover && root.original-view ? Theme.hover : Theme.raised;
                     accessible-role: button;
                     accessible-label: "Edit transcript";
                     accessible-action-default => { if (root.original-view) { root.edit(); } }
+                    DeckKey {
+                        visible: Theme.tape;
+                        pressed: edit-touch.pressed && edit-touch.has-hover;
+                        hover: edit-touch.has-hover;
+                        enabled: root.original-view;
+                    }
                     edit-row := HorizontalLayout {
                         x: 10px;
-                        spacing: 6px;
-                        Icon { name: "pencil"; width: 12px; height: 12px; y: (parent.height - self.height) / 2; }
-                        Text { text: "Edit"; color: Theme.text; font-size: 12px; font-weight: 600; vertical-alignment: center; }
+                        y: Theme.tape ? (edit-touch.pressed && edit-touch.has-hover ? 1px : 0) : 0;
+                        height: Theme.tape ? parent.height * 0.82 : parent.height;
+                        spacing: Theme.tape ? 5px : 6px;
+                        Icon { name: "pencil"; tint: Theme.tape ? Deck.key-ink : Theme.text; width: 12px; height: 12px; y: (parent.height - self.height) / 2; }
+                        Text {
+                            text: Theme.tape ? "EDIT" : "Edit";
+                            color: Theme.tape ? Deck.key-ink : Theme.text;
+                            font-family: Theme.tape ? "Oswald" : "Inter Tight";
+                            font-size: Theme.tape ? 8.5px : 12px;
+                            font-weight: Theme.tape ? 500 : 600;
+                            letter-spacing: Theme.tape ? 1.5px : 0;
+                            vertical-alignment: center;
+                        }
                     }
                     edit-touch := TouchArea {
                         enabled: root.original-view;
@@ -2939,22 +3455,92 @@ export component TranscriptCard inherits Rectangle {
                     }
                 }
             }
+            Rectangle {
+                vertical-stretch: 1;
+                // Tape Deck: the typed J-card insert from the cassette case, ruled, with its
+                // red margin; an amber frame while it is typed on.
+                if Theme.tape && root.editing: Rectangle { x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px; background: Deck.amber; }
+                if Theme.tape: Rectangle {
+                    background: #0d0805;
+                    Rectangle {
+                        x: 1px;
+                        y: 1px;
+                        width: parent.width - 2px;
+                        height: parent.height - 2px;
+                        background: @linear-gradient(180deg, #f4ead3 0%, #e6d7b6 100%);
+                        clip: true;
+                        Image {
+                            width: 100%;
+                            height: 100%;
+                            source: 1phx < 0.7px ? @image-url("skins/tape/spine@2x.png") : @image-url("skins/tape/spine.png");
+                            horizontal-tiling: repeat;
+                            vertical-tiling: repeat;
+                            horizontal-alignment: left;
+                            vertical-alignment: top;
+                        }
+                        // The ruled lines, under each line of text.
+
+                        if root.transcript != "" && !root.transcribing: Rectangle {
+                            for k in max(0, ceil(parent.height / root.rule-pitch) + 1): Rectangle {
+                                y: 23px + 7px + root.rule-off + (k + 1) * root.rule-pitch - (root.original-view && !root.editing ? 3px : 1px);
+                                visible: self.y > 26px;
+                                height: 1px;
+                                background: #8c3c282e;
+                            }
+                        }
+                        Rectangle { x: 23px; y: 24px; width: 1px; background: #c9331f59; }
+                        Text {
+                            x: 10px;
+                            y: 0;
+                            height: 20px;
+                            text: root.editing ? "TYPING" : root.summary-view ? "SUMMARY" : root.lang-view ? "TRANSLATION" : "INSERT";
+                            color: Deck.ink-soft;
+                            font-family: "Oswald";
+                            font-size: 8px;
+                            letter-spacing: 1.9px;
+                            vertical-alignment: center;
+                        }
+                        Text {
+                            x: parent.width - self.width - 10px;
+                            y: 0;
+                            width: min(self.preferred-width, parent.width / 2);
+                            height: 20px;
+                            text: root.clip-name;
+                            color: Deck.ink-soft;
+                            font-family: "Oswald";
+                            font-size: 8px;
+                            letter-spacing: 1.2px;
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
+                        Rectangle { y: 20px; height: 3px; background: Deck.red; }
+                        Rectangle { y: 23px; height: 2px; background: Deck.amber; }
+                    }
+                }
+                VerticalLayout {
+                    padding-left: Theme.tape ? 34px : 0;
+                    padding-right: Theme.tape ? 10px : 0;
+                    padding-top: Theme.tape ? 31px : 0;
+                    padding-bottom: Theme.tape ? 8px : 0;
+                    spacing: 8px;
             if root.transcribing: VerticalLayout {
                 spacing: 10px;
                 alignment: start;
                 Text {
                     text: (root.translating ? "Translating " : "Transcribing ") + round(root.transcribe-progress * 100) + "%";
-                    color: Theme.text2;
-                    font-size: 14px;
+                    color: Theme.tape ? Deck.ink-soft : Theme.text2;
+                    font-family: Theme.tape ? "Caveat" : "Inter Tight";
+                    font-size: Theme.tape ? 22px : 14px;
+                    font-weight: Theme.tape ? 700 : 400;
                 }
                 Rectangle {
-                    height: 4px;
-                    border-radius: 2px;
-                    background: Theme.track;
+                    height: Theme.tape ? 8px : 4px;
+                    border-radius: Theme.tape ? 0 : 2px;
+                    background: Theme.tape ? #1b1410 : Theme.track;
                     Rectangle {
                         x: 0;
                         width: parent.width * clamp(root.transcribe-progress, 0, 1);
-                        border-radius: 2px;
+                        border-radius: Theme.tape ? 0 : 2px;
                         background: Theme.accent;
                     }
                 }
@@ -2964,12 +3550,16 @@ export component TranscriptCard inherits Rectangle {
                 spacing: 12px;
                 Text {
                     text: "No transcript yet";
-                    color: Theme.dim;
-                    font-size: 14px;
+                    color: Theme.tape ? Deck.ink-soft : Theme.dim;
+                    font-family: Theme.tape ? "Caveat" : "Inter Tight";
+                    font-size: Theme.tape ? 22px : 14px;
+                    font-weight: Theme.tape ? 700 : 400;
                 }
                 if root.can-transcribe: HorizontalLayout {
                     alignment: start;
                     Btn {
+                        primary: Theme.tape;
+                        height: Theme.tape ? 32px : 36px;
                         text: "Transcribe";
                         enabled: !root.recording;
                         clicked => { root.transcribe(); }
@@ -2980,6 +3570,8 @@ export component TranscriptCard inherits Rectangle {
                 vertical-stretch: 1;
                 clip: true;
             ed-scroll := Scroller {
+                changed content-y => { root.scroll-y = self.content-y; }
+                init => { root.scroll-y = self.content-y; }
                 VerticalLayout {
                     padding-left: 0;
                     padding-right: 10px;
@@ -2991,16 +3583,16 @@ export component TranscriptCard inherits Rectangle {
                             width: parent.width;
                             y: 0;
                             text: root.edit-markup(editor.text);
-                            default-color: Theme.text2;
-                            default-font-family: "Inter Tight";
-                            default-font-size: 15px;
+                            default-color: Theme.tape ? #2f2117 : Theme.text2;
+                            default-font-family: Theme.tape ? Theme.mono : "Inter Tight";
+                            default-font-size: Theme.tape ? 12px : 15px;
                         }
                         editor := TextInput {
                             width: parent.width;
                             height: max(self.preferred-height, ed-scroll.visible-height - 8px);
                             text <=> root.edit-draft;
-                            font-family: "Inter Tight";
-                            font-size: 15px;
+                            font-family: Theme.tape ? Theme.mono : "Inter Tight";
+                            font-size: Theme.tape ? 12px : 15px;
                             single-line: false;
                             wrap: word-wrap;
                             color: transparent;
@@ -3056,30 +3648,37 @@ export component TranscriptCard inherits Rectangle {
             }
             if root.summary-view && !root.transcribing && !root.editing: Scroller {
                 vertical-stretch: 1;
+                changed content-y => { root.scroll-y = self.content-y; }
+                init => { root.scroll-y = self.content-y; }
                 VerticalLayout {
                     padding-right: 10px;
                     spacing: 8px;
                     if root.summarising && root.summary == "": Text {
                         text: "Summarising";
-                        color: Theme.dim;
-                        font-size: 14px;
+                        color: Theme.tape ? Deck.ink-soft : Theme.dim;
+                        font-family: Theme.tape ? Theme.mono : "Inter Tight";
+                        font-size: Theme.tape ? 12px : 14px;
                     }
                     Text {
                         text: root.summary;
-                        color: Theme.text2;
-                        font-size: 15px;
+                        color: Theme.tape ? #2f2117 : Theme.text2;
+                        font-family: Theme.tape ? Theme.mono : "Inter Tight";
+                        font-size: Theme.tape ? 12px : 15px;
                         wrap: word-wrap;
                     }
                 }
             }
             if root.lang-view && !root.transcribing && !root.editing: Scroller {
                 vertical-stretch: 1;
+                changed content-y => { root.scroll-y = self.content-y; }
+                init => { root.scroll-y = self.content-y; }
                 VerticalLayout {
                     padding-right: 10px;
                     Text {
                         text: root.translation != "" ? root.translation : "Translating";
-                        color: root.translation != "" ? Theme.text2 : Theme.dim;
-                        font-size: 15px;
+                        color: Theme.tape ? (root.translation != "" ? #2f2117 : Deck.ink-soft) : root.translation != "" ? Theme.text2 : Theme.dim;
+                        font-family: Theme.tape ? Theme.mono : "Inter Tight";
+                        font-size: Theme.tape ? 12px : 15px;
                         wrap: word-wrap;
                     }
                 }
@@ -3088,8 +3687,9 @@ export component TranscriptCard inherits Rectangle {
                 vertical-stretch: 1;
                 // A new transcript starts at the top; Slint would keep the old offset.
                 property <string> shown: root.transcript;
-                init => { self.content-y = 0; }
+                init => { self.content-y = 0; root.scroll-y = 0; }
                 changed shown => { self.content-y = 0; }
+                changed content-y => { root.scroll-y = self.content-y; }
                 FlexboxLayout {
                     spacing: 1px;
                     flex-wrap: wrap;
@@ -3103,20 +3703,29 @@ export component TranscriptCard inherits Rectangle {
                         visible: !hidden;
                         horizontal-stretch: 0;
                         border-radius: 3px;
-                        background: i == root.current-word ? Theme.accent : wt.has-hover ? Theme.raised : transparent;
+                        background: i == root.current-word ? Theme.accent : wt.has-hover ? (Theme.tape ? #00000014 : Theme.raised) : transparent;
                         width: hidden ? 0 : label.preferred-width + 6px;
                         height: hidden ? 0 : label.preferred-height + 4px;
                         label := Text {
                             text: w.text;
                             // Spoken words are generated speech: shown in a different colour.
-                            color: i == root.current-word ? Theme.on-accent
+                            color: Theme.tape ? (i == root.current-word ? #2a1406
+                                    : w.is-silence ? #c66a12
+                                    : !marks ? #2f2117
+                                    : w.failed ? Deck.red
+                                    : w.pending ? #a99880
+                                    : w.spoken ? #c66a12
+                                    : #2f2117)
+                                : i == root.current-word ? Theme.on-accent
                                 : w.is-silence ? Theme.accent
                                 : !marks ? Theme.text2
                                 : w.failed ? Theme.danger
                                 : w.pending ? Theme.faint
                                 : w.spoken ? Theme.accent
                                 : Theme.text2;
-                            font-size: 15px;
+                            font-family: Theme.tape ? Theme.mono : "Inter Tight";
+                            font-weight: Theme.tape && w.is-silence ? 700 : 400;
+                            font-size: Theme.tape ? 12px : 15px;
                             font-italic: w.spoken && marks;
                         }
                         wt := TouchArea {
@@ -3124,6 +3733,8 @@ export component TranscriptCard inherits Rectangle {
                             clicked => { root.seek-word(i); }
                         }
                     }
+                }
+            }
                 }
             }
         }
@@ -3231,5 +3842,142 @@ export global Main {
     // Keeps the list from staying scrolled past its end after it shrinks (a delete).
     public function clamp-list() {
         self.list-y = clamp(self.list-y, min(0px, self.list-height - self.clips.length * self.row-h), 0px);
+    }
+}
+
+// The state of the other pages (one clip, settings, models, merge, ask, the questions and
+// the overlays), in one place for every skin, as Main is for the main page. AppWindow
+// links its own properties to these (<=>), so the app sets them there as before; a skin
+// reads them here and reports actions back through its callbacks.
+export global Pages {
+    // One clip.
+    in-out property <int> speed-index: 1;
+    in-out property <bool> show-marks: true;
+    in-out property <bool> looping;
+    in property <[float]> detail-wave;
+    in-out property <float> trim-start: 0;
+    in-out property <float> trim-end: 1;
+    in property <string> detail-meta;
+    in-out property <bool> renaming;
+    in property <[OrderRow]> parts;
+    in property <bool> parts-busy;
+    // The transcript card.
+    in property <bool> can-transcribe;
+    in property <bool> transcribing;
+    in property <bool> translating;
+    in property <string> translation;
+    in-out property <string> shown-lang;
+    in property <[LangRow]> langs;
+    in property <string> summary;
+    in property <bool> summarising;
+    in-out property <bool> show-summary;
+    in property <float> transcribe-progress;
+    in property <string> transcript;
+    in property <[WordRow]> words;
+    in property <int> current-word: -1;
+    in property <string> edit-badge;
+    in-out property <string> edit-draft;
+    in-out property <bool> editing;
+    in-out property <bool> speaking;
+    in property <float> speak-progress;
+    in property <string> speak-stage;
+    // Settings.
+    in property <[string]> mic-devices;
+    in-out property <int> mic-index;
+    in-out property <bool> record-system;
+    in property <string> folder;
+    in property <string> name-template;
+    in property <string> name-preview;
+    in property <bool> name-invalid;
+    in-out property <int> export-format;
+    in-out property <bool> clean-voice;
+    in property <[string]> languages;
+    in-out property <int> language-index;
+    in property <[string]> hotkey-parts;
+    in-out property <bool> close-to-tray: true;
+    in property <[string]> recording-limits;
+    in-out property <int> recording-limit-index: 2;
+    in-out property <bool> start-with-windows;
+    in-out property <bool> auto-transcribe;
+    in-out property <bool> ai-names;
+    in property <[string]> max-pauses;
+    in-out property <int> max-pause-index;
+    in property <[string]> ai-models;
+    in-out property <int> ai-model-index;
+    in property <bool> ai-ready;
+    in property <float> ai-download: -1;
+    in property <bool> translator-ready;
+    in property <float> translator-download: -1;
+    // Models.
+    in property <[ModelRow]> models;
+    in property <string> model-summary;
+    in property <string> models-used;
+    in property <int> model-count;
+    in-out property <string> model-query;
+    in-out property <int> model-filter;
+    in-out property <bool> model-compressed;
+    in property <int> downloading: -1;
+    in property <float> download-progress;
+    // Merge.
+    in property <[OrderRow]> merge-rows;
+    in-out property <string> merge-name;
+    in property <bool> merging;
+    // Ask.
+    in-out property <string> question;
+    in-out property <bool> ask-all;
+    in property <string> answer;
+    in property <bool> asking;
+    in property <[AskSource]> sources;
+    // The questions (Main.dialog): which clip, how many a delete removes, which part.
+    in-out property <int> dialog-clip;
+    in-out property <int> delete-count: 1;
+    in-out property <int> dialog-part;
+    // Files are being dragged over the window.
+    in property <bool> dropping;
+}
+
+// The trim handles and seeking of the one-clip waveform: a drag near a handle moves the
+// start or end of the kept part, a click elsewhere jumps there. The drawing sits `pad`
+// in from each side, so a handle at an end can still be grabbed. Every skin's waveform
+// puts one over its drawing.
+export component TrimTouch inherits TouchArea {
+    in property <length> pad: 8px;
+    // The handle being dragged: 1 start, 2 end, 0 none; and whether it moved.
+    in-out property <int> grab;
+    in-out property <bool> dragged;
+    property <length> inner-w: self.width - 2 * root.pad;
+    out property <length> at: self.mouse-x - root.pad;
+    property <length> start-x: Pages.trim-start * root.inner-w;
+    property <length> end-x: Pages.trim-end * root.inner-w;
+    // The kept part changed: its start and end, as parts of the length.
+    callback trimmed(float, float);
+    // After every click, so the window gets its keys back.
+    callback tapped();
+    mouse-cursor: abs(self.at - root.start-x) <= 8px || abs(self.at - root.end-x) <= 8px
+        ? MouseCursor.ew-resize : MouseCursor.pointer;
+    pointer-event(e) => {
+        if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+            root.dragged = false;
+            root.grab = abs(self.at - root.start-x) <= 8px ? 1
+                : abs(self.at - root.end-x) <= 8px ? 2 : 0;
+        }
+        if (e.kind == PointerEventKind.up && root.grab != 0) {
+            if (root.dragged) { root.trimmed(Pages.trim-start, Pages.trim-end); }
+            root.grab = 0;
+        }
+    }
+    moved => {
+        if (root.grab == 1) {
+            Pages.trim-start = clamp(self.at / root.inner-w, 0, Pages.trim-end - 0.01);
+            root.dragged = true;
+        } else if (root.grab == 2) {
+            Pages.trim-end = clamp(self.at / root.inner-w, Pages.trim-start + 0.01, 1);
+            root.dragged = true;
+        }
+    }
+    clicked => {
+        // Runs before the release above; `dragged` is reset on the next press.
+        if (!root.dragged) { Main.seek-fraction(clamp(self.at / root.inner-w, 0, 1)); }
+        root.tapped();
     }
 }

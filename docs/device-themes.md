@@ -91,6 +91,35 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
 - Rust: `EFFECT_FPS` gets one entry per theme; `RECORDING_FPS` runs the Fx clock only
   while recording, not paused (Tape Deck 12), so a still deck costs nothing.
 
+**Built in step 3, Tape Deck on every other page (2026-10-29):** mockups in
+`docs/mockups/device-themes/tape-pages/` (Max approved them as they are).
+- `ui/skins/tape-parts.slint`: the deck's parts, shared by the main page and the other
+  pages (walnut, aluminium, screws, wells, piano keys, the cassette, the counter drums,
+  the play knob, the title bar with an optional Eject key).
+- `ui/skins/tape-pages.slint`: `ClipPage`, `SettingsPage`, `ModelsPage`, `MergePage`,
+  `AskPage`, `Widget`, `Dialog`, `Speaking` and `Drop`. `app.slint` picks them with
+  `Theme.skin == 1`, the classic blocks with `Theme.skin == 0`.
+- The other pages' state is in a new `Pages` global (as `Main` is for the main page);
+  AppWindow links its properties to it, so Rust is unchanged. The actions stay
+  AppWindow's callbacks and functions; a skin page gets them as callbacks. The question
+  words (`dialog-title`, `dialog-note`, `dialog-ok` and so on) are worked out once in
+  AppWindow for both looks. The trim handles of the clip waveform are `TrimTouch`, used
+  by both looks.
+- The shared widgets draw the deck look themselves when `Theme.tape` is set: `Btn` and
+  `IconBtn` (piano keys, `red` for Delete and Merge), `Toggle` (slide switch with a lamp),
+  `Select` (black Dymo strip), `ShortcutBox` (key caps in a well), `MenuRow`, `ExportItem`
+  and `MenuCard` (the cream J-card of every menu), `ProjectMenu` (an aluminium drawer of
+  Dymo tapes), `ExportButton`, `OrderList` (tape spines with grip, place and knob),
+  `TranscriptCard` (the ruled insert card; its rules follow the text's line height and
+  scroll with it) and `Tip`. So the menus, the transcript and the dropdowns keep one
+  behaviour for every look.
+- The search results on the main page are index strips (`Hit` in `tape.slint`).
+- Rust: `ModelRow.group` (the catalog group, for the spine colours); the motion clock
+  also runs while a clip plays on its page (the cassette's reels turn); the editor's
+  pause tags are a darker amber on the cream card.
+- Art: one new piece, `cassette-clip` (the cassette with a writing line for the clip's
+  name), 22 KB at 1x and 2x. `cut.sh` reproduces all 28 PNGs.
+
 ### Recipe from the pilot (follow it for the other skins)
 
 - **Art:** an element page `tools/skin-art/<skin>.html` draws each fixed piece of the
@@ -117,6 +146,17 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
   beside REC becomes Pause (Import is unavailable then anyway).
 - **Checks:** `THRASHER_TEST_KEEP_WINDOW=1` keeps the test window from turning into the
   widget while recording behind other windows, so recording shots work headless.
+- **Shared widgets with a skin look** (step 3): prefer `visible: Theme.tape` over
+  `if Theme.tape:` for decoration in widgets used many times (keys, switches, menu rows).
+  Every `if` builds its own sub-component at every use; switching 23 of them to
+  `visible` took 3.1 MB off the exe. Keep `if` only inside layouts, where a hidden item
+  would still take room.
+- **Images in layouts:** an `Image` sized 100% reports a preferred height from its
+  width, which loops inside a `FlexboxLayout` (height for width). Give such a tile
+  `preferred-width: 0; preferred-height: 0` (see `Plain` in `tape-pages.slint`).
+- **Light fields:** a `TextField` on cream needs dark selection text; it now uses its
+  `ink` for the selection in the deck look.
+- **Slint:** `parent.parent` is not allowed; name the element instead.
 
 **Budgets measured on the pilot** (test copy, 2.25x display, 10 s samples):
 - CPU idle 0.2% (Ember 0.3%); recording 12.7% at 520x700 (Ember 18.4%), 18.4% at
@@ -124,6 +164,17 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
 - Working set idle 42.3 MB vs Ember 38.6 MB (+3.7); wide 49.9 vs 47.6 MB (+2.3).
 - Exe +2.19 MB: fonts 0.34 MB, art 0.14 MB, generated code about 1.7 MB. At that rate
   15 skins land near 25 to 30 MB, inside the 35 MB budget (Max, 2026-10-28).
+
+**Budgets measured on step 3** (test copy, 2.25x display, 10 s samples, 2026-10-29):
+- CPU idle 0.0 to 0.6% on every page in both looks. Playing a clip on its page: Tape Deck
+  28.6% at 520x700 and 34.5% at 1100x700 (the reels), Ember 27.5% and 23.9%.
+- Working set, Tape Deck over Ember: +1.3 to +4.5 MB per page (main 41.7 vs 39.2 MB,
+  one clip 76.5 vs 73.1 MB, settings 225.6 vs 224.3 MB after a long clip was played).
+- Exe +10.35 MB (34.45 to 44.80 MB): the other pages' generated code, and the deck look
+  in the shared widgets; the art is 22 KB. This is far more than the pilot's main page
+  (2.19 MB), so all 15 skins at this rate would pass the 35 MB budget. Built with
+  `opt-level = "s"` for the app crate only, the same change is +6.82 MB (29.73 to
+  36.55 MB, and the whole exe 4.7 MB smaller). A choice for Max before the other skins.
 
 ### Art
 
@@ -169,6 +220,7 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
    are built.
 3. **Tape Deck, other pages:** browser mockups of the clip page, settings, merge, menus,
    dialogs and the widget in the Tape Deck look. Max picks, then they are built.
+   Done 2026-10-29 (see "Built in step 3" above).
 4. **Theme gallery** in settings.
 5. **The other 14 skins,** main page first, then their other pages (mockups first, in batches), built in parallel in separate worktrees, one PR each, in this
    order:

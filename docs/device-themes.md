@@ -247,6 +247,11 @@ used). Its other pages are the classic ones in a green LCD palette (`Theme.pages
   "00:00" (or "0:00:00") in an invisible Text, so it does not wander while it runs.
 - **The LCD ghost** is one copy of the timer one shade lighter, 2px (4px wide) down and
   right; recording stays at 7.7% CPU with it.
+- **Silent text in a Text component:** `accessible-role: none` on an instance of a component
+  that inherits Text (`Small`, `Big`) still shows up in UI Automation as a Custom element
+  named by its text, so shadow copies were read twice. The component sets
+  `accessible-label: self.accessible-role == AccessibleRole.none ? "" : self.text` (review,
+  2026-10-29). A plain `Text { accessible-role: none; }` is silent already.
 - **Checks:** the shared scripts' shots are half size; set `FULL=1` in this skin's copy of
   `win.ps1` for device pixel crops. A project folder made by hand did not show in the picker;
   make test projects through New project (typed as posted key-downs) and delete them after.

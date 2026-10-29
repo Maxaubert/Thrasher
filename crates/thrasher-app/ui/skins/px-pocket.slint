@@ -106,6 +106,8 @@ component Small inherits Text {
     letter-spacing: 1px;
     color: Pk.l2;
     vertical-alignment: center;
+    // A copy with no role is decoration: no name either, or screen readers still find it.
+    accessible-label: self.accessible-role == AccessibleRole.none ? "" : self.text;
 }
 
 // The big LCD type (Jersey 10) at 20px, on a 16px line like the mockup.
@@ -114,6 +116,7 @@ component Big inherits Text {
     font-size: 20px;
     color: Pk.l3;
     vertical-alignment: center;
+    accessible-label: self.accessible-role == AccessibleRole.none ? "" : self.text;
 }
 
 // A dark key on the top edge: Settings, minimise, close (green).
@@ -143,6 +146,7 @@ component HKey inherits Rectangle {
     property <bool> hovering: t.has-hover;
     changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
     t := TouchArea {
+        mouse-cursor: pointer;
         clicked => { Tips.hide(); root.clicked(); }
     }
 }
@@ -488,6 +492,7 @@ component Pick inherits Rectangle {
         }
     }
     t := TouchArea {
+        mouse-cursor: pointer;
         enabled: root.enabled;
         clicked => { menu.show(); }
     }
@@ -576,6 +581,7 @@ component Tools inherits HorizontalLayout {
             accessible-role: none;
         }
         TouchArea {
+            mouse-cursor: pointer;
             clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
         }
     }
@@ -604,6 +610,7 @@ component PlayKey inherits Rectangle {
     property <bool> hovering: t.has-hover;
     changed hovering => { Tips.hover(self.hovering, root.pausing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
     t := TouchArea {
+        mouse-cursor: pointer;
         enabled: root.enabled;
         clicked => { Tips.hide(); root.clicked(); }
     }
@@ -663,6 +670,7 @@ component Row inherits Rectangle {
         source: @image-url("px-pocket/rule-row.png");
     }
     row-touch := TouchArea {
+        mouse-cursor: pointer;
         pointer-event(e) => {
             if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
                 root.select(e.modifiers.control, e.modifiers.shift);
@@ -767,6 +775,7 @@ component Row inherits Rectangle {
             property <bool> hovering: dots.has-hover;
             changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
             dots := TouchArea {
+                mouse-cursor: pointer;
                 x: -3px;
                 width: 14px;
                 clicked => { Tips.hide(); root.open-menu(); }
@@ -866,6 +875,7 @@ component Hit inherits Rectangle {
         }
     }
     t := TouchArea {
+        mouse-cursor: pointer;
         clicked => { root.clicked(); }
     }
 }
@@ -1021,6 +1031,7 @@ component Player inherits Rectangle {
         Outline { }
         // Click to jump; taller than the bar so it is easy to hit.
         TouchArea {
+            mouse-cursor: pointer;
             y: -8px;
             height: parent.height + 16px;
             enabled: root.shown >= 0;
@@ -1250,6 +1261,7 @@ component RoundKey inherits Rectangle {
     property <bool> hovering: t.has-hover;
     changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.d, self.d); }
     t := TouchArea {
+        mouse-cursor: pointer;
         width: root.d;
         height: root.d;
         x: (parent.width - self.width) / 2;
@@ -1295,6 +1307,7 @@ component Pill inherits Rectangle {
     property <bool> hovering: t.has-hover;
     changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, root.width, 24px); }
     t := TouchArea {
+        mouse-cursor: pointer;
         height: 24px;
         clicked => { Tips.hide(); root.clicked(); }
     }
@@ -1375,6 +1388,7 @@ component DPad inherits Rectangle {
     // The upper left half of the cross (above the diagonal from bottom left to top
     // right) steps up, the lower right half down.
     t := TouchArea {
+        mouse-cursor: pointer;
         x: (parent.width - root.d) / 2;
         width: root.d;
         height: root.d;

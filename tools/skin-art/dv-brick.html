@@ -1,0 +1,127 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+svg{display:block}
+#a{position:absolute;left:0;top:0;overflow:hidden}
+.k{position:absolute}
+</style></head><body><div id="a"></div>
+<script>
+// One element of the Brick Phone mockup (docs/mockups/device-themes/dv-brick.html), alone
+// on a transparent page, for cutting into PNGs. ?el=name&w=css-width&h=css-height
+// The rubber keys are drawn with their shadows in a margin (6 px at the sides, 2 above,
+// 8 below). Keys that stretch with the window are cut in three: the left 30 px, one
+// column from the middle and the right 30 px (ui/skins/dv-brick.slint puts them back
+// together). The icons are white, for `colorize`; the LCD's pixel glyphs and tiles are
+// one css pixel per art pixel and only their 1x cut is used.
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+
+const ML = 6, MT = 2, MB = 8, CAP = 24;
+const FACE = {
+  rub: 'linear-gradient(#3c3e43,#26272b)',
+  soft: 'linear-gradient(#4a4c51,#2d2e32)',
+  green: 'linear-gradient(#4fb35c,#2b7a37)',
+  red: 'linear-gradient(#d9493a,#932719)',
+};
+const KEY_SHADOW = 'inset 0 1px 0 rgba(255,255,255,.17),inset 0 -2px 0 rgba(0,0,0,.35),0 2px 0 #0e0f10,0 3px 5px rgba(0,0,0,.45)';
+// A key of w x h with its margin, drawn at x offset `dx` inside the piece.
+function key(w, h, radius, face, dx) {
+  return `<div class="k" style="left:${dx + ML}px;top:${MT}px;width:${w}px;height:${h}px;border-radius:${radius};background:${FACE[face]};box-shadow:${KEY_SHADOW}"></div>`;
+}
+// Keys that stretch: [width it is drawn at, height, radius, face].
+const STRETCH = {
+  'kp-menu': [104, 32, '8px 18px 18px 8px', 'soft'],
+  'kp-find': [104, 32, '18px 8px 8px 18px', 'soft'],
+  'kp-rec': [104, 32, '8px 18px 22px 18px', 'green'],
+  'kp-stop': [104, 32, '18px 8px 18px 22px', 'red'],
+  'kp-pad': [110, 23, '12px', 'rub'],
+};
+// Keys of one size: [width, height, radius, face].
+const FIXED = {
+  'kw-pad': [43, 50, '16px', 'rub'],
+  'kw-rec': [136, 54, '26px', 'green'],
+  'kw-stop': [136, 42, '22px', 'red'],
+  'kw-soft': [110, 30, '8px 8px 18px 18px', 'soft'],
+};
+const m = el.match(/^(kp-[a-z]+)-([lmr])$/);
+if (m && STRETCH[m[1]]) {
+  const [w, h, r, f] = STRETCH[m[1]];
+  const dx = m[2] === 'l' ? 0 : m[2] === 'm' ? -(ML + w / 2) : -(w + 2 * ML - (CAP + ML));
+  a.innerHTML = key(w, h, r, f, dx);
+}
+if (FIXED[el]) { const [w, h, r, f] = FIXED[el]; a.innerHTML = key(w, h, r, f, 0); }
+
+// The minimise and close nubs (the icon goes on top).
+if (el === 'nub') a.innerHTML = `<div class="k" style="left:${ML}px;top:${MT}px;width:30px;height:18px;border-radius:9px;background:linear-gradient(#45474c,#2a2b2f);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 2px 0 #111,0 3px 4px rgba(0,0,0,.4)"></div>`;
+
+// The nav rocker: portrait a 124 x 76 pill, wide a 112 circle; the arrows and the OK key
+// go on top.
+const NAV = 'linear-gradient(#44464b,#26272b)';
+const NAV_SHADOW = 'inset 0 1px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.4),0 3px 0 #0e0f10,0 4px 7px rgba(0,0,0,.5)';
+if (el === 'nav-p') a.innerHTML = `<div class="k" style="left:${ML}px;top:${MT}px;width:124px;height:76px;border-radius:40px;background:${NAV};box-shadow:${NAV_SHADOW}"></div>`;
+if (el === 'nav-w') a.innerHTML = `<div class="k" style="left:${ML}px;top:${MT}px;width:112px;height:112px;border-radius:50%;background:${NAV};box-shadow:${NAV_SHADOW}"></div>`;
+// The OK key in the rocker, with its 2 px ring.
+const ok = d => `<div class="k" style="left:2px;top:2px;width:${d}px;height:${d}px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#3b3d42,#1f2023);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 0 0 2px #17181a"></div>`;
+if (el === 'ok-p') a.innerHTML = ok(38);
+if (el === 'ok-w') a.innerHTML = ok(46);
+
+// The antenna stub above the shell.
+if (el === 'antenna') a.innerHTML = `<div class="k" style="left:0;top:0;width:34px;height:40px;border-radius:12px 12px 4px 4px;background:linear-gradient(90deg,#1c1d20,#3a3c41 45%,#1f2023);box-shadow:inset 0 1px 0 rgba(255,255,255,.14)"><div class="k" style="left:8px;right:8px;top:6px;height:3px;border-radius:2px;background:rgba(255,255,255,.08)"></div></div>`;
+// The earpiece grilles (portrait 60 x 6, wide 70 x 9), 1 px of margin for the lit lip.
+const ear = (w, h) => `<div class="k" style="left:1px;top:0;width:${w}px;height:${h}px;border-radius:5px;background:radial-gradient(circle,#0b0b0c 1.2px,transparent 1.6px) 0 0/6px 4.5px,#202124;box-shadow:inset 0 1px 2px rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.08)"></div>`;
+if (el === 'ear-p') a.innerHTML = ear(60, 6);
+if (el === 'ear-w') a.innerHTML = ear(70, 9);
+
+// The key icons, white, from the mockup's symbols.
+const SYM = {
+  gear: '<g fill="none" stroke="currentColor"><circle cx="12" cy="12" r="7.6" stroke-width="3.2" stroke-dasharray="3 2.97"/><circle cx="12" cy="12" r="5.6" stroke-width="2"/><circle cx="12" cy="12" r="1.6" stroke-width="1.8"/></g>',
+  min: '<path d="M6 12h12" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
+  close: '<path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
+  mic: '<g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></g>',
+  stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor"/>',
+  import: '<path d="M12 4v10M7.5 10l4.5 4.5 4.5-4.5M5 16v3.5h14V16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+  ask: '<path d="M4.5 5h15v10.5H11l-4.5 4v-4h-2z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M9 10.3h.01M12 10.3h.01M15 10.3h.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+  widget: '<g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M3.5 9h17"/><rect x="12.5" y="12.5" width="5" height="3.5" fill="currentColor"/></g>',
+  search: '<g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="5.8"/><path d="M15 15l5 5"/></g>',
+  up: '<path d="M12 6l-6 7h12z" fill="currentColor"/>',
+  down: '<path d="M12 18l-6-7h12z" fill="currentColor"/>',
+  play: '<path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/>',
+  pause: '<path d="M7 5.5h3.6v13H7zM13.4 5.5H17v13h-3.6z" fill="currentColor"/>',
+};
+const ic = el.match(/^i-([a-z]+)\d+$/);
+if (ic && SYM[ic[1]]) a.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 24 24" style="color:#fff">${SYM[ic[1]]}</svg>`;
+
+// The LCD's pixel glyphs, white, one css pixel per art pixel.
+const PX = {
+  play: [10, 10, 'M0 0h10v1H0zM0 9h10v1H0zM0 0h1v10H0zM9 0h1v10H9zM3 2h1v6H3zM4 3h1v4H4zM5 4h1v2H5zM6 4h1v2H6z'],
+  dots: [4, 10, 'M1 0h2v2H1zM1 4h2v2H1zM1 8h2v2H1z'],
+  fold: [9, 8, 'M0 0h4v1H0zM0 1h9v7H0z'],
+  chev: [8, 8, 'M0 2h8v1H0zM1 3h6v1H1zM2 4h4v1H2zM3 5h2v1H3z'],
+  mag: [9, 9, 'M2 0h3v1H2zM1 1h1v1H1zM5 1h1v1H5zM0 2h1v3H0zM6 2h1v3H6zM1 5h1v1H1zM5 5h1v1H5zM2 6h3v1H2zM6 6h1v1H6zM7 7h1v1H7zM8 8h1v1H8z'],
+  mic: [12, 16, 'M4 0h4v1H4zM3 1h6v7H3zM4 8h4v1H4zM1 5h1v3H1zM10 5h1v3H10zM2 8h1v1H2zM9 8h1v1H9zM3 9h6v1H3zM5 10h2v3H5zM2 13h8v1H2z', 'M4 3h4v1H4zM4 5h4v1H4z'],
+  tri: [8, 8, 'M0 3h8v2H0zM1 2h6v1H1zM2 1h4v1H2zM3 0h2v1H3z'],
+  // The same arrow turned down (the mockup rotates it).
+  trid: [8, 8, 'M0 3h8v2H0zM1 5h6v1H1zM2 6h4v1H2zM3 7h2v1H3z'],
+  // A small microphone for the input line.
+  micsm: [7, 8, 'M2 0h3v4H2zM0 2h1v2H0zM6 2h1v2H6zM1 4h1v1H1zM5 4h1v1H5zM2 5h3v1H2zM3 6h1v1H3zM2 7h3v1H2z'],
+  // The pause glyph, in the play glyph's frame.
+  pause: [10, 10, 'M0 0h10v1H0zM0 9h10v1H0zM0 0h1v10H0zM9 0h1v10H9zM3 2h1v6H3zM6 2h1v6H6z'],
+};
+const pg = el.match(/^x-([a-z]+)$/);
+if (pg && PX[pg[1]]) {
+  const [w, h, d, cut] = PX[pg[1]];
+  a.innerHTML = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges"><defs><mask id="m"><rect width="${w}" height="${h}" fill="#fff"/>${cut ? `<path d="${cut}" fill="#000"/>` : ''}</mask></defs><path d="${d}" fill="#fff" mask="url(#m)"/></svg>`;
+}
+
+// Tiles, white, coloured in Slint: the dashed and dotted rules, the scrollbar's track
+// lines, the LCD's pixel grid (a line every 3 px each way; the mockup's are 7% and 6%
+// ink) and the big microphone's dot screen.
+if (el === 't-dash') a.innerHTML = `<div class="k" style="left:0;top:0;width:3px;height:1px;background:#fff"></div>`;
+if (el === 't-dashv') a.innerHTML = `<div class="k" style="left:0;top:0;width:1px;height:3px;background:#fff"></div>`;
+if (el === 't-rule' || el === 't-dot') a.innerHTML = `<div class="k" style="left:0;top:0;width:1px;height:1px;background:#fff"></div>`;
+if (el === 't-grid') a.innerHTML = `<div class="k" style="left:0;top:0;width:3px;height:1px;background:#fff"></div><div class="k" style="left:0;top:1px;width:1px;height:2px;background:rgba(255,255,255,.86)"></div>`;
+if (el === 't-micdots') a.innerHTML = `<div class="k" style="left:0;top:0;width:4px;height:4px;background:radial-gradient(circle,#fff 1px,transparent 1.4px) 0 0/4px 4px"></div>`;
+</script>
+</body></html>

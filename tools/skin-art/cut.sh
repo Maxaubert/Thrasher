@@ -5,6 +5,7 @@
 #   sh tools/skin-art/cut.sh tape OUT_DIR    (or x-comic)
 #   sh tools/skin-art/cut.sh dash OUT_DIR    (the Car Dashboard, into ui/skins/dash/)
 #   sh tools/skin-art/cut.sh px-quest OUT_DIR (the Quest Menu, into ui/skins/px-quest/)
+#   sh tools/skin-art/cut.sh dv-brick OUT_DIR (the Brick Phone, into ui/skins/dv-brick/)
 #
 # reads tools/skin-art/<skin>.html and the piece list below, and writes OUT_DIR/<name>.png
 # and OUT_DIR/<name>@2x.png. Copy the ones the skin uses to crates/thrasher-app/ui/skins/<skin>/.
@@ -52,13 +53,33 @@ px-quest) PIECES="gear:gear:7:7 min:min:7:7 close:close:7:7 play:play:5:5 pause:
   imp:imp:7:7 ask:ask:7:7 widget:widget:7:7 search:search:7:7 down:down:5:3 note:note:4:5 cpause:cpause:7:7
   cplay:cplay:7:7 check:check:5:5 hand:hand:8:6 mic:mic:10:14 rec-s:rec-s:19:19 rec-l:rec-l:33:33
   stop-s:stop-s:19:19 stop-l:stop-l:33:33 cmd:cmd:14:32" ;;
+# Brick Phone: the stretching keys in three slices, the fixed keys whole, the rocker and
+# its OK key, the antenna and the earpieces at 1x and 2x; the white icons for colorize;
+# the LCD's pixel glyphs and tiles (x-, t-) are used at 1x only.
+dv-brick) PIECES="kp-menu-l:kp-menu-l:30:42 kp-menu-m:kp-menu-m:1:42 kp-menu-r:kp-menu-r:30:42
+  kp-find-l:kp-find-l:30:42 kp-find-m:kp-find-m:1:42 kp-find-r:kp-find-r:30:42
+  kp-rec-l:kp-rec-l:30:42 kp-rec-m:kp-rec-m:1:42 kp-rec-r:kp-rec-r:30:42
+  kp-stop-l:kp-stop-l:30:42 kp-stop-m:kp-stop-m:1:42 kp-stop-r:kp-stop-r:30:42
+  kp-pad-l:kp-pad-l:30:33 kp-pad-m:kp-pad-m:1:33 kp-pad-r:kp-pad-r:30:33
+  kw-pad:kw-pad:55:60 kw-rec:kw-rec:148:64 kw-stop:kw-stop:148:52 kw-soft:kw-soft:122:40 nub:nub:42:28
+  nav-p:nav-p:136:86 nav-w:nav-w:124:122 ok-p:ok-p:42:42 ok-w:ok-w:50:50 antenna:antenna:34:40 ear-p:ear-p:62:7 ear-w:ear-w:72:10
+  i-gear14:i-gear14:14:14 i-search14:i-search14:14:14 i-mic14:i-mic14:14:14 i-mic18:i-mic18:18:18 i-stop14:i-stop14:14:14
+  i-up12:i-up12:12:12 i-down12:i-down12:12:12 i-play14:i-play14:14:14 i-play16:i-play16:16:16
+  i-import13:i-import13:13:13 i-ask13:i-ask13:13:13 i-widget13:i-widget13:13:13
+  i-import12:i-import12:12:12 i-ask12:i-ask12:12:12 i-widget12:i-widget12:12:12 i-min12:i-min12:12:12 i-close12:i-close12:12:12
+  x-play:x-play:10:10 x-pause:x-pause:10:10 x-dots:x-dots:4:10 x-fold:x-fold:9:8 x-chev:x-chev:8:8 x-mag:x-mag:9:9
+  i-pause14:i-pause14:14:14 i-pause16:i-pause16:16:16 i-pause18:i-pause18:18:18 i-play18:i-play18:18:18
+  x-mic:x-mic:12:16 x-micsm:x-micsm:7:8 x-tri:x-tri:8:8 x-trid:x-trid:8:8 t-dot:t-dot:2:1 t-dash:t-dash:6:1 t-dashv:t-dashv:1:6
+  t-rule:t-rule:1:3 t-grid:t-grid:3:3 t-micdots:t-micdots:4:4" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 
+# ONLY="a b" cuts just those pieces.
 for p in $PIECES; do
   IFS=: read -r name el w h <<EOF
 $p
 EOF
+  if [ -n "$ONLY" ]; then case " $ONLY " in *" $name "*) ;; *) continue ;; esac; fi
   for k in 1 2; do
     suf=""; [ $k = 2 ] && suf="@2x"
     raw="$OUT/raw-$name$suf.png"

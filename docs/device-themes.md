@@ -434,6 +434,44 @@ one sideways strip per group with page arrows, a thin scroll bar and a fade, so 
 stays about 250 px tall. Tiles 104x64 (device art at 1x and 2x, 64 colours, about 153 KB
 in all); classic tiles are drawn live from the palette. Only built skins are listed.
 
+**Built in step 4 (2026-10-29):** `ui/gallery.slint`, used by the classic settings page
+(`app.slint`, so every skin without its own pages) and the Tape Deck one
+(`skins/tape-pages.slint`). It replaces the Theme dropdown; the Appearance card now runs
+across the whole page when it is wide, the other cards stay in their columns under it.
+- One strip per group. Page arrows and the scroll bar show only while a strip has more
+  than fits; when everything fits, the gap shrinks (12 px, not under 4 px) so no tile is
+  cut. The mouse wheel scrolls the strip under the pointer until its end, then the page.
+  A strip opens scrolled to the current theme.
+- Tiles are radio buttons named after the theme (`accessible-checked` on the current
+  one). Each strip is one Tab stop: Left and Right move the focus ring, Home, End,
+  Page Up and Page Down jump, Up and Down go to the other group, Enter or Space picks.
+- Ember look: framed picture, the name under it, accent frame and check on the current
+  one. Tape Deck look: a sunk well and a cassette label with the theme's colour band,
+  amber well and lit lamp on the current one. The theme switches on click, no Apply.
+- Device art: `ui/skins/thumbs/<skin>.png` and `<skin>@2x.png` for all 15 skins (2x when
+  `1phx < 0.7px`, like the other skin art), cut by `python tools/skin-art/thumbs.py`
+  from `mockups/device-themes/<skin>.png` (the wide window, 1000x620, scaled and quantised
+  to 64 colours). Re-run it when a mockup screenshot changes.
+- Rust (`fill_gallery` in `main.rs`) lists the classic themes (`Theme.skins` 0) and the
+  device lines whose name is in `Theme.names`, in that order, with their place there.
+- Cost: exe +0.32 MB (55.54 to 55.88 MB, with 6 device tiles). Main pages of all 14
+  themes unchanged (static ones pixel for pixel; the animated ones differ only by their
+  animation, as much as two runs of the old build do).
+
+**Adding a skin's tile** (one line): when a skin's name goes into `Theme.names`, add its
+line to `Gallery.devices` in `ui/gallery.slint`:
+
+```
+{ name: "Pocket", art: @image-url("skins/thumbs/px-pocket.png"), art2: @image-url("skins/thumbs/px-pocket@2x.png"), band: #8bac0f },
+```
+
+The name must match `Theme.names` exactly; `band` is the colour stripe of its Tape Deck
+label (the mockup's list: Pocket #8bac0f, Quest Menu #2f5fd0, Cozy Cabin #c9822e,
+Answering Machine #d9452b, Pocket Synth #ff6a1a, Brick Phone #7a8a3a, Phonograph
+#b48c4b, Pinball #e0316b, Fighter Select #d63a2a). The test
+`every_device_skin_has_a_gallery_tile` fails while a device theme has no line, a line
+names a theme that does not exist, or its art is missing.
+
 ## 5. Plan
 
 Each step is one PR, tested on the headless test copy, and merged only after Max says yes.
@@ -447,7 +485,7 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
 3. **Tape Deck, other pages:** browser mockups of the clip page, settings, merge, menus,
    dialogs and the widget in the Tape Deck look. Max picks, then they are built.
    Done 2026-10-29 (see "Built in step 3" above).
-4. **Theme gallery** in settings.
+4. **Theme gallery** in settings. Done 2026-10-29 (see "Built in step 4" in section 4).
 5. **The other 14 skins,** main page first, then their other pages (mockups first, in batches), built in parallel in separate worktrees, one PR each, in this
    order:
    - easier first: Phosphor, Desktop 95, Comic Book, Spatial Glass, Car Dashboard

@@ -33,6 +33,7 @@ import {
     Icon, Tip, Btn, IconBtn, Toggle, Wave, BackLink, ExportButton, ResizeEdge, TitleBar, OrderList, PageHeader, Select,
     TextField, SourceRow, ShortcutBox, Card, CardPart, CardRow, Chip, Meter, WindowFx, Scroller, TourSnake, TranscriptCard,
 } from "common.slint";
+import { ThemeGallery, Gallery, ThemeTile } from "gallery.slint";
 import { MainPage as ClassicMain } from "skins/classic.slint";
 import { MainPage as TapeMain } from "skins/tape.slint";
 import { MainPage as PhosphorMain } from "skins/phosphor.slint";
@@ -45,7 +46,7 @@ import {
     Widget as TapeWidget, Dialog as TapeDialog, Speaking as TapeSpeaking, Drop as TapeDrop,
 } from "skins/tape-pages.slint";
 // What the app reaches from Rust.
-export { ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Theme, Fx, Main, Tour, Snow }
+export { ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Theme, Fx, Main, Tour, Snow, Gallery, ThemeTile }
 
 // The notification-area icon. Its image is drawn in Rust (orange dot while recording).
 export component Tray inherits SystemTrayIcon {
@@ -1150,6 +1151,22 @@ export component AppWindow inherits Window {
                     spacing: 18px;
                     alignment: start;
 
+                    // The theme gallery, across the whole page when it is wide.
+                    Card {
+                        title: "APPEARANCE";
+                        Rectangle {
+                            background: Theme.card;
+                            border-radius: 14px;
+                            VerticalLayout {
+                                padding-left: 12px;
+                                padding-right: 12px;
+                                padding-top: 6px;
+                                padding-bottom: 12px;
+                                ThemeGallery { picked(i) => { root.theme-changed(i); } }
+                            }
+                        }
+                    }
+
                     FlexboxLayout {
                     flex-direction: root.wide ? FlexboxLayoutDirection.row : FlexboxLayoutDirection.column;
                     flex-wrap: no-wrap;
@@ -1159,24 +1176,6 @@ export component AppWindow inherits Window {
                     VerticalLayout {
                     horizontal-stretch: 1;
                     spacing: 18px;
-                    Card {
-                        title: "APPEARANCE";
-                        CardRow {
-                            first: true;
-                            label: "Theme";
-                            last: true;
-                            VerticalLayout {
-                                alignment: center;
-                                Select {
-                                    label: "Theme";
-                                    model: Theme.names;
-                                    current-index: Theme.current;
-                                    selected(i) => { root.theme-changed(i); }
-                                }
-                            }
-                        }
-                    }
-
                     Card {
                         title: "RECORDING";
                         CardRow {

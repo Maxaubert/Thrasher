@@ -1,0 +1,74 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+svg{display:block}
+#a{position:absolute;left:0;top:0;overflow:hidden}
+#a i{position:absolute;display:block}
+</style></head><body><div id="a"></div>
+<script>
+// One element of the Spatial Glass mockup (docs/mockups/device-themes/x-spatial.html),
+// alone on a transparent page, for cutting into PNGs. ?el=name&w=css-width&h=css-height
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+
+// The room behind the glass, already blurred (the renderer has no live blur). Drawn at
+// the mockup's window size and scaled to the piece, so `w` sets the resolution.
+const room = (mw, mh) => {
+  const s = W / mw;
+  a.innerHTML = `<div style="position:absolute;left:0;top:0;width:${mw}px;height:${mh}px;transform:scale(${s});transform-origin:0 0;overflow:hidden;
+    background:linear-gradient(180deg,#5a4e5c 0%,#4a3f4a 50%,#33292c 100%)">
+    <i style="left:52%;top:6%;width:42%;height:46%;border-radius:8px;background:linear-gradient(180deg,#f4d8b4 0%,#e9a879 55%,#c27a63 100%);filter:blur(16px)"></i>
+    <i style="left:72.5%;top:6%;width:1.6%;height:46%;background:#5a4650;filter:blur(6px);opacity:.7"></i>
+    <i style="left:52%;top:27%;width:42%;height:2.4%;background:#5a4650;filter:blur(6px);opacity:.7"></i>
+    <i style="left:16%;top:20%;width:24%;height:52%;background:linear-gradient(90deg,#6b4c3c,#5a3e33);opacity:.55;border-radius:6px;filter:blur(16px)"></i>
+    <i style="left:4%;top:16%;width:26%;height:30%;border-radius:50%;background:radial-gradient(circle,#ffd59a 0%,rgba(255,170,90,.6) 40%,transparent 70%);filter:blur(10px)"></i>
+    <i style="left:-4%;top:44%;width:24%;height:40%;border-radius:45% 55% 40% 50%;background:#3f6a4a;opacity:.9;filter:blur(16px)"></i>
+    <i style="left:14%;top:70%;width:78%;height:26%;border-radius:40px 40px 10px 10px;background:linear-gradient(180deg,#8a6a5a,#5b443c);opacity:.95;filter:blur(16px)"></i>
+    <i style="left:60%;top:66%;width:16%;height:14%;border-radius:30%;background:#c58b5e;opacity:.8;filter:blur(16px)"></i>
+    <i style="left:24%;top:67%;width:14%;height:13%;border-radius:30%;background:#6f8aa6;opacity:.7;filter:blur(16px)"></i>
+    <i style="left:-10%;top:90%;width:120%;height:20%;background:#2a1f1c;filter:blur(16px)"></i>
+    <i style="inset:0;background:radial-gradient(120% 90% at 50% 40%,transparent 40%,rgba(10,8,12,.35) 100%)"></i></div>`;
+};
+if (el === 'room-p') room(400, 620);
+if (el === 'room-w') room(1000, 620);
+
+// The shadow under a pane, outside it only (box-shadow is not drawn under the box), for
+// a nine-slice image: m = the margins around the box (top right bottom left).
+const shadow = (m, r, sh) => {
+  a.innerHTML = `<div style="position:absolute;left:${m[3]}px;top:${m[0]}px;right:${m[1]}px;bottom:${m[2]}px;border-radius:${r}px;box-shadow:${sh}"></div>`;
+};
+if (el === 'shadow-pane') shadow([32, 48, 72, 48], 24, '0 18px 40px rgba(0,0,0,.38),0 4px 10px rgba(0,0,0,.2)');
+if (el === 'shadow-near') shadow([36, 60, 90, 60], 24, '0 28px 50px rgba(0,0,0,.45),0 6px 14px rgba(0,0,0,.25)');
+if (el === 'shadow-pill') shadow([24, 40, 56, 40], 24, '0 16px 30px rgba(0,0,0,.45),0 4px 10px rgba(0,0,0,.25)');
+if (el === 'shadow-tab') shadow([14, 24, 36, 24], 15, '0 8px 20px rgba(0,0,0,.3)');
+
+// A disc of size d centred in the piece.
+const disc = (d, css) => `<div style="position:absolute;left:${(W - d) / 2}px;top:${(H - d) / 2}px;width:${d}px;height:${d}px;border-radius:50%;${css}"></div>`;
+// The record orb with its glow; the icon on it is drawn live.
+const orb = (d) => disc(d, `background:radial-gradient(circle at 50% 18%,rgba(255,255,255,.75),rgba(255,255,255,0) 32%),radial-gradient(circle at 50% 60%,#ff6b78 0%,#ff4d5e 45%,#b0172f 100%);
+  box-shadow:inset 0 -6px 14px rgba(90,0,20,.5),inset 0 2px 2px rgba(255,255,255,.6),0 0 0 1px rgba(255,255,255,.35),0 14px 30px rgba(255,40,70,.35),0 6px 14px rgba(0,0,0,.35)`);
+if (el === 'orb-s') a.innerHTML = orb(74);
+if (el === 'orb-l') a.innerHTML = orb(146);
+// A round glass button, 10px of room around it for its shadow.
+const rb = (d) => disc(d, `background:radial-gradient(circle at 50% 0%,rgba(255,255,255,.32),rgba(255,255,255,.1) 70%);border:1px solid rgba(255,255,255,.3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 8px rgba(0,0,0,.25)`);
+if (el === 'rb-28') a.innerHTML = rb(28);
+if (el === 'rb-30') a.innerHTML = rb(30);
+if (el === 'rb-34') a.innerHTML = rb(34);
+if (el === 'logo') a.innerHTML = disc(20, 'background:radial-gradient(circle at 35% 30%,#ff9aa5,#ff4d5e 55%,#a3122a);box-shadow:0 0 10px rgba(255,77,94,.6),inset 0 1px 1px rgba(255,255,255,.6)');
+if (el === 'thumb') a.innerHTML = disc(13, 'background:radial-gradient(circle at 40% 30%,#fff,#d8d8e0);box-shadow:0 2px 5px rgba(0,0,0,.4)');
+// The level halo at rest: n dim ticks round the orb. The lit ones are drawn live.
+const ring = (n) => {
+  const S = W, c = S / 2, r1 = c - 10, r2 = c - 2;
+  let out = '';
+  for (let k = 0; k < n; k++) {
+    const t = (k / n) * Math.PI * 2 - Math.PI / 2;
+    out += `<line x1="${c + r1 * Math.cos(t)}" y1="${c + r1 * Math.sin(t)}" x2="${c + r2 * Math.cos(t)}" y2="${c + r2 * Math.sin(t)}" stroke="rgba(255,255,255,.18)" stroke-width="${S > 150 ? 3 : 2.4}" stroke-linecap="round"/>`;
+  }
+  a.innerHTML = `<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">${out}</svg>`;
+};
+if (el === 'ring-s') ring(48);
+if (el === 'ring-l') ring(72);
+</script></body></html>

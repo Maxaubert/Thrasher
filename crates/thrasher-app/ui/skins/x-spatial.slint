@@ -1,0 +1,1447 @@
+// The Spatial Glass main page: Thrasher floats in a living room as frosted glass panes
+// (docs/mockups/device-themes/x-spatial.html). Record is a glowing glass orb with a halo
+// of ticks that is the live level meter; the toolbar is an ornament floating under the
+// window, with a grab bar below it that moves the window; the clip you highlight gets a
+// soft light and lifts. Portrait windows stack the recorder over the clips, wide ones put
+// the recorder on the left, tilted toward you.
+//
+// The room is a pre-blurred picture (the renderer has no live blur) and the round glass
+// parts and the shadows are PNGs in spatial/ (1x and 2x), cut from the mockup with
+// headless Edge (tools/skin-art/spatial.html). The panes, the text and everything that
+// reacts are drawn here. Nothing moves on a clock: the halo follows the level.
+
+import { Main, Tips, Icon, ProjectMenu, TextField, Scroller, ClipMenu, WaveSeek, ClipRow, SearchHit } from "../common.slint";
+
+// The glass's colours, from the mockup.
+global Glass {
+    out property <color> ink: #ffffff;
+    out property <color> ink2: #ffffffb8;
+    out property <color> ink3: #ffffff80;
+    // The pane: rgba(58,56,66,.46) under 4% white.
+    out property <color> fill: #4a48527b;
+    out property <color> edge: #ffffff47;
+    out property <color> edge-top: #ffffff8c;
+    out property <color> rec: #ff4d5e;
+    out property <color> rec-hi: #ff6b78;
+    out property <color> amber: #ffe08a;
+    out property <color> green: #5ef0a0;
+    out property <color> cyan: #9fe3ff;
+    // The timer's and the lengths' figures: Inter Tight with tabular figures.
+    out property <string> figures: "Spatial Figures";
+}
+
+// The shadow under a pane: a nine-slice picture around it, drawn outside the box only,
+// so the glass stays clear. `kind`: 0 a pane, 1 the pane nearest you, 2 the ornament,
+// 3 a title pill.
+component Shadow inherits Image {
+    in property <int> kind;
+    // The box it falls from.
+    in property <length> box-w;
+    in property <length> box-h;
+    // The picture's margins round the box: top, right, bottom, left.
+    property <length> mt: root.kind == 0 ? 32px : root.kind == 1 ? 36px : root.kind == 2 ? 24px : 14px;
+    property <length> mr: root.kind == 0 ? 48px : root.kind == 1 ? 60px : root.kind == 2 ? 40px : 24px;
+    property <length> mb: root.kind == 0 ? 72px : root.kind == 1 ? 90px : root.kind == 2 ? 56px : 36px;
+    x: -root.mr;
+    y: -root.mt;
+    width: root.box-w + 2 * root.mr;
+    height: root.box-h + root.mt + root.mb;
+    source: root.kind == 0 ? @image-url("x-spatial/shadow-pane.png", nine-slice(56 72 96 72))
+        : root.kind == 1 ? @image-url("x-spatial/shadow-near.png", nine-slice(60 84 114 84))
+        : root.kind == 2 ? @image-url("x-spatial/shadow-pill.png", nine-slice(48 64 80 64))
+        : @image-url("x-spatial/shadow-tab.png", nine-slice(29 39 51 39));
+    accessible-role: none;
+}
+
+// A pane of frosted glass: the fill, the light falling on its top, the edge and the
+// bright line along its top. The renderer ignores corners on gradients, so the light
+// is a rounded band down to the corners' end and a square gradient below it.
+component Pane inherits Rectangle {
+    in property <length> radius: 24px;
+    in property <int> shadow: 0;
+    Shadow { kind: root.shadow; box-w: root.width; box-h: root.height; }
+    Rectangle { border-radius: root.radius; background: Glass.fill; }
+    Rectangle {
+        y: 0;
+        height: root.radius;
+        border-top-left-radius: root.radius;
+        border-top-right-radius: root.radius;
+        background: #ffffff17;
+    }
+    Rectangle {
+        y: root.radius;
+        height: max(0px, parent.height * 0.4 - root.radius);
+        background: @linear-gradient(180deg, #ffffff12 0%, #ffffff00 100%);
+    }
+    Rectangle { border-radius: root.radius; border-width: 1px; border-color: Glass.edge; }
+    Rectangle {
+        x: root.radius * 0.6;
+        y: 1px;
+        width: parent.width - root.radius * 1.2;
+        height: 1px;
+        background: @linear-gradient(90deg, #ffffff00 0%, #ffffff8c 18%, #ffffff8c 82%, #ffffff00 100%);
+    }
+    @children
+}
+
+// A capsule of glass (the title pill, the ornament): brighter than a pane.
+component Capsule inherits Rectangle {
+    in property <int> shadow: 3;
+    property <length> r: root.height / 2;
+    Shadow { kind: root.shadow; box-w: root.width; box-h: root.height; }
+    Rectangle { border-radius: root.r; background: #5e5d6584; }
+    Rectangle {
+        y: 0;
+        height: root.r;
+        border-top-left-radius: root.r;
+        border-top-right-radius: root.r;
+        background: #ffffff10;
+    }
+    Rectangle { border-radius: root.r; border-width: 1px; border-color: Glass.edge; }
+    Rectangle {
+        x: root.r * 0.7;
+        y: 1px;
+        width: parent.width - root.r * 1.4;
+        height: 1px;
+        background: @linear-gradient(90deg, #ffffff00 0%, #ffffff8c 20%, #ffffff8c 80%, #ffffff00 100%);
+    }
+    @children
+}
+
+// A round glass button, 28, 30 or 34 across; its shadow is part of the picture.
+component GlassBtn inherits Rectangle {
+    in property <int> size: 30;
+    in property <string> icon;
+    in property <length> icon-size: 15px;
+    in property <string> label;
+    in property <string> tip: label;
+    in property <bool> enabled: true;
+    callback clicked;
+    property <bool> hi: 1phx < 0.7px;
+    width: root.size * 1px;
+    height: root.size * 1px;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Image {
+        x: -10px;
+        y: -10px;
+        width: parent.width + 20px;
+        height: parent.height + 20px;
+        source: root.size == 28 ? (root.hi ? @image-url("x-spatial/rb-28@2x.png") : @image-url("x-spatial/rb-28.png"))
+            : root.size == 34 ? (root.hi ? @image-url("x-spatial/rb-34@2x.png") : @image-url("x-spatial/rb-34.png"))
+            : (root.hi ? @image-url("x-spatial/rb-30@2x.png") : @image-url("x-spatial/rb-30.png"));
+        image-fit: fill;
+        opacity: root.enabled ? 1 : 0.45;
+    }
+    Rectangle {
+        visible: t.has-hover && root.enabled;
+        border-radius: self.width / 2;
+        background: t.pressed ? #ffffff30 : #ffffff1a;
+    }
+    Icon {
+        x: (parent.width - self.width) / 2 + (root.icon == "play" ? 1px : 0);
+        y: (parent.height - self.height) / 2;
+        name: root.icon;
+        tint: root.enabled ? Glass.ink : Glass.ink3;
+        width: root.icon-size;
+        height: root.icon-size;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The title bar: the name pill with the app's light, Settings, minimise and close.
+// It moves the window, as the grab bar does.
+component Title inherits Rectangle {
+    in property <bool> wide;
+    callback go(int);
+    property <bool> hi: 1phx < 0.7px;
+    height: root.wide ? 50px : 46px;
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    HorizontalLayout {
+        padding-left: root.wide ? 20px : 14px;
+        padding-right: root.wide ? 20px : 14px;
+        padding-top: root.wide ? 14px : 12px;
+        padding-bottom: root.height - 30px - self.padding-top;
+        spacing: 8px;
+        Capsule {
+            width: tab.preferred-width;
+            tab := HorizontalLayout {
+                padding-left: 6px;
+                padding-right: 13px;
+                spacing: 8px;
+                Rectangle {
+                    width: 20px;
+                    Image {
+                        x: -10px;
+                        y: (parent.height - 40px) / 2;
+                        width: 40px;
+                        height: 40px;
+                        source: root.hi ? @image-url("x-spatial/logo@2x.png") : @image-url("x-spatial/logo.png");
+                        image-fit: fill;
+                    }
+                }
+                Text {
+                    text: "Thrasher";
+                    color: Glass.ink;
+                    font-size: 13.5px;
+                    font-weight: 600;
+                    letter-spacing: 0.15px;
+                    vertical-alignment: center;
+                }
+            }
+        }
+        GlassBtn { icon: "cog"; label: "Settings"; clicked => { root.go(3); } }
+        Rectangle { horizontal-stretch: 1; }
+        GlassBtn { icon: "minimize"; icon-size: 13px; label: "Minimize"; clicked => { Main.minimize-window(); } }
+        GlassBtn { icon: "close"; icon-size: 13px; label: "Close"; clicked => { Main.close-window(); } }
+    }
+}
+
+// The lamp and the word of the recorder's state, on a small glass chip.
+component Status inherits Rectangle {
+    property <color> lamp: Main.recording ? (Main.paused ? Glass.amber : Glass.rec-hi) : Glass.green;
+    width: row.preferred-width;
+    height: 22px;
+    border-radius: 11px;
+    background: #ffffff1a;
+    border-width: 1px;
+    border-color: #ffffff2e;
+    row := HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 7px;
+        Rectangle {
+            width: 7px;
+            Rectangle {
+                width: 13px;
+                height: 13px;
+                border-radius: 6.5px;
+                background: root.lamp.with-alpha(0.25);
+            }
+            Rectangle {
+                width: 7px;
+                height: 7px;
+                border-radius: 3.5px;
+                background: root.lamp;
+            }
+        }
+        Text {
+            text: Main.recording ? (Main.paused ? "PAUSED" : "RECORDING") : "READY";
+            color: Glass.ink;
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 1.7px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// The timer: minutes and seconds in light figures, the tenth smaller and dimmer on the
+// same baseline.
+component Timer inherits HorizontalLayout {
+    in property <length> size: 40px;
+    alignment: start;
+    property <length> small: root.size * 0.55;
+    accessible-role: AccessibleRole.text;
+    accessible-label: Main.elapsed + Main.elapsed-tenth;
+    Text {
+        text: Main.elapsed;
+        color: Glass.ink;
+        font-family: Glass.figures;
+        font-weight: 300;
+        font-size: root.size;
+        letter-spacing: -0.02 * root.size;
+        accessible-role: none;
+    }
+    Rectangle {
+        width: tenth.preferred-width;
+        // Inter's descent is 0.242 em: lift the small text by the difference.
+        tenth := Text {
+            y: parent.height - self.height - 0.242 * (root.size - root.small);
+            text: Main.elapsed-tenth;
+            color: Glass.ink3;
+            font-family: Glass.figures;
+            font-weight: 400;
+            font-size: root.small;
+            accessible-role: none;
+        }
+    }
+}
+
+// The record orb in its halo of ticks. The halo is the live level: as many ticks light
+// up, clockwise from the top, as the level reaches, white, then yellow, then red. The
+// dim ring and the orb are pictures; the lit ticks are lines.
+component Orb inherits Rectangle {
+    in property <bool> big;
+    callback refocus();
+    property <bool> hi: 1phx < 0.7px;
+    property <int> n: root.big ? 72 : 48;
+    property <float> s: root.big ? 220 : 110;
+    property <float> c: root.s / 2;
+    property <float> r1: root.c - 10;
+    property <float> r2: root.c - 2;
+    property <length> orb-d: root.big ? 146px : 74px;
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0
+        ? clamp((Main.live[Main.live.length - 1] - 0.06) / 0.94, 0, 1) : 0;
+    property <int> lit: round(root.level * root.n);
+    width: root.s * 1px;
+    height: root.s * 1px;
+    Image {
+        width: 100%;
+        height: 100%;
+        source: root.big ? (root.hi ? @image-url("x-spatial/ring-l@2x.png") : @image-url("x-spatial/ring-l.png"))
+            : (root.hi ? @image-url("x-spatial/ring-s@2x.png") : @image-url("x-spatial/ring-s.png"));
+        image-fit: fill;
+    }
+    // Each lit tick is a line in a box of its own, 14px round its middle: the renderer
+    // draws a path into a mask of its whole box, so a ring-sized box per tick would
+    // cost the whole ring 72 times over.
+    for k in root.n: Path {
+        property <float> f: k / root.n;
+        property <angle> a: k * 360deg / root.n - 90deg;
+        property <float> mid: (root.r1 + root.r2) / 2;
+        property <float> half: (root.r2 - root.r1) / 2;
+        visible: k < root.lit;
+        x: (root.c + self.mid * cos(self.a) - 7) * 1px;
+        y: (root.c + self.mid * sin(self.a) - 7) * 1px;
+        width: 14px;
+        height: 14px;
+        viewbox-width: 14;
+        viewbox-height: 14;
+        stroke: self.f > 0.85 ? Glass.rec-hi : self.f > 0.65 ? Glass.amber : #fffffff2;
+        stroke-width: root.big ? 3px : 2.4px;
+        stroke-line-cap: round;
+        commands: "M " + (7 - self.half * cos(self.a)) + " " + (7 - self.half * sin(self.a))
+            + " L " + (7 + self.half * cos(self.a)) + " " + (7 + self.half * sin(self.a));
+    }
+    // The orb's picture is 96px wider than the orb, for its glow.
+    Image {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.orb-d + 96px;
+        height: root.orb-d + 96px;
+        source: root.big ? (root.hi ? @image-url("x-spatial/orb-l@2x.png") : @image-url("x-spatial/orb-l.png"))
+            : (root.hi ? @image-url("x-spatial/orb-s@2x.png") : @image-url("x-spatial/orb-s.png"));
+        image-fit: fill;
+    }
+    orb := Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.orb-d;
+        height: root.orb-d;
+        border-radius: self.width / 2;
+        background: t.pressed ? #00000024 : t.has-hover ? #ffffff14 : transparent;
+        accessible-role: button;
+        accessible-label: Main.recording ? "Stop and save" : "Record";
+        accessible-action-default => { Main.toggle-record(); root.refocus(); }
+        Icon {
+            name: Main.recording ? "stop" : "mic";
+            tint: #ffffff;
+            width: Main.recording ? (root.big ? 34px : 20px) : (root.big ? 46px : 26px);
+            height: self.width;
+        }
+        property <bool> hovering: t.has-hover;
+        changed hovering => { Tips.hover(self.hovering, Main.recording ? "Stop" : "Record", self.absolute-position, self.width, self.height); }
+        t := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { Tips.hide(); Main.toggle-record(); root.refocus(); }
+        }
+    }
+}
+
+// Pause and resume, a glass button beside the orb while recording.
+component PauseBtn inherits GlassBtn {
+    callback refocus();
+    icon: Main.paused ? "play" : "pause";
+    icon-size: 12px;
+    label: Main.paused ? "Resume" : "Pause";
+    clicked => { Main.toggle-pause(); root.refocus(); }
+}
+
+// The microphone in use, with its icon.
+component Device inherits HorizontalLayout {
+    spacing: 7px;
+    alignment: start;
+    Icon {
+        name: "mic";
+        tint: Glass.ink2;
+        width: 13px;
+        height: 13px;
+        y: (parent.height - self.height) / 2;
+    }
+    Text {
+        text: Main.device-label;
+        color: Glass.ink2;
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// The recorder in a portrait window: the state, the timer and the microphone on the
+// left, the orb on the right, and Pause before the orb while recording.
+component RecorderPane inherits Pane {
+    callback refocus();
+    shadow: 1;
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 14px;
+        spacing: 10px;
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            HorizontalLayout {
+                alignment: start;
+                Status { }
+            }
+            Rectangle { height: 9px; }
+            Timer { size: 40px; }
+            Rectangle { height: 9px; }
+            Device { height: 16px; }
+        }
+        if Main.recording: VerticalLayout {
+            alignment: center;
+            PauseBtn { refocus => { root.refocus(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            Orb { refocus => { root.refocus(); } }
+        }
+    }
+}
+
+// The recorder in a wide window, a tall pane tilted toward you: its left edge is nearer,
+// so taller. The renderer cannot turn things, so the pane's slanted ends are drawn and
+// its contents stay square.
+component RecorderTilt inherits Rectangle {
+    callback refocus();
+    property <float> w: root.width / 1px;
+    property <float> h: root.height / 1px;
+    // How much shorter the far (right) edge is at each end.
+    property <float> d: 12 * root.h / 470;
+    property <float> r: 24;
+    property <float> k: root.d / root.w;
+    // Where the far top corner ends.
+    property <float> cap: root.d + root.r;
+    // A short window gets the small orb and timer, so everything fits.
+    property <bool> roomy: root.height >= 470px;
+    Image {
+        x: -60px;
+        y: -36px;
+        width: parent.width + 120px;
+        height: parent.height + 126px;
+        source: @image-url("x-spatial/shadow-near.png", nine-slice(60 84 114 84));
+        accessible-role: none;
+    }
+    // The glass. The renderer draws a path into a mask of its full size every time
+    // anything over it changes, so only the slanted ends are paths and the upright
+    // middle is plain rectangles. The ends' outlines are open paths, so no line is drawn
+    // where an end meets the middle; they sit half a pixel in so the edge is not cut.
+    // The top end is lit evenly, as a flat pane's top is.
+    Path {
+        y: 0;
+        width: 100%;
+        height: root.cap * 1px;
+        viewbox-width: root.w;
+        viewbox-height: root.cap;
+        fill: #69676f86;
+        commands: "M 0 " + root.cap + " L 0 " + root.r + " Q 0 0 " + root.r + " " + (root.r * root.k)
+            + " L " + (root.w - root.r) + " " + (root.d - root.r * root.k)
+            + " Q " + root.w + " " + root.d + " " + root.w + " " + root.cap + " Z";
+    }
+    Path {
+        y: 0;
+        width: 100%;
+        height: root.cap * 1px;
+        viewbox-width: root.w;
+        viewbox-height: root.cap;
+        stroke: Glass.edge;
+        stroke-width: 1px;
+        commands: "M 0.5 " + root.cap + " L 0.5 " + root.r + " Q 0.5 0.5 " + root.r + " " + (0.5 + root.r * root.k)
+            + " L " + (root.w - root.r) + " " + (root.d - root.r * root.k + 0.5)
+            + " Q " + (root.w - 0.5) + " " + (root.d + 0.5) + " " + (root.w - 0.5) + " " + root.cap;
+    }
+    // The bright line along the top.
+    Path {
+        y: 0;
+        width: 100%;
+        height: root.cap * 1px;
+        viewbox-width: root.w;
+        viewbox-height: root.cap;
+        stroke: Glass.edge-top;
+        stroke-width: 1px;
+        commands: "M " + (root.r * 0.8) + " " + (1.5 + root.r * 0.8 * root.k)
+            + " L " + (root.w - root.r * 0.8) + " " + (root.d + 1 - root.r * 0.8 * root.k);
+    }
+    Rectangle {
+        y: root.cap * 1px;
+        height: parent.height - 2 * self.y;
+        background: Glass.fill;
+    }
+    Rectangle {
+        x: 1px;
+        y: root.cap * 1px;
+        width: parent.width - 2px;
+        height: max(0px, parent.height * 0.4 - self.y);
+        background: @linear-gradient(180deg, #ffffff12 0%, #ffffff00 100%);
+    }
+    Rectangle { x: 0; y: root.cap * 1px; width: 1px; height: parent.height - 2 * self.y; background: Glass.edge; }
+    Rectangle { x: parent.width - 1px; y: root.cap * 1px; width: 1px; height: parent.height - 2 * self.y; background: Glass.edge; }
+    // The bottom end.
+    Path {
+        y: parent.height - self.height;
+        width: 100%;
+        height: root.cap * 1px;
+        viewbox-width: root.w;
+        viewbox-height: root.cap;
+        fill: Glass.fill;
+        commands: "M " + root.w + " 0 Q " + root.w + " " + root.r + " " + (root.w - root.r) + " " + (root.r + root.r * root.k)
+            + " L " + root.r + " " + (root.cap - root.r * root.k)
+            + " Q 0 " + root.cap + " 0 " + root.d + " L 0 0 Z";
+    }
+    Path {
+        y: parent.height - self.height;
+        width: 100%;
+        height: root.cap * 1px;
+        viewbox-width: root.w;
+        viewbox-height: root.cap;
+        stroke: Glass.edge;
+        stroke-width: 1px;
+        commands: "M " + (root.w - 0.5) + " 0 Q " + (root.w - 0.5) + " " + root.r + " " + (root.w - root.r) + " " + (root.r + root.r * root.k - 0.5)
+            + " L " + root.r + " " + (root.cap - 0.5 - root.r * root.k)
+            + " Q 0.5 " + (root.cap - 0.5) + " 0.5 " + root.d + " L 0.5 0";
+    }
+    VerticalLayout {
+        padding-top: 22px + root.d * 1px * 0.5;
+        padding-bottom: 22px;
+        padding-left: 22px;
+        padding-right: 20px;
+        HorizontalLayout {
+            Status { }
+            Rectangle { horizontal-stretch: 1; }
+            Text {
+                text: "INPUT";
+                color: Glass.ink3;
+                font-size: 10px;
+                font-weight: 600;
+                letter-spacing: 2px;
+                vertical-alignment: center;
+            }
+        }
+        Rectangle { vertical-stretch: 1; }
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                width: orb.width;
+                height: orb.height;
+                orb := Orb { big: root.roomy; refocus => { root.refocus(); } }
+                // Pause sits left of the orb, in the halo's corner.
+                if Main.recording: PauseBtn {
+                    size: 34;
+                    x: -self.width - 6px;
+                    y: (parent.height - self.height) / 2;
+                    refocus => { root.refocus(); }
+                }
+            }
+        }
+        Rectangle { height: 6px; }
+        Text {
+            text: Main.recording ? "TAP ORB TO STOP" : "TAP ORB TO RECORD";
+            color: Glass.ink3;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            horizontal-alignment: center;
+        }
+        Rectangle { height: 20px; }
+        HorizontalLayout {
+            alignment: center;
+            Timer { size: root.roomy ? 60px : 44px; }
+        }
+        Rectangle { height: 16px; }
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                width: min(dev.preferred-width + 28px, 300px);
+                height: 30px;
+                border-radius: 15px;
+                background: #ffffff1a;
+                border-width: 1px;
+                border-color: #ffffff2e;
+                dev := Device {
+                    x: 14px;
+                    width: parent.width - 28px;
+                }
+            }
+        }
+        Rectangle { vertical-stretch: 1; }
+    }
+}
+
+// A clip's small waveform as thin rounded bars; the part played is red.
+component Bars inherits Rectangle {
+    in property <[float]> values;
+    in property <int> n: 11;
+    in property <float> progress: -1;
+    in property <color> tint: #ffffff8c;
+    in property <length> peak: 13px;
+    for i in root.n: Rectangle {
+        property <float> v: root.values.length > 0 ? root.values[floor(i * root.values.length / root.n)] : 0.06;
+        x: i * 3.5px;
+        width: 2px;
+        height: 3px + clamp(self.v, 0, 1) * root.peak;
+        y: (root.height - self.height) / 2;
+        border-radius: 1px;
+        background: (i + 0.5) / root.n <= root.progress ? Glass.rec-hi : root.tint;
+    }
+}
+
+// One clip: a round glass button that plays, the name and when it was made, the
+// waveform, the length and the menu. The highlighted clip lifts toward you, lit by a
+// soft light.
+component Row inherits Rectangle {
+    in property <int> index;
+    in property <ClipRow> item;
+    in property <bool> big;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    property <bool> selected: root.index == Main.selected;
+    property <bool> picked: Main.picked[root.index];
+    property <bool> active: root.index == Main.active-clip;
+    property <int> bars: root.big ? 22 : 11;
+    height: root.big ? 46px : 34px;
+    accessible-role: list-item;
+    accessible-label: root.item.name + ", " + root.item.duration;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected || root.picked;
+    accessible-action-default => { root.select(false, false); }
+    function select(ctrl: bool, shift: bool) {
+        Main.pick(root.index, ctrl, shift);
+        root.refocus();
+    }
+    row-touch := TouchArea {
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                root.select(e.modifiers.control, e.modifiers.shift);
+            }
+            // On release: the press that closes an open menu is used up by that menu.
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                menu.show-at(self.mouse-x, self.mouse-y);
+            }
+        }
+        // Opens just this clip, even out of several picked.
+        double-clicked => { root.select(false, false); Main.open-clip(root.index); root.go(1); }
+    }
+    // The glass under the row: lifted and lit when highlighted, faint when picked or
+    // under the mouse.
+    card := Rectangle {
+        x: root.selected ? -3px : 0;
+        y: 1px;
+        width: root.width - self.x * 2;
+        height: root.height - 2px;
+        Rectangle {
+            visible: root.selected;
+            x: 4px;
+            y: 6px;
+            width: parent.width - 8px;
+            height: parent.height;
+            border-radius: 16px;
+            background: #0000001f;
+        }
+        Rectangle {
+            border-radius: 16px;
+            background: root.selected ? #ffffff21 : root.picked ? #ffffff17 : row-touch.has-hover ? #ffffff0d : transparent;
+            border-width: root.selected || root.picked ? 1px : 0;
+            border-color: root.selected ? #ffffff73 : #ffffff40;
+        }
+        // The gaze light: brightest a third of the way in, fading over 100px each way.
+        // The row is lower than the light, so it is lit evenly top to bottom; the
+        // gradient keeps clear of the round ends.
+        Rectangle {
+            property <float> c: (parent.width * 0.3 - 16px) / (parent.width - 32px);
+            property <float> spread: 100px / (parent.width - 32px);
+            property <float> from: max(0, self.c - self.spread);
+            property <float> to: self.c + self.spread;
+            visible: root.selected;
+            x: 16px;
+            y: 1px;
+            width: parent.width - 32px;
+            height: parent.height - 2px;
+            background: @linear-gradient(90deg, #ffffff00 self.from * 100%, #ffffff26 self.c * 100%, #ffffff00 self.to * 100%);
+        }
+        Rectangle {
+            visible: root.selected;
+            x: 14px;
+            y: 1px;
+            width: parent.width - 28px;
+            height: 1px;
+            background: @linear-gradient(90deg, #ffffff00 0%, #ffffff99 15%, #ffffff99 85%, #ffffff00 100%);
+        }
+        HorizontalLayout {
+            padding-left: 7px;
+            padding-right: 6px;
+            spacing: 10px;
+            VerticalLayout {
+                alignment: center;
+                GlassBtn {
+                    size: 28;
+                    icon: root.active && Main.playing ? "pause" : "play";
+                    icon-size: 10px;
+                    label: (root.active && Main.playing ? "Pause " : "Play ") + root.item.name;
+                    tip: root.active && Main.playing ? "Pause" : "Play";
+                    clicked => { Main.play-clip(root.index); root.refocus(); }
+                }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 1px;
+                Text {
+                    text: root.item.name;
+                    color: Glass.ink;
+                    font-size: root.big ? 14px : 13.5px;
+                    font-weight: 600;
+                    letter-spacing: 0.07px;
+                    overflow: elide;
+                }
+                HorizontalLayout {
+                    alignment: start;
+                    spacing: 6px;
+                    Text {
+                        text: root.item.when;
+                        color: root.active ? Glass.ink2 : Glass.ink3;
+                        font-size: 10.5px;
+                        vertical-alignment: center;
+                    }
+                    if root.item.transcribed: HorizontalLayout {
+                        spacing: 3px;
+                        VerticalLayout {
+                            alignment: center;
+                            Rectangle {
+                                width: 5px;
+                                height: 5px;
+                                Rectangle { x: -2px; y: -2px; width: 9px; height: 9px; border-radius: 4.5px; background: #9fe3ff40; }
+                                Rectangle { border-radius: 2.5px; background: Glass.cyan; }
+                            }
+                        }
+                        Text {
+                            text: "transcribed";
+                            color: Glass.cyan;
+                            font-size: 10.5px;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+            // The waveform: a click on the highlighted clip moves its start, a double
+            // click plays from there.
+            Rectangle {
+                width: root.bars * 3.5px - 1.5px;
+                Bars {
+                    height: root.big ? 22px : 18px;
+                    y: (parent.height - self.height) / 2;
+                    n: root.bars;
+                    peak: root.big ? 16px : 13px;
+                    values: root.item.wave;
+                    tint: root.selected ? #ffffff : #ffffff8c;
+                    progress: root.active ? Main.play-fraction : -1;
+                }
+                WaveSeek {
+                    selected: root.selected;
+                    active: root.active;
+                    select(ctrl, shift) => { root.select(ctrl, shift); }
+                    cue(f) => { Main.cue-clip(root.index, f); root.refocus(); }
+                    play-at(f) => { Main.play-clip-at(root.index, f); root.refocus(); }
+                    menu(x, y) => { menu.show-at(x - root.absolute-position.x, y - root.absolute-position.y); }
+                }
+            }
+            Text {
+                min-width: root.big ? 54px : 44px;
+                text: root.item.duration;
+                color: Glass.ink2;
+                font-family: Glass.figures;
+                font-size: 12px;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+            }
+            // The three-dot menu: manage, rename, export, delete.
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 22px;
+                    height: 22px;
+                    border-radius: 11px;
+                    background: dots.has-hover ? #ffffff26 : root.selected ? #ffffff24 : transparent;
+                    accessible-role: button;
+                    accessible-label: "Menu for " + root.item.name;
+                    accessible-action-default => { root.open-menu(); }
+                    Icon {
+                        name: "dots";
+                        tint: root.selected || dots.has-hover ? Glass.ink : Glass.ink3;
+                        width: 14px;
+                        height: 14px;
+                    }
+                    property <bool> hovering: dots.has-hover;
+                    changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
+                    dots := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { Tips.hide(); root.open-menu(); }
+                    }
+                }
+            }
+        }
+    }
+    function open-menu() {
+        menu.show-at(root.width - 8px - 210px, (root.height + 22px) / 2 + 4px);
+    }
+    menu := ClipMenu {
+        width: parent.width;
+        height: parent.height;
+        item: root.item;
+        merge-count: root.picked ? Main.picked-count : 0;
+        projects: Main.projects;
+        project: Main.project;
+        window-h: root.window-h;
+        merge => { Main.start-merge(); root.go(5); }
+        open => { Main.open-clip(root.index); root.go(1); }
+        rename => { root.ask-rename(root.index); }
+        export(kind) => { Main.selected = root.index; Main.export-as(kind); root.refocus(); }
+        delete => { root.ask-delete(root.index); }
+        move-to(p) => { Main.move-clip(root.index, p); root.refocus(); }
+    }
+}
+
+// A search result: the clip (and its project when all projects are searched, more hits
+// as +2), then the words around the match, the match lit.
+component Hit inherits Rectangle {
+    in property <SearchHit> hit;
+    in property <bool> show-project;
+    callback clicked;
+    height: 52px;
+    accessible-role: button;
+    accessible-label: root.hit.clip + ", " + root.hit.before + " " + root.hit.matched + " " + root.hit.after;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        y: 1px;
+        height: parent.height - 2px;
+        border-radius: 16px;
+        background: t.has-hover ? #ffffff1f : #ffffff0f;
+        border-width: 1px;
+        border-color: t.has-hover ? #ffffff4d : #ffffff1f;
+    }
+    VerticalLayout {
+        x: 14px;
+        width: parent.width - 28px;
+        alignment: center;
+        spacing: 3px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: root.hit.clip;
+                color: Glass.ink;
+                font-size: 13.5px;
+                font-weight: 600;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if root.show-project: Text {
+                text: root.hit.project;
+                color: Glass.ink3;
+                font-size: 10.5px;
+                vertical-alignment: center;
+            }
+            if root.hit.more > 0: Text {
+                text: "+" + root.hit.more;
+                color: Glass.cyan;
+                font-size: 11px;
+                font-weight: 600;
+                vertical-alignment: center;
+            }
+        }
+        if root.hit.matched != "": HorizontalLayout {
+            spacing: 4px;
+            if root.hit.before != "": Text {
+                text: root.hit.before;
+                color: Glass.ink2;
+                font-size: 12px;
+                horizontal-stretch: 0;
+            }
+            Rectangle {
+                width: mark.preferred-width + 8px;
+                horizontal-stretch: 0;
+                border-radius: 4px;
+                background: #ffffff33;
+                mark := Text {
+                    text: root.hit.matched;
+                    color: Glass.ink;
+                    font-size: 12px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                }
+            }
+            Text {
+                text: root.hit.after;
+                color: Glass.ink2;
+                font-size: 12px;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The clips, or the search results while there is a query.
+component List inherits Rectangle {
+    in property <bool> big;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    if Main.query != "": Scroller {
+        VerticalLayout {
+            alignment: start;
+            padding-left: 5px;
+            padding-right: 9px;
+            padding-top: 2px;
+            spacing: 2px;
+            if Main.hits.length == 0: Text {
+                height: 40px;
+                text: "No matches";
+                color: Glass.ink3;
+                font-size: 13px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            for h[i] in Main.hits: Hit {
+                hit: h;
+                show-project: Main.search-all;
+                clicked => { Main.open-hit(i); root.go(1); }
+            }
+        }
+    }
+    if Main.query == "": Scroller {
+        content-y <=> Main.list-y;
+        property <int> count: Main.clips.length;
+        init => { Main.list-height = self.visible-height; Main.clamp-list(); }
+        changed visible-height => { Main.list-height = self.visible-height; Main.clamp-list(); }
+        changed count => { Main.clamp-list(); }
+        VerticalLayout {
+            alignment: start;
+            padding-left: 5px;
+            padding-right: 9px;
+            if Main.clips.length == 0: Text {
+                height: 40px;
+                text: "No clips yet";
+                color: Glass.ink3;
+                font-size: 13px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            for clip[i] in Main.clips: Row {
+                index: i;
+                item: clip;
+                big: root.big;
+                window-h: root.window-h;
+                go(p) => { root.go(p); }
+                ask-rename(n) => { root.ask-rename(n); }
+                ask-delete(n) => { root.ask-delete(n); }
+                refocus => { root.refocus(); }
+            }
+        }
+    }
+}
+
+// Now playing, at the foot of the clips pane: a round button that plays, the clip's
+// name, the line with a glass bead where it is, and the time. A click on the line
+// jumps there.
+component Player inherits Rectangle {
+    in property <bool> big;
+    callback refocus();
+    property <bool> hi: 1phx < 0.7px;
+    property <int> shown: Main.active-clip >= 0 && Main.active-clip < Main.clips.length ? Main.active-clip
+        : Main.selected >= 0 && Main.selected < Main.clips.length ? Main.selected : -1;
+    property <bool> is-active: self.shown >= 0 && self.shown == Main.active-clip;
+    property <float> at: root.is-active ? clamp(Main.play-fraction, 0, 1) : 0;
+    height: root.big ? 50px : 46px;
+    Rectangle {
+        border-radius: 18px;
+        background: #0000002e;
+        border-width: 1px;
+        border-color: #ffffff1f;
+    }
+    Rectangle { x: 16px; y: 1px; width: parent.width - 32px; height: 1px; background: #ffffff14; }
+    HorizontalLayout {
+        padding-left: root.big ? 10px : 8px;
+        padding-right: root.big ? 18px : 14px;
+        spacing: root.big ? 14px : 11px;
+        VerticalLayout {
+            alignment: center;
+            GlassBtn {
+                enabled: root.shown >= 0;
+                icon: root.is-active && Main.playing ? "pause" : "play";
+                icon-size: 11px;
+                label: root.is-active && Main.playing ? "Pause" : "Play";
+                clicked => { Main.play-clip(root.shown); root.refocus(); }
+            }
+        }
+        Text {
+            text: root.shown >= 0 ? Main.clips[root.shown].name : "Nothing playing";
+            color: Glass.ink2;
+            font-size: 12.5px;
+            font-weight: 500;
+            vertical-alignment: center;
+            overflow: elide;
+            max-width: root.big ? 240px : 150px;
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            min-width: 40px;
+            Rectangle {
+                y: (parent.height - self.height) / 2;
+                height: 5px;
+                border-radius: 2.5px;
+                background: #ffffff29;
+            }
+            Rectangle {
+                x: 0;
+                y: (parent.height - self.height) / 2;
+                width: max(5px, parent.width * root.at);
+                height: 5px;
+                border-radius: 2.5px;
+                background: root.is-active ? #ffffff8c : transparent;
+            }
+            Image {
+                x: (parent.width - 12px) * root.at - 7px;
+                y: (parent.height - self.height) / 2 + 1px;
+                width: 27px;
+                height: 27px;
+                source: root.hi ? @image-url("x-spatial/thumb@2x.png") : @image-url("x-spatial/thumb.png");
+                image-fit: fill;
+            }
+            // Click to jump; taller than the line so it is easy to hit.
+            TouchArea {
+                y: (parent.height - self.height) / 2;
+                height: 21px;
+                enabled: root.shown >= 0;
+                mouse-cursor: pointer;
+                clicked => {
+                    Main.selected = root.shown;
+                    Main.seek-fraction(self.mouse-x / self.width);
+                    root.refocus();
+                }
+            }
+        }
+        Text {
+            text: root.shown < 0 ? "--:-- / --:--"
+                : (root.is-active ? Main.play-position : "0:00") + " / " + Main.clips[root.shown].duration;
+            color: Glass.ink3;
+            font-family: Glass.figures;
+            font-size: 11.5px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// An export from a clip's menu or the project menu: what it is, how far along, and a
+// check when done, in the clips pane over the player.
+component Exporting inherits Rectangle {
+    height: 28px;
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        spacing: 10px;
+        if Main.export-state == 2: Icon {
+            name: "check";
+            tint: Glass.green;
+            width: 12px;
+            height: 12px;
+            y: (parent.height - self.height) / 2;
+        }
+        Text {
+            text: (Main.export-state == 2 ? "Exported " : "Exporting ") + Main.export-name;
+            color: Glass.ink2;
+            font-size: 12px;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+        if Main.export-state == 1: Rectangle {
+            width: 120px;
+            height: 5px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 2.5px;
+            background: #ffffff29;
+            Rectangle {
+                x: 0;
+                width: max(5px, parent.width * clamp(Main.export-progress, 0, 1));
+                border-radius: 2.5px;
+                background: #ffffffcc;
+                animate width { duration: 150ms; }
+            }
+        }
+        if Main.export-state == 1: Text {
+            text: round(Main.export-progress * 100) + "%";
+            color: Glass.ink3;
+            font-family: Glass.figures;
+            font-size: 11px;
+            vertical-alignment: center;
+            width: 34px;
+            horizontal-alignment: right;
+        }
+    }
+}
+
+// The clips pane: the list, an export in progress and the player.
+component Library inherits Pane {
+    in property <bool> big;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    property <length> inset: root.big ? 12px : 8px;
+    property <length> foot: player.height + (Main.export-state != 0 ? 30px : 0);
+    List {
+        x: root.inset;
+        y: root.inset;
+        width: parent.width - 2 * root.inset;
+        height: parent.height - 2 * root.inset - root.foot - (root.big ? 12px : 8px);
+        big: root.big;
+        window-h: root.window-h;
+        go(p) => { root.go(p); }
+        ask-rename(n) => { root.ask-rename(n); }
+        ask-delete(n) => { root.ask-delete(n); }
+        refocus => { root.refocus(); }
+    }
+    if Main.export-state != 0: Exporting {
+        x: root.inset;
+        y: parent.height - root.inset - player.height - 30px;
+        width: parent.width - 2 * root.inset;
+    }
+    player := Player {
+        x: root.inset;
+        y: parent.height - root.inset - self.height;
+        width: parent.width - 2 * root.inset;
+        big: root.big;
+        refocus => { root.refocus(); }
+    }
+}
+
+// The project pill in the ornament. ProjectMenu holds what it offers.
+component Project inherits Rectangle {
+    callback refocus();
+    property <bool> enabled: !Main.recording;
+    width: row.preferred-width;
+    height: 34px;
+    border-radius: 17px;
+    background: t.has-hover && root.enabled ? #ffffff38 : #ffffff29;
+    border-width: 1px;
+    border-color: #ffffff42;
+    opacity: root.enabled ? 1 : 0.55;
+    accessible-role: combobox;
+    accessible-label: "Project";
+    accessible-value: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+    accessible-expandable: true;
+    accessible-action-default => { if (root.enabled) { menu.show(); } }
+    accessible-action-expand => { if (root.enabled) { menu.show(); } }
+    Rectangle { x: 12px; y: 1px; width: parent.width - 24px; height: 1px; background: #ffffff66; }
+    row := HorizontalLayout {
+        padding-left: 13px;
+        padding-right: 10px;
+        spacing: 6px;
+        Text {
+            text: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+            color: Glass.ink;
+            font-size: 13px;
+            font-weight: 600;
+            vertical-alignment: center;
+            max-width: 160px;
+            overflow: elide;
+        }
+        Icon {
+            name: "down";
+            tint: Glass.ink;
+            width: 11px;
+            height: 11px;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { menu.show(); }
+    }
+    menu := ProjectMenu {
+        width: parent.width;
+        height: parent.height;
+        up: true;
+        projects: Main.projects;
+        current: Main.project;
+        has-clips: Main.clips.length > 0;
+        choose(i) => { Main.choose-project(i); root.refocus(); }
+        create => { Main.dialog-text = ""; Main.dialog = 4; }
+        rename => { Main.dialog-text = Main.projects[Main.project]; Main.dialog = 5; }
+        delete => { Main.delete-project(); root.refocus(); }
+        export => { Main.export-project(); root.refocus(); }
+    }
+}
+
+// The ornament floating under the window: the project, the search field, Import, Ask
+// and the widget.
+component Ornament inherits Capsule {
+    callback go(int);
+    callback refocus();
+    shadow: 2;
+    height: 48px;
+    HorizontalLayout {
+        padding-left: 7px;
+        padding-right: 7px;
+        spacing: 7px;
+        VerticalLayout {
+            alignment: center;
+            Project { refocus => { root.refocus(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            TextField {
+                height: 34px;
+                radius: 17px;
+                fill: #00000033;
+                rest-edge: #ffffff24;
+                ink: Glass.ink;
+                hint: Glass.ink3;
+                font-size: 12.5px;
+                side: 12px;
+                icon: "search";
+                placeholder: "Search";
+                label: "Search clips";
+                takes-escape: true;
+                focus-ticket: Main.search-ticket;
+                text <=> Main.query;
+                edited(t) => { Main.search(t, Main.search-all); }
+                escaped => { Main.query = ""; Main.search("", Main.search-all); root.refocus(); }
+                accepted => { if (Main.hits.length > 0) { Main.open-hit(0); root.go(1); } }
+            }
+        }
+        // Search every project instead of this one.
+        if Main.query != "" && Main.projects.length > 1: VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: all-text.preferred-width + 20px;
+                height: 26px;
+                border-radius: 13px;
+                background: Main.search-all ? #ffffff38 : #ffffff14;
+                border-width: 1px;
+                border-color: Main.search-all ? #ffffff73 : #ffffff2e;
+                accessible-role: checkbox;
+                accessible-label: "Search all projects";
+                accessible-checked: Main.search-all;
+                accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+                all-text := Text {
+                    x: 10px;
+                    y: (parent.height - self.height) / 2;
+                    text: "All projects";
+                    color: Main.search-all ? Glass.ink : Glass.ink2;
+                    font-size: 11px;
+                    font-weight: 600;
+                }
+                TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+                }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Rectangle { width: 1px; height: 22px; background: #ffffff2e; }
+        }
+        VerticalLayout {
+            alignment: center;
+            GlassBtn {
+                size: 34;
+                icon: "import";
+                label: "Import audio or video";
+                tip: "Import";
+                enabled: !Main.recording;
+                clicked => { Main.import-files(); }
+            }
+        }
+        if Main.can-ai: VerticalLayout {
+            alignment: center;
+            GlassBtn {
+                size: 34;
+                icon: "message";
+                label: "Ask your clips";
+                tip: "Ask";
+                clicked => { root.go(6); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            GlassBtn {
+                size: 34;
+                icon: "pip";
+                label: "Small widget";
+                tip: "Widget";
+                clicked => { Main.compact-changed(true); }
+            }
+        }
+    }
+}
+
+// The grab bar under the ornament: drag it to move the window.
+component Grab inherits Rectangle {
+    in property <length> bar: 110px;
+    width: root.bar + 40px;
+    height: 18px;
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    Rectangle {
+        x: 20px + 1px;
+        y: (parent.height - 6px) / 2 + 2px;
+        width: root.bar - 2px;
+        height: 6px;
+        border-radius: 3px;
+        background: #00000040;
+    }
+    Rectangle {
+        x: 20px;
+        y: (parent.height - 6px) / 2;
+        width: root.bar;
+        height: 6px;
+        border-radius: 3px;
+        background: #ffffff8c;
+    }
+}
+
+// The main page. Portrait: the title pills, the recorder pane, the clips pane, then the
+// ornament and the grab bar. Wide: the recorder on the left, tilted toward you, the
+// clips on the right with the ornament and the grab bar under them.
+export component MainPage inherits Rectangle {
+    // The window's size classes, as AppWindow works them out.
+    in property <bool> narrow;
+    in property <bool> wide;
+    in property <bool> tall;
+    // Opens page p (see AppWindow.page).
+    callback go(int);
+    // The rename and delete questions for clip i.
+    callback ask-rename(int);
+    callback ask-delete(int);
+    // Gives the keyboard back to the window's shortcuts.
+    callback refocus();
+
+    property <length> pitch: root.wide ? 46px : 34px;
+    init => { Main.row-h = root.pitch; }
+    changed pitch => { Main.row-h = root.pitch; Main.clamp-list(); }
+
+    // Where the clips pane sits; the ornament and the grab bar are centred under it.
+    property <length> lib-x: root.wide ? 416px : 14px;
+    property <length> lib-y: root.wide ? 58px : 194px;
+    property <length> lib-w: root.wide ? root.width - 438px : root.width - 28px;
+    property <length> lib-h: root.wide ? root.height - 150px : root.height - 276px;
+    property <length> orn-w: root.wide ? min(460px, root.lib-w - 20px) : min(root.width - 38px, 480px);
+    property <length> orn-y: root.wide ? root.height - 78px : root.height - 70px;
+
+    // The room behind the glass.
+    Image {
+        width: 100%;
+        height: 100%;
+        source: root.wide ? @image-url("x-spatial/room-w.png") : @image-url("x-spatial/room-p.png");
+        image-fit: fill;
+        accessible-role: none;
+    }
+
+    if !root.wide: RecorderPane {
+        x: 14px;
+        y: 52px;
+        width: parent.width - 28px;
+        height: 132px;
+        refocus => { root.refocus(); }
+    }
+    if root.wide: RecorderTilt {
+        x: 24px;
+        y: 58px;
+        width: 372px;
+        height: root.height - 150px;
+        refocus => { root.refocus(); }
+    }
+
+    Library {
+        x: root.lib-x;
+        y: root.lib-y;
+        width: root.lib-w;
+        height: root.lib-h;
+        big: root.wide;
+        window-h: root.height;
+        go(p) => { root.go(p); }
+        ask-rename(n) => { root.ask-rename(n); }
+        ask-delete(n) => { root.ask-delete(n); }
+        refocus => { root.refocus(); }
+    }
+
+    Ornament {
+        x: root.lib-x + (root.lib-w - self.width) / 2;
+        y: root.orn-y;
+        width: root.orn-w;
+        go(p) => { root.go(p); }
+        refocus => { root.refocus(); }
+    }
+
+    Grab {
+        bar: root.wide ? 120px : 110px;
+        x: root.lib-x + (root.lib-w - self.width) / 2;
+        y: root.height - (root.wide ? 22px : 20px);
+    }
+
+    // Messages float just above the ornament, so nothing moves when they come and go.
+    if Main.status != "": Rectangle {
+        x: root.lib-x + (root.lib-w - self.width) / 2;
+        y: root.orn-y - self.height - 10px;
+        width: min(msg.preferred-width + 28px, root.lib-w - 24px);
+        height: 28px;
+        border-radius: 14px;
+        background: #2a2530eb;
+        border-width: 1px;
+        border-color: #ffffff38;
+        msg := Text {
+            text: Main.status;
+            color: Glass.ink;
+            font-size: 12px;
+            overflow: elide;
+            x: 14px;
+            width: parent.width - 28px;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+
+    // The title pills over everything, so the window can always be moved.
+    Title {
+        y: 0;
+        wide: root.wide;
+        go(p) => { root.go(p); }
+    }
+}

@@ -55,7 +55,8 @@ component Shadow inherits Image {
 
 // A pane of frosted glass: the fill, the light falling on its top, the edge and the
 // bright line along its top. The renderer ignores corners on gradients, so the light
-// is a rounded band down to the corners' end and a square gradient below it.
+// is a rounded band down to the corners' end and a square gradient below it that starts
+// as bright as the band, so no seam shows where they meet.
 component Pane inherits Rectangle {
     in property <length> radius: 24px;
     in property <int> shadow: 0;
@@ -71,7 +72,7 @@ component Pane inherits Rectangle {
     Rectangle {
         y: root.radius;
         height: max(0px, parent.height * 0.4 - root.radius);
-        background: @linear-gradient(180deg, #ffffff12 0%, #ffffff00 100%);
+        background: @linear-gradient(180deg, #ffffff17 0%, #ffffff00 100%);
     }
     Rectangle { border-radius: root.radius; border-width: 1px; border-color: Glass.edge; }
     Rectangle {
@@ -312,15 +313,17 @@ component Orb inherits Rectangle {
         property <angle> a: k * 360deg / root.n - 90deg;
         property <float> mid: (root.r1 + root.r2) / 2;
         property <float> half: (root.r2 - root.r1) / 2;
+        // The box is larger than the viewbox by the stroke, so the tick keeps its length.
+        property <length> sw: root.big ? 3px : 2.4px;
         visible: k < root.lit;
-        x: (root.c + self.mid * cos(self.a) - 7) * 1px;
-        y: (root.c + self.mid * sin(self.a) - 7) * 1px;
-        width: 14px;
-        height: 14px;
+        x: (root.c + self.mid * cos(self.a) - 7) * 1px - self.sw / 2;
+        y: (root.c + self.mid * sin(self.a) - 7) * 1px - self.sw / 2;
+        width: 14px + self.sw;
+        height: 14px + self.sw;
         viewbox-width: 14;
         viewbox-height: 14;
         stroke: self.f > 0.85 ? Glass.rec-hi : self.f > 0.65 ? Glass.amber : #fffffff2;
-        stroke-width: root.big ? 3px : 2.4px;
+        stroke-width: self.sw;
         stroke-line-cap: round;
         commands: "M " + (7 - self.half * cos(self.a)) + " " + (7 - self.half * sin(self.a))
             + " L " + (7 + self.half * cos(self.a)) + " " + (7 + self.half * sin(self.a));
@@ -436,18 +439,35 @@ component RecorderTilt inherits Rectangle {
     property <float> cap: root.d + root.r;
     // A short window gets the small orb and timer, so everything fits.
     property <bool> roomy: root.height >= 470px;
-    Image {
-        x: -60px;
+    // The shadow, in upright strips that each shrink it to the slant at their right end:
+    // one upright box would leave its unshadowed inside showing past the slanted ends, as
+    // a pale corner above the far top and a dark slab under the far bottom. Shrunk to its
+    // right end, a strip's clear inside never reaches past the glass.
+    for i in 16: Rectangle {
+        property <length> x0: i == 0 ? -60px : root.width * i / 16;
+        property <length> x1: i == 15 ? root.width + 60px : root.width * (i + 1) / 16;
+        property <length> inset: root.d * (i + 1) / 16 * 1px;
+        x: self.x0;
         y: -36px;
-        width: parent.width + 120px;
-        height: parent.height + 126px;
-        source: @image-url("x-spatial/shadow-near.png", nine-slice(60 84 114 84));
-        accessible-role: none;
+        width: self.x1 - self.x0;
+        height: root.height + 126px;
+        clip: true;
+        Image {
+            x: -60px - parent.x0;
+            y: parent.inset;
+            width: root.width + 120px;
+            height: root.height + 126px - 2 * parent.inset;
+            source: @image-url("x-spatial/shadow-near.png", nine-slice(60 84 114 84));
+            accessible-role: none;
+        }
     }
     // The glass. The renderer draws a path into a mask of its full size every time
     // anything over it changes, so only the slanted ends are paths and the upright
     // middle is plain rectangles. The ends' outlines are open paths, so no line is drawn
     // where an end meets the middle; they sit half a pixel in so the edge is not cut.
+    // A stroked path is fitted into its box less the stroke's width, keeping its shape,
+    // so its box is 1px larger each way to keep the outline at the scale of the fill (in
+    // the exact box it shrinks 3%, about 5px in from each side).
     // The top end is lit evenly, as a flat pane's top is.
     Path {
         y: 0;
@@ -461,9 +481,10 @@ component RecorderTilt inherits Rectangle {
             + " Q " + root.w + " " + root.d + " " + root.w + " " + root.cap + " Z";
     }
     Path {
-        y: 0;
-        width: 100%;
-        height: root.cap * 1px;
+        x: -0.5px;
+        y: -0.5px;
+        width: parent.width + 1px;
+        height: root.cap * 1px + 1px;
         viewbox-width: root.w;
         viewbox-height: root.cap;
         stroke: Glass.edge;
@@ -474,9 +495,10 @@ component RecorderTilt inherits Rectangle {
     }
     // The bright line along the top.
     Path {
-        y: 0;
-        width: 100%;
-        height: root.cap * 1px;
+        x: -0.5px;
+        y: -0.5px;
+        width: parent.width + 1px;
+        height: root.cap * 1px + 1px;
         viewbox-width: root.w;
         viewbox-height: root.cap;
         stroke: Glass.edge-top;
@@ -494,7 +516,7 @@ component RecorderTilt inherits Rectangle {
         y: root.cap * 1px;
         width: parent.width - 2px;
         height: max(0px, parent.height * 0.4 - self.y);
-        background: @linear-gradient(180deg, #ffffff12 0%, #ffffff00 100%);
+        background: @linear-gradient(180deg, #ffffff17 0%, #ffffff00 100%);
     }
     Rectangle { x: 0; y: root.cap * 1px; width: 1px; height: parent.height - 2 * self.y; background: Glass.edge; }
     Rectangle { x: parent.width - 1px; y: root.cap * 1px; width: 1px; height: parent.height - 2 * self.y; background: Glass.edge; }
@@ -511,9 +533,10 @@ component RecorderTilt inherits Rectangle {
             + " Q 0 " + root.cap + " 0 " + root.d + " L 0 0 Z";
     }
     Path {
-        y: parent.height - self.height;
-        width: 100%;
-        height: root.cap * 1px;
+        x: -0.5px;
+        y: parent.height - root.cap * 1px - 0.5px;
+        width: parent.width + 1px;
+        height: root.cap * 1px + 1px;
         viewbox-width: root.w;
         viewbox-height: root.cap;
         stroke: Glass.edge;
@@ -746,6 +769,13 @@ component Row inherits Rectangle {
                             vertical-alignment: center;
                         }
                     }
+                    // The computer's sound was recorded too, as the classic rows say.
+                    if root.item.has-system: Text {
+                        text: "+ system";
+                        color: root.active ? Glass.ink2 : Glass.ink3;
+                        font-size: 10.5px;
+                        vertical-alignment: center;
+                    }
                 }
             }
             // The waveform: a click on the highlighted clip moves its start, a double
@@ -790,11 +820,14 @@ component Row inherits Rectangle {
                     accessible-role: button;
                     accessible-label: "Menu for " + root.item.name;
                     accessible-action-default => { root.open-menu(); }
-                    Icon {
-                        name: "dots";
-                        tint: root.selected || dots.has-hover ? Glass.ink : Glass.ink3;
-                        width: 14px;
-                        height: 14px;
+                    // Three dots in a row, as in the mockup (the shared icon stands them up).
+                    for d in 3: Rectangle {
+                        x: 5px + d * 4.5px;
+                        y: 9.5px;
+                        width: 3px;
+                        height: 3px;
+                        border-radius: 1.5px;
+                        background: root.selected || dots.has-hover ? Glass.ink : Glass.ink3;
                     }
                     property <bool> hovering: dots.has-hover;
                     changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }

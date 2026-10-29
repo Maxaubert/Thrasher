@@ -334,7 +334,14 @@ above its picker (the ornament sits at the window's foot).
   boxes and the pane as two slanted path ends over plain rectangles brought it to 17.8%.
   Keep paths small; draw what is upright with rectangles.
 - **Tilt without rotation:** the wide recorder pane's outline is a trapezoid (its far edge
-  12px shorter at each end); the contents stay square.
+  12px shorter at each end); the contents stay square. Its nine-slice shadow is cut into
+  16 upright strips, each shrunk to the slant at its right end; one upright box left its
+  clear middle showing past the slanted ends (a pale corner, a dark slab).
+- **Stroked paths shrink:** Slint fits a path into its box less the stroke width, keeping
+  the aspect, so a 1px outline in a 372x38 box came out 3% smaller (5px in from each
+  side) and the halo's 3px ticks in 14px boxes 21% shorter. Give a stroked path a box
+  larger by the stroke and move it back by half (see `RecorderTilt` and `Orb`).
+- **No seams:** a gradient under a lit band starts at the band's brightness.
 - **Tabular figures:** Inter Tight's digits are proportional, so the timer would jitter.
   `tools/skin-art/spatial-figures.py` maps the `tnum` glyphs as the plain ones and keeps
   only the timer's characters, as its own family "Spatial Figures" (300 and 400, 7 KB),
@@ -348,10 +355,10 @@ above its picker (the ornament sits at the window's foot).
   show tooltips in any theme (checked on Ember too).
 
 **Budgets measured on Spatial Glass** (test copy, 2.25x display, 10 s samples):
-- CPU idle 0.0 to 0.2% (Ember 0.0 to 0.2%); recording 7.7% at 520x700 (Ember 19.4%),
-  17.8% at 1100x700 (Ember 25.3%).
-- Working set idle 42.2 vs 41.4 MB (+0.8), wide 52.2 vs 49.2 MB (+3.0).
-- Exe +1.94 MB (44.83 to 46.77 MB): art 0.41 MB, fonts 7 KB, the rest generated code.
+- CPU idle 0.0 to 0.2% (Ember 0.0 to 0.3%); recording 7.7% at 520x700 (Ember 17 to 19%),
+  13 to 18% at 1100x700 (Ember 22 to 25%).
+- Working set idle 41 to 42 vs 40 to 41 MB (about +1), wide 52 vs 48 to 49 MB (+3).
+- Exe +2.0 MB (44.83 to 46.85 MB): art 0.41 MB, fonts 7 KB, the rest generated code.
 
 ### Art
 

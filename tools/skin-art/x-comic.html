@@ -1,0 +1,84 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Bangers;src:url(../../crates/thrasher-app/ui/fonts/Bangers-400.ttf)}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+svg{display:block}
+#a{position:absolute;left:0;top:0}
+:root{--ink:#141010;--paper:#fdf4dc;--red:#e3342f;--yel:#ffd43b;--cyan:#7cc6ee;--grey:#b9ad93}
+.logo{position:absolute;font-family:Bangers;letter-spacing:2px;color:var(--red);-webkit-text-stroke:1.4px #000;
+  text-shadow:3px 3px 0 var(--yel),4px 4px 0 #000;transform:rotate(-3deg) skewX(-6deg);line-height:1;white-space:nowrap}
+.issue{position:absolute;font-family:Bangers;letter-spacing:1px;border:2px solid var(--ink);background:var(--yel);padding:1px 5px 0;line-height:1.2;transform:rotate(3deg);color:var(--ink);white-space:nowrap}
+.meter{position:absolute;left:0;bottom:4px;display:flex;align-items:flex-end;gap:1px;font-family:Bangers;line-height:.85}
+.meter span{display:inline-block}
+.zap{position:absolute;font-family:Bangers;letter-spacing:.5px;background:var(--red);color:#fff;border:2px solid var(--ink);padding:0 4px;transform:rotate(8deg);line-height:1.25;white-space:nowrap}
+</style></head><body><div id="a"></div>
+<script>
+// One element of the Comic Book mockup (docs/mockups/device-themes/x-comic.html), alone
+// on a transparent page, for cutting into PNGs. ?el=name&w=css-width&h=css-height
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+
+// The mockup's seeded random numbers, so the bursts keep their exact points.
+function rnd(seed){let s=seed;return()=>{s=(s*9301+49297)%233280;return s/233280}}
+// The POW burst: yellow star, red star inside, the icon and the word, and the hard
+// 3px shadow. `seed` jitters the points; frames of one burst use nearby seeds so the
+// ink "boils" while recording.
+function burst(size, label, icon, seed){
+  const n=16,cx=size/2,cy=size/2,R=size/2-4,r=R*0.68,r2=rnd(seed);let pts=[];
+  for(let i=0;i<n*2;i++){const a=i/(n*2)*Math.PI*2-Math.PI/2;const rr=i%2?r*(0.92+r2()*0.12):R*(0.86+r2()*0.14);pts.push((cx+Math.cos(a)*rr).toFixed(1)+','+(cy+Math.sin(a)*rr).toFixed(1))}
+  const pts2=pts.map(p=>{const[x,y]=p.split(',').map(Number);return (cx+(x-cx)*0.78).toFixed(1)+','+(cy+(y-cy)*0.78).toFixed(1)}).join(' ');
+  const fs=size*0.25, ms=size*0.2;
+  const mic=`<g transform="translate(${cx-ms/2},${cy-ms*1.15}) scale(${ms/24})" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><rect x="8.5" y="3" width="7" height="11" rx="3.5" fill="#fff"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21"/></g>`;
+  const stop=`<g transform="translate(${cx-ms/2},${cy-ms*1.15}) scale(${ms/24})"><rect x="5" y="5" width="14" height="14" rx="1.5" fill="#fff" stroke="#141010" stroke-width="1.6"/></g>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="position:absolute;left:0;top:0;overflow:visible;filter:drop-shadow(3px 3px 0 #000)">
+   <polygon points="${pts.join(' ')}" fill="#ffd43b" stroke="#141010" stroke-width="3" stroke-linejoin="round"/>
+   <polygon points="${pts2}" fill="#e3342f" stroke="#141010" stroke-width="2.5" stroke-linejoin="round"/>
+   ${icon==='stop'?stop:mic}
+   <text x="${cx}" y="${cy+fs*0.95}" text-anchor="middle" font-family="Bangers" font-size="${fs}" fill="#fff" stroke="#141010" stroke-width="1.6" paint-order="stroke" letter-spacing="1" transform="rotate(-6 ${cx} ${cy})">${label}</text>
+  </svg>`}
+// A strip of `frames` bursts side by side, each `size + 4` square (room for the shadow).
+function strip(size, label, icon, seeds){
+  const f = size + 4;
+  a.innerHTML = seeds.map((s,k)=>`<div style="position:absolute;left:${k*f}px;top:0;width:${f}px;height:${f}px">${burst(size,label,icon,s)}</div>`).join('');
+}
+if (el === 'rec-p') strip(124, 'REC', 'mic', [124]);
+if (el === 'rec-w') strip(196, 'REC!', 'mic', [196]);
+if (el === 'stop-p') strip(124, 'STOP', 'stop', [125, 131]);
+if (el === 'stop-w') strip(196, 'STOP!', 'stop', [197, 203]);
+
+if (el === 'logo') {
+  // The masthead: THRASHER in red with its yellow and black shadow, and the No 1 tag.
+  a.innerHTML = `<span class="logo" style="left:4px;top:7px;font-size:34px">THRASHER</span><span class="issue" style="left:146px;top:15px;font-size:12px">No 1</span>`;
+}
+if (el === 'picked') {
+  a.innerHTML = `<span class="zap" style="left:3px;top:4px;font-size:11px">PICKED</span>`;
+}
+// The BZZZZZZZZT meter, all letters dark (off) or lit in their colours (on). Letter i
+// is base + i * step px, 1px apart; the skin clips the lit word between letters, at
+// ends worked out from Bangers' advance widths (the `ends` in ui/skins/x-comic-parts.slint).
+const cols=['#ffd43b','#ffd43b','#ffd43b','#ffb02e','#ffb02e','#ff8a24','#ff8a24','#f25a26','#e3342f','#e3342f'];
+function meter(base, step, on){
+  const word='BZZZZZZZZT'; let s='';
+  for(let i=0;i<word.length;i++){
+    const st = on ? `color:${cols[i]};-webkit-text-stroke:1.4px #000` : `color:var(--paper);-webkit-text-stroke:1.3px var(--grey)`;
+    s+=`<span style="font-size:${base+i*step}px;transform:rotate(${(i%2?3:-3)}deg);${st}">${word[i]}</span>`;
+  }
+  a.innerHTML = `<div class="meter" style="left:3px">${s}</div>`;
+}
+if (el === 'meter-off-p') meter(17, 1.5, false);
+if (el === 'meter-on-p') meter(17, 1.5, true);
+if (el === 'meter-off-w') meter(26, 2.6, false);
+if (el === 'meter-on-w') meter(26, 2.6, true);
+
+// Halftone tiles, one period each.
+function tile(bg, dot, r1, r2){
+  a.style.backgroundColor = bg;
+  a.style.backgroundImage = `radial-gradient(${dot} ${r1}px, transparent ${r2}px)`;
+  a.style.backgroundSize = `${W}px ${H}px`;
+}
+if (el === 'dots') tile('#fff', '#7cc6ee', 1.6, 1.9);
+if (el === 'dots-yellow') tile('#ffd43b', '#f39b1d', 1.5, 1.8);
+if (el === 'dots-grey') tile('#fff', '#cfc4aa', 1.2, 1.5);
+</script></body></html>

@@ -134,6 +134,46 @@ skin needs, with the same outlines and metrics).
   "N transcribed". The Type column shows from a 560px file window, so the mockup's 1000px
   wide window has Type and Wave.
 
+**Built in step 5, Comic Book main page (2026-10-29):**
+- `ui/skins/x-comic.slint` (skin 4, theme "Comic Book") and `ui/skins/x-comic-parts.slint`
+  (the `Comic` inks, `Box`, `Glyph`, `InkBtn`, `Caption`, `Tag`, `Bubble`, `Burst`,
+  `Meter`, `InkBars`, `PlayDot`), ready for the other pages. Fonts Bangers 400 and Comic
+  Neue 700 (OFL, Latin subset, 92 KB); Bangers' 5 has a flat top and a sharp corner, so it
+  does not read as S. Art: 23 PNGs, 459 KB (`sh tools/skin-art/cut.sh x-comic OUT`).
+- The theme is index 11 in `Theme.names`, `Theme.skins` 4. Its other pages are the classic
+  ones in its light palette (`Theme.pages` 0, like every skin without its own pages).
+- While recording, Pause is a small caption under the burst (the mockup's unused
+  `burstlbl` style); Import stays in the toolbar, disabled, as in the classic look. The
+  STOP burst boils between two inked frames at `RECORDING_FPS` 6.
+- Lessons:
+  - **Tiles repeat at one image pixel per logical pixel** (measured: the 14 px 2x dot
+    tile repeated every 14.2 logical px at 2.25x). A tile whose period matters (halftone
+    dots) uses the 1x image; the pilot's "2x tile when `1phx < 0.7px`" doubles the period.
+  - **`Path` stroke widths are pixels**, not viewbox units: icons copied from an SVG
+    mockup set `stroke-width: width * units / 24` (`Glyph`), or they turn into blobs.
+  - **Rotated or outlined text is art.** The masthead, the burst words and the meter are
+    PNGs. The meter is two words (dark and lit); the lit one is clipped with
+    `source-clip-width` at the gap after the last lit letter, the gaps worked out from
+    Bangers' advance widths (letter i is `base + i * step` px, 1 px apart).
+  - **Ellipses are `Path` arcs in a pixel viewbox** (`viewbox-width: width / 1px`), so the
+    outline keeps its width at every size. The timer bubble's width comes from the number
+    of characters, not their shapes, so it holds still while the tenths run.
+  - **Drawing over a later sibling** (the search bubble's thought circles over the clips
+    panel): the later sibling draws it, with the position handed over (`search-x`).
+  - **Padding inside the list:** take it out of `Main.list-height`, or keyboard scrolling
+    leaves the last row half hidden.
+  - **A toolbar shares its room** (review, 2026-10-29): a long project name plus All
+    projects pushed Widget out of the window. The project caption takes at most what
+    the rest leaves (`Toolbar.avail`, worked out by the page, since the toolbar's own
+    width loops back through the layout) and elides; the wide toolbar drops the button
+    words when they do not fit. Check skins with a long project name and a query.
+  - **Same row facts as the classic page:** a clip with the computer's sound says
+    "+ system"; the burst and Pause give the keyboard back (`refocus`) after a click.
+  - **Checks:** a posted `WM_CHAR` does not type in winit (post `WM_KEYDOWN` with the
+    virtual key); a posted wheel needs a mouse move first; tooltips did not show in
+    PrintWindow shots for any theme. Never press Import in a headless check: it opens
+    the system file dialog on screen.
+
 ### Recipe from the pilot (follow it for the other skins)
 
 - **Art:** an element page `tools/skin-art/<skin>.html` draws each fixed piece of the
@@ -264,6 +304,14 @@ skin needs, with the same outlines and metrics).
 - Exe +1.98 MB (44.83 to 46.81 MB): fonts 80 KB, art 3 KB, the rest generated code.
 - Review re-check: idle 0% at both sizes (Ember 0% and 0.3%), recording 7.8% and 11.7%
   (Ember 16.9% and 22.9%), working set 39.2 and 48.3 MB (Ember 38.0 and 46.3 MB).
+
+**Budgets measured on Comic Book** (test copy, 2.25x display, 10 s samples, 2026-10-29):
+- CPU idle 0.2 to 0.5% (Ember 0.2 to 0.3%); recording 7.0 to 8.6% at 520x700 (Ember
+  18.1%), 10.2% at 1100x700 (Ember 21.9%).
+- Working set idle 41.1 to 41.4 MB vs Ember 40.8 MB; wide 50.0 vs 48.6 MB; recording
+  44.8 vs 43.6 MB, wide 55.4 vs 51.7 MB.
+- Exe +2.35 MB (44.83 to 47.18 MB): fonts 0.09 MB, art 0.46 MB, generated code about
+  1.8 MB. Ember and Tape Deck main pages at 520x700 and 1100x700 match before and after.
 
 ### Art
 

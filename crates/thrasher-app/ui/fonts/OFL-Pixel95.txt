@@ -1,5 +1,6 @@
 Pixel 95 is Pixelify Sans (https://github.com/eifetx/Pixelify-Sans) with a redrawn 5, as static
-400 and 700 instances subset to Latin, for Thrasher's Desktop 95 skin (tools/skin-art/dv-os95-fonts.py).
+400, 500 and 700 instances subset to Latin, for Thrasher's Desktop 95 and Quest Menu skins
+(tools/skin-art/dv-os95-fonts.py).
 
 Copyright 2021 The Pixelify Sans Project Authors (https://github.com/eifetx/Pixelify-Sans)
 

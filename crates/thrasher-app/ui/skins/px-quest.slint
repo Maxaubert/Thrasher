@@ -1,0 +1,1393 @@
+// The Quest Menu main page: the recorder as a party member in a retro role playing menu
+// (docs/mockups/device-themes/px-quest.html). Every panel is a blue menu window with a
+// double pixel frame; the recorder is a character card with a mic sprite, an IN bar and a
+// round REC button; Import, Ask and the widget are a small command menu; the highlighted
+// clip has a glove cursor; the player is an EXP bar. Portrait windows put the commands
+// beside the project and search; wide ones put the card on the left with the command menu
+// docked under it, and the clips on the right.
+//
+// The frames, the meter and the waveforms are drawn here. The pixel art (icons, the mic
+// sprite, the record button, the glove) is cut at 1x from tools/skin-art/px-quest.html
+// into px-quest/ and drawn three or six times larger without smoothing. Nothing moves at
+// rest; while recording the glove and the status lamp blink on the Fx clock
+// (RECORDING_FPS 4), and the meter follows the live level like the classic one.
+
+import { Main, Tips, Fx, ProjectMenu, TextField, Scroller, ClipMenu, WaveSeek, ClipRow, SearchHit } from "../common.slint";
+
+// The mockup's colours and fonts.
+global Q {
+    out property <color> ink: #0a0b1a;
+    out property <color> win: #1c2b92;
+    out property <color> win-hi: #2335a6;
+    out property <color> win-mid: #1f2f9b;
+    out property <color> win-lo: #15206f;
+    out property <color> sel: #3049c9;
+    out property <color> sel-hi: #4462e6;
+    out property <color> sel-lo: #22379f;
+    out property <color> white: #f4f1e6;
+    out property <color> grey: #8d93b8;
+    out property <color> dim: #5f679e;
+    out property <color> gold: #ffd23f;
+    out property <color> hp: #4cd66b;
+    out property <color> mp: #56a8ff;
+    out property <color> red: #e5432f;
+    out property <color> pale: #c9cdf0;
+    out property <color> seg: #151d5c;
+    out property <color> rule: #2a3486;
+    out property <color> sep: #2a3aa8;
+    out property <color> edge: #22264a;
+    out property <string> font: "Pixel 95";
+    out property <string> label: "Silkscreen";
+    out property <string> figures: "Quest Figures";
+    // Off every other half second while recording (the Fx clock steps four times a second
+    // and runs twice as fast then): the glove and the status lamp blink. Lit otherwise.
+    out property <bool> blink: !Main.recording || Main.paused || Math.mod(Math.floor(Fx.t), 2) == 0;
+}
+
+// Pixel art at a whole scale, without smoothing.
+component Px inherits Image {
+    in property <float> s: 3;
+    width: self.source.width * root.s * 1px;
+    height: self.source.height * root.s * 1px;
+    image-fit: fill;
+    image-rendering: pixelated;
+}
+
+// A label in the pixel capitals.
+component Label inherits Text {
+    color: Q.gold;
+    font-family: Q.label;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    vertical-alignment: center;
+}
+
+// A menu window: a white and a grey pixel ring (the outer ink ring is the page itself)
+// round a blue face that is lighter at the top and darker at the bottom. Its content is
+// laid out inside the 9px frame.
+component Win inherits Rectangle {
+    in property <length> pad-x: 0;
+    in property <length> pad-y: 0;
+    Rectangle { x: 3px; y: 3px; width: parent.width - 6px; height: 3px; background: Q.white; }
+    Rectangle { x: 3px; y: parent.height - 6px; width: parent.width - 6px; height: 3px; background: Q.white; }
+    Rectangle { x: 3px; y: 6px; width: 3px; height: parent.height - 12px; background: Q.white; }
+    Rectangle { x: parent.width - 6px; y: 6px; width: 3px; height: parent.height - 12px; background: Q.white; }
+    Rectangle { x: 6px; y: 6px; width: parent.width - 12px; height: 3px; background: Q.grey; }
+    Rectangle { x: 6px; y: parent.height - 9px; width: parent.width - 12px; height: 3px; background: Q.grey; }
+    Rectangle { x: 6px; y: 9px; width: 3px; height: parent.height - 18px; background: Q.grey; }
+    Rectangle { x: parent.width - 9px; y: 9px; width: 3px; height: parent.height - 18px; background: Q.grey; }
+    Rectangle { x: 9px; y: 9px; width: parent.width - 18px; height: 6px; background: Q.win-hi; }
+    Rectangle { x: 9px; y: 15px; width: parent.width - 18px; height: 6px; background: Q.win-mid; }
+    Rectangle { x: 9px; y: 21px; width: parent.width - 18px; height: max(0px, parent.height - 39px); background: Q.win; }
+    Rectangle { x: 9px; y: max(21px, parent.height - 18px); width: parent.width - 18px; height: min(9px, max(0px, parent.height - 30px)); background: Q.win-lo; }
+    VerticalLayout {
+        padding-left: 9px + root.pad-x;
+        padding-right: 9px + root.pad-x;
+        padding-top: 9px + root.pad-y;
+        padding-bottom: 9px + root.pad-y;
+        @children
+    }
+}
+
+// The 3px corner notches of a pixel box, in the colour behind it.
+component Notches inherits Rectangle {
+    in property <color> behind;
+    Rectangle { x: 0; y: 0; width: 3px; height: 3px; background: root.behind; }
+    Rectangle { x: parent.width - 3px; y: 0; width: 3px; height: 3px; background: root.behind; }
+    Rectangle { x: 0; y: parent.height - 3px; width: 3px; height: 3px; background: root.behind; }
+    Rectangle { x: parent.width - 3px; y: parent.height - 3px; width: 3px; height: 3px; background: root.behind; }
+}
+
+// A 3px ring inside a box.
+component Ring inherits Rectangle {
+    in property <color> tint;
+    in property <length> at: 0;
+    Rectangle { x: root.at; y: root.at; width: parent.width - 2 * root.at; height: 3px; background: root.tint; }
+    Rectangle { x: root.at; y: parent.height - root.at - 3px; width: parent.width - 2 * root.at; height: 3px; background: root.tint; }
+    Rectangle { x: root.at; y: root.at + 3px; width: 3px; height: parent.height - 2 * root.at - 6px; background: root.tint; }
+    Rectangle { x: parent.width - root.at - 3px; y: root.at + 3px; width: 3px; height: parent.height - 2 * root.at - 6px; background: root.tint; }
+}
+
+// The small square pixel button (play, the player): dark blue with an ink rim and cut
+// corners.
+component PBtn inherits Rectangle {
+    in property <image> icon;
+    in property <color> tint: Q.white;
+    in property <color> behind: Q.win;
+    in property <string> label;
+    in property <string> tip: root.label;
+    in property <bool> enabled: true;
+    callback clicked;
+    width: 27px;
+    height: 27px;
+    background: t.has-hover && root.enabled ? Q.sel : Q.win-lo;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Ring { tint: Q.ink; }
+    Notches { behind: root.behind; }
+    Px {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 + (t.pressed && t.has-hover ? 1px : 0);
+        source: root.icon;
+        colorize: root.tint;
+        opacity: root.enabled ? 1 : 0.4;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// Settings, minimise and close in the title bar: a grey glyph, white when hovered; close
+// turns red.
+component TitleKey inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> danger;
+    callback clicked;
+    width: 27px;
+    height: 27px;
+    background: t.has-hover && root.danger ? Q.red : transparent;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Px {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        source: root.icon;
+        colorize: t.has-hover ? Q.white : Q.grey;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The title bar: a gold note, the name and its level, Settings, minimise and close.
+component Title inherits Rectangle {
+    callback go(int);
+    height: 36px;
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    HorizontalLayout {
+        padding-left: 3px;
+        padding-right: 3px;
+        spacing: 9px;
+        VerticalLayout {
+            alignment: center;
+            Px { source: @image-url("px-quest/note.png"); colorize: Q.gold; }
+        }
+        HorizontalLayout {
+            horizontal-stretch: 1;
+            spacing: 11px;
+            Text {
+                text: "Thrasher";
+                color: Q.white;
+                font-family: Q.label;
+                font-weight: 700;
+                font-size: 16px;
+                letter-spacing: 1px;
+                vertical-alignment: center;
+            }
+            Label {
+                text: "LV 1";
+                color: Q.dim;
+                horizontal-stretch: 1;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            TitleKey { icon: @image-url("px-quest/gear.png"); label: "Settings"; clicked => { root.go(3); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            TitleKey { icon: @image-url("px-quest/min.png"); label: "Minimize"; clicked => { Main.minimize-window(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            TitleKey { icon: @image-url("px-quest/close.png"); label: "Close"; danger: true; clicked => { Main.close-window(); } }
+        }
+    }
+}
+
+// The character sprite: the mic in a frame of ink and grey with cut corners.
+component Sprite inherits Rectangle {
+    in property <float> s: 3;
+    background: Q.win-lo;
+    Ring { tint: Q.ink; }
+    Ring { tint: Q.grey; at: 3px; }
+    Notches { behind: Q.win; }
+    Px {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        source: @image-url("px-quest/mic.png");
+        s: root.s;
+    }
+}
+
+// The status lamp and word: READY in green, REC in red (blinking), PAUSED in gold.
+component Status inherits HorizontalLayout {
+    in property <bool> keyed;
+    alignment: start;
+    property <color> tint: Main.recording ? (Main.paused ? Q.gold : Q.red) : Q.hp;
+    property <color> halo: Main.recording ? (Main.paused ? #3d330f : #3d1410) : #0f3d1e;
+    spacing: 3px;
+    VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: 12px;
+            height: 12px;
+            background: root.halo;
+            Rectangle {
+                x: 3px;
+                y: 3px;
+                width: 6px;
+                height: 6px;
+                background: root.tint;
+                visible: Q.blink;
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: 6px;
+        if root.keyed: Label {
+            text: "STATUS";
+            color: Q.grey;
+            font-size: 12px;
+        }
+        Label {
+            text: Main.recording ? (Main.paused ? "PAUSED" : "RECORDING") : "READY";
+            color: root.tint;
+            font-size: 12px;
+        }
+    }
+}
+
+// The timer in the pixel figures with a hard ink shadow. The two texts are as wide as
+// the time (the figures are tabular, so the width holds while it runs) and start on a
+// whole pixel when centred.
+component Timer inherits Rectangle {
+    in property <length> size: 28px;
+    in property <bool> centered;
+    property <string> value: Main.elapsed + Main.elapsed-tenth;
+    property <length> tw: min(face.preferred-width, root.width - 3px);
+    property <length> tx: root.centered ? round((root.width - 3px - root.tw) / 2 / 1px) * 1px : 0;
+    height: root.size + 3px;
+    Text {
+        x: root.tx + 3px;
+        y: 3px;
+        width: root.tw;
+        height: root.size;
+        text: root.value;
+        color: Q.ink;
+        font-family: Q.figures;
+        font-size: root.size;
+        letter-spacing: root.size > 40px ? 2px : 1px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    face := Text {
+        x: root.tx;
+        y: 0;
+        width: root.tw;
+        height: root.size;
+        text: root.value;
+        color: Q.white;
+        font-family: Q.figures;
+        font-size: root.size;
+        letter-spacing: root.size > 40px ? 2px : 1px;
+        vertical-alignment: center;
+    }
+}
+
+// The IN bar: segments in an ink well with a grey rim, green then gold, the last two red.
+// It follows the live level while recording.
+component Meter inherits Rectangle {
+    in property <int> segs: 14;
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;
+    property <int> on: round(root.segs * min(1, clamp((root.level - 0.06) / 0.94, 0, 1) * 1.15));
+    // Inside the rim and the ink padding, plus one gap, shared by the segments.
+    property <length> span: self.width - 12px + 3px;
+    height: 21px;
+    background: Q.ink;
+    Ring { tint: Q.grey; }
+    for i in root.segs: Rectangle {
+        property <bool> hot: i >= root.segs - 2;
+        property <bool> warm: !self.hot && i >= root.segs - 6;
+        x: 6px + round(i * root.span / root.segs / 1px) * 1px;
+        y: 6px;
+        width: round((i + 1) * root.span / root.segs / 1px) * 1px - round(i * root.span / root.segs / 1px) * 1px - 3px;
+        height: 9px;
+        background: i < root.on ? (self.hot ? Q.red : self.warm ? Q.gold : Q.hp) : Q.seg;
+    }
+}
+
+// The round REC button (Stop while recording) and its word under it.
+component RecKey inherits VerticalLayout {
+    in property <bool> big;
+    callback refocus();
+    spacing: root.big ? 9px : 6px;
+    alignment: center;
+    HorizontalLayout {
+        alignment: center;
+        Rectangle {
+            width: key.width;
+            height: key.height;
+            accessible-role: button;
+            accessible-label: Main.recording ? "Stop and save" : "Record";
+            accessible-action-default => { Main.toggle-record(); root.refocus(); }
+            key := Px {
+                y: t.pressed && t.has-hover ? 3px : 0;
+                source: Main.recording
+                    ? (root.big ? @image-url("px-quest/stop-l.png") : @image-url("px-quest/stop-s.png"))
+                    : (root.big ? @image-url("px-quest/rec-l.png") : @image-url("px-quest/rec-s.png"));
+            }
+            property <bool> hovering: t.has-hover;
+            changed hovering => { Tips.hover(self.hovering, Main.recording ? "Stop" : "Record", self.absolute-position, self.width, self.height); }
+            t := TouchArea {
+                clicked => { Tips.hide(); Main.toggle-record(); root.refocus(); }
+            }
+        }
+    }
+    Text {
+        text: Main.recording ? "STOP" : "REC";
+        color: Q.white;
+        font-family: Q.label;
+        font-size: root.big ? 12px : 11px;
+        letter-spacing: 0.5px;
+        horizontal-alignment: center;
+        accessible-role: none;
+    }
+}
+
+// The portrait character card: the sprite, the microphone, the status, the timer and the
+// IN bar, and REC on the right.
+component Card inherits Win {
+    callback refocus();
+    pad-x: 6px;
+    pad-y: 6px;
+    HorizontalLayout {
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            Sprite { width: 48px; height: 60px; }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 5px;
+            Text {
+                text: Main.device-label;
+                color: Q.white;
+                font-family: Q.font;
+                font-weight: 500;
+                font-size: 15px;
+                overflow: elide;
+            }
+            Status { }
+            Timer { size: Main.elapsed.character-count > 5 ? 24px : 28px; }
+            HorizontalLayout {
+                spacing: 6px;
+                Label { text: "IN"; }
+                Meter { segs: 14; horizontal-stretch: 1; }
+            }
+        }
+        RecKey { refocus => { root.refocus(); } }
+    }
+}
+
+// The wide character card: the big sprite beside RECORDER, the microphone and the status,
+// the big timer, the IN bar with its dB, and the big REC. A short window gets the
+// portrait's smaller sprite, timer and button.
+component BigCard inherits Win {
+    in property <bool> roomy;
+    callback refocus();
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;
+    pad-x: 12px;
+    pad-y: 6px;
+    VerticalLayout {
+        spacing: 0;
+        HorizontalLayout {
+            spacing: 15px;
+            VerticalLayout {
+                alignment: center;
+                Sprite {
+                    width: root.roomy ? 78px : 48px;
+                    height: root.roomy ? 102px : 60px;
+                    s: root.roomy ? 6 : 3;
+                }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 8px;
+                Label { text: "RECORDER"; }
+                Text {
+                    text: Main.device-label;
+                    color: Q.white;
+                    font-family: Q.font;
+                    font-weight: 500;
+                    font-size: 18px;
+                    overflow: elide;
+                }
+                Status { keyed: true; }
+            }
+        }
+        VerticalLayout {
+            padding-top: root.roomy ? 20px : 12px;
+            padding-bottom: root.roomy ? 14px : 10px;
+            Timer {
+                size: root.roomy ? (Main.elapsed.character-count > 5 ? 44px : 52px) : 36px;
+                centered: true;
+            }
+        }
+        HorizontalLayout {
+            spacing: 6px;
+            Label { text: "IN"; }
+            Meter { segs: 26; horizontal-stretch: 1; }
+            Label {
+                width: 60px;
+                text: Main.recording && !Main.paused && Main.live.length > 0 ? round(-48 + clamp((root.level - 0.06) / 0.94, 0, 1) * 46) + " dB" : "-- dB";
+                color: Q.grey;
+                horizontal-alignment: right;
+            }
+        }
+        VerticalLayout {
+            vertical-stretch: 1;
+            alignment: center;
+            padding-top: 8px;
+            RecKey { big: root.roomy; refocus => { root.refocus(); } }
+        }
+    }
+}
+
+// One command of the menu: its icon and word, gold when hovered.
+component Cmd inherits Rectangle {
+    in property <image> icon;
+    in property <string> text;
+    in property <string> label;
+    in property <string> tip;
+    in property <bool> enabled: true;
+    in property <bool> big;
+    callback clicked;
+    property <bool> hot: t.has-hover && root.enabled;
+    height: root.big ? 27px : 21px;
+    min-width: lay.min-width;
+    preferred-width: lay.preferred-width;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    lay := HorizontalLayout {
+        alignment: root.big ? center : start;
+        spacing: root.big ? 9px : 8px;
+        opacity: root.enabled ? 1 : 0.45;
+        VerticalLayout {
+            alignment: center;
+            Px { source: root.icon; colorize: root.hot ? Q.gold : Q.white; }
+        }
+        Text {
+            text: root.text;
+            color: root.hot ? Q.gold : Q.white;
+            font-family: Q.font;
+            font-size: root.big ? 15px : 14px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The portrait command window, beside the project and search: Import (Pause or Resume
+// while recording, when Import is not offered anyway), Ask (with the local AI) and the
+// widget.
+component CmdWin inherits Win {
+    callback go(int);
+    callback refocus();
+    pad-x: 6px;
+    pad-y: 3px;
+    VerticalLayout {
+        spacing: 3px;
+        alignment: center;
+        if !Main.recording: Cmd {
+            icon: @image-url("px-quest/imp.png");
+            text: "Import";
+            label: "Import audio or video";
+            tip: "Import";
+            clicked => { Main.import-files(); }
+        }
+        if Main.recording: Cmd {
+            icon: Main.paused ? @image-url("px-quest/cplay.png") : @image-url("px-quest/cpause.png");
+            text: Main.paused ? "Resume" : "Pause";
+            label: Main.paused ? "Resume" : "Pause";
+            tip: Main.paused ? "Resume" : "Pause";
+            clicked => { Main.toggle-pause(); root.refocus(); }
+        }
+        if Main.can-ai: Cmd {
+            icon: @image-url("px-quest/ask.png");
+            text: "Ask";
+            label: "Ask your clips";
+            tip: "Ask";
+            clicked => { root.go(6); }
+        }
+        Cmd {
+            icon: @image-url("px-quest/widget.png");
+            text: "Widget";
+            label: "Small widget";
+            tip: "Widget";
+            clicked => { Main.compact-changed(true); }
+        }
+    }
+}
+
+// The wide command menu under the card: its upright CMD title and the commands side by
+// side, split by thin rules.
+component CmdBar inherits Win {
+    callback go(int);
+    callback refocus();
+    pad-x: 3px;
+    pad-y: 3px;
+    HorizontalLayout {
+        spacing: 0;
+        VerticalLayout {
+            alignment: center;
+            padding-right: 12px;
+            Image {
+                width: 14px;
+                height: 32px;
+                source: 1phx < 0.7px ? @image-url("px-quest/cmd@2x.png") : @image-url("px-quest/cmd.png");
+                image-fit: fill;
+            }
+        }
+        if !Main.recording: Cmd {
+            big: true;
+            horizontal-stretch: 1;
+            icon: @image-url("px-quest/imp.png");
+            text: "Import";
+            label: "Import audio or video";
+            tip: "Import";
+            clicked => { Main.import-files(); }
+        }
+        if Main.recording: Cmd {
+            big: true;
+            horizontal-stretch: 1;
+            icon: Main.paused ? @image-url("px-quest/cplay.png") : @image-url("px-quest/cpause.png");
+            text: Main.paused ? "Resume" : "Pause";
+            label: Main.paused ? "Resume" : "Pause";
+            tip: Main.paused ? "Resume" : "Pause";
+            clicked => { Main.toggle-pause(); root.refocus(); }
+        }
+        if Main.can-ai: Rectangle { width: 3px; background: Q.sep; }
+        if Main.can-ai: Cmd {
+            big: true;
+            horizontal-stretch: 1;
+            icon: @image-url("px-quest/ask.png");
+            text: "Ask";
+            label: "Ask your clips";
+            tip: "Ask";
+            clicked => { root.go(6); }
+        }
+        Rectangle { width: 3px; background: Q.sep; }
+        Cmd {
+            big: true;
+            horizontal-stretch: 1;
+            icon: @image-url("px-quest/widget.png");
+            text: "Widget";
+            label: "Small widget";
+            tip: "Widget";
+            clicked => { Main.compact-changed(true); }
+        }
+    }
+}
+
+// The project picker: PARTY, the project and a gold arrow. ProjectMenu holds what it
+// offers.
+component Party inherits Rectangle {
+    callback refocus();
+    property <bool> enabled: !Main.recording;
+    property <string> name: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+    height: 24px;
+    accessible-role: combobox;
+    accessible-label: "Project";
+    accessible-value: root.name;
+    accessible-expandable: true;
+    accessible-action-default => { if (root.enabled) { menu.show(); } }
+    accessible-action-expand => { if (root.enabled) { menu.show(); } }
+    HorizontalLayout {
+        spacing: 8px;
+        opacity: root.enabled ? 1 : 0.5;
+        Label { text: "PARTY"; }
+        Text {
+            text: root.name;
+            color: t.has-hover && root.enabled ? Q.gold : Q.white;
+            font-family: Q.font;
+            font-weight: 500;
+            font-size: 15px;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+        VerticalLayout {
+            alignment: center;
+            Px { source: @image-url("px-quest/down.png"); colorize: Q.gold; }
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        clicked => { menu.show(); }
+    }
+    menu := ProjectMenu {
+        width: parent.width;
+        height: parent.height;
+        projects: Main.projects;
+        current: Main.project;
+        has-clips: Main.clips.length > 0;
+        choose(i) => { Main.choose-project(i); root.refocus(); }
+        create => { Main.dialog-text = ""; Main.dialog = 4; }
+        rename => { Main.dialog-text = Main.projects[Main.project]; Main.dialog = 5; }
+        delete => { Main.delete-project(); root.refocus(); }
+        export => { Main.export-project(); root.refocus(); }
+    }
+}
+
+// Search every project instead of this one: a small pixel box with a gold check.
+component AllBox inherits HorizontalLayout {
+    spacing: 6px;
+    VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: 15px;
+            height: 15px;
+            background: Q.ink;
+            Ring { tint: Q.grey; }
+            if Main.search-all: Px {
+                x: 3px;
+                y: 3px;
+                s: 1.8;
+                source: @image-url("px-quest/check.png");
+                colorize: Q.gold;
+            }
+        }
+    }
+    Text {
+        text: "All projects";
+        color: Main.search-all ? Q.gold : Q.grey;
+        font-family: Q.font;
+        font-size: 13px;
+        vertical-alignment: center;
+    }
+}
+
+// The search field: an ink well with a blue rim and cut corners, a dim magnifier and a
+// resting caret after the word Search.
+component Field inherits Rectangle {
+    in property <color> behind: Q.win;
+    callback go(int);
+    callback refocus();
+    height: 27px;
+    background: Q.ink;
+    Ring { tint: Q.rule; }
+    Notches { behind: root.behind; }
+    HorizontalLayout {
+        padding-left: 6px;
+        padding-right: 6px;
+        spacing: 6px;
+        VerticalLayout {
+            alignment: center;
+            Px { source: @image-url("px-quest/search.png"); colorize: Q.dim; }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            field := TextField {
+                y: 3px;
+                height: parent.height - 6px;
+                radius: 0;
+                fill: transparent;
+                rest-edge: transparent;
+                ink: Q.white;
+                hint: Q.dim;
+                font-size: 14px;
+                family: Q.font;
+                side: 2px;
+                placeholder: "Search";
+                label: "Search clips";
+                takes-escape: true;
+                focus-ticket: Main.search-ticket;
+                text <=> Main.query;
+                edited(t) => { Main.search(t, Main.search-all); }
+                escaped => { Main.query = ""; Main.search("", Main.search-all); root.refocus(); }
+                accepted => { if (Main.hits.length > 0) { Main.open-hit(0); root.go(1); } }
+            }
+            // The mockup's caret, while the field is empty and not in use.
+            if !field.has-focus && Main.query == "": Rectangle {
+                x: 2px + hint.preferred-width + 2px;
+                y: (parent.height - self.height) / 2;
+                width: 3px;
+                height: 15px;
+                background: Q.grey;
+            }
+            hint := Text {
+                visible: false;
+                text: "Search";
+                font-family: Q.font;
+                font-size: 14px;
+            }
+        }
+    }
+}
+
+// The portrait tool window: the project on top, the search field under it (with All
+// projects beside the project while searching).
+component Tools inherits Win {
+    callback go(int);
+    callback refocus();
+    pad-x: 3px;
+    pad-y: 3px;
+    VerticalLayout {
+        spacing: 6px;
+        alignment: center;
+        HorizontalLayout {
+            padding-left: 6px;
+            padding-right: 6px;
+            spacing: 10px;
+            Party { horizontal-stretch: 1; refocus => { root.refocus(); } }
+            if Main.query != "" && Main.projects.length > 1: Rectangle {
+                width: all-p.preferred-width;
+                accessible-role: checkbox;
+                accessible-label: "Search all projects";
+                accessible-checked: Main.search-all;
+                accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+                all-p := AllBox { }
+                TouchArea {
+                    clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+                }
+            }
+        }
+        Field {
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+    }
+}
+
+// The wide tool window over the clips: the project, then the search field (and All
+// projects after it while searching).
+component WideTools inherits Win {
+    callback go(int);
+    callback refocus();
+    pad-x: 6px;
+    pad-y: 3px;
+    HorizontalLayout {
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            Party { width: 150px; refocus => { root.refocus(); } }
+        }
+        Field {
+            horizontal-stretch: 1;
+            behind: Q.win-hi;
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+        if Main.query != "" && Main.projects.length > 1: Rectangle {
+            width: all-w.preferred-width;
+            accessible-role: checkbox;
+            accessible-label: "Search all projects";
+            accessible-checked: Main.search-all;
+            accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+            all-w := AllBox { }
+            TouchArea {
+                clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+            }
+        }
+    }
+}
+
+// One clip: the glove on the highlighted one, play, a pixel waveform (a click on the
+// highlighted clip moves its start, a double click plays from there), the name with when
+// it was made (and transcribed, + system), the length and the menu. The highlighted and
+// the picked clips are a lighter band with a bevel.
+component Row inherits Rectangle {
+    in property <int> index;
+    in property <ClipRow> item;
+    in property <bool> big;
+    in property <int> cols;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    property <bool> selected: root.index == Main.selected;
+    property <bool> picked: Main.picked[root.index];
+    property <bool> active: root.index == Main.active-clip;
+    property <bool> lit: root.selected || root.picked;
+    property <int> bar-h: root.big ? 9 : 7;
+    height: root.big ? 42px : 29px;
+    background: root.lit ? Q.sel : row-touch.has-hover ? Q.win-mid : transparent;
+    accessible-role: list-item;
+    accessible-label: root.item.name + ", " + root.item.duration;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.lit;
+    accessible-action-default => { root.select(false, false); }
+    function select(ctrl: bool, shift: bool) {
+        Main.pick(root.index, ctrl, shift);
+        root.refocus();
+    }
+    if root.lit: Rectangle { y: 0; height: 3px; background: Q.sel-hi; }
+    if root.lit: Rectangle { y: parent.height - 3px; height: 3px; background: Q.sel-lo; }
+    if root.selected: Px {
+        x: root.big ? 6px : 3px;
+        y: (parent.height - self.height) / 2;
+        source: @image-url("px-quest/hand.png");
+        visible: Q.blink;
+    }
+    row-touch := TouchArea {
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                root.select(e.modifiers.control, e.modifiers.shift);
+            }
+            // On release: the press that closes an open menu is used up by that menu.
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                menu.show-at(self.mouse-x, self.mouse-y);
+            }
+        }
+        // Opens just this clip, even out of several picked.
+        double-clicked => { root.select(false, false); Main.open-clip(root.index); root.go(1); }
+    }
+    HorizontalLayout {
+        padding-left: root.big ? 36px : 30px;
+        padding-right: 6px;
+        spacing: root.big ? 14px : 8px;
+        VerticalLayout {
+            alignment: center;
+            PBtn {
+                behind: root.lit ? Q.sel : Q.win;
+                icon: root.active && Main.playing ? @image-url("px-quest/pause.png") : @image-url("px-quest/play.png");
+                tint: root.selected ? Q.gold : Q.white;
+                label: (root.active && Main.playing ? "Pause " : "Play ") + root.item.name;
+                tip: root.active && Main.playing ? "Pause" : "Play";
+                clicked => { Main.play-clip(root.index); root.refocus(); }
+            }
+        }
+        if root.cols > 0: VerticalLayout {
+            alignment: center;
+            wave := Rectangle {
+                width: (root.cols * 2 - 1) * 3px;
+                height: root.bar-h * 3px;
+                for i in root.cols: Rectangle {
+                    property <float> v: root.item.wave.length > 0 ? root.item.wave[Math.floor(i * root.item.wave.length / root.cols)] : 0.06;
+                    property <int> raw: Math.max(1, Math.round(self.v * root.bar-h));
+                    // Odd bars in an odd box (and even in even) sit on whole pixels.
+                    property <int> n: Math.mod(self.raw, 2) != Math.mod(root.bar-h, 2) ? Math.min(root.bar-h, self.raw + 1) : self.raw;
+                    x: i * 6px;
+                    y: (root.bar-h - self.n) / 2 * 3px;
+                    width: 3px;
+                    height: self.n * 3px;
+                    background: root.active && (i + 0.5) / root.cols <= Main.play-fraction ? Q.gold : root.lit ? Q.white : Q.dim;
+                }
+                WaveSeek {
+                    selected: root.selected;
+                    active: root.active;
+                    select(ctrl, shift) => { root.select(ctrl, shift); }
+                    cue(f) => { Main.cue-clip(root.index, f); root.refocus(); }
+                    play-at(f) => { Main.play-clip-at(root.index, f); root.refocus(); }
+                    menu(x, y) => { menu.show-at(x - root.absolute-position.x, y - root.absolute-position.y); }
+                }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: root.big ? 2px : 0;
+            Text {
+                text: root.item.name;
+                color: Q.white;
+                font-family: Q.font;
+                font-weight: 500;
+                font-size: root.big ? 15px : 14px;
+                overflow: elide;
+            }
+            HorizontalLayout {
+                spacing: 0;
+                Text {
+                    text: root.item.when + (root.item.transcribed ? " · " : "");
+                    color: root.lit ? Q.pale : Q.grey;
+                    font-family: Q.font;
+                    font-size: root.big ? 12px : 11px;
+                    overflow: elide;
+                    horizontal-stretch: 0;
+                }
+                if root.item.transcribed: Text {
+                    text: "transcribed";
+                    color: Q.mp;
+                    font-family: Q.font;
+                    font-size: root.big ? 12px : 11px;
+                    overflow: elide;
+                    horizontal-stretch: 0;
+                }
+                Text {
+                    text: root.item.has-system ? " · + system" : "";
+                    color: root.lit ? Q.pale : Q.grey;
+                    font-family: Q.font;
+                    font-size: root.big ? 12px : 11px;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+            }
+        }
+        Label {
+            min-width: root.big ? 64px : 48px;
+            text: root.item.duration;
+            color: root.selected ? Q.gold : Q.white;
+            font-size: root.big ? 12px : 11px;
+            horizontal-alignment: right;
+        }
+        // The menu: manage, rename, export, delete.
+        Rectangle {
+            width: 15px;
+            accessible-role: button;
+            accessible-label: "Menu for " + root.item.name;
+            accessible-action-default => { root.open-menu(); }
+            Px {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                source: @image-url("px-quest/dots.png");
+                colorize: more.has-hover ? Q.gold : root.lit ? Q.white : Q.grey;
+            }
+            property <bool> hovering: more.has-hover;
+            changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
+            more := TouchArea {
+                clicked => { Tips.hide(); root.open-menu(); }
+            }
+        }
+    }
+    function open-menu() {
+        menu.show-at(root.width - 8px - 210px, root.height / 2 + 10px);
+    }
+    menu := ClipMenu {
+        width: parent.width;
+        height: parent.height;
+        item: root.item;
+        merge-count: root.picked ? Main.picked-count : 0;
+        projects: Main.projects;
+        project: Main.project;
+        window-h: root.window-h;
+        merge => { Main.start-merge(); root.go(5); }
+        open => { Main.open-clip(root.index); root.go(1); }
+        rename => { root.ask-rename(root.index); }
+        export(kind) => { Main.selected = root.index; Main.export-as(kind); root.refocus(); }
+        delete => { root.ask-delete(root.index); }
+        move-to(p) => { Main.move-clip(root.index, p); root.refocus(); }
+    }
+}
+
+// A search result: the clip (its project when all projects are searched, extra hits as
+// +2), then the words round the match, the match in gold.
+component Hit inherits Rectangle {
+    in property <SearchHit> hit;
+    in property <bool> show-project;
+    in property <bool> big;
+    callback clicked;
+    property <bool> hot: t.has-hover;
+    height: 42px;
+    background: root.hot ? Q.sel : transparent;
+    accessible-role: button;
+    accessible-label: root.hit.clip + ", " + root.hit.before + " " + root.hit.matched + " " + root.hit.after;
+    accessible-action-default => { root.clicked(); }
+    if root.hot: Px {
+        x: root.big ? 6px : 3px;
+        y: (parent.height - self.height) / 2;
+        source: @image-url("px-quest/hand.png");
+    }
+    VerticalLayout {
+        padding-left: root.big ? 36px : 30px;
+        padding-right: 9px;
+        alignment: center;
+        spacing: 2px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: root.hit.clip;
+                color: Q.white;
+                font-family: Q.font;
+                font-weight: 500;
+                font-size: 14px;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if root.show-project: Text {
+                text: root.hit.project;
+                color: Q.grey;
+                font-family: Q.font;
+                font-size: 12px;
+                vertical-alignment: center;
+            }
+            if root.hit.more > 0: Label {
+                text: "+" + root.hit.more;
+            }
+        }
+        if root.hit.matched != "": HorizontalLayout {
+            spacing: 4px;
+            if root.hit.before != "": Text {
+                text: root.hit.before;
+                color: Q.pale;
+                font-family: Q.font;
+                font-size: 12px;
+                horizontal-stretch: 0;
+            }
+            Rectangle {
+                width: mark.preferred-width + 6px;
+                horizontal-stretch: 0;
+                background: Q.gold;
+                mark := Text {
+                    text: root.hit.matched;
+                    color: Q.ink;
+                    font-family: Q.font;
+                    font-size: 12px;
+                    horizontal-alignment: center;
+                }
+            }
+            Text {
+                text: root.hit.after;
+                color: Q.pale;
+                font-family: Q.font;
+                font-size: 12px;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    t := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+// The clips window: (wide) the CLIPS and TIME heads, then the rows or the search results.
+component Clips inherits Win {
+    in property <bool> big;
+    in property <int> cols;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    vertical-stretch: 1;
+    VerticalLayout {
+        padding-right: 3px;
+        vertical-stretch: 1;
+        if root.big && Main.query == "": HorizontalLayout {
+            padding-top: 6px;
+            padding-bottom: 6px;
+            padding-left: 36px;
+            padding-right: 12px;
+            Label { text: "CLIPS"; color: Q.grey; horizontal-stretch: 1; }
+            Label { text: "TIME"; color: Q.grey; }
+        }
+        if Main.query != "": Scroller {
+            vertical-stretch: 1;
+            VerticalLayout {
+                alignment: start;
+                if Main.hits.length == 0: Text {
+                    height: 36px;
+                    text: "No matches";
+                    color: Q.grey;
+                    font-family: Q.font;
+                    font-size: 14px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                for h[i] in Main.hits: Hit {
+                    hit: h;
+                    big: root.big;
+                    show-project: Main.search-all;
+                    clicked => { Main.open-hit(i); root.go(1); }
+                }
+            }
+        }
+        if Main.query == "": Scroller {
+            vertical-stretch: 1;
+            content-y <=> Main.list-y;
+            property <int> count: Main.clips.length;
+            init => { Main.list-height = self.visible-height; Main.clamp-list(); }
+            changed visible-height => { Main.list-height = self.visible-height; Main.clamp-list(); }
+            changed count => { Main.clamp-list(); }
+            VerticalLayout {
+                alignment: start;
+                for clip[i] in Main.clips: Row {
+                    index: i;
+                    item: clip;
+                    big: root.big;
+                    cols: root.cols;
+                    window-h: root.window-h;
+                    go(p) => { root.go(p); }
+                    ask-rename(n) => { root.ask-rename(n); }
+                    ask-delete(n) => { root.ask-delete(n); }
+                    refocus => { root.refocus(); }
+                }
+            }
+        }
+    }
+}
+
+// The EXP bar: how far the clip in the player is, gold in an ink well with a dim rim. A
+// click jumps there.
+component Exp inherits Rectangle {
+    in property <int> shown;
+    in property <float> at;
+    callback refocus();
+    height: 18px;
+    background: Q.ink;
+    Ring { tint: Q.dim; }
+    Rectangle {
+        x: 6px;
+        y: 6px;
+        width: round((parent.width - 12px) * root.at / 1px) * 1px;
+        height: parent.height - 12px;
+        background: Q.gold;
+    }
+    TouchArea {
+        enabled: root.shown >= 0;
+        clicked => {
+            Main.selected = root.shown;
+            Main.seek-fraction(clamp((self.mouse-x - 6px) / (self.width - 12px), 0, 1));
+            root.refocus();
+        }
+    }
+}
+
+// The player: play, the clip in it (else the highlighted one), its time and the EXP bar.
+// Portrait windows put the bar on its own line.
+component Player inherits Win {
+    in property <bool> big;
+    callback refocus();
+    property <int> shown: Main.active-clip >= 0 && Main.active-clip < Main.clips.length ? Main.active-clip
+        : Main.selected >= 0 && Main.selected < Main.clips.length ? Main.selected : -1;
+    property <bool> is-active: self.shown >= 0 && self.shown == Main.active-clip;
+    property <float> at: root.is-active ? clamp(Main.play-fraction, 0, 1) : 0;
+    property <string> time: root.shown < 0 ? "--:-- / --:--"
+        : (root.is-active ? Main.play-position : "0:00") + " / " + Main.clips[root.shown].duration;
+    pad-x: 6px;
+    height: root.big ? 45px : 66px;
+    VerticalLayout {
+        spacing: 3px;
+        HorizontalLayout {
+            spacing: root.big ? 14px : 9px;
+            VerticalLayout {
+                alignment: center;
+                PBtn {
+                    behind: Q.win-hi;
+                    enabled: root.shown >= 0;
+                    icon: root.is-active && Main.playing ? @image-url("px-quest/pause.png") : @image-url("px-quest/play.png");
+                    label: root.is-active && Main.playing ? "Pause" : "Play";
+                    clicked => { Main.play-clip(root.shown); root.refocus(); }
+                }
+            }
+            Text {
+                min-width: root.big ? 180px : 0;
+                max-width: root.big ? 180px : 100000px;
+                horizontal-stretch: root.big ? 0 : 1;
+                text: root.shown >= 0 ? Main.clips[root.shown].name : "Nothing playing";
+                color: root.shown >= 0 ? Q.white : Q.grey;
+                font-family: Q.font;
+                font-weight: root.shown >= 0 ? 500 : 400;
+                font-size: 14px;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            if root.big: Label { text: "EXP"; }
+            if root.big: VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                padding-left: 0;
+                padding-right: 0;
+                Exp { shown: root.shown; at: root.at; refocus => { root.refocus(); } }
+            }
+            Label {
+                text: root.time;
+                color: Q.grey;
+            }
+        }
+        if !root.big: HorizontalLayout {
+            spacing: 6px;
+            Label { text: "EXP"; }
+            Exp {
+                horizontal-stretch: 1;
+                shown: root.shown;
+                at: root.at;
+                refocus => { root.refocus(); }
+            }
+        }
+    }
+}
+
+// An export from the clip menu or the project menu: what it is, the bar and a check when
+// done. It takes its own room above the player.
+component ExportWin inherits Win {
+    pad-x: 6px;
+    height: 39px;
+    HorizontalLayout {
+        spacing: 9px;
+        if Main.export-state == 2: VerticalLayout {
+            alignment: center;
+            Px { source: @image-url("px-quest/check.png"); colorize: Q.hp; }
+        }
+        Text {
+            text: (Main.export-state == 2 ? "Exported " : "Exporting ") + Main.export-name;
+            color: Q.white;
+            font-family: Q.font;
+            font-size: 13px;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+        if Main.export-state == 1: VerticalLayout {
+            alignment: center;
+            Exp {
+                width: 120px;
+                shown: -1;
+                at: clamp(Main.export-progress, 0, 1);
+            }
+        }
+        if Main.export-state == 1: Label {
+            width: 40px;
+            text: round(Main.export-progress * 100) + "%";
+            color: Q.grey;
+            horizontal-alignment: right;
+        }
+    }
+}
+
+// The main page: the title bar, then (portrait) the card, the tools beside the commands,
+// the clips and the player, or (wide) the card over the command menu beside the tools
+// over the clips, and the player across.
+export component MainPage inherits Rectangle {
+    // The window's size classes, as AppWindow works them out.
+    in property <bool> narrow;
+    in property <bool> wide;
+    in property <bool> tall;
+    // Opens page p (see AppWindow.page).
+    callback go(int);
+    // The rename and delete questions for clip i.
+    callback ask-rename(int);
+    callback ask-delete(int);
+    // Gives the keyboard back to the window's shortcuts.
+    callback refocus();
+
+    property <length> pitch: root.wide ? 42px : 29px;
+    init => { Main.row-h = root.pitch; }
+    changed pitch => { Main.row-h = root.pitch; Main.clamp-list(); }
+    // The wide card's height: the window less the title, the command menu, the player and
+    // the gaps; a short window gets the smaller card.
+    property <length> card-h: root.height - 3px - 36px - 6px - 51px - 6px - (Main.export-state != 0 ? 45px : 0) - 6px - 45px - 9px;
+    property <length> left-w: clamp(root.width * 0.4, 360px, 440px);
+    property <length> foot-h: root.wide ? 45px : 66px;
+
+    background: Q.ink;
+    // The window's own pixel edge.
+    Ring { tint: Q.edge; }
+    VerticalLayout {
+        padding-top: 3px;
+        padding-left: 9px;
+        padding-right: 9px;
+        padding-bottom: 9px;
+        spacing: 6px;
+        Title { vertical-stretch: 0; go(p) => { root.go(p); } }
+        if !root.wide: Card { vertical-stretch: 0; refocus => { root.refocus(); } }
+        if !root.wide: HorizontalLayout {
+            vertical-stretch: 0;
+            spacing: 6px;
+            Tools {
+                horizontal-stretch: 1;
+                go(p) => { root.go(p); }
+                refocus => { root.refocus(); }
+            }
+            CmdWin {
+                horizontal-stretch: 0;
+                go(p) => { root.go(p); }
+                refocus => { root.refocus(); }
+            }
+        }
+        if !root.wide: Clips {
+            big: false;
+            cols: root.width >= 640px ? 16 : 11;
+            window-h: root.height;
+            go(p) => { root.go(p); }
+            ask-rename(n) => { root.ask-rename(n); }
+            ask-delete(n) => { root.ask-delete(n); }
+            refocus => { root.refocus(); }
+        }
+        if root.wide: HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 6px;
+            VerticalLayout {
+                width: root.left-w;
+                spacing: 6px;
+                BigCard {
+                    vertical-stretch: 1;
+                    roomy: root.card-h >= 400px;
+                    refocus => { root.refocus(); }
+                }
+                CmdBar {
+                    vertical-stretch: 0;
+                    go(p) => { root.go(p); }
+                    refocus => { root.refocus(); }
+                }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 6px;
+                WideTools {
+                    vertical-stretch: 0;
+                    go(p) => { root.go(p); }
+                    refocus => { root.refocus(); }
+                }
+                Clips {
+                    big: true;
+                    cols: 20;
+                    window-h: root.height;
+                    go(p) => { root.go(p); }
+                    ask-rename(n) => { root.ask-rename(n); }
+                    ask-delete(n) => { root.ask-delete(n); }
+                    refocus => { root.refocus(); }
+                }
+            }
+        }
+        if Main.export-state != 0: ExportWin { vertical-stretch: 0; }
+        Player {
+            vertical-stretch: 0;
+            big: root.wide;
+            refocus => { root.refocus(); }
+        }
+    }
+    // Messages float just above the player in a small window, so nothing moves when they
+    // come and go.
+    if Main.status != "": Win {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - 9px - root.foot-h - 6px - self.height;
+        width: min(msg.preferred-width + 18px + 18px, parent.width - 32px);
+        height: 39px;
+        pad-x: 9px;
+        msg := Text {
+            text: Main.status;
+            color: Q.white;
+            font-family: Q.font;
+            font-size: 13px;
+            overflow: elide;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+}

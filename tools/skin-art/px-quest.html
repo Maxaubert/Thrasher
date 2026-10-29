@@ -1,0 +1,122 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Silkscreen;src:url("../../crates/thrasher-app/ui/fonts/Silkscreen-400.ttf")}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+svg{display:block}
+#a{position:absolute;left:0;top:0}
+</style></head><body><div id="a"></div>
+<script>
+// One element of the Quest Menu mockup (docs/mockups/device-themes/px-quest.html), alone
+// on a transparent page, for cutting into PNGs. ?el=name&w=css-width&h=css-height
+// The pixel art is drawn one css pixel per art pixel; Slint scales it up three (or six)
+// times with `image-rendering: pixelated`, so only the 1x cut is used. One-colour icons
+// are white here and coloured in Slint with `colorize`.
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+
+// The mockup's colours; '#' is white, for icons Slint colours itself.
+const COL = {
+  K:'#0a0b1a', W:'#f4f1e6', G:'#8d93b8', D:'#5f679e', d:'#3a4280',
+  Y:'#ffd23f', y:'#b8860b', R:'#e5432f', r:'#8f1f1a', L:'#ff8a6a',
+  g:'#4cd66b', B:'#56a8ff', S:'#c9cdf0', '#':'#ffffff'
+};
+function px(map) {
+  const h = map.length, w = map[0].length;
+  let r = '';
+  for (let y = 0; y < h; y++) {
+    const row = map[y];
+    let x = 0;
+    while (x < w) {
+      const c = row[x];
+      if (c === '.') { x++; continue; }
+      let n = 1;
+      while (x + n < w && row[x + n] === c) n++;
+      r += `<rect x="${x}" y="${y}" width="${n}" height="1" fill="${COL[c]}"/>`;
+      x += n;
+    }
+  }
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges">${r}</svg>`;
+}
+
+// The mockup's pixel maps, plus pause, the command menu's pause and resume, and a check.
+const I = {
+  gear:['..#.#..','.#####.','###.###','##...##','###.###','.#####.','..#.#..'],
+  min:['.......','.......','.......','.......','.......','#######','#######'],
+  close:['##...##','.##.##.','..###..','...#...','..###..','.##.##.','##...##'],
+  play:['#....','###..','#####','###..','#....'],
+  pause:['##.##','##.##','##.##','##.##','##.##'],
+  dots:['#','.','#','.','#'],
+  imp:['...#...','...#...','.#.#.#.','..###..','#..#..#','#.....#','#######'],
+  ask:['.#####.','#.....#','#.#.#.#','#.....#','.#####.','.##....','.#.....'],
+  widget:['#######','#######','#.....#','#.###.#','#.###.#','#.....#','#######'],
+  search:['.###...','#...#..','#...#..','#...#..','.####..','....##.','.....##'],
+  down:['#####','.###.','..#..'],
+  note:['..##','..#.','..#.','###.','##..'],
+  cpause:['.......','.##.##.','.##.##.','.##.##.','.##.##.','.##.##.','.......'],
+  cplay:['.#.....','.##....','.###...','.####..','.###...','.##....','.#.....'],
+  check:['....#','...##','#.##.','###..','.#...'],
+  hand:['.KKK....','KWWWKKKK','KWWWWWWK','KWWWKKK.','KWWWWK..','.KKKK...'],
+  mic:[
+    '...KKKK...',
+    '..KWWGGK..',
+    '..KWDGDK..',
+    '..KWGGGK..',
+    '..KWDGDK..',
+    'K.KGGGDK.K',
+    'K.KGDDDK.K',
+    'K..KKKK..K',
+    '.K......K.',
+    '..KKKKKK..',
+    '....KK....',
+    '....KK....',
+    '..KYYYYK..',
+    '..KKKKKK..'
+  ]
+};
+
+// The stepped round record button with a mic glyph (the mockup's recButton), or with a
+// square for Stop.
+function recButton(N, stop) {
+  const c = (N - 1) / 2, R = N / 2 - 0.25;
+  const g = [];
+  for (let y = 0; y < N; y++) {
+    let row = '';
+    for (let x = 0; x < N; x++) {
+      const d = Math.hypot(x - c, y - c);
+      if (d > R) row += '.';
+      else if (d > R - 1.15) row += 'K';
+      else {
+        const diag = (x - c) + (y - c);
+        if (d > R - 3.2 && diag < -R * 0.75) row += 'L';
+        else if (d > R - 3.2 && diag > R * 0.75) row += 'r';
+        else row += 'R';
+      }
+    }
+    g.push(row.split(''));
+  }
+  const mic = ['..WWW..','..WWW..','..WWW..','W.WWW.W','W.....W','.W...W.','..WWW..','...W...','.WWWWW.'];
+  const square = ['WWWWW','WWWWW','WWWWW','WWWWW','WWWWW'];
+  const glyph = stop ? square : mic;
+  const scale = N >= 24 ? 2 : 1;
+  const gw = glyph[0].length * scale, gh = glyph.length * scale;
+  const ox = Math.round((N - gw) / 2), oy = Math.round((N - gh) / 2);
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+    if (glyph[Math.floor(y / scale)][Math.floor(x / scale)] === 'W') g[oy + y][ox + x] = 'W';
+  }
+  return g.map(r => r.join(''));
+}
+I['rec-s'] = recButton(19, false);
+I['rec-l'] = recButton(33, false);
+I['stop-s'] = recButton(19, true);
+I['stop-l'] = recButton(33, true);
+
+if (I[el]) a.innerHTML = px(I[el]);
+if (el === 'cmd') {
+  // The wide command menu's title, written upwards (the renderer cannot rotate text).
+  a.innerHTML = `<div style="width:${W}px;height:${H}px;display:grid;place-items:center">
+    <span style="font-family:Silkscreen;font-size:11px;letter-spacing:.5px;line-height:1;color:#ffd23f;writing-mode:vertical-rl;transform:rotate(180deg)">CMD</span></div>`;
+}
+</script>
+</body></html>

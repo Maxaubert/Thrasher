@@ -153,7 +153,7 @@ export struct Palette {
 // settings page switches it.
 export global Theme {
     in-out property <int> current: 0;
-    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass", "Car Dashboard", "Pocket"];
+    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass", "Car Dashboard", "Pocket", "Quest Menu"];
     out property <[Palette]> palettes: [
         // Ember
         { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618, card-line: #00000000 },
@@ -187,6 +187,8 @@ export global Theme {
         // Pocket: a green four shade LCD, for the pages it does not draw itself yet (its main
         // page is ui/skins/px-pocket.slint).
         { bg: #c3ce7b, card: #b6c26d, row: #bcc774, raised: #aebb63, line: #a3b05a, line-soft: #adb963, edge: #8d9d49, text: #1a2710, text2: #263519, muted: #3e5020, dim: #4e6127, accent: #2f3c1a, accent-hover: #4e6127, on-accent: #c3ce7b, wave: #8d9d49, wave-dim: #a1af5a, track: #a6b45e, danger: #7a1d10, hover: #aebb63, hover-soft: #b6c26d, row-hover: #bcc774, picked: #a9b75f, popup: #b6c26d, popup-edge: #4e6127, knob: #4e6127, faint: #6e8436, fainter: #8d9d49, rec-rest: #8d9d49, divider: #adb963, border: #8d9d49, card-edge: #8d9d49, footer: #b6c26d, press: #8d9d49, card-line: #8d9d49 },
+        // Quest Menu: blue menu windows on ink, gold cursor (its main page is ui/skins/px-quest.slint).
+        { bg: #0a0b1a, card: #1c2b92, row: #15206f, raised: #2335a6, line: #2a3486, line-soft: #1f2f9b, edge: #5f679e, text: #f4f1e6, text2: #c9cdf0, muted: #a9aed0, dim: #8d93b8, accent: #ffd23f, accent-hover: #ffe27a, on-accent: #0a0b1a, wave: #5f679e, wave-dim: #3a4280, track: #15206f, danger: #ff8a6a, hover: #2335a6, hover-soft: #1f2f9b, row-hover: #121a5e, picked: #3049c9, popup: #15206f, popup-edge: #8d93b8, knob: #8d93b8, faint: #8d93b8, fainter: #3a4280, rec-rest: #8f1f1a, divider: #15206f, border: #2a3486, card-edge: #2a3486, footer: #0a0b1a, press: #3049c9, card-line: #8d93b8 },
     ];
     out property <color> bg: root.palettes[root.current].bg;
     out property <color> card: root.palettes[root.current].card;
@@ -234,8 +236,9 @@ export global Theme {
     // the look in ui/skins/classic.slint; 1 Tape Deck, ui/skins/tape.slint; 2 Phosphor,
     // ui/skins/phosphor.slint; 3 Desktop 95, ui/skins/dv-os95.slint; 4 Comic Book,
     // ui/skins/x-comic.slint; 5 Spatial Glass, ui/skins/x-spatial.slint; 6 Car Dashboard,
-    // ui/skins/x-dash.slint; 7 Pocket, ui/skins/px-pocket.slint.
-    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7];
+    // ui/skins/x-dash.slint; 7 Pocket, ui/skins/px-pocket.slint; 8 Quest Menu,
+    // ui/skins/px-quest.slint.
+    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8];
     out property <int> skin: root.skins[root.current];
     // How the other pages are built: 1 Tape Deck's (skins/tape-pages.slint), else 0, the
     // classic pages in the theme's palette (also for skins whose pages are not built yet).

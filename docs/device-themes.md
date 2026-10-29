@@ -214,6 +214,7 @@ from `tools/skin-art/dash.html` (`sh tools/skin-art/cut.sh dash OUT`).
 "Pocket", index 14 in `Theme.names`), art in `ui/skins/px-pocket/` (27 PNGs at 1x, 3 KB) from
 `tools/skin-art/px-pocket.html` (`sh tools/skin-art/cut.sh px-pocket OUT`, only the 1x cut is
 used). Its other pages are the classic ones in a green LCD palette (`Theme.pages` 0).
+- Settings gallery: its tile is the Pocket line in `Gallery.devices` (`ui/gallery.slint`), band #8bac0f.
 - The LCD holds the recorder, the project and search row, the list and the player; the bezel
   holds A (Record, Stop while recording), B (Import, Pause or Resume while recording), the Ask
   and Widget pills and the D pad. Settings, minimise and close are keys on the top edge.

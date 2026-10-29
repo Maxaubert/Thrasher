@@ -199,8 +199,9 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
   520x700 (Lagoon, the busiest today, uses 30%).
 - **Memory:** idle memory grows by at most 10 MB over Ember with the skin active. Skins that
   are not active load nothing.
-- **Exe size:** grows by at most 35 MB in all (raised from 15 MB by Max, 2026-10-28,
-  after the pilot).
+- **Exe size:** no fixed cap. After step 3 (Tape Deck costs about 12.5 MB in all) Max chose
+  the full look on every page for all 15 skins and accepted an exe near 200 MB (2026-10-29).
+  Still keep generated code lean where it costs nothing in looks.
 
 ## 4. Theme picker
 
@@ -249,3 +250,5 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
   rest start.
 - **Exe size** (pilot, 2026-10-28): Slint generates about 1.7 MB of code per skin main
   page, so 15 skins would reach 25 to 30 MB. Max raised the budget to 35 MB (2026-10-28).
+  Step 3 then added 10.35 MB for the other pages; Max accepted the size for the full look
+  (2026-10-29), see the budget above.

@@ -1366,7 +1366,12 @@ export component SettingsPage inherits Rectangle {
                                     font-weight: 600;
                                     vertical-alignment: center;
                                 }
-                                Icon { name: "chevron"; tint: Glass.ink; width: 12px; height: 12px; y: (parent.height - self.height) / 2; stroke-width: 2.4px; }
+                                // In a layout: a child of Row would centre on the whole row,
+                                // padding and all, and sit low.
+                                VerticalLayout {
+                                    alignment: center;
+                                    Icon { name: "chevron"; tint: Glass.ink; width: 12px; height: 12px; stroke-width: 2.4px; }
+                                }
                             }
                         }
                     }
@@ -1648,6 +1653,8 @@ component ModelList inherits Scroller {
                                 }
                             }
                             if m.active: HorizontalLayout {
+                                // At the row's end, as the buttons are, not halfway along it.
+                                horizontal-stretch: 0;
                                 spacing: 7px;
                                 padding-right: 6px;
                                 VerticalLayout { alignment: center; Bead { } }
@@ -2459,7 +2466,8 @@ export component Widget inherits Rectangle {
 // A glass sheet: brighter than anything else, its shadow outside it.
 component Sheet inherits Rectangle {
     Shadow { kind: 1; box-w: root.width; box-h: root.height; }
-    Rectangle { border-radius: 28px; background: #4a4856d6; }
+    // Nearly solid: with no blur behind it, a transcript under the sheet showed through sharp.
+    Rectangle { border-radius: 28px; background: #4a4856f5; }
     Rectangle { y: 0; height: 28px; border-top-left-radius: 28px; border-top-right-radius: 28px; background: #ffffff1c; }
     Rectangle { y: 28px; height: max(0px, parent.height * 0.4 - 28px); background: @linear-gradient(180deg, #ffffff1c 0%, #ffffff00 100%); }
     Rectangle { border-radius: 28px; border-width: 1px; border-color: #ffffff66; }

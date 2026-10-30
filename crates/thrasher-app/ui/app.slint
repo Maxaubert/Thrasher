@@ -99,6 +99,10 @@ import {
     ClipPage as SpatialClip, SettingsPage as SpatialSettings, ModelsPage as SpatialModels, MergePage as SpatialMerge, AskPage as SpatialAsk,
     Widget as SpatialWidget, Dialog as SpatialDialog, Speaking as SpatialSpeaking, Drop as SpatialDrop,
 } from "skins/x-spatial-pages.slint";
+import {
+    ClipPage as DashClip, SettingsPage as DashSettings, ModelsPage as DashModels, MergePage as DashMerge, AskPage as DashAsk,
+    Widget as DashWidget, Dialog as DashDialog, Speaking as DashSpeaking, Drop as DashDrop,
+} from "skins/x-dash-pages.slint";
 // What the app reaches from Rust.
 export { ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Theme, Fx, Main, Tour, Snow, Gallery, ThemeTile }
 
@@ -139,7 +143,8 @@ export component AppWindow inherits Window {
     in property <image> window-icon;
     icon: window-icon;
     background: compact ? transparent : Theme.bg;
-    default-font-family: "Inter Tight";
+    // The Car Dashboard's pages, menus and dialogs are set in Manrope.
+    default-font-family: Theme.pages == 6 ? "Manrope" : "Inter Tight";
     default-font-size: 13px;
     preferred-width: 520px;
     preferred-height: 600px;
@@ -323,6 +328,9 @@ export component AppWindow inherits Window {
     in property <[OrderRow]> merge-rows <=> Pages.merge-rows;
     in-out property <string> merge-name <=> Pages.merge-name;
     in property <bool> merging <=> Pages.merging;
+    // The merged length and each clip's part of it (the Car Dashboard's route gauge).
+    in property <string> merge-total <=> Pages.merge-total;
+    in property <[float]> merge-legs <=> Pages.merge-legs;
     callback merge-move(int, int);
     callback merge-remove(int);
     callback merge-play(int);
@@ -672,12 +680,13 @@ export component AppWindow inherits Window {
         if compact && Theme.pages == 3: Os95Widget { }
         if compact && Theme.pages == 4: ComicWidget { }
         if compact && Theme.pages == 5: SpatialWidget { }
+        if compact && Theme.pages == 6: DashWidget { }
 
         // ---------- Clips (main) ----------
         // The theme's skin builds it (ui/skins); the state and actions are in Main.
         // The other pages by `Theme.pages`: Tape Deck's own (1), Phosphor's (2), Desktop 95's
-        // (3), the Comic Book's (4), Spatial Glass's (5), and the classic ones (0) for every
-        // other skin until it gets its own.
+        // (3), the Comic Book's (4), Spatial Glass's (5), the Car Dashboard's (6), and the
+        // classic ones (0) for every other skin until it gets its own.
         if !compact && page == 0 && Theme.skin == 0: ClassicMain {
             narrow: root.narrow;
             wide: root.wide;
@@ -1390,6 +1399,34 @@ export component AppWindow inherits Window {
             edit-markup(t) => { return root.edit-markup(t); }
             plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
         }
+        if !compact && page == 1 && root.selected >= 0 && Theme.pages == 6: DashClip {
+            narrow: root.narrow;
+            wide: root.wide;
+            go(p) => { root.go(p); }
+            refocus => { keys.focus(); }
+            leave-editor(p) => { root.leave-editor(p); }
+            start-edit => { root.start-edit(); }
+            ask-delete(i) => { root.ask-delete(i); }
+            rename-selected(t) => { root.rename-selected(t); }
+            toggle-play => { root.toggle-play(); }
+            skip(s) => { root.skip(s); }
+            speed-changed(i) => { root.speed-changed(i); }
+            trim-changed(a, b) => { root.trim-changed(a, b); }
+            clean-voice-changed(on) => { root.clean-voice-changed(on); }
+            parts-move(a, b) => { root.parts-move(a, b); }
+            part-take-out(i) => { root.part-take-out(i); }
+            rename-part(i) => { root.ask-rename-part(i); }
+            choose-lang(c) => { root.choose-lang(c); }
+            lang-filter(t) => { root.lang-filter(t); }
+            install-for(k) => { root.install-for(k); }
+            summarise => { root.summarise-selected(); }
+            edit-changed(t) => { root.edit-changed(t); }
+            apply-transcript(t) => { root.apply-transcript(t); }
+            transcribe => { root.transcribe-selected(); }
+            seek-word(i) => { root.seek-word(i); }
+            edit-markup(t) => { return root.edit-markup(t); }
+            plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+        }
 
         // ---------- Settings ----------
         if !compact && page == 3 && Theme.pages == 0: VerticalLayout {
@@ -1862,6 +1899,32 @@ export component AppWindow inherits Window {
             close-to-tray-changed(on) => { root.close-to-tray-changed(on); }
             start-with-windows-changed(on) => { root.start-with-windows-changed(on); }
         }
+        if !compact && page == 3 && Theme.pages == 6: DashSettings {
+            wide: root.wide;
+            back => { root.go(root.settings-back); }
+            go(p) => { root.go(p); }
+            refocus => { keys.focus(); }
+            theme-changed(i) => { root.theme-changed(i); }
+            mic-changed(i) => { root.mic-changed(i); }
+            system-changed(on) => { root.system-changed(on); }
+            recording-limit-changed(i) => { root.recording-limit-changed(i); }
+            hotkey-captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
+            hotkey-accepted(t) => { root.hotkey-accepted(t); }
+            open-folder => { root.open-folder(); }
+            change-folder => { root.change-folder(); }
+            template-edited(t) => { root.template-edited(t); }
+            template-accepted(t) => { root.template-accepted(t); }
+            export-format-changed(i) => { root.export-format-changed(i); }
+            clean-voice-changed(on) => { root.clean-voice-changed(on); }
+            language-changed(i) => { root.language-changed(i); }
+            auto-transcribe-changed(on) => { root.auto-transcribe-changed(on); }
+            ai-names-changed(on) => { root.ai-names-changed(on); }
+            max-pause-changed(i) => { root.max-pause-changed(i); }
+            ai-model-changed(i) => { root.ai-model-changed(i); }
+            download-ai(k) => { root.download-ai(k); }
+            close-to-tray-changed(on) => { root.close-to-tray-changed(on); }
+            start-with-windows-changed(on) => { root.start-with-windows-changed(on); }
+        }
         if !compact && page == 4 && Theme.pages == 1: TapeModels {
             wide: root.wide;
             back => { root.go(root.models-back); }
@@ -1878,6 +1941,14 @@ export component AppWindow inherits Window {
             cancel-download => { root.cancel-download(); }
             download-model(i) => { root.download-model(i); }
         }
+        if !compact && page == 4 && Theme.pages == 6: DashModels {
+            wide: root.wide;
+            back => { root.go(root.models-back); }
+            filter-changed => { root.models-filter-changed(); }
+            use-model(i) => { root.use-model(i); }
+            cancel-download => { root.cancel-download(); }
+            download-model(i) => { root.download-model(i); }
+        }
         if !compact && page == 5 && Theme.pages == 1: TapeMerge {
             wide: root.wide;
             go(p) => { root.go(p); }
@@ -1887,6 +1958,14 @@ export component AppWindow inherits Window {
             run(name) => { root.merge-run(name); }
         }
         if !compact && page == 5 && Theme.pages == 5: SpatialMerge {
+            wide: root.wide;
+            go(p) => { root.go(p); }
+            move(a, b) => { root.merge-move(a, b); }
+            remove(i) => { root.merge-remove(i); }
+            play(i) => { root.merge-play(i); }
+            run(name) => { root.merge-run(name); }
+        }
+        if !compact && page == 5 && Theme.pages == 6: DashMerge {
             wide: root.wide;
             go(p) => { root.go(p); }
             move(a, b) => { root.merge-move(a, b); }
@@ -1998,6 +2077,12 @@ export component AppWindow inherits Window {
             open-source(i) => { root.open-source(i); }
         }
         if !compact && page == 6 && Theme.pages == 5: SpatialAsk {
+            wide: root.wide;
+            go(p) => { root.go(p); }
+            ask(q, all) => { root.ask(q, all); }
+            open-source(i) => { root.open-source(i); }
+        }
+        if !compact && page == 6 && Theme.pages == 6: DashAsk {
             wide: root.wide;
             go(p) => { root.go(p); }
             ask(q, all) => { root.ask(q, all); }
@@ -2440,6 +2525,7 @@ export component AppWindow inherits Window {
     if root.speaking && !root.compact && Theme.pages == 3: Os95Speaking { cancel => { root.cancel-speaking(); } }
     if root.speaking && !root.compact && Theme.pages == 4: ComicSpeaking { cancel => { root.cancel-speaking(); } }
     if root.speaking && !root.compact && Theme.pages == 5: SpatialSpeaking { cancel => { root.cancel-speaking(); } }
+    if root.speaking && !root.compact && Theme.pages == 6: DashSpeaking { cancel => { root.cancel-speaking(); } }
 
     if !compact: Rectangle {
         width: 100%;
@@ -2497,6 +2583,7 @@ export component AppWindow inherits Window {
     }
     if root.dropping && !root.compact && Theme.pages == 4: ComicDrop { }
     if root.dropping && !root.compact && Theme.pages == 5: SpatialDrop { }
+    if root.dropping && !root.compact && Theme.pages == 6: DashDrop { }
     if root.dialog-shown && Theme.pages == 1: TapeDialog {
         title: root.dialog-title;
         note: root.dialog-note;
@@ -2531,6 +2618,17 @@ export component AppWindow inherits Window {
         discard => { root.discard-edit(); }
     }
     if root.dialog-shown && Theme.pages == 5: SpatialDialog {
+        title: root.dialog-title;
+        note: root.dialog-note;
+        field: root.dialog-field;
+        ok: root.dialog-ok;
+        ok-enabled: root.dialog-ok-enabled;
+        clip-name: root.dialog == 2 && root.delete-count <= 1 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length ? root.clips[root.dialog-clip].name : "";
+        close => { root.close-dialog(); }
+        confirm => { root.confirm-dialog(); }
+        discard => { root.discard-edit(); }
+    }
+    if root.dialog-shown && Theme.pages == 6: DashDialog {
         title: root.dialog-title;
         note: root.dialog-note;
         field: root.dialog-field;

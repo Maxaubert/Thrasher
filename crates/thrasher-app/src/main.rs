@@ -386,6 +386,17 @@ fn load_for_playback(library: &Library, name: &str) -> Result<(Buffer, Edl), Str
     Ok((buffer, timeline))
 }
 
+/// The total of some lengths in seconds, and each one's part of it (0 to 1, in order;
+/// all 0 when the total is 0).
+fn merge_legs(lengths: &[f64]) -> (f64, Vec<f32>) {
+    let total: f64 = lengths.iter().sum();
+    let legs = lengths
+        .iter()
+        .map(|l| if total > 0.0 { (l / total) as f32 } else { 0.0 })
+        .collect();
+    (total, legs)
+}
+
 fn fmt_time(secs: f64) -> String {
     let s = secs.max(0.0) as u64;
     if s >= 3600 {
@@ -2270,6 +2281,20 @@ fn main() -> Result<(), slint::PlatformError> {
             })
             .collect();
         ui.set_merge_rows(ModelRc::new(VecModel::from(rows)));
+        // The merged length and each clip's part of it, for the Car Dashboard's route.
+        let lengths: Vec<f64> = a
+            .merge_names
+            .iter()
+            .map(|n| {
+                a.clips
+                    .iter()
+                    .find(|c| &c.name == n)
+                    .map_or(0.0, |c| c.duration.max(0.0))
+            })
+            .collect();
+        let (total, legs) = merge_legs(&lengths);
+        ui.set_merge_total(fmt_time(total).into());
+        ui.set_merge_legs(ModelRc::new(VecModel::from(legs)));
     };
     ui.global::<Main>().on_start_merge({
         let (app, weak) = (app.clone(), ui.as_weak());
@@ -3683,6 +3708,7 @@ fn main() -> Result<(), slint::PlatformError> {
         crate::log!("ready: window shown {} ms after start", log::uptime_ms())
     });
     let _watchdog = freeze_watchdog();
+    test_cover(&ui);
     slint::run_event_loop_until_quit()?;
     crate::log!("quit");
     drop(tray);
@@ -3694,6 +3720,24 @@ fn main() -> Result<(), slint::PlatformError> {
         let _ = rec.stop();
     }
     Ok(())
+}
+
+/// For headless checks of a skin's covers: with `THRASHER_TEST_WINDOW` set,
+/// `THRASHER_TEST_COVER=speaking` shows the speaking cover at 62% and `dropping` the
+/// drop cover, which otherwise need a voice job or files dragged over the window.
+fn test_cover(ui: &AppWindow) {
+    if std::env::var_os("THRASHER_TEST_WINDOW").is_none() {
+        return;
+    }
+    match std::env::var("THRASHER_TEST_COVER").as_deref() {
+        Ok("speaking") => {
+            ui.set_speak_progress(0.62);
+            ui.set_speak_stage("Finding the new words in the generated speech".into());
+            ui.set_speaking(true);
+        }
+        Ok("dropping") => ui.set_dropping(true),
+        _ => {}
+    }
 }
 
 /// The settings gallery's tiles: the classic themes, and the device skins that have a
@@ -4316,6 +4360,17 @@ mod tests {
 
     fn picks(picked: &[bool]) -> Vec<usize> {
         (0..picked.len()).filter(|&i| picked[i]).collect()
+    }
+
+    #[test]
+    fn merge_legs_split_the_total() {
+        let (total, legs) = merge_legs(&[123.0, 1013.0, 2.0]);
+        assert_eq!(fmt_time(total), "18:58");
+        assert_eq!(legs.len(), 3);
+        assert!((legs.iter().sum::<f32>() - 1.0).abs() < 1e-5);
+        assert!(legs[1] > legs[0] && legs[0] > legs[2]);
+        assert_eq!(merge_legs(&[0.0, 0.0]).1, vec![0.0, 0.0]);
+        assert_eq!(merge_legs(&[]), (0.0, vec![]));
     }
 
     #[test]

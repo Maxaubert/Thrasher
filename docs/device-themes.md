@@ -125,10 +125,9 @@ theme "Desktop 95", index 10 in `Theme.names`), art in `ui/skins/dv-os95/`, font
 and VT323 (the same `VT323-400.ttf` as Phosphor: its Latin subset covers the ASCII this
 skin needs, with the same outlines and metrics).
 - `Theme.pages` says how the other pages are built: 1 for Tape Deck, 2 for Phosphor, 3 for
-  Desktop 95, 4 for the Comic Book and 5 for Spatial Glass (each since its pages were built),
-  else 0, the classic
-  pages in the theme's palette. A skin whose other pages are not built yet keeps them
-  classic this way; `app.slint` picks the main page by `Theme.skin` and the rest by
+  Desktop 95, 4 for the Comic Book, 5 for Spatial Glass and 6 for the Car Dashboard (each
+  since its pages were built), else 0, the classic pages in the theme's palette. A skin
+  whose other pages are not built yet keeps them classic this way; `app.slint` picks the main page by `Theme.skin` and the rest by
   `Theme.pages`. Desktop 95's palette is grey and navy for those pages.
 - The scope and the LED level follow `Main.live` like the classic meter, so the skin needs
   no clock (`EFFECT_FPS` and `RECORDING_FPS` 0). Nothing else moves.
@@ -281,6 +280,73 @@ from `tools/skin-art/dash.html` (`sh tools/skin-art/cut.sh dash OUT`).
   11.4% at 1100x700 (Ember 26.4%).
 - Working set idle 46.1 vs Ember 41.3 MB (+4.8); wide 54.2 vs 49.1 MB (+5.1).
 - Exe +2.11 MB (44.83 to 46.95 MB): fonts 0.16 MB, art 0.36 MB, the rest generated code.
+
+**Built in step 5, Car Dashboard on every other page (2026-10-30):** mockups in
+`docs/mockups/device-themes/x-dash-pages/` (approved by Max 2026-10-30, flavour labels kept).
+- `ui/skins/x-dash-pages.slint`: `ClipPage`, `SettingsPage`, `ModelsPage`, `MergePage`,
+  `AskPage`, `Widget`, `Dialog`, `Speaking` and `Drop`, the same interface as Tape Deck's.
+  `Theme.pages` is 6 for the skin (Tape Deck stays 1, every other skin 0); `app.slint` has a
+  `Theme.pages == 6` block next to each Tape Deck one, with the same bindings.
+- `ui/skins/dash-parts.slint`: the parts the main page and the other pages share, moved out
+  of `x-dash.slint` unchanged (`Dash`, `Art`, `WinKey`, `Title`, `Spoke`, `Tile`). `Title`
+  takes the mode words (REC MODE on the main page, PLAY, SETUP, MODEL STORE, MERGE, ASK)
+  and an optional back chip (CLIPS on the clip page, "Back to Clips" as in the classic look).
+- The clip page is the car's now playing screen: the arc gauge is the trip meter (play
+  position, PLAYING, PAUSED or STOPPED, the length; wide windows label both ends of the
+  scale), the waveform is the route strip in a well (trim grips and play head in ice),
+  speed is a drive mode selector, Rename and Delete are spoke keys under the name. Settings
+  is the vehicle menu: glass cards headed by an ice icon tile; wide puts the gallery card
+  on the left and the other cards in two columns. Models is the app store (shelf chips, or
+  a shelf list and the DISK readout when wide). Merge is a route planner: the parts are
+  numbered stops on an ice route line, and wide windows show the merged total on the gauge
+  with the stops as coloured legs. Ask is the voice assistant (ANSWER card, numbered
+  sources). The widget is the mini cluster (variant A): the level arc with the timer,
+  the status lamp and word, Pause while recording and the red hub.
+- The shared widgets draw the dash look when `Theme.dash` (`Theme.pages == 6`) is set, so
+  the main page's menus get it too: `MenuCard` (glass with an ice light on its top edge),
+  `MenuRow` (an icon before every row, a folder tile before each project; icons are passed
+  as `Theme.dash ? "pencil" : ""`, so the other looks get none), `Select` (glass chip with a
+  chevron), `Btn` (pills; `red` is the red Delete pill), `IconBtn` (glass keys), `Toggle`
+  (blue track, white knob), `ExportItem`, `ExportButton`, `OrderList` (route stops),
+  `TranscriptCard` (small caps, EDITING in ice, an amber change chip), `Tip` (ice top line),
+  the gallery's strip heads, and `TextField` takes Manrope. The window's default font is
+  Manrope while the skin is on.
+- Rust: `Pages.merge-total` and `Pages.merge-legs` (the merged length and each clip's part
+  of it, `merge_legs` in `main.rs`, tested). `THRASHER_TEST_COVER=speaking` or `dropping`
+  (with `THRASHER_TEST_WINDOW`) shows a cover at start, for headless shots of the covers.
+- Art: two new pieces, `gauge-c` (the gauge's scale with all ticks grey) and `ctile` (the
+  icon tile's gradient), from `tools/skin-art/dash.html` (`ONLY="gauge-c ctile" sh
+  tools/skin-art/cut.sh dash OUT`).
+
+**Lessons from the Car Dashboard's other pages:**
+- **Mockup glitches fixed, not copied:** the portrait Loop pill ran out of the window and
+  the transcript card was cut at the right; the transport is sized to fit 420px (keys 32px,
+  speed steps 27px) and the wide one to fit the 420px cluster. A gallery in a narrow column
+  shows two tiles and pages through the rest.
+- **A positioned layout needs a width:** a `HorizontalLayout` placed with
+  `x: parent.width - self.width - 8px` outside a layout takes the parent's width, so `x`
+  went negative; give it `width: self.preferred-width`.
+- **An `Art` (Image) without a size draws at its natural size,** the 2x cut twice as big;
+  give icon tiles their width and height.
+- **The wheel over a gallery strip scrolls the strip,** not the page: scroll settings with
+  the pointer below the Appearance card in checks.
+- **Checks:** posted clicks can land where an element was a moment ago; one of the first
+  runs started a recording that way (deleted). The scripts now retry a name for up to 4 s,
+  wait 1.4 s after every press, and list new clips at the end. The list rows of the dash
+  main page in a portrait window end around the eighth clip: drive the short clips at the
+  top (clip_106, clip_108).
+
+**Budgets measured on the Car Dashboard's other pages** (test copy, 2.25x display, 10 s
+samples, pages visited in turn in one run, 2026-10-30):
+- CPU idle 0.0 to 0.6% on every page (Ember 0.0 to 0.9%).
+- Working set over Ember at 520x700: main +1.1, clip -4.2, settings +3.3, models +3.8,
+  ask +4.9, merge +3.2, widget +2.8 MB; at 1100x700: +2.4, +5.7, +5.9, +6.0, +5.8, +4.5,
+  +7.2 MB (clip page 158.2 vs 162.4 MB and 170.6 vs 164.9 MB after a long clip loaded).
+- Exe +8.77 MB (77.76 to 86.52 MB): the pages' generated code and the dash look in the
+  shared widgets; the art is 35 KB, no new fonts.
+- Ember and Tape Deck: every page, menu and question at 520x700 and 1100x700 matches before
+  and after pixel for pixel (the Ask field's blinking cursor aside); so does the Car
+  Dashboard main page, whose menus and questions take the new look.
 
 **Built in step 5, Pocket main page (2026-10-29):** `ui/skins/px-pocket.slint` (skin 7, theme
 "Pocket", index 14 in `Theme.names`), art in `ui/skins/px-pocket/` (27 PNGs at 1x, 3 KB) from
@@ -1338,6 +1404,8 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      other page").
      Comic Book built 2026-10-30 (`Theme.pages` 4, widget variant A).
      Spatial Glass built 2026-10-30 (see "Spatial Glass on every other page").
+     Car Dashboard built 2026-10-30 (`Theme.pages` 6, see "Built in step 5, Car Dashboard on
+     every other page").
    - Other pages, batch 2 (Pocket, Quest Menu, Brick Phone, Answering Machine, Pocket Synth,
      Fighter Select) and batch 3 (Cozy Cabin, Pinball, Phonograph): mockups next.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

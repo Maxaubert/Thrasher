@@ -485,12 +485,14 @@ component Strip inherits VerticalLayout {
         padding-right: Theme.tape ? 2px : 0;
         padding-top: root.divided && !Theme.tape && !Theme.phos && !Theme.os95 ? 6px : 0;
         spacing: 8px;
+        // Car Dashboard: small caps, as the cards' names.
         if !Theme.tape && !Theme.comic: Text {
-            text: root.title;
-            color: Theme.phos ? Ph.hi : Theme.glass ? Glass.ink : Theme.text;
-            font-family: Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
-            font-size: Theme.phos ? 12.5px : Theme.os95 ? 12.5px : 12px;
-            font-weight: Theme.phos ? 400 : Theme.os95 ? 700 : 600;
+            text: Theme.dash ? root.title.to-uppercase() : root.title;
+            color: Theme.phos ? Ph.hi : Theme.glass ? Glass.ink : Theme.dash ? Theme.muted : Theme.text;
+            font-family: Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.dash ? "Manrope" : "Inter Tight";
+            font-size: Theme.phos ? 12.5px : Theme.os95 ? 12.5px : Theme.dash ? 9px : 12px;
+            font-weight: Theme.phos ? 400 : Theme.os95 ? 700 : Theme.dash ? 800 : 600;
+            letter-spacing: Theme.dash ? 2.3px : 0;
             vertical-alignment: center;
         }
         if Theme.comic: VerticalLayout {
@@ -534,9 +536,9 @@ component Strip inherits VerticalLayout {
         }
         Text {
             text: root.n;
-            color: Theme.tape ? #6f665a : Theme.os95 ? Os.note : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.dim;
-            font-family: Theme.tape ? Theme.mono : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : "Inter Tight";
-            font-size: Theme.tape ? 10px : Theme.phos ? 11px : Theme.comic ? 14px : 12px;
+            color: Theme.tape ? #6f665a : Theme.os95 ? Os.note : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.dash ? #56606c : Theme.dim;
+            font-family: Theme.tape || Theme.dash ? Theme.mono : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : "Inter Tight";
+            font-size: Theme.tape ? 10px : Theme.phos ? 11px : Theme.comic ? 14px : Theme.dash ? 10px : 12px;
             letter-spacing: Theme.comic ? 1px : 0;
             vertical-alignment: center;
             accessible-role: none;
@@ -671,10 +673,14 @@ component Strip inherits VerticalLayout {
             border-width: Theme.comic ? 1.5px : 0;
             border-color: Comic.ink;
             property <length> thumb-w: max(30px, self.width * root.view-w / max(root.content-w, 1px));
+            // Sized from the parent, not in percent: a percent size here made a binding loop
+            // with the Car Dashboard's flexbox settings page.
             Image {
                 visible: Theme.os95;
-                width: 100%;
-                height: 100%;
+                x: 0;
+                y: 0;
+                width: parent.width;
+                height: parent.height;
                 source: 1phx < 0.7px ? @image-url("skins/dv-os95/checker@2x.png") : @image-url("skins/dv-os95/checker.png");
                 horizontal-tiling: repeat;
                 vertical-tiling: repeat;

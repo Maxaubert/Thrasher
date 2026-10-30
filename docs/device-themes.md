@@ -210,6 +210,61 @@ from `tools/skin-art/dash.html` (`sh tools/skin-art/cut.sh dash OUT`).
 - Working set idle 46.1 vs Ember 41.3 MB (+4.8); wide 54.2 vs 49.1 MB (+5.1).
 - Exe +2.11 MB (44.83 to 46.95 MB): fonts 0.16 MB, art 0.36 MB, the rest generated code.
 
+**Built in step 5, Pocket main page (2026-10-29):** `ui/skins/px-pocket.slint` (skin 7, theme
+"Pocket", index 14 in `Theme.names`), art in `ui/skins/px-pocket/` (27 PNGs at 1x, 3 KB) from
+`tools/skin-art/px-pocket.html` (`sh tools/skin-art/cut.sh px-pocket OUT`, only the 1x cut is
+used). Its other pages are the classic ones in a green LCD palette (`Theme.pages` 0).
+- Settings gallery: its tile is the Pocket line in `Gallery.devices` (`ui/gallery.slint`), band #8bac0f.
+- The LCD holds the recorder, the project and search row, the list and the player; the bezel
+  holds A (Record, Stop while recording), B (Import, Pause or Resume while recording), the Ask
+  and Widget pills and the D pad. Settings, minimise and close are keys on the top edge.
+- The D pad does what the arrow keys do: its upper left half steps to the clip above, its
+  lower right half to the one below, and the list scrolls to keep it in view. For screen
+  readers it is two buttons, "Previous clip" and "Next clip".
+- Only the status dot moves on the clock (`RECORDING_FPS` 4, blinking while recording).
+- Fonts: Jersey 10 (the LCD type and the timer) subset to Latin, 20 KB; its 5 has a flat top,
+  a square corner and no hook, and is narrower than its S, so it is kept. Silkscreen (the
+  small caps) differs from its S by two pixels at 8px, so `tools/skin-art/px-pocket-fonts.py`
+  redraws its 5 on its own 125 unit pixel grid as a square 5 and renames it "Pocket Small"
+  (OFL, no Reserved Font Name), 14 KB.
+
+**Lessons from Pocket:**
+- **Tiles need a size:** an `Image` with tiling but no `width` and `height` draws one copy at
+  its natural size in the middle (a dot under each row), and `image-fit: fill` with tiling
+  does the same. Give a tile `width: 100%; height: 100%` (`Tile`) and no `image-fit`. Tiles
+  then repeat at one image pixel per logical pixel, as the Comic Book measured: a 4x4 checker
+  gives the mockup's 2px dither.
+- **Whole device pixels for pixel art:** `Px` sizes an art pixel as
+  `max(1, round(s * 1px / 1phx)) * 1phx`, so a 2x icon is 4 or 5 device pixels per art pixel
+  at 2.25x, never a blurred 4.5. The mockup's 1.5x title icons come out at 3 device pixels.
+- **Stepped corners and pixel outlines are rectangles:** a 4px or 8px step is two or three
+  overlapping rectangles, the mockup's inset bevels are bands clipped to the same steps, and
+  the `pxo` outline (a box shadow on four sides) is four 2px strips without the corners.
+- **CSS line heights:** a Text with `vertical-alignment: center` and the mockup's line height
+  as its height centres the font's line box as CSS does, so names and the timer land where
+  the mockup has them. The tenths sit on the timer's baseline at `base - size/2 * ascent`
+  (Jersey's ascent 0.8036 em, line 1.0714 em).
+- **A centred timer with proportional digits:** the wide timer is placed by the width of
+  "00:00" (or "0:00:00") in an invisible Text, so it does not wander while it runs.
+- **The LCD ghost** is one copy of the timer one shade lighter, 2px (4px wide) down and
+  right; recording stays at 7.7% CPU with it.
+- **Silent text in a Text component:** `accessible-role: none` on an instance of a component
+  that inherits Text (`Small`, `Big`) still shows up in UI Automation as a Custom element
+  named by its text, so shadow copies were read twice. The component sets
+  `accessible-label: self.accessible-role == AccessibleRole.none ? "" : self.text` (review,
+  2026-10-29). A plain `Text { accessible-role: none; }` is silent already.
+- **Checks:** the shared scripts' shots are half size; set `FULL=1` in this skin's copy of
+  `win.ps1` for device pixel crops. A project folder made by hand did not show in the picker;
+  make test projects through New project (typed as posted key-downs) and delete them after.
+
+**Budgets measured on Pocket** (test copy, 2.25x display, 10 s samples, 2026-10-29):
+- CPU idle 0.3% at 520x700 and 1100x700 (Ember 0.0%); recording 7.7% and 7.8% (Ember 21.1%
+  and 24.1%).
+- Working set idle 42.4 vs Ember 41.3 MB (+1.1); wide 49.8 vs 48.5 MB (+1.3); recording 45.1
+  vs 44.3 MB and 53.1 vs 52.0 MB.
+- Exe +1.89 MB (55.54 to 57.43 MB): fonts 34 KB, art 3 KB, the rest generated code. Ember,
+  Tape Deck and Phosphor main pages at 520x700 and 1100x700 match before and after.
+
 ### Recipe from the pilot (follow it for the other skins)
 
 - **Art:** an element page `tools/skin-art/<skin>.html` draws each fixed piece of the

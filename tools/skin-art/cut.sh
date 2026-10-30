@@ -40,6 +40,11 @@ x-spatial) PIECES="room-p:room-p:200:310 room-w:room-w:500:310 shadow-pane:shado
 dash) PIECES="gauge-p:gauge-p:188:188 gauge-w:gauge-w:270:270 wheel-p:wheel-p:200:192 wheel-w:wheel-w:400:244
   rec:rec:128:128 rec-on:rec-on:128:128 sbtn:sbtn:42:42 chip:chip:20:20 cover:cover:38:38 logo:logo:16:16
   lamp-ok:lamp-ok:22:22 lamp-rec:lamp-rec:22:22 lamp-pause:lamp-pause:22:22" ;;
+# Pocket: pixel art and tiles, one css pixel per art pixel; only the 1x cut is used.
+px-pocket) PIECES="mic:mic:9:11 mics:mics:5:7 gear:gear:9:9 min:min:7:7 close:close:7:7 imp:imp:9:9 ask:ask:9:7 wid:wid:9:8
+  play:play:6:7 pause:pause:6:7 stop:stop:7:7 dots:dots:2:8 down:down:7:4 find:find:8:8 cur:cur:4:7 check:check:8:6
+  sprite:sprite:16:24 key-12:key-12:12:12 key-11:key-11:11:11 key-16:key-16:16:16 dpad:dpad:19:19
+  dith:dith:4:4 sep:sep:4:4 rule-row:rule-row:4:2 rule-col:rule-col:2:4 rule-sur:rule-sur:4:1 grid:grid:2:2" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 

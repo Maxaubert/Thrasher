@@ -153,7 +153,7 @@ export struct Palette {
 // settings page switches it.
 export global Theme {
     in-out property <int> current: 0;
-    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass", "Car Dashboard"];
+    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass", "Car Dashboard", "Pocket"];
     out property <[Palette]> palettes: [
         // Ember
         { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618, card-line: #00000000 },
@@ -184,6 +184,9 @@ export global Theme {
         { bg: #2a2430, card: #3a3440, row: #352f3b, raised: #453e4c, line: #403946, line-soft: #37303d, edge: #5a5262, text: #ffffff, text2: #e6e2ea, muted: #b4adbb, dim: #958e9c, accent: #ff4d5e, accent-hover: #ff6b78, on-accent: #2a0610, wave: #7a7282, wave-dim: #615a69, track: #4a4352, danger: #ff8f7a, hover: #4a4352, hover-soft: #433c4a, row-hover: #322c38, picked: #4a3a48, popup: #3e3845, popup-edge: #6a6272, knob: #a8a1af, faint: #a39cab, fainter: #6e6776, rec-rest: #7a4a55, divider: #3a3440, border: #4a4352, card-edge: #4a4352, footer: #241f29, press: #5a3a44, card-line: #ffffff24 },
         // Car Dashboard: graphite glass, ice blue light (its main page is ui/skins/x-dash.slint).
         { bg: #0c0e11, card: #13171c, row: #181d23, raised: #1e242b, line: #1a1f25, line-soft: #15191e, edge: #2a313a, text: #eef2f6, text2: #c9d2dc, muted: #8a95a3, dim: #6f7a87, accent: #62d2ff, accent-hover: #8adfff, on-accent: #04121c, wave: #3a4652, wave-dim: #2e3842, track: #1c2229, danger: #ff8f7a, hover: #1f252d, hover-soft: #1a1f26, row-hover: #10141a, picked: #14232f, popup: #181d23, popup-edge: #333b45, knob: #6b7684, faint: #56606c, fainter: #3a424c, rec-rest: #2c5769, divider: #161b21, border: #1d232a, card-edge: #1d232a, footer: #0b0d10, press: #1e3742, card-line: #ffffff12 },
+        // Pocket: a green four shade LCD, for the pages it does not draw itself yet (its main
+        // page is ui/skins/px-pocket.slint).
+        { bg: #c3ce7b, card: #b6c26d, row: #bcc774, raised: #aebb63, line: #a3b05a, line-soft: #adb963, edge: #8d9d49, text: #1a2710, text2: #263519, muted: #3e5020, dim: #4e6127, accent: #2f3c1a, accent-hover: #4e6127, on-accent: #c3ce7b, wave: #8d9d49, wave-dim: #a1af5a, track: #a6b45e, danger: #7a1d10, hover: #aebb63, hover-soft: #b6c26d, row-hover: #bcc774, picked: #a9b75f, popup: #b6c26d, popup-edge: #4e6127, knob: #4e6127, faint: #6e8436, fainter: #8d9d49, rec-rest: #8d9d49, divider: #adb963, border: #8d9d49, card-edge: #8d9d49, footer: #b6c26d, press: #8d9d49, card-line: #8d9d49 },
     ];
     out property <color> bg: root.palettes[root.current].bg;
     out property <color> card: root.palettes[root.current].card;
@@ -231,8 +234,8 @@ export global Theme {
     // the look in ui/skins/classic.slint; 1 Tape Deck, ui/skins/tape.slint; 2 Phosphor,
     // ui/skins/phosphor.slint; 3 Desktop 95, ui/skins/dv-os95.slint; 4 Comic Book,
     // ui/skins/x-comic.slint; 5 Spatial Glass, ui/skins/x-spatial.slint; 6 Car Dashboard,
-    // ui/skins/x-dash.slint.
-    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6];
+    // ui/skins/x-dash.slint; 7 Pocket, ui/skins/px-pocket.slint.
+    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7];
     out property <int> skin: root.skins[root.current];
     // How the other pages are built: 1 Tape Deck's (skins/tape-pages.slint), else 0, the
     // classic pages in the theme's palette (also for skins whose pages are not built yet).

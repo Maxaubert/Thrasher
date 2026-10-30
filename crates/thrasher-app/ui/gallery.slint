@@ -1,0 +1,487 @@
+// The theme gallery of the settings page (docs/device-themes.md, section 4; mockup
+// docs/mockups/device-themes/gallery/gallery.html, layout B): one sideways strip per
+// group, Classic and Devices, with page arrows, a thin scroll bar and a fade. A click
+// switches the theme at once. The classic tiles are the main page drawn live from the
+// palette; the device tiles are pictures in skins/thumbs (tools/skin-art/thumbs.py).
+// Drawn in the Ember look, or the Tape Deck look while that theme is on.
+
+import { Theme, Deck, Palette, Icon, IconBtn, Win } from "common.slint";
+
+export struct ThemeTile {
+    // As in Theme.names.
+    name: string,
+    art: image,
+    art2: image,
+    // The colour band of its Tape Deck label.
+    band: color,
+    // Its place in Theme.names, filled in from Rust.
+    index: int,
+}
+
+export global Gallery {
+    // One line per device skin. Adding a skin's tile is adding its line here, with the
+    // same name as in Theme.names; the art of all 15 skins is in skins/thumbs already.
+    out property <[ThemeTile]> devices: [
+        { name: "Tape Deck", art: @image-url("skins/thumbs/tape.png"), art2: @image-url("skins/thumbs/tape@2x.png"), band: #c9331f },
+        { name: "Phosphor", art: @image-url("skins/thumbs/phosphor.png"), art2: @image-url("skins/thumbs/phosphor@2x.png"), band: #3fd46a },
+        { name: "Desktop 95", art: @image-url("skins/thumbs/dv-os95.png"), art2: @image-url("skins/thumbs/dv-os95@2x.png"), band: #008080 },
+        { name: "Comic Book", art: @image-url("skins/thumbs/x-comic.png"), art2: @image-url("skins/thumbs/x-comic@2x.png"), band: #f2c230 },
+        { name: "Spatial Glass", art: @image-url("skins/thumbs/x-spatial.png"), art2: @image-url("skins/thumbs/x-spatial@2x.png"), band: #9aa6c8 },
+        { name: "Car Dashboard", art: @image-url("skins/thumbs/x-dash.png"), art2: @image-url("skins/thumbs/x-dash@2x.png"), band: #3aa0d6 },
+    ];
+    // Set from Rust at start: the classic themes, and the lines above whose theme is in
+    // Theme.names, both in the order of Theme.names and with their place there.
+    in property <[ThemeTile]> classic;
+    in property <[ThemeTile]> shown;
+}
+
+// A classic theme's tile picture: its main page in miniature, plain rectangles in its
+// colours, so it follows any palette change.
+component Mini inherits Rectangle {
+    in property <Palette> p;
+    width: 104px;
+    height: 64px;
+    clip: true;
+    background: p.bg;
+    Rectangle { x: 0; y: 0; width: 104px; height: 5px; background: p.footer; }
+    Rectangle { x: 4px; y: 8px; width: 38px; height: 46px; border-radius: 4px; background: p.card; }
+    Rectangle { x: 9px; y: 15px; width: 24px; height: 5px; border-radius: 1px; background: p.text; }
+    Rectangle { x: 9px; y: 23px; width: 15px; height: 2px; background: p.wave; }
+    Rectangle { x: 16px; y: 33px; width: 14px; height: 14px; border-radius: 7px; background: p.accent; }
+    Rectangle { x: 46px; y: 8px; width: 54px; height: 6px; border-radius: 3px; background: p.raised; }
+    for r in 5: Rectangle {
+        x: 46px;
+        y: 17px + r * 7.5px;
+        width: 54px;
+        height: 6px;
+        border-radius: 2px;
+        background: r == 1 ? p.raised : p.row;
+        if r == 1: Rectangle { x: 0; width: 2px; background: root.p.accent; }
+        Rectangle { x: 4px; y: 2px; width: 14px; height: 2px; background: root.p.text; opacity: 0.75; }
+        Rectangle { x: 26px; y: 2px; width: 18px; height: 2px; background: root.p.wave; }
+    }
+    Rectangle { x: 0; y: 57px; width: 104px; height: 7px; background: p.footer; }
+    Rectangle { x: 4px; y: 60px; width: 30px; height: 1px; background: p.accent; }
+}
+
+// One tile: a radio button named after its theme.
+component Tile inherits Rectangle {
+    in property <ThemeTile> tile;
+    in property <bool> classic;
+    in property <bool> focused;
+    callback picked();
+    out property <bool> on: root.tile.index == Theme.current;
+    property <bool> hover: t.has-hover;
+    property <bool> down: t.pressed && t.has-hover;
+    property <bool> hi: 1phx < 0.7px;
+    width: 110px;
+    height: 90px;
+    accessible-role: radio-button;
+    accessible-label: root.tile.name;
+    accessible-checked: root.on;
+    accessible-action-default => { root.picked(); }
+
+    // Ember: a framed picture, the name under it, a check on the current one.
+    if !Theme.tape: Rectangle {
+        Rectangle {
+            y: 0;
+            height: 70px;
+            border-radius: 8px;
+            border-width: root.on || root.focused ? 2px : 1px;
+            border-color: root.focused ? Theme.text : root.on ? Theme.accent : root.hover || root.down ? Theme.edge : Theme.divider;
+            background: root.down ? Theme.raised : root.hover ? Theme.hover : Theme.bg;
+        }
+        Rectangle {
+            x: 3px;
+            y: 3px;
+            width: 104px;
+            height: 64px;
+            opacity: root.down ? 0.8 : 1;
+            if root.classic: Mini { p: Theme.palettes[root.tile.index]; }
+            if !root.classic: Image {
+                width: 104px;
+                height: 64px;
+                source: root.hi ? root.tile.art2 : root.tile.art;
+                image-fit: fill;
+            }
+        }
+        if root.on: Rectangle {
+            x: 110px - 12px;
+            y: -6px;
+            width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            background: Theme.accent;
+            Icon {
+                name: "check";
+                tint: Theme.on-accent;
+                stroke-width: 1.8px;
+                width: 11px;
+                height: 11px;
+            }
+        }
+        Text {
+            y: 75px;
+            height: 15px;
+            text: root.tile.name;
+            color: root.on ? Theme.accent : root.hover ? Theme.text : Theme.muted;
+            font-size: 12px;
+            font-weight: root.on ? 600 : 500;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            overflow: elide;
+            accessible-role: none;
+        }
+    }
+
+    // Tape Deck: the picture in a sunk well, a cassette label with the theme's colour
+    // band under it, an amber well and a lit lamp on the current one, a red frame on the
+    // focused one.
+    if Theme.tape: Rectangle {
+        Rectangle {
+            y: 0;
+            height: 70px;
+            background: root.on ? Deck.amber : root.hover ? #2c1f15 : #1b1410;
+            Rectangle { y: 0; height: 1px; background: root.on ? Deck.amber : #000000; }
+            Rectangle { y: parent.height - 1px; height: 1px; background: root.on ? Deck.amber : #ffffff99; }
+            Rectangle {
+                x: 3px;
+                y: root.down ? 4px : 3px;
+                width: 104px;
+                height: 64px;
+                opacity: root.down ? 0.8 : 1;
+                if root.classic: Mini { p: Theme.palettes[root.tile.index]; }
+                if !root.classic: Image {
+                    width: 104px;
+                    height: 64px;
+                    source: root.hi ? root.tile.art2 : root.tile.art;
+                    image-fit: fill;
+                }
+            }
+        }
+        Rectangle {
+            y: 70px;
+            height: 20px;
+            background: root.on || root.hover ? Deck.spine-out : Deck.spine;
+            Rectangle { y: parent.height - 1px; height: 1px; background: #0000008c; }
+            HorizontalLayout {
+                padding-right: 6px;
+                spacing: 5px;
+                Rectangle { width: 6px; background: root.classic ? Theme.palettes[root.tile.index].accent : root.tile.band; }
+                Text {
+                    horizontal-stretch: 1;
+                    text: root.tile.name;
+                    color: Deck.ink;
+                    font-family: "Caveat";
+                    font-size: 16px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    accessible-role: none;
+                }
+                if root.on: VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 7px;
+                        height: 7px;
+                        border-radius: 3.5px;
+                        background: @radial-gradient(circle, #fff0c8 0%, #f2a64a 45%, #9a5a14 100%);
+                    }
+                }
+            }
+        }
+        // The keyboard focus: a red frame round the whole tile, plain on dark and light art.
+        if root.focused: Rectangle {
+            border-width: 2px;
+            border-color: Deck.red;
+        }
+    }
+
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.picked(); }
+    }
+}
+
+// The fade at one end of a strip, to the rack (Tape Deck) or to the card colour (Ember).
+// The Ember one is strips of the card colour on whole device pixels: a see-through
+// gradient of a dark colour left bright specks on the tile edges under it.
+component Fade inherits Rectangle {
+    // Its opaque side is on the right.
+    in property <bool> to-right;
+    property <int> strips: 10;
+    // Where it sits in the window; the window size names it to be read again on a resize.
+    property <length> at-x: Win.width > 0 && root.width > 0 ? self.absolute-position.x : self.absolute-position.x;
+    width: Theme.tape ? 26px : 30px; // As Strip.fade-w.
+    background: !Theme.tape ? transparent
+        : root.to-right ? @linear-gradient(90deg, #b5ad9f00 0%, #b5ad9f 100%)
+        : @linear-gradient(270deg, #c5bdb000 0%, #c5bdb0 100%);
+    for i in Theme.tape ? 0 : root.strips: Rectangle {
+        property <length> from: round((root.at-x + i * root.width / root.strips) / 1phx) * 1phx - root.at-x;
+        property <length> to: round((root.at-x + (i + 1) * root.width / root.strips) / 1phx) * 1phx - root.at-x;
+        x: self.from;
+        width: self.to - self.from;
+        background: Theme.card.with-alpha(root.to-right ? (i + 0.5) / root.strips : 1 - (i + 0.5) / root.strips);
+    }
+}
+
+// One group: its head (name, count, page arrows), the strip of tiles and its scroll bar.
+component Strip inherits VerticalLayout {
+    in property <string> title;
+    in property <[ThemeTile]> tiles;
+    in property <bool> classic;
+    // A rule above it, between the groups.
+    in property <bool> divided;
+    callback picked(int);
+    // Up and Down move to the other group.
+    callback up();
+    callback down();
+    public function focus-in() { keys.focus(); }
+
+    property <length> tile-w: 110px;
+    property <length> gap-max: Theme.tape ? 10px : 12px;
+    property <length> view-w: view.width;
+    property <int> n: root.tiles.length;
+    // Room after the last tile for the check that sticks out of the current one (Ember).
+    property <length> end-pad: Theme.tape ? 0 : 6px;
+    // The width of the fade at an edge; a tile scrolled into view clears it.
+    property <length> fade-w: Theme.tape ? 26px : 30px;
+    // When every tile fits, the gap shrinks (not under 4px) so none is cut off.
+    property <bool> fits: root.n * root.tile-w + max(0, root.n - 1) * 4px + root.end-pad <= root.view-w;
+    property <length> gap: root.fits && root.n > 1 ? min(root.gap-max, (root.view-w - root.end-pad - root.n * root.tile-w) / (root.n - 1)) : root.gap-max;
+    property <length> pitch: root.tile-w + root.gap;
+    property <length> content-w: root.n * root.tile-w + max(0, root.n - 1) * root.gap + root.end-pad;
+    property <length> max-off: max(0px, root.content-w - root.view-w);
+    property <int> per: max(1, floor((root.view-w + root.gap) / root.pitch));
+    property <bool> scrolls: root.max-off > 0.5px;
+    // Where the current theme is in this strip, or -1.
+    property <int> cur-pos: -1;
+    // Where the current theme was when the page opened: the strip opens scrolled to it.
+    property <int> start: -1;
+    // The scroll offset; a binding to the start until the strip is moved.
+    property <length> off: root.start < 0 || root.start * root.pitch + root.tile-w + root.end-pad <= root.view-w ? 0 : min(root.max-off, root.start * root.pitch - root.fade-w);
+    // Where the strip is going, and where it is drawn while it slides there.
+    property <length> to-off: clamp(root.off, 0, root.max-off);
+    property <length> x-off: root.to-off;
+    property <bool> moving;
+    animate x-off { duration: root.moving ? 180ms : 0ms; easing: ease-out; }
+    // The tile under the keyboard focus.
+    property <int> cursor: -1;
+
+    function scroll-to(o: length) {
+        root.moving = true;
+        root.off = clamp(o, 0, root.max-off);
+    }
+    function page(by: int) {
+        root.scroll-to((round(root.to-off / root.pitch) + by * root.per) * root.pitch);
+    }
+    function reveal(i: int) {
+        let edge = max(root.end-pad, root.fade-w);
+        if (i * root.pitch - root.fade-w < root.to-off) {
+            root.scroll-to(i * root.pitch - root.fade-w);
+        } else if (i * root.pitch + root.tile-w + edge > root.to-off + root.view-w) {
+            root.scroll-to(i * root.pitch + root.tile-w + edge - root.view-w);
+        }
+    }
+    function move(i: int) {
+        if (root.n == 0) { return; }
+        root.cursor = clamp(i, 0, root.n - 1);
+        root.reveal(root.cursor);
+    }
+
+    // Its head.
+    if root.divided && !Theme.tape: Rectangle { height: 6px; }
+    if root.divided && !Theme.tape: Rectangle { height: 1px; background: Theme.divider; }
+    if Theme.tape: Rectangle { height: 4px; }
+    HorizontalLayout {
+        height: Theme.tape ? 26px : 30px;
+        padding-left: Theme.tape ? 2px : 4px;
+        padding-right: Theme.tape ? 2px : 0;
+        padding-top: root.divided && !Theme.tape ? 6px : 0;
+        spacing: 8px;
+        if !Theme.tape: Text {
+            text: root.title;
+            color: Theme.text;
+            font-size: 12px;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+        if Theme.tape: VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: plate.preferred-width + 16px;
+                height: 18px;
+                background: Deck.brass;
+                Rectangle { y: 0; height: 1px; background: #f6e2b4; }
+                Rectangle { y: parent.height - 1px; height: 1px; background: #2a1a0c; }
+                plate := Text {
+                    text: root.title.to-uppercase();
+                    color: #3a2610;
+                    font-family: "Oswald";
+                    font-size: 10px;
+                    font-weight: 600;
+                    letter-spacing: 2.8px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+        Text {
+            text: root.n;
+            color: Theme.tape ? #6f665a : Theme.dim;
+            font-family: Theme.tape ? Theme.mono : "Inter Tight";
+            font-size: Theme.tape ? 10px : 12px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Rectangle { horizontal-stretch: 1; }
+        // Always in the layout, so the width does not depend on whether it scrolls.
+        HorizontalLayout {
+            visible: root.scrolls;
+            spacing: Theme.tape ? 3px : 2px;
+            VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    size: 26px;
+                    height: Theme.tape ? 22px : 26px;
+                    round: true;
+                    icon: "back";
+                    icon-size: Theme.tape ? 11px : 13px;
+                    tint: Theme.muted;
+                    label: "Previous " + root.title + " themes";
+                    tip: "Previous";
+                    enabled: root.x-off > 0.5px;
+                    clicked => { root.page(-1); }
+                }
+            }
+            VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    size: 26px;
+                    height: Theme.tape ? 22px : 26px;
+                    round: true;
+                    icon: "chevron";
+                    icon-size: Theme.tape ? 11px : 13px;
+                    tint: Theme.muted;
+                    label: "More " + root.title + " themes";
+                    tip: "More";
+                    enabled: root.x-off < root.max-off - 0.5px;
+                    clicked => { root.page(1); }
+                }
+            }
+        }
+    }
+
+    // The strip.
+    view := Rectangle {
+        height: Theme.tape ? 94px : 98px;
+        clip: true;
+        accessible-role: radio-group;
+        accessible-label: root.title;
+        keys := FocusScope {
+            focus-gained => {
+                if (root.cursor < 0 || root.cursor >= root.n) {
+                    root.cursor = root.cur-pos >= 0 ? root.cur-pos : round(root.to-off / root.pitch);
+                }
+                root.reveal(root.cursor);
+            }
+            key-pressed(e) => {
+                if (e.text == Key.LeftArrow) { root.move(root.cursor - 1); return accept; }
+                if (e.text == Key.RightArrow) { root.move(root.cursor + 1); return accept; }
+                if (e.text == Key.Home) { root.move(0); return accept; }
+                if (e.text == Key.End) { root.move(root.n - 1); return accept; }
+                if (e.text == Key.PageUp) { root.move(root.cursor - root.per); return accept; }
+                if (e.text == Key.PageDown) { root.move(root.cursor + root.per); return accept; }
+                if (e.text == Key.UpArrow) { root.up(); return accept; }
+                if (e.text == Key.DownArrow) { root.down(); return accept; }
+                if ((e.text == Key.Return || e.text == " ") && root.cursor >= 0 && root.cursor < root.n) {
+                    root.picked(root.tiles[root.cursor].index);
+                    return accept;
+                }
+                reject
+            }
+        }
+        // The mouse wheel scrolls the strip under it while it can move, then the page.
+        TouchArea {
+            scroll-event(e) => {
+                let d = e.delta-x != 0 ? e.delta-x : e.delta-y;
+                let next = clamp(root.to-off - d, 0, root.max-off);
+                if (!root.scrolls || abs(next - root.to-off) < 0.5px) { return reject; }
+                root.scroll-to(next);
+                accept
+            }
+            for tile[i] in root.tiles: Tile {
+                x: i * root.pitch - root.x-off;
+                y: Theme.tape ? 2px : 6px;
+                tile: tile;
+                classic: root.classic;
+                focused: keys.has-focus && i == root.cursor;
+                init => {
+                    if (self.on) {
+                        root.cur-pos = i;
+                        root.start = i;
+                    }
+                }
+                changed on => {
+                    if (self.on) {
+                        root.cur-pos = i;
+                    } else if (root.cur-pos == i) {
+                        root.cur-pos = -1;
+                    }
+                }
+                picked => {
+                    root.cursor = i;
+                    root.picked(tile.index);
+                }
+            }
+        }
+        // The fades at an edge it scrolls past.
+        if root.x-off < root.max-off - 0.5px: Fade {
+            x: parent.width - self.width;
+            to-right: true;
+        }
+        if root.x-off > 0.5px: Fade { x: 0; }
+    }
+
+    // The scroll bar, while there is more than fits.
+    VerticalLayout {
+        padding-left: Theme.tape ? 2px : 4px;
+        padding-right: Theme.tape ? 2px : 4px;
+        padding-top: Theme.tape ? 4px : 6px;
+        padding-bottom: Theme.tape ? 6px : 0;
+        Rectangle {
+            visible: root.scrolls;
+            height: Theme.tape ? 4px : 3px;
+            border-radius: Theme.tape ? 0 : 2px;
+            background: Theme.tape ? #1b1410 : Theme.divider;
+            property <length> thumb-w: max(30px, self.width * root.view-w / max(root.content-w, 1px));
+            Rectangle {
+                x: root.max-off > 0 ? root.x-off / root.max-off * (parent.width - self.width) : 0;
+                y: Theme.tape ? -1px : 0;
+                width: parent.thumb-w;
+                height: Theme.tape ? 6px : 3px;
+                border-radius: Theme.tape ? 0 : 2px;
+                background: Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.edge;
+            }
+        }
+    }
+}
+
+// Both groups. `picked` gives the place in Theme.names.
+export component ThemeGallery inherits VerticalLayout {
+    callback picked(int);
+    classic := Strip {
+        title: "Classic";
+        tiles: Gallery.classic;
+        classic: true;
+        picked(i) => { root.picked(i); }
+        down => { devices.focus-in(); }
+    }
+    devices := Strip {
+        title: "Devices";
+        tiles: Gallery.shown;
+        divided: true;
+        picked(i) => { root.picked(i); }
+        up => { classic.focus-in(); }
+    }
+}

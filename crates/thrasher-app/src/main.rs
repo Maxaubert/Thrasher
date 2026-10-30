@@ -1745,6 +1745,7 @@ fn main() -> Result<(), slint::PlatformError> {
         if let Some(i) = theme.get_names().iter().position(|n| n == a.settings.theme) {
             theme.set_current(i as i32);
         }
+        fill_gallery(&ui);
         let limits: Vec<SharedString> = settings::RECORDING_LIMITS
             .iter()
             .map(|(_, l)| (*l).into())
@@ -3676,6 +3677,32 @@ fn main() -> Result<(), slint::PlatformError> {
     Ok(())
 }
 
+/// The settings gallery's tiles: the classic themes, and the device skins that have a
+/// line in `Gallery.devices` and a name in `Theme.names`, in the order of the names.
+fn fill_gallery(ui: &AppWindow) {
+    let theme = ui.global::<Theme>();
+    let gallery = ui.global::<Gallery>();
+    let skins = theme.get_skins();
+    let devices: Vec<ThemeTile> = gallery.get_devices().iter().collect();
+    let (mut classic, mut shown) = (Vec::new(), Vec::new());
+    for (i, name) in theme.get_names().iter().enumerate() {
+        if skins.row_data(i).unwrap_or(0) == 0 {
+            classic.push(ThemeTile {
+                name,
+                index: i as i32,
+                ..Default::default()
+            });
+        } else if let Some(t) = devices.iter().find(|t| t.name == name) {
+            shown.push(ThemeTile {
+                index: i as i32,
+                ..t.clone()
+            });
+        }
+    }
+    gallery.set_classic(ModelRc::new(VecModel::from(classic)));
+    gallery.set_shown(ModelRc::new(VecModel::from(shown)));
+}
+
 /// Logs when the window stops responding for a noticeable time. Checks four times a
 /// second, so an idle window stays nearly free.
 /// Imports `files` into `library` on a worker thread; the window's `imported`
@@ -4363,6 +4390,50 @@ mod tests {
             done(hotkey_spec("5", false, false, false, true)).as_deref(),
             Some("Super+5")
         );
+    }
+
+    /// The items of the `[...]` list on the line that holds `key`.
+    fn slint_list(src: &str, key: &str) -> Vec<String> {
+        let line = src.lines().find(|l| l.contains(key)).expect(key);
+        let inner = &line[line.find(": [").unwrap() + 3..line.rfind(']').unwrap()];
+        inner
+            .split(',')
+            .map(|s| s.trim().trim_matches('"').to_string())
+            .collect()
+    }
+
+    #[test]
+    fn every_device_skin_has_a_gallery_tile() {
+        let common = include_str!("../ui/common.slint");
+        let gallery = include_str!("../ui/gallery.slint");
+        let names = slint_list(common, "out property <[string]> names:");
+        let skins = slint_list(common, "out property <[int]> skins:");
+        assert_eq!(names.len(), skins.len());
+        let ui = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("ui");
+        let mut tiles = Vec::new();
+        for line in gallery
+            .lines()
+            .filter(|l| l.trim_start().starts_with("{ name: \""))
+        {
+            let name = line.split('"').nth(1).unwrap();
+            assert!(
+                names.iter().any(|n| n == name),
+                "{name} is not in Theme.names"
+            );
+            for art in line.split("@image-url(\"").skip(1) {
+                let path = &art[..art.find('"').unwrap()];
+                assert!(ui.join(path).is_file(), "{path}");
+            }
+            tiles.push(name.to_string());
+        }
+        for (name, skin) in names.iter().zip(&skins) {
+            if skin != "0" {
+                assert!(tiles.contains(name), "{name} has no gallery tile");
+            }
+        }
+        // The art of every device skin is there, so a new one needs only its line.
+        let thumbs = std::fs::read_dir(ui.join("skins/thumbs")).unwrap().count();
+        assert_eq!(thumbs, 30);
     }
 
     #[test]

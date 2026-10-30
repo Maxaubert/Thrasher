@@ -154,7 +154,7 @@ export struct Palette {
 export global Theme {
     in-out property <int> current: 0;
     out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass", "Car Dashboard"];
-    property <[Palette]> palettes: [
+    out property <[Palette]> palettes: [
         // Ember
         { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618, card-line: #00000000 },
         // Snow

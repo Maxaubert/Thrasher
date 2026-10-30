@@ -8,6 +8,7 @@
 // AppWindow's (reached through the callbacks here), and the shared widgets (the transcript
 // card, menus, dropdowns, switches, keys) draw their deck look themselves for this skin.
 
+import { ThemeGallery } from "../gallery.slint";
 import { Theme, Main, Pages, Tips, Icon, Deck, DeckKey, Btn, IconBtn, Toggle, Select, TextField, ShortcutBox, Scroller, OrderList, TranscriptCard, ExportButton, TrimTouch, AskSource } from "../common.slint";
 import { Walnut, Alu, Screw, Well, Title, Cassette, Digits, Engraved, Key, Knob } from "tape-parts.slint";
 
@@ -1177,6 +1178,12 @@ export component SettingsPage inherits VerticalLayout {
                 padding-top: 12px;
                 padding-bottom: 20px;
                 alignment: start;
+                spacing: 14px;
+                // The theme gallery, across the whole page when it is wide.
+                Rack {
+                    title: "APPEARANCE";
+                    ThemeGallery { picked(i) => { root.theme-changed(i); } }
+                }
                 FlexboxLayout {
                     flex-direction: root.wide ? FlexboxLayoutDirection.row : FlexboxLayoutDirection.column;
                     flex-wrap: no-wrap;
@@ -1186,22 +1193,6 @@ export component SettingsPage inherits VerticalLayout {
                     VerticalLayout {
                         horizontal-stretch: 1;
                         spacing: 14px;
-                        Rack {
-                            title: "APPEARANCE";
-                            RackRow {
-                                first: true;
-                                label: "Theme";
-                                VerticalLayout {
-                                    alignment: center;
-                                    RackSelect {
-                                        label: "Theme";
-                                        model: Theme.names;
-                                        current-index: Theme.current;
-                                        selected(i) => { root.theme-changed(i); }
-                                    }
-                                }
-                            }
-                        }
                         Rack {
                             title: "RECORDING";
                             RackRow {

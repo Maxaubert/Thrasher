@@ -508,6 +508,67 @@ used). Its other pages are the classic ones in a wood and honey palette (`Theme.
   Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700 match pixel for
   pixel before and after.
 
+**Built in step 5, Pinball main page (2026-10-30):** `ui/skins/x-pinball.slint` (skin 14, theme
+"Pinball", index 21 in `Theme.names`, after Cozy Cabin), art in `ui/skins/x-pinball/` (87 PNGs, 1.0 MB) from `tools/skin-art/x-pinball.html`
+(`sh tools/skin-art/cut.sh x-pinball OUT`; the playfields and the display glow are used at 1x only).
+`EFFECT_FPS` and `RECORDING_FPS` take its 0 and 4 at that place.
+- Settings gallery: its tile is the Pinball line in `Gallery.devices`, band #e0316b.
+- The backglass holds the Monoton title and the orange dot matrix (the state with its lamp, the
+  timer, the microphone); the playfield holds the lane lights (the input level, -40 to 0 dB),
+  the pop bumpers (Import, Ask, the widget) and the shooter lane, whose plunger is REC
+  ("Record", "Stop and save"). While recording the red bumper is Pause and Resume (latched
+  with an amber ring), since Import is not offered then. Clips are arrow inserts (play or
+  pause, colours red, yellow, blue, green in turn, lit orange on the highlighted one); the
+  apron has the flipper button (play) and the ball on the progress rail (a click jumps)
+  under a small display with the clip and its time.
+- Portrait windows stretch the backglass and playfield pictures to the window (their rays and
+  gradients take it well); wide windows have the fixed 400px column with the bumpers in a
+  triangle and the flippers at the foot when the playfield is 300px tall or more. Without the
+  local AI there is no Ask bumper (as in the classic look); the widget takes its place.
+- Only the status lamp moves, blinking while recording (`RECORDING_FPS` 4, `EFFECT_FPS` 0).
+- Fonts: Barlow Condensed 400 (the same family and names as the Answering Machine's 600 and
+  700; the Answering Machine main page did not change, pixel for pixel), and four dot matrix
+  faces drawn by `python tools/skin-art/x-pinball-fonts.py SRC OUT` from the mockup's own 5x7
+  table (127 KB). Monoton is backglass art only: the brand and the titles are PNGs, and the
+  font sits in `tools/skin-art/fonts/` with its OFL for the element page, not in the app.
+- Its other pages are the classic ones in a black and plasma orange palette (`Theme.pages` 0).
+
+**Lessons from Pinball:**
+- **A dot matrix is a font.** The mockup draws it on a canvas. "Pinball Dots" puts each glyph
+  pixel on a dot grid: one em is 8 rows (7 for the glyph, one between lines), every advance a
+  whole number of dots, so a font size of 8 x pitch spaces the dots `pitch` apart. Text is put
+  on the grid from its own `preferred-width` (`round(width / pitch) - 1` dots wide), centred or
+  right-aligned by whole columns (`DotText`). The unlit grid is one more glyph, an 8x8 block of
+  small dots (U+2588), as lines of 20 blocks clipped by the display; the glow is the same text
+  in "Pinball Halo" (0.62 pitch dots, 22% alpha) underneath; the timer is "Pinball Dots Big"
+  (each glyph pixel 2x2 dots at the same pitch, as the mockup's scale 2). Recording stays at 8
+  to 9% CPU with the glow; lowercase maps to the capitals and Norwegian letters are drawn.
+- **`col` and `row` cannot be property names** (a GridLayout's); Slint stops with "Cannot
+  override property 'col'".
+- **A layout with only an `x`** in a plain Rectangle takes the parent's whole width, so the lane
+  row spread its lights across the playfield; give it `width: self.preferred-width`. An `Art`
+  narrower than its parent and without `x` sits in the middle (the playfield picture did).
+- **A radial gradient does not slice.** The project chip cut in three showed hard steps where
+  the stretched middle met its ends. It is drawn in Slint: the middle's colours as a vertical
+  gradient, a horizontal overlay darkening both ends (colours sampled from the cut), the tip
+  as a `Path` with its own gradient, the glow as three faint rounded rings.
+- **Big art is memory.** The display case as one PNG (rings, glow and the dark box) was about
+  1 MB decoded at 2x; the rings are rounded rectangles now and the glow a 1x nine-slice
+  picture with a clear middle. Soft pictures (the playfields) ship at 1x only.
+- **Checks:** a stop selects the new clip at the end of the list, so a key check after it
+  steps up, not down. A clip with "+ system" was staged by copying a WAV to
+  `<name>.system.wav` and removed after.
+
+**Budgets measured on Pinball** (test copy, 2.25x display, 10 s samples, 2026-10-30):
+- CPU idle 0.0% at 520x700 and 1100x700 (Ember 0.2%); recording 8.8% and 7.7% (Ember 17.2%
+  and 19.8%).
+- Working set idle 49.7 vs Ember 41.6 MB (+8.1), wide 57.8 vs 49.4 MB (+8.4); recording 53.0
+  vs 45.4 MB, wide 61.0 vs 52.8 MB. The most of any skin so far, inside the 10 MB budget: the
+  backglass pictures are stretched from 2x cuts of the whole glass.
+- Exe +2.96 MB (62.57 to 65.53 MB): art 1.0 MB, fonts 0.18 MB, the rest generated code.
+  Ember, Tape Deck, Phosphor, Pocket and Answering Machine main pages at 520x700, 420x560,
+  700x700 and 1100x700 match before and after, pixel for pixel.
+
 ### Recipe from the pilot (follow it for the other skins)
 
 - **Art:** an element page `tools/skin-art/<skin>.html` draws each fixed piece of the

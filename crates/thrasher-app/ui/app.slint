@@ -47,6 +47,11 @@ import "./fonts/FighterOblique-400.ttf";
 import "./fonts/FighterFigures-400.ttf";
 import "./fonts/Tiny5-400.ttf";
 import "./fonts/CozyFigures-400.ttf";
+import "./fonts/BarlowCondensed-400.ttf";
+import "./fonts/PinballDots-400.ttf";
+import "./fonts/PinballHalo-400.ttf";
+import "./fonts/PinballDotsBig-400.ttf";
+import "./fonts/PinballHaloBig-400.ttf";
 import {
     ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Tips, Theme, Fx, Main, Pages, Win, Tour, TourPoint, Snow, TrimTouch,
     Icon, Tip, Btn, IconBtn, Toggle, Wave, BackLink, ExportButton, ResizeEdge, TitleBar, OrderList, PageHeader, Select,
@@ -67,6 +72,7 @@ import { MainPage as AnswerMain } from "skins/dv-answer.slint";
 import { MainPage as SynthMain } from "skins/dv-synth.slint";
 import { MainPage as FighterMain } from "skins/x-fighter.slint";
 import { MainPage as CozyMain } from "skins/px-cozy.slint";
+import { MainPage as PinballMain } from "skins/x-pinball.slint";
 import {
     ClipPage as TapeClip, SettingsPage as TapeSettings, ModelsPage as TapeModels, MergePage as TapeMerge, AskPage as TapeAsk,
     Widget as TapeWidget, Dialog as TapeDialog, Speaking as TapeSpeaking, Drop as TapeDrop,
@@ -761,6 +767,15 @@ export component AppWindow inherits Window {
             refocus => { keys.focus(); }
         }
         if !compact && page == 0 && Theme.skin == 13: CozyMain {
+            narrow: root.narrow;
+            wide: root.wide;
+            tall: root.tall;
+            go(p) => { root.go(p); }
+            ask-rename(i) => { root.ask-rename(i); }
+            ask-delete(i) => { root.ask-delete(i); }
+            refocus => { keys.focus(); }
+        }
+        if !compact && page == 0 && Theme.skin == 14: PinballMain {
             narrow: root.narrow;
             wide: root.wide;
             tall: root.tall;

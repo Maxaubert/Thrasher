@@ -111,6 +111,20 @@ px-cozy) PIECES="gear:gear:7:7 min:min:7:6 close:close:7:5 play:play:5:9 pause:p
   mug:mug:7:7 candle:candle:5:7 books:books:9:6 jar:jar:6:7 tape:tape:8:6 lantern:lantern:18:23
   lantern-hot:lantern-hot:18:23 lantern-lit:lantern-lit:72:23 glow-p:glow-p:38:38 glow-w:glow-w:72:72
   wood:wood:192:144 wood-d:wood-d:192:144 parch:parch:96:96 scene-p:scene-p:1296:36 scene-w:scene-w:1872:66" ;;
+# Pinball: the backglass and playfield pictures (stretched to the window in Slint; the
+# playfields and the display's nine-slice glow are used at 1x only, they are soft), the Monoton words, the display case,
+# the shooter lane, the bumpers, lamps and inserts, the flipper button, the ball and the
+# wide flippers.
+x-pinball) PIECES="brand:brand:139:40 title-p:title-p:202:52 title-w:title-w:334:78 bg-p:bg-p:520:146 bg-w:bg-w:400:212
+  dmd-glow:dmd-glow:92:92 spk:spk:26:78 pf-p:pf-p:520:100 pf-w:pf-w:395:316
+  arr-p:arr-p:24:30 arr-w1:arr-w1:26:34 arr-w2:arr-w2:22:28 arr-w3:arr-w3:20:25 rod-p:rod-p:18:22 rod-w:rod-w:18:120
+  knob-p:knob-p:108:108 knob-w:knob-w:118:118
+  bk-red-p:bk-red-p:80:80 bk-yel-p:bk-yel-p:80:80 bk-blu-p:bk-blu-p:80:80 bk-red-w:bk-red-w:94:94 bk-yel-w:bk-yel-w:94:94 bk-blu-w:bk-blu-w:94:94
+  lamp-off-p:lamp-off-p:27:27 lamp-o-p:lamp-o-p:27:27 lamp-y-p:lamp-y-p:27:27 lamp-r-p:lamp-r-p:27:27
+  lamp-off-w:lamp-off-w:28:28 lamp-o-w:lamp-o-w:28:28 lamp-y-w:lamp-y-w:28:28 lamp-r-w:lamp-r-w:28:28
+  ins-0-p:ins-0-p:42:34 ins-1-p:ins-1-p:42:34 ins-2-p:ins-2-p:42:34 ins-3-p:ins-3-p:42:34 ins-s-p:ins-s-p:42:34
+  ins-0-w:ins-0-w:50:40 ins-1-w:ins-1-w:50:40 ins-2-w:ins-2-w:50:40 ins-3-w:ins-3-w:50:40 ins-s-w:ins-s-w:50:40
+  flip-p:flip-p:72:72 flip-w:flip-w:78:78 ball:ball:19:19 flippers:flippers:290:132" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 

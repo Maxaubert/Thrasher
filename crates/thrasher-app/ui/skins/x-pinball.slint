@@ -1,0 +1,1736 @@
+// The Pinball main page: the whole app is a pinball cabinet
+// (docs/mockups/device-themes/x-pinball.html). The backglass holds the title and the
+// orange dot matrix display (the state, the timer and the microphone); the playfield
+// holds the rollover lane lights (the input level), the three pop bumpers (Import, Ask
+// and the widget) and the shooter lane, whose plunger is REC. The clips are lit arrow
+// inserts, and the footer apron has the flipper button (play) and the ball riding the
+// progress rail under a small display. Portrait windows stack it all; wide ones put the
+// backglass and the playfield on the left and the clips on the right.
+//
+// Fixed art is PNGs in x-pinball/ (1x and 2x), cut from tools/skin-art/x-pinball.html
+// with headless Edge. The dot matrix is drawn by the "Pinball Dots" fonts
+// (tools/skin-art/x-pinball-fonts.py): one em is 8 dot rows, every advance a whole
+// number of dots, so text is placed on the grid by its measured width. Nothing moves but
+// the status dot, which blinks on the Fx clock while recording.
+
+import { Theme, Fx, Main, Tips, Icon, ProjectMenu, TextField, Scroller, ClipMenu, WaveSeek, ClipRow, SearchHit } from "../common.slint";
+
+// The cabinet's colours, from the mockup.
+global Pb {
+    out property <color> plasma: #ff7a1a;
+    out property <color> plasma-hi: #ffb050;
+    out property <color> cab: #0a090c;
+    out property <color> ink: #efe8f2;
+    out property <color> mute: #8f86a0;
+    out property <color> name: #f0eaf4;
+    out property <color> name-sel: #ffe2c2;
+    out property <color> cap: #a9b4e0;
+    out property <color> bump-ink: #e9e4f0;
+    out property <color> icon-dark: #1c1820;
+    out property <color> lane: #8d8a94;
+    out property <color> wave: #6f6880;
+    out property <color> wave-sel: #ffa050;
+    out property <color> dots: #8a8094;
+    out property <color> dots-sel: #ffb070;
+    out property <color> list: #0c0a0f;
+    // The dot matrix: unlit dots, the dim rule, the mic line, the bright lines, the glow.
+    out property <color> dmd-bg: #070302;
+    out property <color> dmd-off: #ff641417;
+    out property <color> dmd-1: #7a300a;
+    out property <color> dmd-2: #e8640f;
+    out property <color> dmd-3: #ffa040;
+    out property <color> dmd-halo: #ff6e1438;
+    // Eight unlit blocks of 8x8 dots (U+2588 in Pinball Dots), for the grid lines.
+    out property <string> blocks: "████████████████████";
+}
+
+// A piece of art, the 2x cut when the display is dense.
+component Art inherits Image {
+    in property <image> lo;
+    in property <image> hi;
+    source: 1phx < 0.7px ? root.hi : root.lo;
+    image-fit: fill;
+}
+
+// Small caps printed on the playfield and the cabinet.
+component Lab inherits Text {
+    color: Pb.cap;
+    font-family: "Barlow Condensed";
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    vertical-alignment: center;
+    accessible-role: none;
+    accessible-label: "";
+}
+
+// Text on the dot matrix: lit dots over their glow, placed on the grid. `align` 0 puts
+// its first dot at column `col`, 1 centres it, 2 ends it `col` columns from the right;
+// `most` is the most columns it may take (it elides past them).
+component DotText inherits Rectangle {
+    in property <string> text;
+    in property <length> pitch;
+    in property <int> cols;
+    in property <int> at-col;
+    in property <int> at-row;
+    in property <int> align;
+    in property <int> most: root.cols;
+    in property <bool> big;
+    in property <color> ink: Pb.dmd-3;
+    in property <bool> halo: true;
+    // The columns its dots span (the advance less the gap after the last glyph).
+    property <int> span: min(round(lit.preferred-width / root.pitch) - 1, root.most);
+    out property <int> used: root.span;
+    x: (root.align == 0 ? root.at-col : root.align == 1 ? round((root.cols - root.span) / 2) : root.cols - root.at-col - root.span) * root.pitch;
+    y: root.at-row * root.pitch;
+    width: (root.span + 1) * root.pitch;
+    height: (root.big ? 15 : 8) * root.pitch;
+    accessible-role: none;
+    if root.halo: Text {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        color: Pb.dmd-halo;
+        font-family: root.big ? "Pinball Halo Big" : "Pinball Halo";
+        font-size: root.pitch * 8;
+        overflow: elide;
+        accessible-role: none;
+    }
+    lit := Text {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        color: root.ink;
+        font-family: root.big ? "Pinball Dots Big" : "Pinball Dots";
+        font-size: root.pitch * 8;
+        overflow: elide;
+        accessible-role: none;
+    }
+}
+
+// The unlit grid of a dot matrix, `lines` lines of 8 rows, clipped by its display. A
+// plain Text inside, so screen readers do not read the blocks.
+component DotGrid inherits Rectangle {
+    in property <length> pitch;
+    in property <int> lines: 1;
+    x: 0;
+    y: 0;
+    Text {
+        x: 0;
+        y: 0;
+        text: root.lines == 1 ? Pb.blocks + Pb.blocks + Pb.blocks + Pb.blocks + Pb.blocks
+            : Pb.blocks + "\n" + Pb.blocks + "\n" + Pb.blocks + "\n" + Pb.blocks;
+        color: Pb.dmd-off;
+        font-family: "Pinball Dots";
+        font-size: root.pitch * 8;
+        accessible-role: none;
+    }
+}
+
+// The backglass display: the state with its lamp and a dotted rule, the timer and the
+// microphone, orange on the dot matrix.
+component Matrix inherits Rectangle {
+    in property <bool> big;
+    property <length> pitch: root.big ? 2.45px : 2.6px;
+    property <int> cols: root.big ? 124 : 128;
+    property <int> rows: root.big ? 31 : 32;
+    property <string> clock: Main.elapsed + Main.elapsed-tenth;
+    // The status lamp blinks while recording (on and off every half second).
+    property <bool> blink: Main.recording && !Main.paused && Math.mod(floor(Fx.t), 2) == 1;
+    width: root.cols * root.pitch;
+    height: root.rows * root.pitch;
+    clip: true;
+    background: Pb.dmd-bg;
+    accessible-role: AccessibleRole.text;
+    // The dots are silent, so the microphone is read here too, as the classic card's text is.
+    accessible-label: (Main.recording ? (Main.paused ? "Paused " : "Recording ") : "Ready ") + root.clock + ", " + Main.device-label;
+    DotGrid {
+        pitch: root.pitch;
+        lines: 4;
+    }
+    if !root.blink: DotText {
+        text: "*";
+        pitch: root.pitch;
+        cols: root.cols;
+        at-col: 2;
+        at-row: 1;
+    }
+    DotText {
+        text: Main.recording ? (Main.paused ? "PAUSED" : "RECORDING") : "READY";
+        pitch: root.pitch;
+        cols: root.cols;
+        at-col: 9;
+        at-row: 1;
+    }
+    // The dotted rule at the right, as in the mockup.
+    DotText {
+        text: "∙∙∙∙∙∙∙∙∙∙";
+        pitch: root.pitch;
+        cols: root.cols;
+        at-col: root.cols - 21;
+        at-row: 1;
+        ink: Pb.dmd-1;
+        halo: false;
+    }
+    DotText {
+        text: root.clock;
+        big: true;
+        align: 1;
+        pitch: root.pitch;
+        cols: root.cols;
+        at-row: 9;
+    }
+    DotText {
+        text: Main.device-label.to-uppercase();
+        align: 1;
+        pitch: root.pitch;
+        cols: root.cols;
+        most: root.cols - 4;
+        at-row: root.rows - 7;
+        ink: Pb.dmd-2;
+    }
+}
+
+// The backglass: the painted glass (rays, stars, bolts), its frame, the title and the
+// display in its case (with speakers beside it in a wide window).
+component Glass inherits Rectangle {
+    in property <bool> big;
+    height: root.big ? 212px : 146px;
+    clip: true;
+    Art {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        lo: root.big ? @image-url("x-pinball/bg-w.png") : @image-url("x-pinball/bg-p.png");
+        hi: root.big ? @image-url("x-pinball/bg-w@2x.png") : @image-url("x-pinball/bg-p@2x.png");
+    }
+    // The frame: black, grey, black.
+    Rectangle { border-width: 2px; border-color: #000; }
+    Rectangle { x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px; border-width: 2px; border-color: #6b6472; }
+    Rectangle { x: 4px; y: 4px; width: parent.width - 8px; height: parent.height - 8px; border-width: 1px; border-color: #000; }
+    Art {
+        x: (parent.width - self.width) / 2;
+        y: root.big ? -2px : -5px;
+        width: root.big ? 334px : 202px;
+        height: root.big ? 78px : 52px;
+        lo: root.big ? @image-url("x-pinball/title-w.png") : @image-url("x-pinball/title-p.png");
+        hi: root.big ? @image-url("x-pinball/title-w@2x.png") : @image-url("x-pinball/title-p@2x.png");
+    }
+    property <length> box-w: root.big ? 314px : 343px;
+    property <length> box-h: root.big ? 86px : 94px;
+    property <length> box-x: (root.width - root.box-w) / 2;
+    property <length> box-y: root.big ? 72px : 41px;
+    if root.big: Art {
+        x: root.box-x - 10px - 22px - 2px;
+        y: root.box-y + 6px - 2px;
+        width: 26px;
+        height: 78px;
+        lo: @image-url("x-pinball/spk.png");
+        hi: @image-url("x-pinball/spk@2x.png");
+    }
+    if root.big: Art {
+        x: root.box-x + root.box-w + 10px - 2px;
+        y: root.box-y + 6px - 2px;
+        width: 26px;
+        height: 78px;
+        lo: @image-url("x-pinball/spk.png");
+        hi: @image-url("x-pinball/spk@2x.png");
+    }
+    // The case: its glow (a nine-slice picture with a clear middle), a grey and a black
+    // ring, the dark box and its thin inner edge.
+    Image {
+        x: root.box-x - 26px;
+        y: root.box-y - 26px;
+        width: root.box-w + 52px;
+        height: root.box-h + 52px;
+        source: @image-url("x-pinball/dmd-glow.png", nine-slice(30));
+        accessible-role: none;
+    }
+    Rectangle {
+        x: root.box-x - 4px;
+        y: root.box-y - 4px;
+        width: root.box-w + 8px;
+        height: root.box-h + 8px;
+        border-radius: 8px;
+        background: #4d4752;
+    }
+    Rectangle {
+        x: root.box-x - 2px;
+        y: root.box-y - 2px;
+        width: root.box-w + 4px;
+        height: root.box-h + 4px;
+        border-radius: 6px;
+        background: #000;
+    }
+    Rectangle {
+        x: root.box-x;
+        y: root.box-y;
+        width: root.box-w;
+        height: root.box-h;
+        border-radius: 4px;
+        background: #050304;
+        border-width: 1px;
+        border-color: #2b2420;
+    }
+    Matrix {
+        big: root.big;
+        x: root.box-x + 5px;
+        y: root.box-y + 5px;
+    }
+}
+
+// A key of the title bar: Settings (amber), minimise and close.
+component TitleKey inherits Rectangle {
+    in property <string> icon;
+    in property <string> label;
+    in property <color> tint: #c9c3cf;
+    callback clicked;
+    width: 26px;
+    height: 24px;
+    border-radius: 4px;
+    background: t.pressed ? #ffffff1f : t.has-hover ? #ffffff14 : transparent;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Icon {
+        name: root.icon;
+        tint: root.tint;
+        width: 15px;
+        height: 15px;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The title bar: the brand in neon, Settings, minimise and close.
+component Title inherits Rectangle {
+    callback go(int);
+    height: 32px;
+    background: @linear-gradient(180deg, #2a2530 0%, #121015 100%);
+    Rectangle { y: parent.height - 3px; height: 2px; background: #5f5866; }
+    Rectangle { y: parent.height - 1px; height: 1px; background: #000; }
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    Art {
+        x: 2px;
+        y: -4px;
+        width: 139px;
+        height: 40px;
+        lo: @image-url("x-pinball/brand.png");
+        hi: @image-url("x-pinball/brand@2x.png");
+    }
+    HorizontalLayout {
+        x: parent.width - self.width - 6px;
+        width: self.preferred-width;
+        height: parent.height - 2px;
+        spacing: 4px;
+        alignment: end;
+        VerticalLayout {
+            alignment: center;
+            TitleKey { icon: "gear"; label: "Settings"; tint: Pb.plasma-hi; clicked => { root.go(3); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            TitleKey { icon: "minimize"; label: "Minimize"; clicked => { Main.minimize-window(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            TitleKey { icon: "close"; label: "Close"; clicked => { Main.close-window(); } }
+        }
+    }
+}
+
+// The rollover lane lights: the input level, orange, then amber, then red (-40 dB to 0).
+component Lanes inherits Rectangle {
+    in property <bool> big;
+    property <int> n: 10;
+    property <length> lw: root.big ? 22px : 21px;
+    property <length> d: root.big ? 12px : 11px;
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;
+    property <int> on: round(clamp((root.level * 60 - 20) / 40, 0, 1) * root.n);
+    property <bool> hi: 1phx < 0.7px;
+    width: root.n * root.lw + 1.5px;
+    height: root.big ? 24px : 18px;
+    accessible-role: none;
+    for i in root.n: Rectangle {
+        x: i * root.lw;
+        width: 1.5px;
+        background: Pb.lane;
+    }
+    Rectangle {
+        x: root.n * root.lw;
+        width: 1.5px;
+        background: Pb.lane;
+    }
+    for i in root.n: Image {
+        property <int> kind: i >= root.on ? 0 : i < 7 ? 1 : i < 9 ? 2 : 3;
+        x: i * root.lw + 0.75px + (root.lw - root.d) / 2 - 8px;
+        y: (root.height - root.d) / 2 - 8px;
+        width: root.d + 16px;
+        height: root.d + 16px;
+        image-fit: fill;
+        source: root.big
+            ? (self.kind == 0 ? (root.hi ? @image-url("x-pinball/lamp-off-w@2x.png") : @image-url("x-pinball/lamp-off-w.png"))
+                : self.kind == 1 ? (root.hi ? @image-url("x-pinball/lamp-o-w@2x.png") : @image-url("x-pinball/lamp-o-w.png"))
+                : self.kind == 2 ? (root.hi ? @image-url("x-pinball/lamp-y-w@2x.png") : @image-url("x-pinball/lamp-y-w.png"))
+                : (root.hi ? @image-url("x-pinball/lamp-r-w@2x.png") : @image-url("x-pinball/lamp-r-w.png")))
+            : (self.kind == 0 ? (root.hi ? @image-url("x-pinball/lamp-off-p@2x.png") : @image-url("x-pinball/lamp-off-p.png"))
+                : self.kind == 1 ? (root.hi ? @image-url("x-pinball/lamp-o-p@2x.png") : @image-url("x-pinball/lamp-o-p.png"))
+                : self.kind == 2 ? (root.hi ? @image-url("x-pinball/lamp-y-p@2x.png") : @image-url("x-pinball/lamp-y-p.png"))
+                : (root.hi ? @image-url("x-pinball/lamp-r-p@2x.png") : @image-url("x-pinball/lamp-r-p.png")));
+    }
+}
+
+// The lane row: INPUT and the lights.
+component LaneRow inherits HorizontalLayout {
+    in property <bool> big;
+    width: self.preferred-width;
+    spacing: root.big ? 10px : 8px;
+    Lab { text: "INPUT"; }
+    VerticalLayout {
+        alignment: center;
+        Lanes { big: root.big; }
+    }
+}
+
+// A pop bumper: its body and white cap with the icon, the word under it. `kind` 0 red,
+// 1 yellow, 2 blue; `lit` latches it (Pause while paused).
+component Bumper inherits Rectangle {
+    in property <bool> big;
+    in property <int> kind;
+    in property <string> icon;
+    in property <string> text;
+    in property <string> label;
+    in property <string> tip: root.label;
+    in property <bool> lit;
+    callback clicked;
+    property <length> d: root.big ? 58px : 44px;
+    property <bool> down: t.pressed || root.lit;
+    width: max(root.d, word.preferred-width);
+    height: root.d + 3px + 12px;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        x: (parent.width - root.d) / 2;
+        y: root.down ? 1px : 0;
+        width: root.d;
+        height: root.d;
+        Art {
+            x: -18px;
+            y: -18px;
+            width: root.d + 36px;
+            height: root.d + 36px;
+            lo: root.big ? (root.kind == 0 ? @image-url("x-pinball/bk-red-w.png") : root.kind == 1 ? @image-url("x-pinball/bk-yel-w.png") : @image-url("x-pinball/bk-blu-w.png"))
+                : (root.kind == 0 ? @image-url("x-pinball/bk-red-p.png") : root.kind == 1 ? @image-url("x-pinball/bk-yel-p.png") : @image-url("x-pinball/bk-blu-p.png"));
+            hi: root.big ? (root.kind == 0 ? @image-url("x-pinball/bk-red-w@2x.png") : root.kind == 1 ? @image-url("x-pinball/bk-yel-w@2x.png") : @image-url("x-pinball/bk-blu-w@2x.png"))
+                : (root.kind == 0 ? @image-url("x-pinball/bk-red-p@2x.png") : root.kind == 1 ? @image-url("x-pinball/bk-yel-p@2x.png") : @image-url("x-pinball/bk-blu-p@2x.png"));
+        }
+        Rectangle {
+            visible: t.has-hover && !root.down;
+            border-radius: self.width / 2;
+            background: #ffffff1a;
+        }
+        Rectangle {
+            visible: root.lit;
+            x: -2px;
+            y: -2px;
+            width: parent.width + 4px;
+            height: parent.height + 4px;
+            border-radius: self.width / 2;
+            border-width: 2px;
+            border-color: Pb.plasma-hi;
+        }
+        Icon {
+            name: root.icon;
+            tint: Pb.icon-dark;
+            width: root.big ? 20px : 16px;
+            height: self.width;
+        }
+    }
+    word := Text {
+        y: root.d + 3px;
+        width: parent.width;
+        height: 12px;
+        text: root.text;
+        color: root.lit ? Pb.plasma-hi : Pb.bump-ink;
+        font-family: "Barlow Condensed";
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The red bumper: Import, or Pause and Resume while recording (Import is not offered then).
+component ImportBumper inherits Bumper {
+    callback refocus();
+    kind: 0;
+    icon: !Main.recording ? "import" : Main.paused ? "play" : "pause";
+    text: !Main.recording ? "IMPORT" : Main.paused ? "RESUME" : "PAUSE";
+    label: !Main.recording ? "Import audio or video" : Main.paused ? "Resume" : "Pause";
+    tip: !Main.recording ? "Import" : root.label;
+    lit: Main.recording && Main.paused;
+    clicked => {
+        if (Main.recording) {
+            Main.toggle-pause();
+            root.refocus();
+        } else {
+            Main.import-files();
+        }
+    }
+}
+
+// The plunger knob in the shooter lane: REC, which stops and saves while recording.
+component Plunger inherits Rectangle {
+    in property <bool> big;
+    callback refocus();
+    property <length> d: root.big ? 66px : 56px;
+    width: root.d;
+    height: root.d;
+    accessible-role: button;
+    accessible-label: Main.recording ? "Stop and save" : "Record";
+    accessible-action-default => { Main.toggle-record(); root.refocus(); }
+    Rectangle {
+        y: t.pressed ? 2px : 0;
+        Art {
+            x: -26px;
+            y: -26px;
+            width: root.d + 52px;
+            height: root.d + 52px;
+            lo: root.big ? @image-url("x-pinball/knob-w.png") : @image-url("x-pinball/knob-p.png");
+            hi: root.big ? @image-url("x-pinball/knob-w@2x.png") : @image-url("x-pinball/knob-p@2x.png");
+        }
+        Rectangle {
+            visible: t.has-hover && !t.pressed;
+            border-radius: self.width / 2;
+            background: #ffffff1a;
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 1px;
+            HorizontalLayout {
+                alignment: center;
+                Icon {
+                    name: Main.recording ? "stop" : "mic";
+                    tint: #ffffff;
+                    width: Main.recording ? 15px : 20px;
+                    height: self.width;
+                }
+            }
+            Text {
+                text: Main.recording ? "STOP" : "REC";
+                color: #ffffff;
+                font-family: "Barlow Condensed";
+                font-size: root.big ? 12px : 11px;
+                font-weight: 700;
+                letter-spacing: 2px;
+                horizontal-alignment: center;
+                accessible-role: none;
+            }
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, Main.recording ? "Stop" : "Record", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); Main.toggle-record(); root.refocus(); }
+    }
+}
+
+// The shooter lane: the lit arrows, the plunger rod and REC at the bottom. A short
+// lane takes the rod in from the top.
+component Shooter inherits Rectangle {
+    in property <bool> big;
+    callback refocus();
+    property <length> mid: 3px + (root.width - 3px) / 2;
+    property <length> knob-y: root.height - (root.big ? 14px + 66px : 9px + 56px);
+    property <length> rod-h: root.big ? clamp(root.knob-y - 92px, 24px, 120px) : 22px;
+    property <bool> hi: 1phx < 0.7px;
+    width: root.big ? 94px : 86px;
+    background: @linear-gradient(90deg, #05060c 0%, #141a30 50%, #05060c 100%);
+    Rectangle { x: 0; width: 3px; background: #8f8c96; }
+    if !root.big: Art {
+        x: root.mid - 12px;
+        y: 2px;
+        width: 24px;
+        height: 30px;
+        lo: @image-url("x-pinball/arr-p.png");
+        hi: @image-url("x-pinball/arr-p@2x.png");
+    }
+    if root.big: Art {
+        x: root.mid - 13px;
+        y: 4px;
+        width: 26px;
+        height: 34px;
+        lo: @image-url("x-pinball/arr-w1.png");
+        hi: @image-url("x-pinball/arr-w1@2x.png");
+    }
+    if root.big: Art {
+        x: root.mid - 11px;
+        y: 36px;
+        width: 22px;
+        height: 28px;
+        lo: @image-url("x-pinball/arr-w2.png");
+        hi: @image-url("x-pinball/arr-w2@2x.png");
+    }
+    if root.big: Art {
+        x: root.mid - 10px;
+        y: 64px;
+        width: 20px;
+        height: 25px;
+        lo: @image-url("x-pinball/arr-w3.png");
+        hi: @image-url("x-pinball/arr-w3@2x.png");
+    }
+    // The rod: its lower part, as much as fits.
+    Image {
+        x: root.mid - 9px;
+        y: root.knob-y - root.rod-h;
+        width: 18px;
+        height: root.rod-h;
+        source: root.big ? (root.hi ? @image-url("x-pinball/rod-w@2x.png") : @image-url("x-pinball/rod-w.png"))
+            : (root.hi ? @image-url("x-pinball/rod-p@2x.png") : @image-url("x-pinball/rod-p.png"));
+        source-clip-x: 0;
+        source-clip-y: ((root.big ? 120px : 22px) - root.rod-h) / 1px * (root.hi ? 2 : 1);
+        source-clip-width: 18 * (root.hi ? 2 : 1);
+        source-clip-height: root.rod-h / 1px * (root.hi ? 2 : 1);
+        image-fit: fill;
+    }
+    Plunger {
+        big: root.big;
+        x: root.mid - self.width / 2;
+        y: root.knob-y;
+        refocus => { root.refocus(); }
+    }
+}
+
+// The playfield's top edge.
+component FieldEdge inherits Rectangle {
+    x: 0;
+    y: 0;
+    height: 3px;
+    Rectangle { y: 0; height: 2px; background: #000; }
+    Rectangle { y: 2px; height: 1px; background: #514a58; }
+}
+
+// The portrait playfield: the lanes and the bumpers in a row, the shooter lane on the right.
+component FieldP inherits Rectangle {
+    callback go(int);
+    callback refocus();
+    height: 100px;
+    Art {
+        x: 0;
+        y: 0;
+        width: parent.width - 86px;
+        height: parent.height;
+        lo: @image-url("x-pinball/pf-p.png");
+        hi: @image-url("x-pinball/pf-p.png");
+    }
+    FieldEdge { width: parent.width - 86px; }
+    LaneRow {
+        x: 12px;
+        y: 8px;
+        height: 18px;
+    }
+    HorizontalLayout {
+        x: 12px;
+        y: 33px;
+        width: parent.width - 86px - 22px;
+        height: 59px;
+        alignment: space-around;
+        ImportBumper { refocus => { root.refocus(); } }
+        if Main.can-ai: Bumper {
+            kind: 1;
+            icon: "message";
+            text: "ASK";
+            label: "Ask your clips";
+            tip: "Ask";
+            clicked => { root.go(6); }
+        }
+        Bumper {
+            kind: 2;
+            icon: "pip";
+            text: "WIDGET";
+            label: "Small widget";
+            tip: "Widget";
+            clicked => { Main.compact-changed(true); }
+        }
+    }
+    Shooter {
+        x: parent.width - 86px;
+        height: parent.height;
+        refocus => { root.refocus(); }
+    }
+}
+
+// The wide playfield under the backglass: the lanes, the bumpers in a triangle, the
+// guides and flippers at the foot (when there is room), the shooter lane on the right.
+component FieldW inherits Rectangle {
+    callback go(int);
+    callback refocus();
+    width: 400px;
+    Art {
+        x: 0;
+        y: 0;
+        width: 395px;
+        height: parent.height;
+        lo: @image-url("x-pinball/pf-w.png");
+        hi: @image-url("x-pinball/pf-w.png");
+    }
+    FieldEdge { width: 395px; }
+    // The left column's edge beside the playfield.
+    Rectangle { x: 395px; width: 2px; background: #5f5866; }
+    Rectangle { x: 397px; width: 3px; background: #000; }
+    if root.height >= 300px: Art {
+        x: 5.5px;
+        y: parent.height - 132px;
+        width: 290px;
+        height: 132px;
+        lo: @image-url("x-pinball/flippers.png");
+        hi: @image-url("x-pinball/flippers@2x.png");
+    }
+    LaneRow {
+        big: true;
+        x: (301px - self.preferred-width) / 2;
+        y: 12px;
+        height: 24px;
+    }
+    ImportBumper {
+        big: true;
+        x: 16px + 34px;
+        y: 46px;
+        refocus => { root.refocus(); }
+    }
+    if Main.can-ai: Bumper {
+        big: true;
+        x: 16px + 176px;
+        y: 46px;
+        kind: 1;
+        icon: "message";
+        text: "ASK";
+        label: "Ask your clips";
+        tip: "Ask";
+        clicked => { root.go(6); }
+    }
+    // Without Ask, the widget takes its place at the top. In a short window the
+    // triangle's foot rises so its word stays above the apron (it sits between the two
+    // above, so they never meet).
+    Bumper {
+        big: true;
+        x: 16px + (Main.can-ai ? 105px : 176px);
+        y: Main.can-ai ? max(46px, min(46px + 62px, root.height - self.height - 6px)) : 46px;
+        kind: 2;
+        icon: "pip";
+        text: "WIDGET";
+        label: "Small widget";
+        tip: "Widget";
+        clicked => { Main.compact-changed(true); }
+    }
+    Shooter {
+        big: true;
+        x: 301px;
+        height: parent.height;
+        refocus => { root.refocus(); }
+    }
+}
+
+// The project picker as a lit arrow insert. ProjectMenu holds what it offers. `most` is
+// the most room the name may take (it elides past it).
+component Chip inherits Rectangle {
+    in property <bool> big;
+    in property <length> most: 200px;
+    callback refocus();
+    property <bool> enabled: !Main.recording;
+    width: row.preferred-width;
+    height: root.big ? 32px : 28px;
+    opacity: root.enabled ? 1 : 0.6;
+    accessible-role: combobox;
+    accessible-label: "Project";
+    accessible-value: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+    accessible-expandable: true;
+    accessible-action-default => { if (root.enabled) { menu.show(); } }
+    accessible-action-expand => { if (root.enabled) { menu.show(); } }
+    // The glow around it, as three faint rounded rings.
+    for k in 3: Rectangle {
+        x: -(3 - k) * 2px;
+        y: -(3 - k) * 2px;
+        width: root.width - 14px + (3 - k) * 4px;
+        height: root.height + (3 - k) * 4px;
+        border-radius: (3 - k) * 3px;
+        background: #ff781e10;
+    }
+    // The mockup's radial light: the middle's colours top to bottom, darkened towards
+    // both ends (sampled from the cut chip), and the arrow tip in the end's colours.
+    Rectangle {
+        x: 0;
+        y: 0;
+        width: parent.width - 14px;
+        height: parent.height;
+        background: @linear-gradient(180deg, #ffbb69 0%, #ffdf9e 30%, #ffba68 58%, #fa9537 100%);
+        Rectangle {
+            background: @linear-gradient(90deg, #e56b15d0 0%, #e56b1500 38%, #e56b1500 62%, #e56b15d0 100%);
+        }
+        Rectangle {
+            visible: t.has-hover && root.enabled;
+            background: #ffffff26;
+        }
+    }
+    Path {
+        x: parent.width - 14px;
+        y: 0;
+        width: 14px;
+        height: parent.height;
+        viewbox-width: 14;
+        viewbox-height: 28;
+        commands: "M 0 0 L 14 14 L 0 28 Z";
+        fill: @linear-gradient(180deg, #ef7f25 0%, #f2862b 30%, #e56b15 100%);
+    }
+    row := HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 22px;
+        spacing: 6px;
+        Text {
+            text: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+            color: #2a0d00;
+            font-family: "Barlow Condensed";
+            font-size: root.big ? 15px : 14px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            vertical-alignment: center;
+            max-width: root.most;
+            overflow: elide;
+        }
+        Icon {
+            name: "down";
+            tint: #2a0d00;
+            width: root.big ? 11px : 10px;
+            height: self.width;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { menu.show(); }
+    }
+    menu := ProjectMenu {
+        width: parent.width;
+        height: parent.height;
+        projects: Main.projects;
+        current: Main.project;
+        has-clips: Main.clips.length > 0;
+        choose(i) => { Main.choose-project(i); root.refocus(); }
+        create => { Main.dialog-text = ""; Main.dialog = 4; }
+        rename => { Main.dialog-text = Main.projects[Main.project]; Main.dialog = 5; }
+        delete => { Main.delete-project(); root.refocus(); }
+        export => { Main.export-project(); root.refocus(); }
+    }
+}
+
+// The search field: a black pill with a grey rim.
+component Search inherits Rectangle {
+    in property <bool> big;
+    callback go(int);
+    callback refocus();
+    height: root.big ? 32px : 28px;
+    Rectangle {
+        x: -1.5px;
+        y: -1.5px;
+        width: parent.width + 3px;
+        height: parent.height + 3px;
+        border-radius: self.height / 2;
+        background: #6e6876;
+    }
+    Rectangle {
+        border-radius: self.height / 2;
+        background: #040406;
+        border-width: 1px;
+        border-color: #000;
+    }
+    TextField {
+        height: parent.height;
+        radius: parent.height / 2;
+        fill: transparent;
+        rest-edge: transparent;
+        ink: Pb.ink;
+        hint: #857c8f;
+        font-size: 14px;
+        family: "Barlow Condensed";
+        side: 12px;
+        icon: "search";
+        placeholder: "Search";
+        label: "Search clips";
+        takes-escape: true;
+        focus-ticket: Main.search-ticket;
+        text <=> Main.query;
+        edited(t) => { Main.search(t, Main.search-all); }
+        escaped => { Main.query = ""; Main.search("", Main.search-all); root.refocus(); }
+        accepted => { if (Main.hits.length > 0) { Main.open-hit(0); root.go(1); } }
+    }
+}
+
+// While searching with more than one project: search them all instead of this one.
+component AllKey inherits Rectangle {
+    in property <bool> big;
+    width: all-text.preferred-width + 20px;
+    height: root.big ? 32px : 28px;
+    border-radius: self.height / 2;
+    border-width: 1.5px;
+    border-color: Main.search-all ? Pb.plasma : #6e6876;
+    background: Main.search-all ? #ff7a1a26 : t.has-hover ? #ffffff0f : transparent;
+    accessible-role: checkbox;
+    accessible-label: "Search all projects";
+    accessible-checked: Main.search-all;
+    accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+    all-text := Text {
+        x: 10px;
+        height: parent.height;
+        text: "ALL PROJECTS";
+        color: Main.search-all ? Pb.plasma-hi : Pb.mute;
+        font-family: "Barlow Condensed";
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        vertical-alignment: center;
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+    }
+}
+
+// The toolbar over the clips: the project chip and the search field. The chip takes at
+// most what the rest leaves (`avail` is the toolbar's width, worked out by the page).
+component Tools inherits Rectangle {
+    in property <bool> big;
+    in property <length> avail;
+    callback go(int);
+    callback refocus();
+    property <length> side: root.big ? 18px : 10px;
+    property <length> all-w: Main.query != "" && Main.projects.length > 1 ? 104px : 0;
+    height: root.big ? 56px : 42px;
+    background: @linear-gradient(180deg, #141118 0%, #0d0b10 100%);
+    Rectangle { y: parent.height - 1px; height: 1px; background: #29242e; }
+    HorizontalLayout {
+        padding-left: root.side;
+        padding-right: root.side;
+        spacing: 8px;
+        VerticalLayout {
+            alignment: center;
+            Chip {
+                big: root.big;
+                // The padding, the chip around its name, the smallest search field and the gaps.
+                most: max(40px, min(root.big ? 300px : 220px, root.avail - 2 * root.side - 50px - 8px - 90px - root.all-w));
+                refocus => { root.refocus(); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            min-width: 90px;
+            Search {
+                big: root.big;
+                go(p) => { root.go(p); }
+                refocus => { root.refocus(); }
+            }
+        }
+        if Main.query != "" && Main.projects.length > 1: VerticalLayout {
+            alignment: center;
+            AllKey { big: root.big; }
+        }
+    }
+}
+
+// A clip's waveform: thin rounded bars, orange on the highlighted clip; what has played
+// is lit.
+component Wave inherits Rectangle {
+    in property <[float]> values;
+    in property <bool> lit;
+    in property <float> progress: -1;
+    property <int> n: max(4, floor(root.width / 3.2px));
+    property <length> step: root.width / root.n;
+    for i in root.n: Rectangle {
+        property <float> v: root.values.length > 0 ? root.values[floor(i * root.values.length / root.n)] : 0.06;
+        x: i * root.step;
+        width: 1.8px;
+        height: max(2px, root.height * (0.25 + 0.75 * self.v));
+        y: (root.height - self.height) / 2;
+        border-radius: 0.9px;
+        background: root.lit || (i + 0.5) / root.n <= root.progress ? Pb.wave-sel : Pb.wave;
+    }
+}
+
+// The arrow insert at the start of a row: plays or pauses the clip. Its colour runs red,
+// yellow, blue, green down the list; the highlighted clip's is lit orange.
+component Insert inherits Rectangle {
+    in property <bool> big;
+    in property <int> index;
+    in property <bool> lit;
+    in property <bool> playing;
+    in property <string> name;
+    callback clicked;
+    property <int> c: Math.mod(root.index, 4);
+    property <float> k: root.width / 30px;
+    width: root.big ? 38px : 30px;
+    height: root.big ? 28px : 22px;
+    accessible-role: button;
+    accessible-label: (root.playing ? "Pause " : "Play ") + root.name;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        x: t.pressed ? 1px : 0;
+        Art {
+            x: -6px;
+            y: -6px;
+            width: root.width + 12px;
+            height: root.height + 12px;
+            lo: root.big ? (root.lit ? @image-url("x-pinball/ins-s-w.png") : root.c == 0 ? @image-url("x-pinball/ins-0-w.png") : root.c == 1 ? @image-url("x-pinball/ins-1-w.png") : root.c == 2 ? @image-url("x-pinball/ins-2-w.png") : @image-url("x-pinball/ins-3-w.png"))
+                : (root.lit ? @image-url("x-pinball/ins-s-p.png") : root.c == 0 ? @image-url("x-pinball/ins-0-p.png") : root.c == 1 ? @image-url("x-pinball/ins-1-p.png") : root.c == 2 ? @image-url("x-pinball/ins-2-p.png") : @image-url("x-pinball/ins-3-p.png"));
+            hi: root.big ? (root.lit ? @image-url("x-pinball/ins-s-w@2x.png") : root.c == 0 ? @image-url("x-pinball/ins-0-w@2x.png") : root.c == 1 ? @image-url("x-pinball/ins-1-w@2x.png") : root.c == 2 ? @image-url("x-pinball/ins-2-w@2x.png") : @image-url("x-pinball/ins-3-w@2x.png"))
+                : (root.lit ? @image-url("x-pinball/ins-s-p@2x.png") : root.c == 0 ? @image-url("x-pinball/ins-0-p@2x.png") : root.c == 1 ? @image-url("x-pinball/ins-1-p@2x.png") : root.c == 2 ? @image-url("x-pinball/ins-2-p@2x.png") : @image-url("x-pinball/ins-3-p@2x.png"));
+        }
+        // The play mark, or two bars while it plays (the mockup's 30x22 grid).
+        Path {
+            visible: !root.playing;
+            width: root.width;
+            height: root.height;
+            viewbox-width: 30;
+            viewbox-height: 22;
+            commands: "M 12 7 L 18 11 L 12 15 Z";
+            fill: root.lit ? #2a0d00 : t.has-hover ? #ffffff : #120c10;
+        }
+        Rectangle {
+            visible: root.playing;
+            x: 12 * root.k * 1px;
+            y: 7 * root.k * 1px;
+            width: 2.4 * root.k * 1px;
+            height: 8 * root.k * 1px;
+            background: root.lit ? #2a0d00 : #120c10;
+        }
+        Rectangle {
+            visible: root.playing;
+            x: 15.6 * root.k * 1px;
+            y: 7 * root.k * 1px;
+            width: 2.4 * root.k * 1px;
+            height: 8 * root.k * 1px;
+            background: root.lit ? #2a0d00 : #120c10;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The TRANSCRIBED tag on a row.
+component Tag inherits Rectangle {
+    in property <string> text;
+    width: tg.preferred-width + 8px;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #ff7a1a99;
+    tg := Text {
+        x: 4px;
+        height: parent.height;
+        text: root.text;
+        color: Pb.plasma;
+        font-family: "Barlow Condensed";
+        font-size: 9px;
+        letter-spacing: 1.5px;
+        vertical-alignment: center;
+    }
+}
+
+// One clip: the insert (play), the name with when it was made, whether it is
+// transcribed and whether it has the computer's sound, the waveform, the length and
+// the menu.
+component Row inherits Rectangle {
+    in property <int> index;
+    in property <ClipRow> item;
+    in property <bool> big;
+    in property <length> window-h;
+    // The width of the list, from the page (the row's own width would loop through the layout).
+    in property <length> row-w;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    property <bool> selected: root.index == Main.selected;
+    property <bool> picked: Main.picked[root.index];
+    property <bool> active: root.index == Main.active-clip;
+    property <bool> lit: root.selected || root.picked;
+    // The waveform gives way to the name in a narrow list: the name keeps at least 150px
+    // (110px in portrait); a wave under 30px goes.
+    property <length> wave-room: root.row-w - (root.big ? 32px + 38px + 70px + 12px + 4 * 14px + 150px : 18px + 30px + 50px + 10px + 4 * 9px + 110px);
+    property <length> wave-w: root.wave-room >= 30px ? min(root.big ? 150px : 52px, root.wave-room) : 0;
+    height: root.big ? 58px : 31px;
+    accessible-role: list-item;
+    accessible-label: root.item.name + ", " + root.item.duration;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected || root.picked;
+    accessible-action-default => { root.select(false, false); }
+    function select(ctrl: bool, shift: bool) {
+        Main.pick(root.index, ctrl, shift);
+        root.refocus();
+    }
+    if root.lit: Rectangle {
+        opacity: root.selected ? 1 : 0.6;
+        background: @linear-gradient(90deg, #ff7a1a42 0%, #ff7a1a0f 70%, #ff7a1a0f 100%);
+        border-width: 1px;
+        border-color: #ff9632b3;
+    }
+    if !root.lit && row-touch.has-hover: Rectangle { background: #ffffff08; }
+    if root.selected: Rectangle {
+        x: 0;
+        width: 3px;
+        background: Pb.plasma;
+    }
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: #ffffff0d;
+    }
+    row-touch := TouchArea {
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                root.select(e.modifiers.control, e.modifiers.shift);
+            }
+            // On release: the press that closes an open menu is used up by that menu.
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                menu.show-at(self.mouse-x, self.mouse-y);
+            }
+        }
+        // Opens just this clip, even out of several picked.
+        double-clicked => { root.select(false, false); Main.open-clip(root.index); root.go(1); }
+    }
+    HorizontalLayout {
+        padding-left: root.big ? 14px : 8px;
+        padding-right: root.big ? 18px : 10px;
+        spacing: root.big ? 14px : 9px;
+        VerticalLayout {
+            alignment: center;
+            Insert {
+                big: root.big;
+                index: root.index;
+                lit: root.selected;
+                playing: root.active && Main.playing;
+                name: root.item.name;
+                clicked => { Main.play-clip(root.index); root.refocus(); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            // The mockup's line heights (1.05 and 1.2), so both lines fit the row.
+            Text {
+                height: root.big ? 20px : 16px;
+                vertical-alignment: center;
+                text: root.item.name;
+                color: root.active ? Pb.plasma-hi : root.selected ? Pb.name-sel : Pb.name;
+                font-family: "Barlow Condensed";
+                font-size: root.big ? 19px : 15.5px;
+                font-weight: 600;
+                overflow: elide;
+            }
+            HorizontalLayout {
+                height: root.big ? 14.4px : 13.2px;
+                spacing: 6px;
+                alignment: start;
+                Text {
+                    text: root.item.when;
+                    color: Pb.mute;
+                    font-family: "Barlow Condensed";
+                    font-size: root.big ? 12px : 11px;
+                    letter-spacing: 0.5px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                if root.item.transcribed: VerticalLayout {
+                    alignment: center;
+                    Tag {
+                        text: "TRANSCRIBED";
+                        height: root.big ? 13px : 12px;
+                    }
+                }
+                // The sound of the computer was recorded too.
+                if root.item.has-system: Text {
+                    text: "+ system";
+                    color: Pb.mute;
+                    font-family: "Barlow Condensed";
+                    font-size: root.big ? 12px : 11px;
+                    letter-spacing: 0.5px;
+                    vertical-alignment: center;
+                }
+            }
+        }
+        // The waveform: a click on the highlighted clip moves its start, a double click
+        // plays from there.
+        if root.wave-w > 0: VerticalLayout {
+            alignment: center;
+            Wave {
+                width: root.wave-w;
+                height: root.big ? 22px : 16px;
+                values: root.item.wave;
+                lit: root.selected;
+                progress: root.active ? Main.play-fraction : -1;
+                WaveSeek {
+                    selected: root.selected;
+                    active: root.active;
+                    select(ctrl, shift) => { root.select(ctrl, shift); }
+                    cue(f) => { Main.cue-clip(root.index, f); root.refocus(); }
+                    play-at(f) => { Main.play-clip-at(root.index, f); root.refocus(); }
+                    menu(x, y) => { menu.show-at(x - root.absolute-position.x, y - root.absolute-position.y); }
+                }
+            }
+        }
+        Text {
+            width: root.big ? 70px : 50px;
+            text: root.item.duration;
+            color: Pb.plasma;
+            font-family: "JetBrains Mono";
+            font-size: root.big ? 14px : 12px;
+            font-weight: 500;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+        }
+        // The three-dot menu: manage, rename, export, delete.
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 12px;
+                height: root.big ? 26px : 22px;
+                border-radius: 4px;
+                background: dots.has-hover ? #ffffff14 : transparent;
+                accessible-role: button;
+                accessible-label: "Menu for " + root.item.name;
+                accessible-action-default => { root.open-menu(); }
+                for k in 3: Rectangle {
+                    x: (parent.width - 3.5px) / 2;
+                    y: (parent.height - 3 * 3.5px - 2 * 2.5px) / 2 + k * 6px;
+                    width: 3.5px;
+                    height: 3.5px;
+                    border-radius: 1.75px;
+                    background: root.selected || dots.has-hover ? Pb.dots-sel : Pb.dots;
+                }
+                property <bool> hovering: dots.has-hover;
+                changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
+                dots := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { Tips.hide(); root.open-menu(); }
+                }
+            }
+        }
+    }
+    function open-menu() {
+        menu.show-at(root.width - 8px - 210px, (root.height + 22px) / 2 + 4px);
+    }
+    menu := ClipMenu {
+        width: parent.width;
+        height: parent.height;
+        item: root.item;
+        merge-count: root.picked ? Main.picked-count : 0;
+        projects: Main.projects;
+        project: Main.project;
+        window-h: root.window-h;
+        merge => { Main.start-merge(); root.go(5); }
+        open => { Main.open-clip(root.index); root.go(1); }
+        rename => { root.ask-rename(root.index); }
+        export(kind) => { Main.selected = root.index; Main.export-as(kind); root.refocus(); }
+        delete => { root.ask-delete(root.index); }
+        move-to(p) => { Main.move-clip(root.index, p); root.refocus(); }
+    }
+}
+
+// A search result: the clip (and its project when all are searched, extra hits as +2),
+// then the words around the match with the match in orange.
+component Hit inherits Rectangle {
+    in property <SearchHit> hit;
+    in property <bool> show-project;
+    in property <bool> big;
+    callback clicked;
+    height: root.big ? 58px : 44px;
+    background: t.has-hover ? #ffffff08 : transparent;
+    accessible-role: button;
+    accessible-label: root.hit.clip + ", " + root.hit.before + " " + root.hit.matched + " " + root.hit.after;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: #ffffff0d;
+    }
+    VerticalLayout {
+        padding-left: root.big ? 18px : 12px;
+        padding-right: root.big ? 18px : 12px;
+        alignment: center;
+        spacing: 2px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: root.hit.clip;
+                color: Pb.name;
+                font-family: "Barlow Condensed";
+                font-size: root.big ? 19px : 15.5px;
+                font-weight: 600;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if root.show-project: Lab {
+                text: root.hit.project.to-uppercase();
+                color: Pb.mute;
+                accessible-role: text;
+                accessible-label: root.hit.project;
+            }
+            if root.hit.more > 0: Text {
+                text: "+" + root.hit.more;
+                color: Pb.plasma;
+                font-family: "JetBrains Mono";
+                font-size: 11px;
+                font-weight: 500;
+                vertical-alignment: center;
+            }
+        }
+        if root.hit.matched != "": HorizontalLayout {
+            spacing: 4px;
+            if root.hit.before != "": Text {
+                text: root.hit.before;
+                color: Pb.mute;
+                font-family: "Barlow Condensed";
+                font-size: root.big ? 13px : 12px;
+                horizontal-stretch: 0;
+            }
+            Text {
+                text: root.hit.matched;
+                color: Pb.plasma;
+                font-family: "Barlow Condensed";
+                font-size: root.big ? 13px : 12px;
+                font-weight: 700;
+                horizontal-stretch: 0;
+            }
+            Text {
+                text: root.hit.after;
+                color: Pb.mute;
+                font-family: "Barlow Condensed";
+                font-size: root.big ? 13px : 12px;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The clip list, or the search results while there is a query.
+component Clips inherits Rectangle {
+    in property <bool> big;
+    in property <length> window-h;
+    in property <length> row-w;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    background: Pb.list;
+    Rectangle { background: @linear-gradient(90deg, #ffffff05 0%, #ffffff00 30%); }
+    VerticalLayout {
+        padding-top: root.big ? 4px : 0;
+        padding-bottom: root.big ? 4px : 0;
+        if Main.query != "": Scroller {
+            vertical-stretch: 1;
+            VerticalLayout {
+                alignment: start;
+                if Main.hits.length == 0: Text {
+                    height: 40px;
+                    text: "No matches";
+                    color: Pb.mute;
+                    font-family: "Barlow Condensed";
+                    font-size: 15px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                for h[i] in Main.hits: Hit {
+                    hit: h;
+                    big: root.big;
+                    show-project: Main.search-all;
+                    clicked => { Main.open-hit(i); root.go(1); }
+                }
+            }
+        }
+        if Main.query == "": Scroller {
+            vertical-stretch: 1;
+            content-y <=> Main.list-y;
+            property <int> count: Main.clips.length;
+            init => { Main.list-height = self.visible-height; Main.clamp-list(); }
+            changed visible-height => { Main.list-height = self.visible-height; Main.clamp-list(); }
+            changed count => { Main.clamp-list(); }
+            VerticalLayout {
+                alignment: start;
+                if Main.clips.length == 0: Text {
+                    height: 40px;
+                    text: "No clips yet";
+                    color: Pb.mute;
+                    font-family: "Barlow Condensed";
+                    font-size: 15px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                for clip[i] in Main.clips: Row {
+                    index: i;
+                    item: clip;
+                    big: root.big;
+                    window-h: root.window-h;
+                    row-w: root.row-w;
+                    go(p) => { root.go(p); }
+                    ask-rename(n) => { root.ask-rename(n); }
+                    ask-delete(n) => { root.ask-delete(n); }
+                    refocus => { root.refocus(); }
+                }
+            }
+        }
+    }
+}
+
+// The small display of the apron: the clip in the player (else the highlighted one,
+// else nothing) on the left, its time on the right.
+component Strip inherits Rectangle {
+    in property <length> pitch;
+    in property <string> left;
+    in property <string> right;
+    property <int> cols: floor(root.width / root.pitch);
+    min-width: 0;
+    preferred-width: 0;
+    horizontal-stretch: 1;
+    height: 7 * root.pitch;
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        width: root.cols * root.pitch;
+        clip: true;
+        background: Pb.dmd-bg;
+        DotGrid { pitch: root.pitch; }
+        time := DotText {
+            text: root.right;
+            pitch: root.pitch;
+            cols: root.cols;
+            align: 2;
+            ink: Pb.dmd-2;
+        }
+        DotText {
+            text: root.left;
+            pitch: root.pitch;
+            cols: root.cols;
+            most: max(1, root.cols - time.used - 4);
+            ink: Pb.dmd-2;
+        }
+    }
+}
+
+// The footer apron: the flipper button (play), the small display and the ball on the
+// progress rail; a click on the rail jumps.
+component Apron inherits Rectangle {
+    in property <bool> big;
+    callback refocus();
+    property <int> shown: Main.active-clip >= 0 && Main.active-clip < Main.clips.length ? Main.active-clip
+        : Main.selected >= 0 && Main.selected < Main.clips.length ? Main.selected : -1;
+    property <bool> is-active: self.shown >= 0 && self.shown == Main.active-clip;
+    property <bool> on: root.is-active && Main.playing;
+    property <float> at: root.is-active ? clamp(Main.play-fraction, 0, 1) : 0;
+    property <string> pos: root.shown < 0 ? "--:--" : root.is-active ? Main.play-position : "0:00";
+    property <string> len: root.shown < 0 ? "--:--" : Main.clips[root.shown].duration;
+    property <length> fb: root.big ? 46px : 40px;
+    vertical-stretch: 0;
+    height: root.big ? 60px : 54px;
+    background: @linear-gradient(180deg, #1b1720 0%, #0b0a0d 100%);
+    Rectangle { y: 0; height: 2px; background: #000; }
+    Rectangle { y: 2px; height: 1px; background: #5f5866; }
+    HorizontalLayout {
+        padding-right: root.big ? 20px : 14px;
+        spacing: root.big ? 16px : 12px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: root.fb;
+                height: root.fb;
+                accessible-role: button;
+                accessible-label: root.on ? "Pause" : "Play";
+                accessible-enabled: root.shown >= 0;
+                accessible-action-default => { if (root.shown >= 0) { Main.play-clip(root.shown); root.refocus(); } }
+                Rectangle {
+                    x: ft.pressed && root.shown >= 0 ? 1px : 0;
+                    opacity: root.shown >= 0 ? 1 : 0.75;
+                    Art {
+                        x: -16px;
+                        y: -16px;
+                        width: root.fb + 32px;
+                        height: root.fb + 32px;
+                        lo: root.big ? @image-url("x-pinball/flip-w.png") : @image-url("x-pinball/flip-p.png");
+                        hi: root.big ? @image-url("x-pinball/flip-w@2x.png") : @image-url("x-pinball/flip-p@2x.png");
+                    }
+                    Rectangle {
+                        visible: ft.has-hover && root.shown >= 0;
+                        border-top-right-radius: self.height / 2;
+                        border-bottom-right-radius: self.height / 2;
+                        background: #ffffff1a;
+                    }
+                    Icon {
+                        name: root.on ? "pause" : "play";
+                        tint: #ffffff;
+                        width: 16px;
+                        height: 16px;
+                    }
+                }
+                property <bool> hovering: ft.has-hover;
+                changed hovering => { Tips.hover(self.hovering, root.on ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+                ft := TouchArea {
+                    enabled: root.shown >= 0;
+                    mouse-cursor: pointer;
+                    clicked => { Tips.hide(); Main.play-clip(root.shown); root.refocus(); }
+                }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 6px;
+            horizontal-stretch: 1;
+            Strip {
+                pitch: root.big ? 2.4px : 2.2px;
+                left: root.shown >= 0 ? Main.clips[root.shown].name.to-uppercase() : "NOTHING PLAYING";
+                right: root.pos + " / " + root.len;
+                accessible-role: AccessibleRole.text;
+                accessible-label: root.shown < 0 ? "Nothing playing" : Main.clips[root.shown].name + ", " + root.pos + " of " + root.len;
+            }
+            // The rail and the ball.
+            Rectangle {
+                height: 7px;
+                Rectangle {
+                    x: -1px;
+                    y: -1px;
+                    width: parent.width + 2px;
+                    height: parent.height + 2px;
+                    border-radius: 4.5px;
+                    background: #5e5866;
+                }
+                Rectangle {
+                    border-radius: 3.5px;
+                    background: #050507;
+                    border-width: 1px;
+                    border-color: #000;
+                }
+                Rectangle {
+                    x: 4px;
+                    y: 3px;
+                    width: parent.width - 8px;
+                    height: 1px;
+                    background: #4a4550;
+                }
+                if root.is-active && root.at > 0: Rectangle {
+                    x: 4px;
+                    y: 3px;
+                    width: (parent.width - 8px) * root.at;
+                    height: 1px;
+                    background: Pb.plasma;
+                }
+                Art {
+                    x: -2px - 3px + (parent.width - 9px) * root.at;
+                    y: -3px - 3px;
+                    width: 19px;
+                    height: 19px;
+                    lo: @image-url("x-pinball/ball.png");
+                    hi: @image-url("x-pinball/ball@2x.png");
+                }
+                // Click to jump; taller than the rail so it is easy to hit.
+                TouchArea {
+                    y: -8px;
+                    height: parent.height + 16px;
+                    enabled: root.shown >= 0;
+                    mouse-cursor: pointer;
+                    clicked => {
+                        Main.selected = root.shown;
+                        Main.seek-fraction(self.mouse-x / self.width);
+                        root.refocus();
+                    }
+                }
+            }
+        }
+    }
+}
+
+// The main page. Portrait: the title bar, the backglass, the playfield, the toolbar, the
+// clips and the apron, top to bottom. Wide: the backglass and the playfield on the left,
+// the toolbar and the clips on the right, between the title bar and the apron.
+export component MainPage inherits Rectangle {
+    // The window's size classes, as AppWindow works them out.
+    in property <bool> narrow;
+    in property <bool> wide;
+    in property <bool> tall;
+    // Opens page p (see AppWindow.page).
+    callback go(int);
+    // The rename and delete questions for clip i.
+    callback ask-rename(int);
+    callback ask-delete(int);
+    // Gives the keyboard back to the window's shortcuts.
+    callback refocus();
+
+    property <length> pitch: root.wide ? 58px : 31px;
+    init => { Main.row-h = root.pitch; }
+    changed pitch => { Main.row-h = root.pitch; Main.clamp-list(); }
+
+    background: Pb.cab;
+    VerticalLayout {
+        Title { go(p) => { root.go(p); } }
+        if !root.wide: Glass { }
+        if !root.wide: FieldP {
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+        if !root.wide: Tools {
+            avail: root.width;
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+        if !root.wide: Clips {
+            vertical-stretch: 1;
+            window-h: root.height;
+            row-w: root.width;
+            go(p) => { root.go(p); }
+            ask-rename(n) => { root.ask-rename(n); }
+            ask-delete(n) => { root.ask-delete(n); }
+            refocus => { root.refocus(); }
+        }
+        if root.wide: HorizontalLayout {
+            vertical-stretch: 1;
+            VerticalLayout {
+                width: 400px;
+                Glass { big: true; }
+                FieldW {
+                    vertical-stretch: 1;
+                    go(p) => { root.go(p); }
+                    refocus => { root.refocus(); }
+                }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                Tools {
+                    big: true;
+                    avail: root.width - 400px;
+                    go(p) => { root.go(p); }
+                    refocus => { root.refocus(); }
+                }
+                Clips {
+                    big: true;
+                    vertical-stretch: 1;
+                    window-h: root.height;
+                    row-w: root.width - 400px;
+                    go(p) => { root.go(p); }
+                    ask-rename(n) => { root.ask-rename(n); }
+                    ask-delete(n) => { root.ask-delete(n); }
+                    refocus => { root.refocus(); }
+                }
+            }
+        }
+
+        // An export from the clip menu or the project menu: what it is, how far along,
+        // and a check when done. It takes its own room above the apron.
+        if Main.export-state != 0: Rectangle {
+            vertical-stretch: 0;
+            height: 30px;
+            background: #141118;
+            Rectangle { y: 0; height: 1px; background: #29242e; }
+            HorizontalLayout {
+                padding-left: 14px;
+                padding-right: 14px;
+                spacing: 10px;
+                if Main.export-state == 2: Icon {
+                    name: "check";
+                    tint: Pb.plasma;
+                    width: 12px;
+                    height: 12px;
+                    y: (parent.height - self.height) / 2;
+                }
+                Text {
+                    text: (Main.export-state == 2 ? "Exported " : "Exporting ") + Main.export-name;
+                    color: Pb.ink;
+                    font-family: "Barlow Condensed";
+                    font-size: 14px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+                if Main.export-state == 1: Rectangle {
+                    width: 120px;
+                    height: 4px;
+                    y: (parent.height - self.height) / 2;
+                    border-radius: 2px;
+                    background: #29242e;
+                    Rectangle {
+                        x: 0;
+                        width: parent.width * clamp(Main.export-progress, 0, 1);
+                        border-radius: 2px;
+                        background: Pb.plasma;
+                    }
+                }
+                if Main.export-state == 1: Text {
+                    text: round(Main.export-progress * 100) + "%";
+                    color: Pb.plasma;
+                    font-family: "JetBrains Mono";
+                    font-size: 11px;
+                    font-weight: 500;
+                    vertical-alignment: center;
+                    width: 34px;
+                    horizontal-alignment: right;
+                }
+            }
+        }
+
+        Apron {
+            big: root.wide;
+            refocus => { root.refocus(); }
+        }
+    }
+
+    // Messages float just above the apron, so nothing moves when they come and go.
+    if Main.status != "": Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - (root.wide ? 60px : 54px) - self.height - 10px;
+        width: min(msg.preferred-width + 28px, parent.width - 32px);
+        height: 28px;
+        border-radius: 6px;
+        background: #0a090cf2;
+        border-width: 1px;
+        border-color: #5f5866;
+        msg := Text {
+            text: Main.status;
+            color: Pb.ink;
+            font-family: "Barlow Condensed";
+            font-size: 14px;
+            overflow: elide;
+            x: 14px;
+            width: parent.width - 28px;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+}

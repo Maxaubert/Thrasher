@@ -9,6 +9,7 @@
 #   sh tools/skin-art/cut.sh dv-synth OUT_DIR (the Pocket Synth, into ui/skins/dv-synth/)
 #   sh tools/skin-art/cut.sh x-fighter OUT_DIR (Fighter Select, into ui/skins/x-fighter/)
 #   sh tools/skin-art/cut.sh px-cozy OUT_DIR  (the Cozy Cabin, into ui/skins/px-cozy/)
+#   sh tools/skin-art/cut.sh x-phono OUT_DIR  (the Phonograph, into ui/skins/x-phono/)
 #
 # reads tools/skin-art/<skin>.html and the piece list below, and writes OUT_DIR/<name>.png
 # and OUT_DIR/<name>@2x.png. Copy the ones the skin uses to crates/thrasher-app/ui/skins/<skin>/.
@@ -125,6 +126,25 @@ x-pinball) PIECES="brand:brand:139:40 title-p:title-p:202:52 title-w:title-w:334
   ins-0-p:ins-0-p:42:34 ins-1-p:ins-1-p:42:34 ins-2-p:ins-2-p:42:34 ins-3-p:ins-3-p:42:34 ins-s-p:ins-s-p:42:34
   ins-0-w:ins-0-w:50:40 ins-1-w:ins-1-w:50:40 ins-2-w:ins-2-w:50:40 ins-3-w:ins-3-w:50:40 ins-s-w:ins-s-w:50:40
   flip-p:flip-p:72:72 flip-w:flip-w:78:78 ball:ball:19:19 flippers:flippers:290:132" ;;
+# Phonograph: parts of variable width in three slices (-l, -m, -r); the textures and the
+# grooves are tiles (only the 1x cut is used); hub and gov are frame strips.
+x-phono) PIECES="wood:wood:100:4 woodd:woodd:31:4 groove:groove:3:4 groovec:groovec:2:4
+  odo-p-l:odo-p-l:10:29 odo-p-m:odo-p-m:2:29 odo-p-r:odo-p-r:10:29 odo-w-l:odo-w-l:10:37 odo-w-m:odo-w-m:2:37 odo-w-r:odo-w-r:10:37
+  key-p-l:key-p-l:16:48 key-p-m:key-p-m:2:48 key-p-r:key-p-r:16:48 key-w-l:key-w-l:16:58 key-w-m:key-w-m:2:58 key-w-r:key-w-r:16:58
+  hold-p-l:hold-p-l:11:34 hold-p-m:hold-p-m:2:34 hold-p-r:hold-p-r:11:34 hold-w-l:hold-w-l:11:52 hold-w-m:hold-w-m:2:52 hold-w-r:hold-w-r:11:52
+  srch-p-l:srch-p-l:7:30 srch-p-m:srch-p-m:2:30 srch-p-r:srch-p-r:7:30 srch-w-l:srch-w-l:7:48 srch-w-m:srch-w-m:2:48 srch-w-r:srch-w-r:7:48
+  tw-p-l:tw-p-l:9:27 tw-p-m:tw-p-m:2:27 tw-p-r:tw-p-r:9:27 tw-w-l:tw-w-l:9:29 tw-w-m:tw-w-m:2:29 tw-w-r:tw-w-r:9:29
+  dev-p-l:dev-p-l:7:26 dev-p-m:dev-p-m:2:26 dev-p-r:dev-p-r:7:26 dev-w-l:dev-w-l:7:30 dev-w-m:dev-w-m:2:30 dev-w-r:dev-w-r:7:30
+  rail-l:rail-l:8:20 rail-m:rail-m:2:20 rail-r:rail-r:8:20
+  cyl-p-l:cyl-p-l:4:36 cyl-p-r:cyl-p-r:4:36 cyl-w-l:cyl-w-l:4:58 cyl-w-r:cyl-w-r:4:58 tin-p-r:tin-p-r:4:28 tin-w-r:tin-w-r:4:50
+  plate:plate:214:30 plate-rec:plate-rec:96:22 plate-stop:plate-stop:96:22 gear:gear:26:26 screw-min:screw-min:26:26 screw-close:screw-close:26:26
+  i-crank-17:i-crank-17:17:17 i-trumpet-17:i-trumpet-17:17:17 i-watch-17:i-watch-17:17:17
+  i-crank-20:i-crank-20:20:20 i-trumpet-20:i-trumpet-20:20:20 i-watch-20:i-watch-20:20:20
+  jewel-g:jewel-g:21:21 jewel-r:jewel-r:21:21 jewel-a:jewel-a:21:21 cell-p:cell-p:10:17 cell-w:cell-w:15:25
+  cap-p:cap-p:12:29 cap-w:cap-w:12:45 hub-p:hub-p:180:30 hub-w:hub-w:264:44 repro-p:repro-p:23:31 repro-w:repro-w:34:42
+  gov-p:gov-p:624:80 gov-w:gov-w:1008:130 bell-p:bell-p:148:148 bell-w:bell-w:218:218 seal-p:seal-p:55:55 seal-w:seal-w:80:80
+  lid-p:lid-p:32:32 lid-p-sel:lid-p-sel:32:32 lid-w:lid-w:46:46 lid-w-sel:lid-w-sel:46:46 dots:dots:4:15
+  stamp-p:stamp-p:70:14 stamp-w:stamp-w:84:16 knob-p:knob-p:42:42 knob-w:knob-w:46:46 car:car:18:22" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 

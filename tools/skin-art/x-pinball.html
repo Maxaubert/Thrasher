@@ -1,0 +1,137 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+/* Monoton is used for the backglass art only (the brand and the title are PNGs), so it
+   is not shipped with the app; tools/skin-art/fonts/ holds it with its OFL. */
+@font-face{font-family:"Monoton";src:url(fonts/Monoton-Regular.ttf)}
+:root{
+  --plasma:#ff7a1a; --plasma-hi:#ffb050;
+  --pf:#0b1124;
+  --chromeV:linear-gradient(90deg,#6d6a74 0%,#e9e8ee 40%,#a19fa8 60%,#f4f4f6 75%,#5e5b64 100%);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+#a{position:absolute;left:0;top:0;overflow:hidden}
+#a>div,#a>svg{position:absolute}
+/* The parts, as in the mockup (docs/mockups/device-themes/x-pinball.html). */
+.brand{font-family:'Monoton';font-size:16px;line-height:20px;letter-spacing:2px;color:var(--plasma-hi);text-shadow:0 0 8px rgba(255,120,30,.55);white-space:nowrap}
+.title{font-family:'Monoton';letter-spacing:3px;white-space:nowrap;
+  background:linear-gradient(180deg,#fffbe6,#ffc35a 45%,#ff5a1f 80%,#b02a00);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 0 #2a0636) drop-shadow(0 0 8px rgba(255,120,40,.5))}
+.bglass{overflow:hidden;
+  background:
+   radial-gradient(circle at 18% 22%,#fff 0 1px,transparent 1.6px),
+   radial-gradient(circle at 80% 14%,#fff 0 1px,transparent 1.6px),
+   radial-gradient(circle at 66% 30%,#ffd 0 .8px,transparent 1.4px),
+   radial-gradient(circle at 34% 10%,#fde 0 .8px,transparent 1.4px),
+   radial-gradient(ellipse at 50% 110%,rgba(255,110,30,.55),transparent 60%),
+   repeating-conic-gradient(from 0deg at 50% 115%,#3a1148 0 5deg,#1e0b2e 5deg 10deg)}
+.bglass svg{position:absolute;inset:0;width:100%;height:100%}
+.dmdglow{border-radius:4px;box-shadow:0 0 20px rgba(255,110,20,.25)}
+.spk{border-radius:4px;background:radial-gradient(circle,#4a4450 0 1.3px,transparent 1.6px) 0 0/6px 6px,#121015;box-shadow:inset 0 0 0 1px #000,0 0 0 1.5px #4d4752}
+.pf{background:
+   radial-gradient(ellipse at 22% 30%,rgba(70,110,255,.28),transparent 55%),
+   radial-gradient(ellipse at 70% 90%,rgba(255,80,60,.18),transparent 55%),
+   repeating-linear-gradient(115deg,rgba(255,255,255,.018) 0 14px,transparent 14px 28px),
+   var(--pf)}
+.rod{width:10px;background:var(--chromeV);border-radius:2px}
+.rod::after{content:"";position:absolute;left:-4px;right:-4px;bottom:0;height:70%;
+  background:repeating-linear-gradient(180deg,#cfcdd4 0 2px,#4a4750 2px 4px);border-radius:3px;opacity:.9}
+.knob{border-radius:50%;
+  background:radial-gradient(circle at 38% 30%,#ff9a86,#e3261c 45%,#7a0a06 100%);
+  box-shadow:0 0 0 3px #1a0606,0 0 0 5px #b7b4bd,0 0 0 6px #2a272e,0 0 22px rgba(255,60,30,.55),0 5px 8px rgba(0,0,0,.6)}
+.bk{border-radius:50%;
+  background:radial-gradient(circle at 50% 42%,var(--c2) 0,var(--c) 58%,#120608 100%);
+  box-shadow:0 3px 0 #000,0 0 14px var(--g),inset 0 0 0 2px rgba(0,0,0,.5)}
+.bk::before{content:"";position:absolute;inset:16%;border-radius:50%;
+  background:radial-gradient(circle at 40% 30%,#ffffff,#e4e0d8 55%,#9b958c);
+  box-shadow:0 0 0 2px #c9c6cf,0 0 0 3px #3a3640,0 2px 4px rgba(0,0,0,.6)}
+.bk.red{--c:#e5322a;--c2:#ff8a6a;--g:rgba(255,60,40,.45)}
+.bk.yel{--c:#e8a60e;--c2:#ffe27a;--g:rgba(255,190,40,.4)}
+.bk.blu{--c:#1f78e0;--c2:#7cc4ff;--g:rgba(60,150,255,.45)}
+.lamp{border-radius:50%;background:radial-gradient(circle at 40% 35%,#3c2c22,#120a06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.lamp.on{background:radial-gradient(circle at 40% 35%,#fff6d0,var(--c) 45%,#5a1a00);box-shadow:0 0 7px var(--c),inset 0 0 0 1px rgba(255,255,255,.3)}
+.flip{border-radius:0 50% 50% 0;
+  background:radial-gradient(circle at 30% 35%,#ff9480,#d8241a 50%,#6a0804);
+  box-shadow:inset -2px 0 0 #000,0 0 0 2px #2a0a08,0 0 14px rgba(255,60,30,.4)}
+.ball{border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#bdbac4 40%,#55525c 80%,#2a282e);box-shadow:0 1px 2px #000}
+</style></head><body><div id="a"></div>
+<script>
+// One part of the Pinball mockup (docs/mockups/device-themes/x-pinball.html), alone on a
+// transparent page, for cutting into PNGs: ?el=name&w=css-width&h=css-height. The dot
+// matrix, the text, the icons, the lane borders, the search field, the rows and the
+// rails and the project chip are drawn live in Slint (ui/skins/x-pinball.slint).
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+const put = (html) => { a.innerHTML = html; };
+// A part of class cls, bw x bh, with margin m around it (its glow or shadow).
+const box = (cls, bw, bh, m, style = '', inner = '') =>
+  put(`<div class="${cls}" style="left:${m}px;top:${m}px;width:${bw}px;height:${bh}px;${style}">${inner}</div>`);
+const one = (cls, m, style = '', inner = '') => box(cls, W - 2 * m, H - 2 * m, m, style, inner);
+
+// The Monoton words: the brand (title bar) and the backglass title, portrait and wide.
+const WORDS = {brand: ['brand', ''], 'title-p': ['title', 'font-size:24px;line-height:28px'], 'title-w': ['title', 'font-size:44px;line-height:50px']};
+// The glow margin around each word. The words' sizes are Monoton's advances plus the
+// letter spacing (brand 119x20, title-p 178x28, title-w 306x50).
+const WM = {brand: 10, 'title-p': 12, 'title-w': 14};
+if (WORDS[el]) {
+  // The word in its line box, the margin around it.
+  const m = WM[el];
+  put(`<div class="${WORDS[el][0]}" style="left:${m}px;top:${m}px;${WORDS[el][1]}">THRASHER</div>`);
+}
+
+// The backglass picture behind the title and the display (no frame: Slint draws it).
+const art = (h) => `<svg viewBox="0 0 400 ${h}" preserveAspectRatio="none">
+   <path d="M-20 ${h*0.95} Q200 ${h*0.35} 420 ${h*0.95}" fill="none" stroke="#ff6aa8" stroke-opacity=".25" stroke-width="2"/>
+   <path d="M-20 ${h*1.05} Q200 ${h*0.5} 420 ${h*1.05}" fill="none" stroke="#5ac8ff" stroke-opacity=".22" stroke-width="2"/>
+   <g fill="#ffd34a" opacity=".85"><polygon points="22,${h*0.08} 40,${h*0.08} 31,${h*0.24} 42,${h*0.24} 18,${h*0.5} 26,${h*0.3} 16,${h*0.3}"/>
+   <polygon points="378,${h*0.08} 360,${h*0.08} 369,${h*0.24} 358,${h*0.24} 382,${h*0.5} 374,${h*0.3} 384,${h*0.3}"/></g></svg>`;
+if (el === 'bg-p' || el === 'bg-w') one('bglass', 0, '', art(H));
+// The display's glow, a nine-slice picture with a clear middle (Slint draws the case's
+// rings and the dots).
+if (el === 'dmd-glow') one('dmdglow', 26);
+if (el === 'spk') one('spk', 2);
+// The playfield under the bumpers (Slint draws its top edge).
+if (el === 'pf-p' || el === 'pf-w') one('pf', 0);
+// The shooter lane's arrows: portrait one, wide three fading ones.
+const arrow = (m, op, glow) => put(`<svg style="left:${m}px;top:${m}px" width="${W - 2 * m}" height="${H - 2 * m}" viewBox="0 0 16 22">
+  <polygon points="8,0 16,9 11,9 11,22 5,22 5,9 0,9" fill="#ff7a1a" opacity="${op}" ${glow ? 'style="filter:drop-shadow(0 0 3px #ff7a1a)"' : ''}/></svg>`);
+if (el === 'arr-p') arrow(4, 0.9, true);
+if (el === 'arr-w1') arrow(4, 1, true);
+if (el === 'arr-w2') arrow(4, 0.45, false);
+if (el === 'arr-w3') arrow(4, 0.22, false);
+// The plunger rod with its spring (the spring is 4px wider each side).
+if (el === 'rod-p' || el === 'rod-w') box('rod', 10, H, 0, `left:4px`);
+if (el === 'knob-p' || el === 'knob-w') one('knob', 26);
+// The pop bumpers' bodies and caps (the icon is Slint's).
+const bump = el && el.match(/^bk-(red|yel|blu)-[pw]$/);
+if (bump) one('bk ' + bump[1], 18);
+// The lane lamps, off and lit in their three colours.
+const lamp = el && el.match(/^lamp-(off|o|y|r)-[pw]$/);
+if (lamp) {
+  const c = {o: '#ff7a1a', y: '#ffc23a', r: '#ff3a2a'}[lamp[1]];
+  one(lamp[1] === 'off' ? 'lamp' : 'lamp on', 8, c ? `--c:${c}` : '');
+}
+// The arrow inserts of the rows, in their four colours and lit (the play mark is Slint's).
+const ins = el && el.match(/^ins-(0|1|2|3|s)-[pw]$/);
+if (ins) {
+  const sel = ins[1] === 's';
+  const c = sel ? '#ff8a2a' : ['#ff4b3a', '#ffc23a', '#3aa8ff', '#4be08a'][+ins[1]];
+  const m = 6;
+  put(`<svg style="left:${m}px;top:${m}px${sel ? ';filter:drop-shadow(0 0 5px #ff7a1a)' : ''}" width="${W - 2 * m}" height="${H - 2 * m}" viewBox="0 0 30 22">
+   <defs><radialGradient id="g" cx=".4" cy=".4" r=".8"><stop offset="0" stop-color="#fff" stop-opacity="${sel ? .95 : .45}"/><stop offset=".45" stop-color="${c}"/><stop offset="1" stop-color="${c}" stop-opacity=".35"/></radialGradient></defs>
+   <polygon points="1,2 19,2 29,11 19,20 1,20 6,11" fill="url(#g)" opacity="${sel ? 1 : .72}" stroke="rgba(255,255,255,.25)" stroke-width=".8"/></svg>`);
+}
+if (el === 'flip-p' || el === 'flip-w') one('flip', 16);
+if (el === 'ball') one('ball', 3);
+// The wide playfield's guides, slingshots and flippers.
+if (el === 'flippers') put(`<svg style="left:0;top:0" width="290" height="132" viewBox="0 0 290 132">
+   <defs><linearGradient id="fl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#bdb8c4"/></linearGradient></defs>
+   <path d="M10 10 L10 70 L92 104" fill="none" stroke="#8f8c96" stroke-width="3"/>
+   <path d="M280 10 L280 70 L198 104" fill="none" stroke="#8f8c96" stroke-width="3"/>
+   <polygon points="36,26 36,66 68,82" fill="#e5322a" fill-opacity=".55" stroke="#ff8a6a" stroke-width="2"/>
+   <polygon points="254,26 254,66 222,82" fill="#e5322a" fill-opacity=".55" stroke="#ff8a6a" stroke-width="2"/>
+   <g transform="translate(92 104) rotate(22)"><path d="M0 -8 A8 8 0 0 0 0 8 L44 3 A3 3 0 0 0 44 -3 Z" fill="url(#fl)" stroke="#e5322a" stroke-width="2.5"/><circle r="3" fill="#6d6a74"/></g>
+   <g transform="translate(198 104) rotate(158)"><path d="M0 -8 A8 8 0 0 1 0 8 L44 3 A3 3 0 0 1 44 -3 Z" fill="url(#fl)" stroke="#e5322a" stroke-width="2.5" transform="scale(1,-1)"/><circle r="3" fill="#6d6a74"/></g>
+   <polygon points="145,40 153,52 137,52" fill="#ffc23a" opacity=".6"/></svg>`);
+</script></body></html>

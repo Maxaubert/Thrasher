@@ -153,7 +153,7 @@ export struct Palette {
 // settings page switches it.
 export global Theme {
     in-out property <int> current: 0;
-    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass", "Car Dashboard", "Pocket", "Quest Menu", "Brick Phone", "Answering Machine", "Pocket Synth", "Fighter Select", "Cozy Cabin"];
+    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass", "Car Dashboard", "Pocket", "Quest Menu", "Brick Phone", "Answering Machine", "Pocket Synth", "Fighter Select", "Cozy Cabin", "Pinball"];
     out property <[Palette]> palettes: [
         // Ember
         { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618, card-line: #00000000 },
@@ -202,6 +202,8 @@ export global Theme {
         // Cozy Cabin: wood planks, parchment and honey lamplight (its main page is
         // ui/skins/px-cozy.slint).
         { bg: #3a2213, card: #5a341d, row: #4d2e19, raised: #7a4a28, line: #2f1b0f, line-soft: #3a2214, edge: #9a6234, text: #f6e7c4, text2: #ead4a2, muted: #c9a77a, dim: #9c7a45, accent: #f0b23c, accent-hover: #ffd982, on-accent: #2a170d, wave: #c8a56a, wave-dim: #7a5a3a, track: #2a170d, danger: #ff9a6a, hover: #5a3720, hover-soft: #4d2e19, row-hover: #45291a, picked: #6a4426, popup: #4d2e19, popup-edge: #9a6234, knob: #c9a77a, faint: #9c7a45, fainter: #5a3a22, rec-rest: #6a4426, divider: #2f1b0f, border: #2a170d, card-edge: #5a341d, footer: #3a2213, press: #7a4a28, card-line: #2a170d },
+        // Pinball: a black cabinet, plasma orange and chrome (its main page is ui/skins/x-pinball.slint).
+        { bg: #0a090c, card: #141118, row: #0c0a0f, raised: #1b1720, line: #29242e, line-soft: #1b1720, edge: #3a3440, text: #efe8f2, text2: #d9cfe0, muted: #a39aad, dim: #8d8496, accent: #ff7a1a, accent-hover: #ffb050, on-accent: #2a0d00, wave: #6f6880, wave-dim: #4a4452, track: #29242e, danger: #ff8f7a, hover: #241f2a, hover-soft: #1f1a24, row-hover: #120f15, picked: #2a1a10, popup: #1b1720, popup-edge: #5f5866, knob: #8d8496, faint: #7c7286, fainter: #4a4452, rec-rest: #6d3a20, divider: #1b1720, border: #29242e, card-edge: #29242e, footer: #0b0a0d, press: #3a2414, card-line: #00000000 },
     ];
     out property <color> bg: root.palettes[root.current].bg;
     out property <color> card: root.palettes[root.current].card;
@@ -252,8 +254,9 @@ export global Theme {
     // ui/skins/x-dash.slint; 7 Pocket, ui/skins/px-pocket.slint; 8 Quest Menu,
     // ui/skins/px-quest.slint; 9 Brick Phone, ui/skins/dv-brick.slint; 10 Answering
     // Machine, ui/skins/dv-answer.slint; 11 Pocket Synth, ui/skins/dv-synth.slint; 12 Fighter
-    // Select, ui/skins/x-fighter.slint; 13 Cozy Cabin, ui/skins/px-cozy.slint.
-    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+    // Select, ui/skins/x-fighter.slint; 13 Cozy Cabin, ui/skins/px-cozy.slint; 14 Pinball,
+    // ui/skins/x-pinball.slint.
+    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
     out property <int> skin: root.skins[root.current];
     // How the other pages are built: 1 Tape Deck's (skins/tape-pages.slint), else 0, the
     // classic pages in the theme's palette (also for skins whose pages are not built yet).

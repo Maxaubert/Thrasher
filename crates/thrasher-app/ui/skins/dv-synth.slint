@@ -1742,9 +1742,16 @@ export component MainPage inherits Rectangle {
     property <int> bank-rows: root.bank-h >= 780px ? 3 : 2;
     property <length> pad-pitch: root.bank-h / root.bank-rows;
     property <length> pitch: root.wide ? root.pad-pitch : 33px;
-    init => { Main.row-h = root.pitch; }
+    init => { Main.row-h = root.pitch; root.find-top(); }
     changed pitch => { Main.row-h = root.pitch; Main.clamp-list(); }
-    property <int> top-row: round(-Main.list-y / max(1px, root.pad-pitch));
+    // The top visible row of pads, for BANK A. Worked out after a scroll, not bound to it:
+    // the wheel scrolls while the page's layout is read, and BANK A is in that layout (a
+    // binding panics with "Recursion detected").
+    property <int> top-row;
+    property <length> scrolled: Main.list-y;
+    function find-top() { root.top-row = round(-Main.list-y / max(1px, root.pad-pitch)); }
+    changed scrolled => { root.find-top(); }
+    changed pad-pitch => { root.find-top(); }
 
     background: Ps.body;
     // The brushed aluminium: a light line every 3px.
@@ -1828,45 +1835,49 @@ export component MainPage inherits Rectangle {
                 HorizontalLayout {
                     vertical-stretch: 1;
                     padding-left: 20px;
-                    padding-right: 20px;
+                    // The bank's scroll bar runs in the last 8px, right of the pads.
+                    padding-right: Main.query == "" ? 12px : 20px;
                     padding-top: 6px;
                     if Main.query != "": Hits { go(p) => { root.go(p); } }
                     if Main.query == "": bank := Scroller {
                         content-y <=> Main.list-y;
                         property <int> count: Main.clips.length;
-                        // Four pads across with 16px between them.
-                        property <length> pad-w: (self.visible-width - 3 * 16px) / 4;
+                        // Four pads across with 16px between them, clear of the bar.
+                        property <length> pad-w: (self.visible-width - 8px - 3 * 16px) / 4;
                         init => { root.bank-h = self.visible-height; Main.list-height = self.visible-height; Main.clamp-list(); }
                         changed visible-height => { root.bank-h = self.visible-height; Main.list-height = self.visible-height; Main.clamp-list(); }
                         changed count => { Main.clamp-list(); }
-                        Rectangle {
-                            x: 0;
-                            y: 0;
-                            width: bank.visible-width;
-                            height: ceil(Main.clips.length / 4) * root.pad-pitch;
-                            if Main.clips.length == 0: Text {
-                                y: 0;
-                                height: 40px;
-                                text: "No clips";
-                                color: Ps.mute;
-                                font-family: "JetBrains Mono";
-                                font-size: 11px;
-                                font-weight: 500;
-                                horizontal-alignment: center;
-                                vertical-alignment: center;
-                            }
-                            for clip[i] in Main.clips: Pad {
-                                x: Math.mod(i, 4) * (bank.pad-w + 16px);
-                                y: floor(i / 4) * root.pad-pitch;
-                                width: bank.pad-w;
-                                height: root.pad-pitch - 18px;
-                                index: i;
-                                item: clip;
-                                window-h: root.height;
-                                go(p) => { root.go(p); }
-                                ask-rename(n) => { root.ask-rename(n); }
-                                ask-delete(n) => { root.ask-delete(n); }
-                                refocus => { root.refocus(); }
+                        // In a layout, so the Flickable takes the bank's height (placed
+                        // pads alone leave it the height of the view: no wheel, no bar).
+                        VerticalLayout {
+                            alignment: start;
+                            Rectangle {
+                                width: bank.visible-width;
+                                height: ceil(Main.clips.length / 4) * root.pad-pitch;
+                                if Main.clips.length == 0: Text {
+                                    y: 0;
+                                    height: 40px;
+                                    text: "No clips";
+                                    color: Ps.mute;
+                                    font-family: "JetBrains Mono";
+                                    font-size: 11px;
+                                    font-weight: 500;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+                                for clip[i] in Main.clips: Pad {
+                                    x: Math.mod(i, 4) * (bank.pad-w + 16px);
+                                    y: floor(i / 4) * root.pad-pitch;
+                                    width: bank.pad-w;
+                                    height: root.pad-pitch - 18px;
+                                    index: i;
+                                    item: clip;
+                                    window-h: root.height;
+                                    go(p) => { root.go(p); }
+                                    ask-rename(n) => { root.ask-rename(n); }
+                                    ask-delete(n) => { root.ask-delete(n); }
+                                    refocus => { root.refocus(); }
+                                }
                             }
                         }
                     }

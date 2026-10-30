@@ -359,7 +359,13 @@ are the classic ones in a white aluminium and orange palette (`Theme.pages` 0).
   fixed keys (function keys, row keys, the transport key) are whole PNGs with their shadows.
 - **The pad bank's room comes from the scroller:** the pad pitch is its visible height over the
   rows shown, set from its `changed visible-height`, and `Main.row-h` follows it. The content
-  rectangle in the Flickable needs `x: 0; y: 0`, or it is centred and the bank opens scrolled.
+  rectangle sits in a `VerticalLayout` (alignment start) in the Flickable: placed pads alone
+  leave the Flickable the height of its view, so the wheel did nothing and there was no bar
+  (arrow keys still worked, as they set `list-y` directly). Review fix, 2026-10-30.
+- **Nothing in the layout may be bound to the scroll position:** with "BANK A" bound to
+  `Main.list-y`, the first wheel step panicked with "Recursion detected" (the Flickable reads
+  the layout while it scrolls). `top-row` is now set in `changed` handlers. The bank keeps its
+  last 8px for the scroll bar, so the bar does not run over the pads.
 - **A logo row in a layout stretches:** Text and nested layouts take spare width by default, so
   the badge drifted to the middle of the title bar until they got `horizontal-stretch: 0`.
 - **Toolbar room:** the screen around the project name is 92px of chrome (padding, PROJ, the

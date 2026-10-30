@@ -3435,10 +3435,10 @@ export component Select inherits Rectangle {
     height: 32px;
     border-radius: Theme.tape ? 2px : Theme.phos ? 0 : Theme.os95 ? 0 : Theme.comic ? 0 : Theme.glass ? self.height / 2 : 8px;
     // Phosphor: a boxed value with a "v", the edge bright while hovered or focused.
-    border-width: Theme.glass || Theme.comic ? 0 : (keys.has-focus || Theme.phos) && !Theme.os95 ? 1px : 0;
+    border-width: Theme.comic ? 0 : Theme.glass ? 1px : (keys.has-focus || Theme.phos) && !Theme.os95 ? 1px : 0;
     border-color: Theme.tape ? Deck.amber : Theme.phos ? (keys.has-focus || (t.has-hover && enabled) ? Ph.ph : Ph.dim) : Theme.glass ? (keys.has-focus ? #ffffffb3 : #ffffff47) : Theme.edge;
-    // Tape Deck: a black Dymo label strip. Desktop 95: a sunken white drop down box, the Spatial Glass: a glass capsule.
-    // choice navy while it has the focus.
+    // Tape Deck: a black Dymo label strip. Desktop 95: a sunken white drop down box, the
+    // choice navy while it has the focus. Spatial Glass: a glass capsule.
     background: Theme.tape ? (t.has-hover && enabled ? @linear-gradient(180deg, #2a2a2d 0%, #141416 100%) : Deck.dymo)
         : Theme.glass ? (t.has-hover && enabled ? #ffffff38 : #ffffff26)
         : Theme.comic ? transparent

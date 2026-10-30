@@ -34,7 +34,11 @@ dv-os95) PIECES="desk:desk:4:4 checker:checker:2:2 floppy:floppy:16:15 balloon:b
   wave:wave:13:13 note:note:10:11 folder:folder:16:11 mic:mic:8:11 dot:dot:12:12 stop:stop:12:12 recpause:recpause:12:12
   led:led:4:4 gear:gear:10:10 min:min:6:8 close:close:8:7 play:play:4:7 pause:pause:5:7 taskplay:taskplay:5:9
   taskpause:taskpause:5:9 dots:dots:2:10 arrow:arrow:7:4 mag:mag:10:10 spk:spk:9:8 thumb:thumb:11:18 logo:logo:13:12
-  check:check:10:10" ;;
+  check:check:10:10
+  tick:tick:9:7 notepad:notepad:12:12 fopen:fopen:16:11 playl:playl:4:7 bigplay:bigplay:7:7 rew:rew:8:7 ff:ff:8:7
+  up:up:7:4 x7:x7:7:5 backg:backg:11:9 pen:pen:11:10 bin:bin:11:11 copy:copy:11:11 globe:globe:11:10 spark:spark:11:9
+  grip:grip:5:8 expand:expand:9:9 hour:hour:9:9 dl:dl:9:10 box:box:12:9 plus:plus:8:8 warn:warn:16:14 binbig:binbig:16:14
+  book:book:13:13 ydown:ydown:8:8 yright:yright:8:7 dropin:dropin:20:16 ban:ban:24:160" ;;
 x-comic) PIECES="logo:logo:214:52 picked:picked:60:26 rec-p:rec-p:128:128 rec-w:rec-w:200:200 stop-p:stop-p:256:128 stop-w:stop-w:400:200
   meter-off-p:meter-off-p:118:38 meter-on-p:meter-on-p:118:38 meter-off-w:meter-off-w:178:56 meter-on-w:meter-on-w:178:56
   dots:dots:7:7 dots-yellow:dots-yellow:6:6 dots-grey:dots-grey:5:5" ;;

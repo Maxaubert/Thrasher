@@ -4,6 +4,8 @@
 html,body{background:transparent;overflow:hidden}
 svg{display:block}
 #a{position:absolute;left:0;top:0}
+@font-face{font-family:'Pixel 95';font-weight:400;src:url(../../crates/thrasher-app/ui/fonts/Pixel95-400.ttf)}
+@font-face{font-family:'Pixel 95';font-weight:700;src:url(../../crates/thrasher-app/ui/fonts/Pixel95-700.ttf)}
 </style></head><body><div id="a"></div>
 <script>
 // One element of the Desktop 95 mockup (docs/mockups/device-themes/dv-os95.html), alone
@@ -16,7 +18,7 @@ a.style.width = W + 'px'; a.style.height = H + 'px';
 
 // The mockup's palette and pixel maps (dv-os95.html), plus stop, pause and a white lamp.
 const PAL = {k:'#000',w:'#fff',g:'#c0c0c0',G:'#808080',b:'#1c3fa8',B:'#5f86e0',y:'#ffe14d',Y:'#c9a200',r:'#e0201b',d:'#8a0d0a',
-  e:'#3cff6a',n:'#0a1f7a',o:'#ff8a1a',O:'#ffd27a'};
+  e:'#3cff6a',E:'#1d9c3f',n:'#0a1f7a',o:'#ff8a1a',O:'#ffd27a'};
 function px(rows) {
   const h = rows.length, w = Math.max(...rows.map(r => r.length));
   let out = '';
@@ -59,6 +61,39 @@ spk:["...kk....","..kgk..k.","kkggk.k.k","kgggk.k.k","kgggk.k.k","kkggk.k.k","..
 thumb:["wwwwwwwwwwk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk","wggggggggGk",
   "wggggggggGk",".wggggggGk.","..wggggGk..","...wggGk...","....wGk....",".....k....."],
 check:["kkkkkkkkkk","kwwwwwwwwk","kwwwwwwwkk","kwwwwwwkkk","kkwwwwkkwk","kkkwwkkwwk","kwkkkkwwwk","kwwkkwwwwk","kwwwwwwwwk","kkkkkkkkkk"],
+// The other pages (docs/mockups/device-themes/dv-os95-pages/), from their pixel maps.
+tick:["........k",".......kk","k.....kk.","kk...kk..",".kk.kk...","..kkk....","...k....."],
+notepad:[".k.k.k.k.k..","kkkkkkkkkkkk","kwwwwwwwwwwk","kwbbbbbbbwwk","kwwwwwwwwwwk","kwbbbbbbwwwk","kwwwwwwwwwwk","kwbbbbbbbbwk","kwwwwwwwwwwk","kwbbbbwwwwwk","kwwwwwwwwwwk","kkkkkkkkkkkk"],
+fopen:[".kkkk...........","kOOOOk..........","kyyyyykkkkkkkk..","kyOOOOOOOOOOOk..","kyOkkkkkkkkkkkkk","kyOkyyyyyyyyyyk.","kykyyyyyyyyyyk..",
+  "kykyyyyyyyyyyk..","kkyyyyyyyyyyk...","kkYYYYYYYYYYk...","kkkkkkkkkkkk...."],
+playl:["...k","..kk",".kkk","kkkk",".kkk","..kk","...k"],
+bigplay:["k......","kkk....","kkkkk..","kkkkkkk","kkkkk..","kkk....","k......"],
+rew:["...k...k","..kk..kk",".kkk.kkk","kkkkkkkk",".kkk.kkk","..kk..kk","...k...k"],
+ff:["k...k...","kk..kk..","kkk.kkk.","kkkkkkkk","kkk.kkk.","kk..kk..","k...k..."],
+up:["...k...","..kkk..",".kkkkk.","kkkkkkk"],
+x7:["kk...kk",".kk.kk.","..kkk..",".kk.kk.","kk...kk"],
+backg:["....k......","...kEk.....","..kEEkkkkk.",".kEEEEEEEEk","kEEeeeeeeek",".kEEEEEEEEk","..kEEkkkkk.","...kEk.....","....k......"],
+pen:["........kkk",".......kyyk","......kyyk.",".....kyyk..","....kyyk...","...kyyk....","..kyyk.....",".kOyk......",".kOk.......","kkk........"],
+bin:["...kkkkk...","kkkkkkkkkkk","kwwwwwwwwwk","kkkkkkkkkkk",".kgwgwgwgk.",".kgwgwgwgk.",".kgwgwgwgk.",".kgwgwgwgk.",".kgwgwgwgk.",".kgwgwgwgk.","..kkkkkkk.."],
+copy:["kkkkkkk....","kwwwwwk....","kwkkkkkkkk.","kwkwwwwwwk.","kwkwbbbbwk.","kwkwwwwwwk.","kkkwbbbwwk.","..kwwwwwwk.","..kwbbbbwk.","..kwwwwwwk.","..kkkkkkkk."],
+globe:["...kkkkk...","..kbebbbk..",".kbeeebbbk.","kbbeeebbbbk","kbbbeebbebk","kbbbbbbeeek","kbbbbbbeeek",".kbbbbbbek.","..kbbbbbk..","...kkkkk..."],
+spark:[".....k.....","....kyk....","....kyk....","..kkyyykk..","kkyyyyyyykk","..kkyyykk..","....kyk....","....kyk....",".....k....."],
+grip:["kk.kk","kk.kk",".....","kk.kk","kk.kk",".....","kk.kk","kk.kk"],
+expand:["kkkk.kkkk","kk.....kk","k.k...k.k","k..k.k..k",".........","k..k.k..k","k.k...k.k","kk.....kk","kkkk.kkkk"],
+hour:["kkkkkkkkk","kwwwwwwwk",".kwyyywk.","..kwywk..","...kyk...","..kwywk..",".kwwywwk.","kwyyyyywk","kkkkkkkkk"],
+dl:["...kkk...","...kek...","...kek...","...kek...","kkkkekkkk",".keeeeek.","..keeek..","...kek...","....k....","kkkkkkkkk"],
+box:[".kkkkkkkkkk.","kOOOOOOOOOOk","kkkkkkkkkkkk","kyyyyyyyyyyk","kyyyykkyyyyk","kyyyykkyyyyk","kyyyyyyyyyyk","kyyyyyyyyyyk","kkkkkkkkkkkk"],
+plus:["...kk...","...kk...","...kk...","kkkkkkkk","kkkkkkkk","...kk...","...kk...","...kk..."],
+warn:[".......kk.......","......kyyk......","......kyyk......",".....kyyyyk.....",".....kykkyk.....","....kyykkyyk....","....kyykkyyk....","...kyyykkyyyk...",
+  "...kyyykkyyyk...","..kyyyyyyyyyyk..","..kyyyykkyyyyk..",".kyyyyykkyyyyyk.","kyyyyyyyyyyyyyyk","kkkkkkkkkkkkkkkk"],
+binbig:["....kkkkkkkk....","..kkGGGGGGGGkk..",".kwwwwwwwwwwwwk.","kGGGGGGGGGGGGGGk",".kkkkkkkkkkkkkk.",".kgwgGgwgGgwgGk.",".kgwgGgwgGgwgGk.","..kwgGgwEGgwgk..","..kwgGgEEEgwgk..","..kwgGEgEgEwgk..","..kwgGgwEGgwgk..","..kwgGgwgGgwgk..","...kgGgwgGgwk...","...kkkkkkkkkk..."],
+book:["kkkkkkkkkkkk.","knbbbbbbbbbk.","knbbwwwwbbbk.","knbbbbbbbbbk.","knbbbwwbbbbk.","knbbbbwbbbbk.","knbbbwwbbbbk.","knbbbbbbbbbk.","knbbbbwbbbbk.","knbbbbbbbbbk.","kkkkkkkkkkkk.","kwwwwwwwwwwk.","kkkkkkkkkkkk."],
+// The merge wizard's arrows, in yellow.
+ydown:["..yyyy..","..yyyy..","..yyyy..","..yyyy..","yyyyyyyy",".yyyyyy.","..yyyy..","...yy..."],
+yright:["....y...","....yy..","yyyyyyy.","yyyyyyyy","yyyyyyy.","....yy..","....y..."],
+// Drop to import: the floppy with a plus over its corner.
+dropin:["kkkkkkkkkkkkkkk.....","kbbggggggggbbbk.....","kbbggkkggggbbbk.....","kbbggkkggggbbbk.....","kbbggggggggbbbk.....","kbbbbbbbbbbbbbk.....","kbbbbbbbbbbbbbk.....",
+  "kbwwwwwwwwwwwbk.....","kbwwwwwwwwwkkkkkk...","kbwwwwwwwwwkeeeek...","kbwwwwwwwkkkeeeekkk.","kbwwwwwwwkeeeeeeeek.","kbwwwwwwwkeeeeeeeek.","kbwwwwwwwkkkeeeekkk.","kkkkkkkkkkkkeeeek...","...........kkkkkk..."],
 };
 // The title bar's logo: level bars in orange.
 function logo() {
@@ -73,6 +108,12 @@ if (I[el]) a.innerHTML = px(I[el]);
 if (el === 'desk') {
   // One period of the desktop's dot pattern (the teal is a Slint colour under it).
   a.innerHTML = `<div style="width:${W}px;height:${H}px;background-image:radial-gradient(rgba(0,0,0,.13) 1px,transparent 1.2px);background-size:4px 4px"></div>`;
+}
+if (el === 'ban') {
+  // The Export menu's banner words, upright like the Start menu's (white on clear; the
+  // blue band is a Slint gradient under it, so the menu can be any height).
+  a.innerHTML = `<div style="width:${W}px;height:${H}px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;-webkit-font-smoothing:none">
+    <span style="writing-mode:vertical-rl;transform:rotate(180deg);color:#fff;font-family:'Pixel 95';font-weight:700;font-size:17px;letter-spacing:1px;white-space:nowrap">Thrasher <small style="font-weight:400;color:#bcd6f5;font-size:13px">Export</small></span></div>`;
 }
 if (el === 'checker') {
   // A 2 by 2 checker in white: the pressed taskbar button, and (colourised) the dotted

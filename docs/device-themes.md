@@ -134,6 +134,76 @@ skin needs, with the same outlines and metrics).
   "N transcribed". The Type column shows from a 560px file window, so the mockup's 1000px
   wide window has Type and Wave.
 
+**Built in step 5, Desktop 95 on every other page (2026-10-30):** mockups in
+`docs/mockups/device-themes/dv-os95-pages/` (Max approved them, widget variant A).
+`Theme.pages` is 3 for it (Tape Deck keeps 1, every other skin 0), and `Theme.os95` says the
+shared widgets draw the 95 look.
+- `ui/skins/dv-os95-parts.slint`: the parts the main page and the other pages share (the
+  push button, a centred icon, a window with its title bar and hint, the app's title bar,
+  the teal desktop, `Frame` round a page, the yellow `Message`). The colours, the bevels,
+  the pixel icons and the dotted line moved to `common.slint` (`Os`, `OsBevel`, `OsPx`,
+  `OsDotted`, `OsIcons` for icons by name) so the shared widgets can draw them;
+  `dv-os95.slint` imports them under its old names, so the main page is drawn as before.
+- `ui/skins/dv-os95-pages.slint`: `ClipPage` (a player window with the black display, the
+  white seek field with two grey trim thumbs and the transport; Notepad round the transcript,
+  active blue with the change count in its status bar while editing; a Parts window for a
+  merged clip; the taskbar with Export as the Start button), `SettingsPage` (a properties
+  sheet: two rows of tabs in portrait, the picked row in front; every group box at once in
+  three columns when wide), `ModelsPage` (Add or Remove Programs: filter tabs, or a folder
+  tree when wide; LED ladders; In use on the navy row), `MergePage` (a setup wizard), `AskPage`
+  (the Find dialog with a Help page answer), `Widget` (the mini Sound Recorder), `Dialog`,
+  `Speaking` and `Drop` (message boxes over the shutdown dither).
+- The shared widgets' 95 look: `Btn` (grey key, the main action the default button with its
+  black ring, etched grey words when off, `least` for the 74 px message box keys), `IconBtn`
+  (a small key with the pixel icon from `OsIcons`, pushed in on a checker while active),
+  `Toggle` (a checkbox with its `caption` beside it), `Select` (white drop down box, a white
+  list with the row under the mouse navy), `ShortcutBox` (a hot key field, "Ctrl + Alt + R"),
+  `MenuCard`/`MenuRow`/`MenuRule` (grey 95 menus with icons, navy rows; `list` makes the project
+  menu a white drop down list with folders), `ExportButton` (the Start button and a Start menu
+  with the upright "Thrasher Export" band), `OrderList` (grip, navy place, play key, wave icon,
+  a lifted row raised with a dotted line), `TranscriptCard` (Notepad's toolbar and white page in
+  VT323), `Scroller.bar95` (the grey scroll bar with arrows; the content leaves 16 px),
+  `Tip` (the yellow tip) and the theme gallery (pictures on a white list, the name navy on the
+  current one, a 95 scroll bar). `Theme.menu-h` is 22 px for its menus, else 34 px.
+- Rust: the editor's pause tags are blue (#1c3fa8) on Notepad's page.
+- Art: 28 new pieces at 1x (pixel icons from the mockups' maps, the Start menu band words at
+  1x and 2x), `sh tools/skin-art/cut.sh dv-os95 OUT` (`ONLY="a b"` for some).
+
+**Budgets measured on Desktop 95's other pages** (test copy, 2.25x display, 10 s samples,
+2026-10-30; Ember in brackets):
+- CPU idle 0.0 to 0.5% on every page at 520x700 (Ember 0.0 to 0.5%), the widget 0.9% (2.2%);
+  0.0 to 0.3% at 1100x700 (Ember 0.2 to 0.9%). Nothing moves on a clock; only Speaking steps
+  its six frames while it shows.
+- Working set at 520x700: main 42.3 (41.1), one clip 77.3 (76.8), settings 50.9 (51.5),
+  models 52.1, Ask 52.3 (50.9), widget 45.4 (45.0) MB; at 1100x700: main 51.2 (49.6), one
+  clip 85.7 (83.8), settings 60.8 (60.5), models 62.0 (60.1), Ask 61.7 (60.2), widget 47.4
+  (46.3) MB. At most +2 MB.
+- Exe +12.75 MB (77.76 to 90.50 MB): the pages' generated code and the 95 look in the shared
+  widgets; art 10 KB. More than Tape Deck's step 3 (+10.35 MB): the shared widgets now carry
+  two device looks each.
+  Ember and Tape Deck: main page, one clip, settings, models, merge, the delete question, Ask
+  and the widget at 520x700 and 1100x700 match before and after, pixel for pixel (32 shots;
+  two runs of the old build match too).
+
+**Lessons from Desktop 95's other pages:**
+- **`slint-viewer --check app.slint`** compiles the UI in a second with no cargo lock, and
+  `slint-viewer --screenshot out.png --size WxH --load-data state.json preview.slint` renders a
+  page off screen with sample state set from a small wrapper (set the state in `changed`
+  handlers: `--load-data` comes after `init`). Both saved most of the waits on the shared target.
+- **Pure black did not colorize** in the off-screen preview: a white checker tile with
+  `colorize: #000000` stayed white (no dither); `#010101` works there and in the app.
+- **No `parent` in a component's own bindings:** a component placed by its user (the
+  message tip) gets its area as properties (`area-w`, `area-h`).
+- **An `if` element cannot be named from outside it:** the rename field in the player's
+  title bar reports its text through a callback instead of being read by id.
+- **Overriding `min-width` at a use site replaces the widget's own:** `Btn { min-width: 74px }`
+  would cut "Discard changes"; `Btn.least` keeps the larger of the two.
+- **Width from the parent in a layout loops:** `width: min(240px, root.width - 40px)` inside the
+  transcript card was a binding loop; `preferred-width` and `min-width` do it.
+- **Behind a test copy:** the transcription and AI workers (`thrasher-transcribe.exe`,
+  `thrasher-ask.exe`) next to the test exe turn on Transcribe, Models and Ask, so those pages
+  can be reached headless (never press Download there: models go to the real models folder).
+
 **Built in step 5, Comic Book main page (2026-10-29):**
 - `ui/skins/x-comic.slint` (skin 4, theme "Comic Book") and `ui/skins/x-comic-parts.slint`
   (the `Comic` inks, `Box`, `Glyph`, `InkBtn`, `Caption`, `Tag`, `Bubble`, `Burst`,
@@ -1106,6 +1176,8 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      modes such as PLAY MODE, the merged total on the Dash gauge, the Dash Disk heading).
      Phosphor's are built (`Theme.pages` 2, see "Built in step 5, Phosphor on every other
      page").
+     Desktop 95's other pages: built 2026-10-30 (see "Built in step 5, Desktop 95 on every
+     other page").
    - Other pages, batch 2 (Pocket, Quest Menu, Brick Phone, Answering Machine, Pocket Synth,
      Fighter Select) and batch 3 (Cozy Cabin, Pinball, Phonograph): mockups next.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

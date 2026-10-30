@@ -1,0 +1,250 @@
+// The parts of the Desktop 95 look shared by its main page (dv-os95.slint) and its other
+// pages (dv-os95-pages.slint): the grey push button, a centred pixel icon, a window on the
+// desktop with its title bar, the app's own title bar, the teal desktop and the yellow
+// message tip. The colours, the bevels, the pixel icons and the dotted line are in
+// common.slint (Os, OsBevel, OsPx, OsDotted), so the shared widgets can draw them too.
+
+import { Main, Tips, Os, OsBevel, OsPx } from "../common.slint";
+
+// A grey push button. It stays pushed in while `latched`; the content moves a pixel down
+// and right when pressed. `default` gives it the black ring of the default button.
+export component Btn inherits Rectangle {
+    in property <string> label;
+    in property <string> tip: root.label;
+    in property <bool> latched;
+    in property <bool> default;
+    in property <bool> enabled: true;
+    callback clicked;
+    property <bool> down: (t.pressed && t.has-hover && root.enabled) || root.latched;
+    background: Os.face;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    OsBevel { kind: root.down ? 1 : root.default ? 6 : 0; }
+    Rectangle {
+        x: root.down ? 1px : 0;
+        y: root.down ? 1px : 0;
+        width: parent.width;
+        height: parent.height;
+        opacity: root.enabled ? 1 : 0.45;
+        @children
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => {
+        if (root.tip != "") {
+            Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height);
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// A pixel icon in the middle of its box.
+export component Mid inherits Rectangle {
+    in property <image> source;
+    in property <float> s: 1;
+    OsPx {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        source: root.source;
+        s: root.s;
+    }
+}
+
+// A window on the desktop: the raised frame, its title bar (with a hint on the right) and
+// the body.
+export component Window95 inherits Rectangle {
+    in property <string> title;
+    in property <string> hint;
+    in property <image> icon;
+    in property <bool> active: true;
+    background: Os.face;
+    OsBevel { kind: 0; }
+    Rectangle {
+        x: 3px;
+        y: 3px;
+        width: parent.width - 6px;
+        height: 18px;
+        background: root.active ? Os.active : Os.inactive;
+        HorizontalLayout {
+            padding-left: 4px;
+            padding-right: 4px;
+            spacing: 5px;
+            VerticalLayout {
+                alignment: center;
+                OsPx { source: root.icon; }
+            }
+            Text {
+                text: root.title;
+                color: root.active ? #ffffff : #e4e4e4;
+                font-family: Os.font;
+                font-weight: 700;
+                font-size: 12.5px;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if root.hint != "": Text {
+                text: root.hint;
+                color: root.active ? #ffffffd9 : #e4e4e4d9;
+                font-family: Os.font;
+                font-size: 11px;
+                vertical-alignment: center;
+                horizontal-stretch: 0;
+            }
+        }
+    }
+    Rectangle {
+        x: 3px;
+        y: 21px;
+        width: parent.width - 6px;
+        height: parent.height - 24px;
+        @children
+    }
+}
+
+// The app's own title bar: the logo, the name, Settings, minimise and close.
+export component Caption inherits Rectangle {
+    callback go(int);
+    height: 22px;
+    background: Os.active;
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    HorizontalLayout {
+        padding-left: 4px;
+        padding-right: 3px;
+        spacing: 5px;
+        VerticalLayout {
+            alignment: center;
+            OsPx { source: @image-url("dv-os95/logo.png"); }
+        }
+        HorizontalLayout {
+            horizontal-stretch: 1;
+            spacing: 8px;
+            Text {
+                text: "Thrasher";
+                color: #ffffff;
+                font-family: Os.font;
+                font-weight: 700;
+                font-size: 14px;
+                letter-spacing: 0.3px;
+                vertical-alignment: center;
+            }
+            Text {
+                y: 1px;
+                text: "Sound Recorder 95";
+                color: #bcd6f5;
+                font-family: Os.font;
+                font-size: 11px;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Btn {
+                width: 18px;
+                height: 16px;
+                label: "Settings";
+                clicked => { root.go(3); }
+                Mid { source: @image-url("dv-os95/gear.png"); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Btn {
+                width: 18px;
+                height: 16px;
+                label: "Minimize";
+                clicked => { Main.minimize-window(); }
+                Mid { source: @image-url("dv-os95/min.png"); }
+            }
+        }
+        Rectangle { width: 3px; }
+        VerticalLayout {
+            alignment: center;
+            Btn {
+                width: 18px;
+                height: 16px;
+                label: "Close";
+                clicked => { Main.close-window(); }
+                Mid { source: @image-url("dv-os95/close.png"); }
+            }
+        }
+    }
+}
+
+// The teal desktop with its dots, filling its parent.
+export component Desk inherits Rectangle {
+    property <bool> hi: 1phx < 0.7px;
+    background: Os.desk;
+    Image {
+        width: 100%;
+        height: 100%;
+        source: root.hi ? @image-url("dv-os95/desk@2x.png") : @image-url("dv-os95/desk.png");
+        horizontal-tiling: repeat;
+        vertical-tiling: repeat;
+        horizontal-alignment: left;
+        vertical-alignment: top;
+    }
+    @children
+}
+
+// The app window round a page: the raised frame, the title bar and the desktop. The
+// children sit on the desktop, which is `dw` by `dh`; the title bar's Settings key calls
+// `nav(3)`.
+export component Frame inherits Rectangle {
+    callback nav(int);
+    out property <length> dw: self.width - 6px;
+    out property <length> dh: self.height - 30px;
+    background: Os.face;
+    OsBevel { kind: 0; }
+    Caption {
+        x: 3px;
+        y: 3px;
+        width: parent.width - 6px;
+        go(p) => { root.nav(p); }
+    }
+    Desk {
+        x: 3px;
+        y: 27px;
+        width: parent.width - 6px;
+        height: parent.height - 30px;
+        clip: true;
+        @children
+    }
+}
+
+// A message as the yellow tip, `above` over the bottom of the area it sits in (`area-w`
+// by `area-h`, its parent's size), kept inside it.
+export component Message inherits Rectangle {
+    in property <string> text;
+    in property <length> above: 38px;
+    in property <length> left: -1px;
+    in property <length> area-w;
+    in property <length> area-h;
+    visible: root.text != "";
+    x: root.left >= 0 ? min(root.left, root.area-w - self.width - 8px) : (root.area-w - self.width) / 2;
+    y: root.area-h - root.above - self.height;
+    width: min(msg.preferred-width + 20px, root.area-w - 16px);
+    height: 24px;
+    background: Os.tip;
+    border-width: 1px;
+    border-color: #000000;
+    msg := Text {
+        x: 9px;
+        width: parent.width - 18px;
+        height: parent.height;
+        text: root.text;
+        color: #000000;
+        font-family: Os.font;
+        font-size: 12.5px;
+        overflow: elide;
+        vertical-alignment: center;
+    }
+}

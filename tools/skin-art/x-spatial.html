@@ -33,6 +33,13 @@ const room = (mw, mh) => {
 };
 if (el === 'room-p') room(400, 620);
 if (el === 'room-w') room(1000, 620);
+// The widget's room (x-spatial-pages.slint): the wide room scaled to the widget's width,
+// its middle band, with the widget's rounded corners cut (the window is see-through).
+if (el === 'widget-room') {
+  room(1000, 620);
+  a.style.borderRadius = '24px';
+  a.firstChild.style.top = (-(620 * W / 1000 - H) / 2) + 'px';
+}
 
 // The shadow under a pane, outside it only (box-shadow is not drawn under the box), for
 // a nine-slice image: m = the margins around the box (top right bottom left).
@@ -51,6 +58,7 @@ const orb = (d) => disc(d, `background:radial-gradient(circle at 50% 18%,rgba(25
   box-shadow:inset 0 -6px 14px rgba(90,0,20,.5),inset 0 2px 2px rgba(255,255,255,.6),0 0 0 1px rgba(255,255,255,.35),0 14px 30px rgba(255,40,70,.35),0 6px 14px rgba(0,0,0,.35)`);
 if (el === 'orb-s') a.innerHTML = orb(74);
 if (el === 'orb-l') a.innerHTML = orb(146);
+if (el === 'orb-w') a.innerHTML = orb(62);
 // A round glass button, 10px of room around it for its shadow.
 const rb = (d) => disc(d, `background:radial-gradient(circle at 50% 0%,rgba(255,255,255,.32),rgba(255,255,255,.1) 70%);border:1px solid rgba(255,255,255,.3);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 8px rgba(0,0,0,.25)`);
@@ -71,4 +79,5 @@ const ring = (n) => {
 };
 if (el === 'ring-s') ring(48);
 if (el === 'ring-l') ring(72);
+if (el === 'ring-w') ring(40);
 </script></body></html>

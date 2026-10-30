@@ -1,0 +1,2722 @@
+// The Spatial Glass look of every page but the main one (mockups in
+// docs/mockups/device-themes/x-spatial-pages/): each page is frosted glass panes floating
+// in the same pre-blurred room as the main page. The pane you work in comes forward, the
+// rest recede, and the main actions ride an ornament under the window. Every question is a
+// glass sheet over the dimmed room; the widget is a small glass card with the orb.
+//
+// Behaviour is shared: the state is in the Pages and Main globals, the actions are
+// AppWindow's (reached through the callbacks here), and the shared widgets (the transcript
+// card, menus, dropdowns, switches, buttons) draw their glass look themselves for this
+// skin (Theme.glass).
+
+import { ThemeGallery } from "../gallery.slint";
+import { Theme, Main, Pages, Tips, Icon, Glass, Btn, IconBtn, Toggle, Select, TextField, ShortcutBox, Scroller, OrderList, TranscriptCard, ExportButton, TrimTouch, AskSource } from "../common.slint";
+import { Shadow, Pane, Capsule, GlassBtn, TiltPane, Grab, Status, Timer } from "x-spatial-parts.slint";
+
+// ---------- Small parts ----------
+
+// The room behind the glass, the main page's pre-blurred picture.
+component Room inherits Image {
+    in property <bool> wide;
+    width: 100%;
+    height: 100%;
+    source: root.wide ? @image-url("x-spatial/room-w.png") : @image-url("x-spatial/room-p.png");
+    image-fit: fill;
+    accessible-role: none;
+}
+
+// The back pill of a page's title bar: a small round arrow and the page's name.
+component BackPill inherits Capsule {
+    in property <string> text;
+    in property <string> label: "Back";
+    callback clicked;
+    width: row.preferred-width;
+    height: 30px;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        visible: t.has-hover;
+        border-radius: self.height / 2;
+        background: t.pressed ? #ffffff24 : #ffffff12;
+    }
+    row := HorizontalLayout {
+        padding-left: 4px;
+        padding-right: 14px;
+        spacing: 6px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 22px;
+                height: 22px;
+                border-radius: 11px;
+                background: #ffffff29;
+                border-width: 1px;
+                border-color: #ffffff47;
+                Icon {
+                    name: "back";
+                    tint: Glass.ink;
+                    width: 12px;
+                    height: 12px;
+                    stroke-width: 2.4px;
+                }
+            }
+        }
+        Text {
+            text: root.text;
+            color: Glass.ink;
+            font-size: 13.5px;
+            font-weight: 600;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The title bar of a page: the back pill, an optional heading and note, minimise and
+// close. It moves the window.
+component Head inherits Rectangle {
+    in property <bool> wide;
+    in property <string> title;
+    in property <string> label: "Back";
+    in property <string> heading;
+    in property <string> note;
+    callback back();
+    y: 0;
+    height: root.wide ? 50px : 46px;
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    HorizontalLayout {
+        padding-left: root.wide ? 20px : 14px;
+        padding-right: root.wide ? 20px : 14px;
+        padding-top: root.wide ? 14px : 12px;
+        padding-bottom: root.height - 30px - self.padding-top;
+        spacing: 8px;
+        BackPill {
+            text: root.title;
+            label: root.label;
+            clicked => { root.back(); }
+        }
+        if root.heading != "": Text {
+            text: root.heading;
+            color: Glass.ink;
+            font-size: 13.5px;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+        if root.note != "": Text {
+            text: root.note;
+            color: Glass.ink3;
+            font-size: 11.5px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        Rectangle { horizontal-stretch: 1; }
+        GlassBtn { icon: "minimize"; icon-size: 13px; label: "Minimize"; clicked => { Main.minimize-window(); } }
+        GlassBtn { icon: "close"; icon-size: 13px; label: "Close"; clicked => { Main.close-window(); } }
+    }
+}
+
+// A small caps label over a group or in a pane.
+component Label inherits Text {
+    color: Glass.ink3;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 2.1px;
+    vertical-alignment: center;
+    overflow: elide;
+}
+
+// The lamp of a message: a green bead with its glow.
+component Bead inherits Rectangle {
+    in property <color> lamp: Glass.green;
+    width: 7px;
+    height: 7px;
+    Rectangle {
+        x: -3px;
+        y: -3px;
+        width: 13px;
+        height: 13px;
+        border-radius: 6.5px;
+        background: root.lamp.with-alpha(0.25);
+    }
+    Rectangle { border-radius: 3.5px; background: root.lamp; }
+}
+
+// The latest message as a glass chip, floating above the ornament or the page's foot.
+component Toast inherits Rectangle {
+    in property <string> text;
+    in property <length> max-w: 360px;
+    width: min(msg.preferred-width + 40px, root.max-w);
+    height: 30px;
+    border-radius: 15px;
+    background: #3e3c46eb;
+    border-width: 1px;
+    border-color: #ffffff57;
+    Rectangle { x: 12px; y: 1px; width: parent.width - 24px; height: 1px; background: #ffffff66; }
+    Bead { x: 12px; y: (parent.height - self.height) / 2; }
+    msg := Text {
+        x: 27px;
+        width: parent.width - 39px;
+        text: root.text;
+        color: Glass.ink;
+        font-size: 12px;
+        font-weight: 500;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// A pill with an icon and a word: Loop, All projects.
+component IconPill inherits Rectangle {
+    in property <string> icon;
+    in property <string> text;
+    in property <string> label: root.text;
+    in property <bool> on;
+    in property <bool> enabled: true;
+    in property <length> font-size: 12.5px;
+    callback clicked;
+    width: row.preferred-width;
+    height: 30px;
+    border-radius: self.height / 2;
+    background: root.on ? (t.has-hover ? #ffffff59 : #ffffff47) : t.has-hover && root.enabled ? #ffffff38 : #ffffff26;
+    border-width: 1px;
+    border-color: root.on ? #ffffffb3 : #ffffff4d;
+    opacity: root.enabled ? 1 : 0.4;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-checked: root.on;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Rectangle { x: parent.height * 0.4; y: 1px; width: parent.width - parent.height * 0.8; height: 1px; background: #ffffff73; }
+    row := HorizontalLayout {
+        padding-left: root.icon != "" ? 11px : 13px;
+        padding-right: 13px;
+        spacing: 6px;
+        if root.icon != "": Icon {
+            name: root.icon;
+            tint: Glass.ink;
+            width: 13px;
+            height: 13px;
+            y: (parent.height - self.height) / 2;
+        }
+        Text {
+            text: root.text;
+            color: Glass.ink;
+            font-size: root.font-size;
+            font-weight: 600;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// A field on the glass: a dark well with a light edge, white when it has the cursor.
+component GlassField inherits TextField {
+    height: 36px;
+    radius: 12px;
+    fill: #0000003d;
+    rest-edge: #ffffff29;
+    ink: Glass.ink;
+    hint: Glass.ink3;
+    font-size: 13.5px;
+    side: 13px;
+    focus-edge: #ffffffa0;
+    focus-ring: #ffffff1a;
+    select-fill: #9fe3ff52;
+}
+
+// ---------- One clip ----------
+
+// The white glass play orb between Back 5 and Forward 5.
+component PlayOrb inherits Rectangle {
+    in property <length> size: 44px;
+    in property <bool> playing;
+    callback clicked;
+    width: root.size;
+    height: root.size;
+    accessible-role: button;
+    accessible-label: root.playing ? "Pause" : "Play";
+    accessible-action-default => { root.clicked(); }
+    Rectangle { y: 5px; border-radius: root.size / 2; background: #00000024; }
+    Rectangle { y: 2px; border-radius: root.size / 2; background: #00000033; }
+    Rectangle { border-radius: root.size / 2; background: t.pressed ? #dedee6 : #f6f6fa; border-width: 1px; border-color: #ffffff; }
+    // The lower rim, a little darker, as the mockup's inner shadow.
+    Rectangle {
+        x: root.size * 0.12;
+        y: root.size * 0.12;
+        width: root.size * 0.76;
+        height: root.size * 0.76;
+        border-radius: root.size * 0.38;
+        background: t.has-hover && !t.pressed ? #ffffff : #fbfbfd;
+    }
+    Icon {
+        x: (parent.width - self.width) / 2 + (root.playing ? 0 : root.size * 0.03);
+        y: (parent.height - self.height) / 2;
+        name: root.playing ? "pause" : "play";
+        tint: #24222b;
+        width: root.size * 0.3;
+        height: root.size * 0.3;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// Back or Forward 5 seconds: a round glass button with the 5 in its arrow.
+component Skip inherits GlassBtn {
+    in property <bool> ahead;
+    size: 34;
+    icon: root.ahead ? "forward" : "rewind";
+    icon-size: 17px;
+    label: root.ahead ? "Forward 5 seconds" : "Back 5 seconds";
+    Text {
+        y: (parent.height - self.height) / 2 + 0.5px;
+        width: parent.width;
+        text: "5";
+        color: Glass.ink;
+        font-size: 6.5px;
+        font-weight: 800;
+        horizontal-alignment: center;
+        accessible-role: none;
+    }
+}
+
+// The playback speed as a glass segment row.
+component Speed inherits Rectangle {
+    in property <bool> small;
+    callback picked(int);
+    width: steps.preferred-width;
+    height: 30px;
+    border-radius: 15px;
+    background: #0000003d;
+    border-width: 1px;
+    border-color: #ffffff24;
+    accessible-role: list;
+    accessible-label: "Speed";
+    steps := HorizontalLayout {
+        padding: 3px;
+        spacing: root.small ? 0 : 2px;
+        for v[i] in ["0.75", "1.0", "1.25", "1.5", "2.0"]: Rectangle {
+            property <bool> on: i == Pages.speed-index;
+            width: max(root.small ? 26px : 30px, word.preferred-width + (root.small ? 8px : 12px));
+            border-radius: self.height / 2;
+            background: self.on ? #ffffff47 : st.has-hover ? #ffffff14 : transparent;
+            border-width: self.on ? 1px : 0;
+            border-color: #ffffff8c;
+            accessible-role: button;
+            accessible-label: v + "×";
+            accessible-checked: self.on;
+            accessible-action-default => { Pages.speed-index = i; root.picked(i); }
+            word := Text {
+                text: v;
+                color: parent.on ? Glass.ink : Glass.ink2;
+                font-size: 11px;
+                font-weight: 600;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            st := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Pages.speed-index = i; root.picked(i); }
+            }
+        }
+    }
+}
+
+// The clip's waveform as a glass strip: the played part white, the trimmed ends dim, a
+// cyan line where it plays, white lines with beads as the trim handles. TrimTouch drags
+// and seeks.
+component WaveStrip inherits Rectangle {
+    in property <bool> big;
+    callback trimmed(float, float);
+    callback tapped();
+    property <bool> active: Main.active-clip == Main.selected;
+    property <float> played: root.active ? clamp(Main.play-fraction, 0, 1) : 0;
+    property <length> pad: 10px;
+    property <length> inner-w: root.width - 2 * root.pad;
+    property <length> start-x: Pages.trim-start * root.inner-w;
+    property <length> end-x: Pages.trim-end * root.inner-w;
+    property <length> pitch: root.big ? 4px : 3.4px;
+    property <int> n: max(1, floor(root.inner-w / root.pitch));
+    Rectangle {
+        x: root.pad;
+        width: root.inner-w;
+        for i in root.n: Rectangle {
+            property <float> v: Pages.detail-wave.length > 0 ? Pages.detail-wave[floor(i * Pages.detail-wave.length / root.n)] : 0.06;
+            property <float> f: (i + 0.5) / root.n;
+            x: i * root.pitch;
+            width: root.big ? 2px : 1.7px;
+            height: max(2px, self.v * (root.height - 12px));
+            y: (root.height - self.height) / 2;
+            border-radius: 1px;
+            background: self.f < Pages.trim-start || self.f > Pages.trim-end ? #ffffff33 : self.f <= root.played ? #ffffff : #ffffffa6;
+        }
+        if root.active: Rectangle {
+            x: root.played * parent.width - 1px;
+            y: 2px;
+            width: 2px;
+            height: parent.height - 4px;
+            background: Glass.cyan;
+        }
+        for k in [0, 1]: Rectangle {
+            property <bool> hot: touch.grab == k + 1 || (touch.has-hover && abs(touch.at - (k == 0 ? root.start-x : root.end-x)) <= 8px);
+            x: (k == 0 ? root.start-x : root.end-x) - 1px;
+            y: 4px;
+            width: 2px;
+            height: parent.height - 8px;
+            background: self.hot ? #ffffff : #ffffffd9;
+            Rectangle { x: -3.5px; y: -4.5px; width: 9px; height: 9px; border-radius: 4.5px; background: #ffffff; }
+            Rectangle { x: -3.5px; y: parent.height - 4.5px; width: 9px; height: 9px; border-radius: 4.5px; background: #ffffff; }
+        }
+    }
+    touch := TrimTouch {
+        pad: root.pad;
+        trimmed(a, b) => { root.trimmed(a, b); }
+        tapped => { root.tapped(); }
+    }
+}
+
+// Where the clip is and how long it is, under the strip.
+component Times inherits HorizontalLayout {
+    padding-left: 4px;
+    padding-right: 4px;
+    Text {
+        text: Main.active-clip == Main.selected ? Main.play-position : "0:00";
+        color: Glass.ink3;
+        font-family: Glass.figures;
+        font-size: 11px;
+        horizontal-stretch: 1;
+    }
+    Text {
+        text: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].duration : "";
+        color: Glass.ink3;
+        font-family: Glass.figures;
+        font-size: 11px;
+    }
+}
+
+// The name and Rename and Delete, or the field to rename it in place.
+component ClipName inherits VerticalLayout {
+    in property <bool> big;
+    callback delete();
+    callback rename(string);
+    callback cancel();
+    property <string> name: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].name : "";
+    spacing: 3px;
+    if !Pages.renaming: HorizontalLayout {
+        spacing: 8px;
+        Text {
+            text: root.name;
+            color: Glass.ink;
+            font-size: root.big ? 24px : 20px;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+        VerticalLayout {
+            alignment: center;
+            GlassBtn {
+                size: 28;
+                icon: "pencil";
+                icon-size: 12px;
+                label: "Rename clip";
+                tip: "Rename";
+                enabled: !Main.recording;
+                clicked => { Pages.renaming = true; }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            GlassBtn {
+                size: 28;
+                icon: "trash";
+                icon-size: 13px;
+                tint: Glass.rec-hi;
+                label: "Delete clip";
+                tip: "Delete";
+                enabled: !Main.recording;
+                clicked => { root.delete(); }
+            }
+        }
+    }
+    if Pages.renaming: HorizontalLayout {
+        spacing: 6px;
+        field := GlassField {
+            height: 34px;
+            font-size: 15px;
+            label: "Clip name";
+            text: root.name;
+            init => { self.grab(); }
+            accepted(t) => { root.rename(t); }
+            escaped => { root.cancel(); }
+            takes-escape: true;
+        }
+        VerticalLayout {
+            alignment: center;
+            Btn { height: 30px; text: "Cancel"; clicked => { root.cancel(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            Btn { height: 30px; primary: true; text: "Rename"; clicked => { root.rename(field.text); } }
+        }
+    }
+    Text {
+        text: Pages.detail-meta;
+        color: Glass.ink3;
+        font-size: 11px;
+        overflow: elide;
+    }
+}
+
+// Back 5, play, forward 5; then the speed and Loop. Wide windows centre them on two
+// lines, narrow ones squeeze them onto one.
+component Transport inherits Rectangle {
+    in property <bool> big;
+    in property <bool> small;
+    callback toggle-play();
+    callback skip(float);
+    callback speed-changed(int);
+    callback refocus();
+    property <bool> playing: Main.active-clip == Main.selected && Main.playing;
+    height: root.big ? 108px : 44px;
+    if !root.big: HorizontalLayout {
+        spacing: root.small ? 6px : 8px;
+        VerticalLayout { alignment: center; Skip { size: root.small ? 30 : 34; clicked => { root.skip(-5); root.refocus(); } } }
+        VerticalLayout { alignment: center; PlayOrb { size: root.small ? 40px : 44px; playing: root.playing; clicked => { root.toggle-play(); root.refocus(); } } }
+        VerticalLayout { alignment: center; Skip { size: root.small ? 30 : 34; ahead: true; clicked => { root.skip(5); root.refocus(); } } }
+        Rectangle { width: root.small ? 2px : 6px; }
+        VerticalLayout { alignment: center; Speed { small: root.small; picked(i) => { root.speed-changed(i); root.refocus(); } } }
+        Rectangle { horizontal-stretch: 1; }
+        VerticalLayout {
+            alignment: center;
+            IconPill {
+                icon: root.small ? "" : "loop";
+                text: "Loop";
+                on: Pages.looping;
+                clicked => { Pages.looping = !Pages.looping; root.refocus(); }
+            }
+        }
+    }
+    if root.big: VerticalLayout {
+        spacing: 14px;
+        HorizontalLayout {
+            alignment: center;
+            spacing: 14px;
+            VerticalLayout { alignment: center; Skip { clicked => { root.skip(-5); root.refocus(); } } }
+            PlayOrb { size: 58px; playing: root.playing; clicked => { root.toggle-play(); root.refocus(); } }
+            VerticalLayout { alignment: center; Skip { ahead: true; clicked => { root.skip(5); root.refocus(); } } }
+        }
+        HorizontalLayout {
+            alignment: center;
+            spacing: 10px;
+            Speed { picked(i) => { root.speed-changed(i); root.refocus(); } }
+            IconPill {
+                icon: "loop";
+                text: "Loop";
+                on: Pages.looping;
+                clicked => { Pages.looping = !Pages.looping; root.refocus(); }
+            }
+        }
+    }
+}
+
+// Clean voice on export, the one option of a clip: the switch, its name and its note.
+component CleanVoice inherits HorizontalLayout {
+    in property <bool> switch-last;
+    callback changed-to(bool);
+    spacing: 10px;
+    if !root.switch-last: VerticalLayout {
+        alignment: center;
+        Toggle {
+            label: "Clean voice on export";
+            checked <=> Pages.clean-voice;
+            toggled(on) => { root.changed-to(on); }
+        }
+    }
+    VerticalLayout {
+        alignment: center;
+        horizontal-stretch: 1;
+        Text {
+            text: "Clean voice on export";
+            color: Glass.ink;
+            font-size: 12.5px;
+            font-weight: 600;
+            overflow: elide;
+        }
+        Text {
+            text: "Less noise";
+            color: Glass.ink3;
+            font-size: 11px;
+        }
+    }
+    if root.switch-last: VerticalLayout {
+        alignment: center;
+        Toggle {
+            label: "Clean voice on export";
+            checked <=> Pages.clean-voice;
+            toggled(on) => { root.changed-to(on); }
+        }
+    }
+}
+
+// A merged clip's parts, as glass rows that can be put in another order.
+component Parts inherits VerticalLayout {
+    callback moved(int, int);
+    callback take-out(int);
+    callback rename(int);
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 12px;
+    padding-bottom: 8px;
+    spacing: 4px;
+    HorizontalLayout {
+        padding-left: 8px;
+        Label { text: Pages.parts-busy ? "PARTS  ·  WORKING" : "PARTS"; }
+    }
+    OrderList {
+        rows: Pages.parts;
+        menu: true;
+        enabled: !Pages.parts-busy && !Main.recording;
+        opacity: Pages.parts-busy ? 0.45 : 1;
+        moved(a, b) => { root.moved(a, b); }
+        act(i) => { root.take-out(i); }
+        rename(i) => { root.rename(i); }
+    }
+}
+
+// The export line in the ornament: what is being exported, or done.
+component ExportNote inherits Text {
+    text: (Main.export-state == 2 ? "Exported " : "Exporting ") + Main.export-name;
+    color: Glass.ink;
+    font-size: 12.5px;
+    font-weight: 500;
+    vertical-alignment: center;
+    overflow: elide;
+}
+
+// The one-clip page. Portrait: the clip pane (name, strip, transport), the parts of a
+// merged clip, the transcript pane, and the ornament with Clean voice and Export. Wide:
+// the clip pane tilted toward you on the left, the transcript on the right, the ornament
+// under it with the latest message and Export. Editing lifts the transcript pane and the
+// clip pane recedes.
+export component ClipPage inherits Rectangle {
+    in property <bool> narrow;
+    in property <bool> wide;
+    callback go(int);
+    callback refocus();
+    // Leaving the editor asks about unsaved changes first (AppWindow.leave-editor).
+    callback leave-editor(int);
+    callback start-edit();
+    callback ask-delete(int);
+    callback rename-selected(string);
+    callback toggle-play();
+    callback skip(float);
+    callback speed-changed(int);
+    callback trim-changed(float, float);
+    callback clean-voice-changed(bool);
+    callback parts-move(int, int);
+    callback part-take-out(int);
+    callback rename-part(int);
+    // The transcript card's actions (see TranscriptCard).
+    callback choose-lang(string);
+    callback lang-filter(string);
+    callback install-for(int);
+    callback summarise();
+    callback edit-changed(string);
+    callback apply-transcript(string);
+    callback transcribe();
+    callback seek-word(int);
+    pure callback edit-markup(string) -> styled-text;
+    pure callback plain-selection(string, int, int) -> string;
+
+    property <string> name: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].name : "";
+    // The wide panes and the ornament under the transcript.
+    property <length> right-x: 436px;
+    property <length> right-w: root.width - root.right-x - 22px;
+    property <length> orn-w: root.wide ? min(380px, root.right-w - 20px) : root.width - 38px;
+    property <length> orn-x: root.wide ? root.right-x + (root.right-w - root.orn-w) / 2 : 19px;
+    property <length> orn-y: root.wide ? root.height - 78px : root.height - 68px;
+
+    function rename(t: string) {
+        Pages.renaming = false;
+        root.rename-selected(t);
+        root.refocus();
+    }
+
+    Room { wide: root.wide; }
+
+    // Portrait.
+    if !root.wide: VerticalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        padding-top: 52px;
+        padding-bottom: root.height - root.orn-y + 12px;
+        spacing: 12px;
+        Pane {
+            vertical-stretch: 0;
+            height: deck.preferred-height;
+            opacity: Pages.editing ? 0.55 : 1;
+            deck := VerticalLayout {
+                padding-left: 16px;
+                padding-right: 14px;
+                padding-top: 13px;
+                padding-bottom: 14px;
+                spacing: 6px;
+                ClipName {
+                    delete => { root.ask-delete(Main.selected); }
+                    rename(t) => { root.rename(t); }
+                    cancel => { Pages.renaming = false; root.refocus(); }
+                }
+                VerticalLayout {
+                    spacing: 1px;
+                    WaveStrip {
+                        height: 56px;
+                        trimmed(a, b) => { root.trim-changed(a, b); }
+                        tapped => { root.refocus(); }
+                    }
+                    Times { }
+                }
+                Transport {
+                    small: root.narrow;
+                    toggle-play => { root.toggle-play(); }
+                    skip(s) => { root.skip(s); }
+                    speed-changed(i) => { root.speed-changed(i); }
+                    refocus => { root.refocus(); }
+                }
+            }
+        }
+        if Pages.parts.length >= 2: Pane {
+            vertical-stretch: 0;
+            height: parts.preferred-height;
+            opacity: Pages.editing ? 0.55 : 1;
+            parts := Parts {
+                moved(a, b) => { root.parts-move(a, b); }
+                take-out(i) => { root.part-take-out(i); }
+                rename(i) => { root.rename-part(i); }
+            }
+        }
+        Pane {
+            vertical-stretch: 1;
+            lift: Pages.editing;
+            shadow: Pages.editing ? 1 : 0;
+            card-p := TranscriptCard {
+                clip-name: root.name;
+                transcript: Pages.transcript;
+                transcribing: Pages.transcribing;
+                translating: Pages.translating;
+                translation: Pages.translation;
+                shown-lang <=> Pages.shown-lang;
+                langs: Pages.langs;
+                choose-lang(c) => { root.choose-lang(c); }
+                lang-filter(t) => { root.lang-filter(t); }
+                install-for(k) => { root.install-for(k); }
+                summary: Pages.summary;
+                summarising: Pages.summarising;
+                can-ai: Main.can-ai;
+                show-summary <=> Pages.show-summary;
+                summarise => { root.summarise(); }
+                transcribe-progress: Pages.transcribe-progress;
+                words: Pages.words;
+                current-word: Pages.current-word;
+                show-marks <=> Pages.show-marks;
+                can-transcribe: Pages.can-transcribe;
+                recording: Main.recording;
+                editing: Pages.editing;
+                edit-draft <=> Pages.edit-draft;
+                edit-badge: Pages.edit-badge;
+                speaking: Pages.speaking;
+                edit => { root.start-edit(); }
+                edited(t) => { root.edit-changed(t); }
+                cancel => { root.leave-editor(-1); }
+                save => { root.apply-transcript(Pages.edit-draft); }
+                edit-markup(t) => { return root.edit-markup(t); }
+                plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+                transcribe => { root.transcribe(); root.refocus(); }
+                seek-word(i) => { root.seek-word(i); root.refocus(); }
+            }
+        }
+    }
+
+    // Wide.
+    if root.wide: TiltPane {
+        x: 24px;
+        y: 58px;
+        width: 392px;
+        height: root.height - 150px;
+        opacity: Pages.editing ? 0.55 : 1;
+        VerticalLayout {
+            padding-top: 20px + parent.d * 1px * 0.5;
+            padding-bottom: 20px;
+            padding-left: 22px;
+            padding-right: 20px;
+            spacing: 8px;
+            ClipName {
+                big: true;
+                delete => { root.ask-delete(Main.selected); }
+                rename(t) => { root.rename(t); }
+                cancel => { Pages.renaming = false; root.refocus(); }
+            }
+            Rectangle { height: 6px; }
+            VerticalLayout {
+                spacing: 2px;
+                WaveStrip {
+                    big: true;
+                    height: 104px;
+                    trimmed(a, b) => { root.trim-changed(a, b); }
+                    tapped => { root.refocus(); }
+                }
+                Times { }
+            }
+            Rectangle { height: 8px; }
+            Transport {
+                big: true;
+                toggle-play => { root.toggle-play(); }
+                skip(s) => { root.skip(s); }
+                speed-changed(i) => { root.speed-changed(i); }
+                refocus => { root.refocus(); }
+            }
+            Rectangle { vertical-stretch: 1; min-height: 4px; }
+            Rectangle { height: 1px; background: #ffffff1f; }
+            Rectangle { height: 6px; }
+            Label { text: "OPTIONS"; }
+            CleanVoice {
+                switch-last: true;
+                changed-to(on) => { root.clean-voice-changed(on); }
+            }
+        }
+    }
+    if root.wide: VerticalLayout {
+        x: root.right-x;
+        y: 58px;
+        width: root.right-w;
+        height: root.height - 150px;
+        spacing: 12px;
+        if Pages.parts.length >= 2: Pane {
+            vertical-stretch: 0;
+            height: wparts.preferred-height;
+            opacity: Pages.editing ? 0.55 : 1;
+            wparts := Parts {
+                moved(a, b) => { root.parts-move(a, b); }
+                take-out(i) => { root.part-take-out(i); }
+                rename(i) => { root.rename-part(i); }
+            }
+        }
+        Pane {
+            vertical-stretch: 1;
+            lift: Pages.editing;
+            shadow: Pages.editing ? 1 : 0;
+            TranscriptCard {
+                clip-name: root.name;
+                transcript: Pages.transcript;
+                transcribing: Pages.transcribing;
+                translating: Pages.translating;
+                translation: Pages.translation;
+                shown-lang <=> Pages.shown-lang;
+                langs: Pages.langs;
+                choose-lang(c) => { root.choose-lang(c); }
+                lang-filter(t) => { root.lang-filter(t); }
+                install-for(k) => { root.install-for(k); }
+                summary: Pages.summary;
+                summarising: Pages.summarising;
+                can-ai: Main.can-ai;
+                show-summary <=> Pages.show-summary;
+                summarise => { root.summarise(); }
+                transcribe-progress: Pages.transcribe-progress;
+                words: Pages.words;
+                current-word: Pages.current-word;
+                show-marks <=> Pages.show-marks;
+                can-transcribe: Pages.can-transcribe;
+                recording: Main.recording;
+                editing: Pages.editing;
+                edit-draft <=> Pages.edit-draft;
+                edit-badge: Pages.edit-badge;
+                speaking: Pages.speaking;
+                edit => { root.start-edit(); }
+                edited(t) => { root.edit-changed(t); }
+                cancel => { root.leave-editor(-1); }
+                save => { root.apply-transcript(Pages.edit-draft); }
+                edit-markup(t) => { return root.edit-markup(t); }
+                plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+                transcribe => { root.transcribe(); root.refocus(); }
+                seek-word(i) => { root.seek-word(i); root.refocus(); }
+            }
+        }
+    }
+
+    // The ornament: portrait has Clean voice (or the export under way) and Export; wide
+    // the latest message and Export.
+    Capsule {
+        x: root.orn-x;
+        y: root.orn-y;
+        width: root.orn-w;
+        height: 48px;
+        shadow: 2;
+        HorizontalLayout {
+            padding-left: 14px;
+            padding-right: 7px;
+            spacing: 10px;
+            if !root.wide && Main.export-state == 0: CleanVoice {
+                horizontal-stretch: 1;
+                changed-to(on) => { root.clean-voice-changed(on); }
+            }
+            if !root.wide && Main.export-state != 0: ExportNote { horizontal-stretch: 1; }
+            if root.wide: HorizontalLayout {
+                horizontal-stretch: 1;
+                spacing: 9px;
+                VerticalLayout {
+                    alignment: center;
+                    Bead { lamp: Main.status != "" || Main.export-state != 0 ? Glass.green : #ffffff40; }
+                }
+                if Main.export-state != 0: ExportNote { horizontal-stretch: 1; }
+                if Main.export-state == 0: Text {
+                    horizontal-stretch: 1;
+                    text: Main.status != "" ? Main.status : "No messages";
+                    color: Main.status != "" ? Glass.ink : Glass.ink3;
+                    font-size: 12.5px;
+                    font-weight: 500;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle { width: 1px; height: 22px; background: #ffffff2e; }
+                }
+            }
+            VerticalLayout {
+                alignment: center;
+                ExportButton {
+                    width: 104px;
+                    height: 34px;
+                    format: Pages.export-format;
+                    subtitles: Pages.transcript != "";
+                    state: Main.export-state;
+                    progress: Main.export-progress;
+                    export(kind) => { Main.export-as(kind); root.refocus(); }
+                }
+            }
+        }
+    }
+    Grab {
+        bar: root.wide ? 120px : 110px;
+        x: root.orn-x + (root.orn-w - self.width) / 2;
+        y: root.height - (root.wide ? 22px : 20px);
+    }
+    // Portrait: messages float as a chip just above the ornament.
+    if !root.wide && Main.status != "": Toast {
+        x: (root.width - self.width) / 2;
+        y: root.orn-y - self.height - 10px;
+        max-w: root.width - 48px;
+        text: Main.status;
+    }
+
+    Head {
+        wide: root.wide;
+        title: "Clips";
+        label: "Back to Clips";
+        back => { if (Pages.editing) { root.leave-editor(0); } else { root.go(0); } }
+    }
+}
+
+// ---------- Settings ----------
+
+// A group of settings: its name above a frosted pane of rows.
+component Group inherits VerticalLayout {
+    in property <string> title;
+    spacing: 7px;
+    HorizontalLayout {
+        padding-left: 14px;
+        Label { text: root.title; }
+    }
+    Pane {
+        radius: 20px;
+        height: body.preferred-height;
+        body := VerticalLayout {
+            padding-top: 2px;
+            padding-bottom: 2px;
+            @children
+        }
+    }
+}
+
+// One row of a group: its name (and a note in small type) and its controls.
+component Row inherits Rectangle {
+    in property <string> label;
+    in property <string> note;
+    in property <bool> first;
+    in property <bool> dim;
+    min-height: 42px;
+    if !root.first: Rectangle { x: 16px; y: 0; width: parent.width - 28px; height: 1px; background: #ffffff1a; }
+    HorizontalLayout {
+        padding-left: 16px;
+        padding-right: 12px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 1px;
+            horizontal-stretch: 1;
+            Text {
+                text: root.label;
+                color: root.dim ? Glass.ink3 : Glass.ink;
+                font-size: 13px;
+                font-weight: 500;
+                overflow: elide;
+            }
+            if root.note != "": Text {
+                text: root.note;
+                color: Glass.ink3;
+                font-size: 11px;
+                overflow: elide;
+            }
+        }
+        HorizontalLayout {
+            alignment: end;
+            spacing: 6px;
+            @children
+        }
+    }
+}
+
+// A value shown, not set: Ready, OmniVoice.
+component Value inherits Text {
+    color: Glass.ink2;
+    font-size: 12.5px;
+    vertical-alignment: center;
+}
+
+// The dropdown of a settings row, as wide as its choice.
+component GroupSelect inherits Select {
+    width: min(self.natural, 220px);
+    height: 30px;
+}
+
+export component SettingsPage inherits Rectangle {
+    in property <bool> wide;
+    callback back();
+    callback go(int);
+    callback refocus();
+    callback theme-changed(int);
+    callback mic-changed(int);
+    callback system-changed(bool);
+    callback recording-limit-changed(int);
+    callback hotkey-captured(string, bool, bool, bool, bool) -> bool;
+    callback hotkey-accepted(string);
+    callback open-folder();
+    callback change-folder();
+    callback template-edited(string);
+    callback template-accepted(string);
+    callback export-format-changed(int);
+    callback clean-voice-changed(bool);
+    callback language-changed(int);
+    callback auto-transcribe-changed(bool);
+    callback ai-names-changed(bool);
+    callback max-pause-changed(int);
+    callback ai-model-changed(int);
+    callback download-ai(int);
+    callback close-to-tray-changed(bool);
+    callback start-with-windows-changed(bool);
+
+    property <length> top: root.wide ? 54px : 50px;
+
+    Room { wide: root.wide; }
+    Scroller {
+        y: root.top;
+        height: root.height - root.top;
+        VerticalLayout {
+            padding-left: root.wide ? 20px : 14px;
+            padding-right: root.wide ? 22px : 18px;
+            padding-top: 4px;
+            padding-bottom: 60px;
+            alignment: start;
+            spacing: 16px;
+            // The theme gallery, across the whole page when it is wide.
+            Group {
+                title: "APPEARANCE";
+                VerticalLayout {
+                    padding-left: 12px;
+                    padding-right: 10px;
+                    padding-top: 4px;
+                    padding-bottom: 4px;
+                    ThemeGallery { picked(i) => { root.theme-changed(i); } }
+                }
+            }
+            FlexboxLayout {
+                flex-direction: root.wide ? FlexboxLayoutDirection.row : FlexboxLayoutDirection.column;
+                flex-wrap: no-wrap;
+                alignment: stretch;
+                cross-axis-alignment: root.wide ? CrossAxisAlignment.start : CrossAxisAlignment.stretch;
+                spacing: 16px;
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    spacing: 16px;
+                    Group {
+                        title: "RECORDING";
+                        Row {
+                            first: true;
+                            label: "Microphone";
+                            VerticalLayout {
+                                alignment: center;
+                                GroupSelect {
+                                    label: "Microphone";
+                                    model: Pages.mic-devices;
+                                    current-index <=> Pages.mic-index;
+                                    enabled: !Main.recording;
+                                    selected(i) => { root.mic-changed(i); }
+                                }
+                            }
+                        }
+                        Row {
+                            label: "System audio";
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "System audio";
+                                    checked <=> Pages.record-system;
+                                    toggled(on) => { root.system-changed(on); }
+                                }
+                            }
+                        }
+                        Row {
+                            label: "Stop recording after";
+                            VerticalLayout {
+                                alignment: center;
+                                GroupSelect {
+                                    label: "Stop recording after";
+                                    model: Pages.recording-limits;
+                                    current-index <=> Pages.recording-limit-index;
+                                    selected(i) => { root.recording-limit-changed(i); }
+                                }
+                            }
+                        }
+                        Row {
+                            label: "Record hotkey";
+                            VerticalLayout {
+                                alignment: center;
+                                ShortcutBox {
+                                    label: "Record hotkey";
+                                    keys: Pages.hotkey-parts;
+                                    captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
+                                    cleared => { root.hotkey-accepted(""); }
+                                    done => { root.refocus(); }
+                                }
+                            }
+                            if Pages.hotkey-parts.length > 0: VerticalLayout {
+                                alignment: center;
+                                IconBtn {
+                                    size: 24px;
+                                    icon: "close";
+                                    icon-size: 9px;
+                                    label: "Clear the shortcut";
+                                    tip: "Clear shortcut";
+                                    clicked => { root.hotkey-accepted(""); }
+                                }
+                            }
+                        }
+                    }
+                    Group {
+                        title: "WINDOW";
+                        Row {
+                            first: true;
+                            label: "Close button hides to tray";
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Close button hides to tray";
+                                    checked <=> Pages.close-to-tray;
+                                    toggled(on) => { root.close-to-tray-changed(on); }
+                                }
+                            }
+                        }
+                        Row {
+                            label: "Start with Windows";
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Start with Windows";
+                                    checked <=> Pages.start-with-windows;
+                                    toggled(on) => { root.start-with-windows-changed(on); }
+                                }
+                            }
+                        }
+                    }
+                }
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    spacing: 16px;
+                    Group {
+                        title: "FILES";
+                        // The folder on a line of its own under its name, so a long path has room.
+                        VerticalLayout {
+                            padding-left: 16px;
+                            padding-right: 12px;
+                            padding-top: 9px;
+                            padding-bottom: 9px;
+                            spacing: 6px;
+                            Text {
+                                text: "Folder";
+                                color: Glass.ink;
+                                font-size: 13px;
+                                font-weight: 500;
+                            }
+                            HorizontalLayout {
+                                spacing: 6px;
+                                Rectangle {
+                                    horizontal-stretch: 1;
+                                    height: 30px;
+                                    border-radius: 10px;
+                                    background: #0000003d;
+                                    border-width: 1px;
+                                    border-color: #ffffff24;
+                                    path := Text {
+                                        x: 11px;
+                                        width: parent.width - 22px;
+                                        text: Pages.folder;
+                                        color: Glass.ink2;
+                                        font-family: Theme.mono;
+                                        font-size: 11px;
+                                        vertical-alignment: center;
+                                        overflow: elide;
+                                    }
+                                }
+                                VerticalLayout {
+                                    alignment: center;
+                                    IconBtn {
+                                        size: 28px;
+                                        icon: "folder";
+                                        icon-size: 13px;
+                                        label: "Open the folder";
+                                        tip: "Open folder";
+                                        clicked => { root.open-folder(); }
+                                    }
+                                }
+                                VerticalLayout {
+                                    alignment: center;
+                                    Btn { text: "Change"; height: 28px; font-size: 12px; enabled: !Main.recording; clicked => { root.change-folder(); } }
+                                }
+                            }
+                        }
+                        Rectangle {
+                            height: names.preferred-height;
+                            Rectangle { x: 16px; y: 0; width: parent.width - 28px; height: 1px; background: #ffffff1a; }
+                            names := VerticalLayout {
+                                padding-left: 16px;
+                                padding-right: 12px;
+                                padding-top: 9px;
+                                padding-bottom: 9px;
+                                spacing: 6px;
+                                Text {
+                                    text: "File name";
+                                    color: Glass.ink;
+                                    font-size: 13px;
+                                    font-weight: 500;
+                                }
+                                GlassField {
+                                    height: 32px;
+                                    radius: 11px;
+                                    font-size: 12.5px;
+                                    mono: true;
+                                    label: "File name";
+                                    text: Pages.name-template;
+                                    invalid: Pages.name-invalid;
+                                    edited(t) => { root.template-edited(t); }
+                                    accepted(t) => { root.template-accepted(t); root.refocus(); }
+                                }
+                                Text {
+                                    x: 2px;
+                                    text: Pages.name-preview;
+                                    color: Pages.name-invalid ? Glass.rec-hi : Glass.ink3;
+                                    font-size: 11px;
+                                    overflow: elide;
+                                }
+                            }
+                        }
+                        Row {
+                            label: "Export format";
+                            VerticalLayout {
+                                alignment: center;
+                                GroupSelect {
+                                    label: "Export format";
+                                    model: ["FLAC", "WAV", "MP3"];
+                                    current-index <=> Pages.export-format;
+                                    selected(i) => { root.export-format-changed(i); }
+                                }
+                            }
+                        }
+                        Row {
+                            label: "Clean voice on export";
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Clean voice on export";
+                                    checked <=> Pages.clean-voice;
+                                    toggled(on) => { root.clean-voice-changed(on); }
+                                }
+                            }
+                        }
+                    }
+                    Group {
+                        title: "YOUR VOICE";
+                        Row {
+                            first: true;
+                            label: "Voice engine";
+                            Value { text: "OmniVoice"; }
+                        }
+                        Row {
+                            label: "Voice sample";
+                            Value { text: "20 s from the clip"; }
+                        }
+                    }
+                }
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    spacing: 16px;
+                    Group {
+                        title: "TRANSCRIPTION";
+                        if !Pages.can-transcribe: Row { first: true; dim: true; label: "Not in this build"; }
+                        if Pages.can-transcribe: Row {
+                            first: true;
+                            label: "Language";
+                            VerticalLayout {
+                                alignment: center;
+                                GroupSelect {
+                                    label: "Language";
+                                    model: Pages.languages;
+                                    current-index <=> Pages.language-index;
+                                    selected(i) => { root.language-changed(i); }
+                                }
+                            }
+                        }
+                        if Pages.can-transcribe: Row {
+                            label: "Auto transcribe";
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Auto transcribe";
+                                    checked <=> Pages.auto-transcribe;
+                                    toggled(on) => { root.auto-transcribe-changed(on); }
+                                }
+                            }
+                        }
+                        if Pages.can-transcribe && Main.can-ai: Row {
+                            label: "AI names";
+                            note: Pages.auto-transcribe ? "" : "Auto transcribe off";
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "AI names";
+                                    enabled: Pages.auto-transcribe;
+                                    checked <=> Pages.ai-names;
+                                    toggled(on) => { root.ai-names-changed(on); }
+                                }
+                            }
+                        }
+                        if Pages.can-transcribe: Row {
+                            label: "Max pause";
+                            VerticalLayout {
+                                alignment: center;
+                                GroupSelect {
+                                    label: "Max pause";
+                                    model: Pages.max-pauses;
+                                    current-index <=> Pages.max-pause-index;
+                                    selected(i) => { root.max-pause-changed(i); }
+                                }
+                            }
+                        }
+                        if Pages.can-transcribe: Rectangle {
+                            height: model-row.preferred-height;
+                            accessible-role: button;
+                            accessible-label: "Browse models";
+                            accessible-action-default => { root.go(4); }
+                            Rectangle {
+                                visible: model-touch.has-hover;
+                                x: 6px;
+                                y: 3px;
+                                width: parent.width - 12px;
+                                height: parent.height - 6px;
+                                border-radius: 14px;
+                                background: #ffffff12;
+                            }
+                            model-touch := TouchArea { mouse-cursor: pointer; clicked => { root.go(4); } }
+                            model-row := Row {
+                                width: 100%;
+                                label: "Model";
+                                note: Pages.model-summary;
+                                Text {
+                                    text: "Browse";
+                                    color: Glass.ink;
+                                    font-size: 12.5px;
+                                    font-weight: 600;
+                                    vertical-alignment: center;
+                                }
+                                Icon { name: "chevron"; tint: Glass.ink; width: 12px; height: 12px; y: (parent.height - self.height) / 2; stroke-width: 2.4px; }
+                            }
+                        }
+                    }
+                    if Main.can-ai: Group {
+                        title: "AI";
+                        Row {
+                            first: true;
+                            label: "Model";
+                            VerticalLayout {
+                                alignment: center;
+                                GroupSelect {
+                                    label: "AI model";
+                                    model: Pages.ai-models;
+                                    current-index <=> Pages.ai-model-index;
+                                    selected(i) => { root.ai-model-changed(i); }
+                                }
+                            }
+                        }
+                        Row {
+                            label: Pages.ai-ready ? "Ready" : Pages.ai-download >= 0 ? "Downloading " + round(Pages.ai-download * 100) + "%" : "Not downloaded";
+                            if Pages.ai-ready: VerticalLayout {
+                                alignment: center;
+                                Bead { }
+                            }
+                            if !Pages.ai-ready && Pages.ai-download < 0: VerticalLayout {
+                                alignment: center;
+                                Btn { text: "Download"; height: 28px; font-size: 12px; clicked => { root.download-ai(0); } }
+                            }
+                        }
+                        Row {
+                            label: "Translation";
+                            note: "Ministral 3B · 2.1 GB";
+                            if Pages.translator-ready: Value { text: "Ready"; }
+                            if !Pages.translator-ready && Pages.translator-download >= 0: Value {
+                                text: "Downloading " + round(Pages.translator-download * 100) + "%";
+                            }
+                            if !Pages.translator-ready && Pages.translator-download < 0: VerticalLayout {
+                                alignment: center;
+                                Btn { text: "Download"; height: 28px; font-size: 12px; clicked => { root.download-ai(1); } }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Messages float as a chip at the foot of the page.
+    if Main.status != "": Toast {
+        x: (root.width - self.width) / 2;
+        y: root.height - self.height - 16px;
+        max-w: root.width - 48px;
+        text: Main.status;
+    }
+    Head {
+        wide: root.wide;
+        title: "Settings";
+        back => { root.back(); }
+    }
+}
+
+// ---------- Models ----------
+
+// Quality or speed as five beads.
+component Beads inherits HorizontalLayout {
+    in property <string> label;
+    in property <int> value;
+    spacing: 5px;
+    Text {
+        text: root.label;
+        color: Glass.ink3;
+        font-size: 10.5px;
+        vertical-alignment: center;
+    }
+    HorizontalLayout {
+        spacing: 2px;
+        alignment: start;
+        for k in 5: Rectangle {
+            width: 5px;
+            height: 5px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 2.5px;
+            background: k < root.value ? #ffffffd9 : #ffffff33;
+        }
+    }
+}
+
+// A thin glass progress line with its percent.
+component Progress inherits HorizontalLayout {
+    in property <float> value;
+    spacing: 8px;
+    Rectangle {
+        height: 4px;
+        y: (parent.height - self.height) / 2;
+        horizontal-stretch: 1;
+        border-radius: 2px;
+        background: #ffffff29;
+        Rectangle {
+            x: 0;
+            width: max(4px, parent.width * clamp(root.value, 0, 1));
+            border-radius: 2px;
+            background: #ffffffd9;
+        }
+    }
+    Text {
+        text: round(root.value * 100) + "%";
+        color: Glass.ink3;
+        font-family: Glass.figures;
+        font-size: 11px;
+        width: 34px;
+        horizontal-alignment: right;
+    }
+}
+
+// The five shelves of the library as a glass segment row (portrait) or a column (wide).
+component ShelfRow inherits Rectangle {
+    callback changed();
+    width: row.preferred-width;
+    height: 30px;
+    border-radius: 15px;
+    background: #0000003d;
+    border-width: 1px;
+    border-color: #ffffff24;
+    row := HorizontalLayout {
+        padding: 3px;
+        spacing: 1px;
+        for f[i] in ["All", "Norwegian", "Swedish", "English", "Downloaded"]: Rectangle {
+            property <bool> on: Pages.model-filter == i;
+            width: word.preferred-width + 16px;
+            border-radius: self.height / 2;
+            background: self.on ? #ffffff47 : st.has-hover ? #ffffff14 : transparent;
+            border-width: self.on ? 1px : 0;
+            border-color: #ffffff8c;
+            accessible-role: button;
+            accessible-label: f;
+            accessible-checked: self.on;
+            accessible-action-default => { Pages.model-filter = i; root.changed(); }
+            word := Text {
+                text: f;
+                color: parent.on ? Glass.ink : Glass.ink2;
+                font-size: 11.5px;
+                font-weight: 600;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            st := TouchArea { mouse-cursor: pointer; clicked => { Pages.model-filter = i; root.changed(); } }
+        }
+    }
+}
+
+component ShelfColumn inherits Rectangle {
+    callback changed();
+    height: col.preferred-height;
+    border-radius: 16px;
+    background: #0000003d;
+    border-width: 1px;
+    border-color: #ffffff24;
+    col := VerticalLayout {
+        padding: 4px;
+        spacing: 2px;
+        for f[i] in ["All", "Norwegian", "Swedish", "English", "Downloaded"]: Rectangle {
+            property <bool> on: Pages.model-filter == i;
+            height: 32px;
+            border-radius: 12px;
+            background: self.on ? #ffffff40 : ct.has-hover ? #ffffff14 : transparent;
+            border-width: self.on ? 1px : 0;
+            border-color: #ffffff80;
+            accessible-role: button;
+            accessible-label: f;
+            accessible-checked: self.on;
+            accessible-action-default => { Pages.model-filter = i; root.changed(); }
+            Text {
+                x: 12px;
+                text: f;
+                color: parent.on ? Glass.ink : Glass.ink2;
+                font-size: 12.5px;
+                font-weight: parent.on ? 600 : 500;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            ct := TouchArea { mouse-cursor: pointer; clicked => { Pages.model-filter = i; root.changed(); } }
+        }
+    }
+}
+
+// The search field and the compressed switch of the library.
+component ModelSearch inherits GlassField {
+    height: 34px;
+    radius: 17px;
+    font-size: 12.5px;
+    icon: "search";
+    label: "Search models";
+    placeholder: "Search " + Pages.model-count + " models";
+}
+
+component Compressed inherits HorizontalLayout {
+    callback changed();
+    spacing: 10px;
+    VerticalLayout {
+        alignment: center;
+        Toggle {
+            label: "Show compressed versions too";
+            checked <=> Pages.model-compressed;
+            toggled => { root.changed(); }
+        }
+    }
+    Text {
+        text: "Show compressed";
+        color: Glass.ink;
+        font-size: 12.5px;
+        font-weight: 500;
+        vertical-alignment: center;
+    }
+}
+
+// The model shelf: its groups and their models as glass rows, the one in use lit.
+component ModelList inherits Scroller {
+    in property <bool> wide;
+    callback use-model(int);
+    callback cancel-download();
+    callback download-model(int);
+    VerticalLayout {
+        alignment: start;
+        padding-left: root.wide ? 12px : 8px;
+        padding-right: root.wide ? 14px : 12px;
+        padding-top: 4px;
+        padding-bottom: 12px;
+        for m in Pages.models: VerticalLayout {
+            if m.header: HorizontalLayout {
+                padding-top: 12px;
+                padding-bottom: 6px;
+                padding-left: 6px;
+                padding-right: 4px;
+                spacing: 8px;
+                Label { text: m.title.to-uppercase(); horizontal-stretch: 0; }
+                Text {
+                    text: m.by;
+                    color: Glass.ink3;
+                    font-size: 10.5px;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+            }
+            if !m.header: VerticalLayout {
+                padding-bottom: 3px;
+                Rectangle {
+                    height: model-row.preferred-height;
+                    border-radius: 16px;
+                    background: m.active ? #ffffff21 : transparent;
+                    border-width: m.active ? 1px : 0;
+                    border-color: #ffffff73;
+                    if m.active: Rectangle { x: 14px; y: 1px; width: parent.width - 28px; height: 1px; background: #ffffff8c; }
+                    model-row := VerticalLayout {
+                        padding-left: 13px;
+                        padding-right: 9px;
+                        padding-top: 7px;
+                        padding-bottom: 8px;
+                        spacing: 5px;
+                        HorizontalLayout {
+                            spacing: 8px;
+                            VerticalLayout {
+                                horizontal-stretch: 1;
+                                alignment: center;
+                                spacing: 3px;
+                                Text {
+                                    text: m.title;
+                                    color: Glass.ink;
+                                    font-size: 13px;
+                                    font-weight: 600;
+                                    overflow: elide;
+                                }
+                                HorizontalLayout {
+                                    spacing: 10px;
+                                    alignment: start;
+                                    Beads { label: "Quality"; value: m.quality; }
+                                    Beads { label: "Speed"; value: m.speed; }
+                                    Text { text: m.size; color: Glass.ink3; font-size: 10.5px; vertical-alignment: center; }
+                                }
+                            }
+                            if m.active: HorizontalLayout {
+                                spacing: 7px;
+                                padding-right: 6px;
+                                VerticalLayout { alignment: center; Bead { } }
+                                Text {
+                                    text: "In use";
+                                    color: Glass.ink;
+                                    font-size: 11.5px;
+                                    font-weight: 600;
+                                    vertical-alignment: center;
+                                }
+                            }
+                            if m.downloaded && !m.active: VerticalLayout {
+                                alignment: center;
+                                Btn { text: "Use"; height: 26px; font-size: 11.5px; clicked => { root.use-model(m.index); } }
+                            }
+                            if Pages.downloading == m.index: VerticalLayout {
+                                alignment: center;
+                                Btn { text: "Cancel"; height: 26px; font-size: 11.5px; clicked => { root.cancel-download(); } }
+                            }
+                            if !m.downloaded && Pages.downloading != m.index: VerticalLayout {
+                                alignment: center;
+                                Btn {
+                                    text: "Download";
+                                    height: 26px;
+                                    font-size: 11.5px;
+                                    enabled: Pages.downloading < 0;
+                                    accessible-label: "Download " + m.title;
+                                    clicked => { root.download-model(m.index); }
+                                }
+                            }
+                        }
+                        if Pages.downloading == m.index: Progress { value: Pages.download-progress; }
+                    }
+                }
+            }
+        }
+        if Pages.models.length == 0: Text {
+            text: "No models match";
+            color: Glass.ink3;
+            font-size: 13px;
+            horizontal-alignment: center;
+            height: 70px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+export component ModelsPage inherits Rectangle {
+    in property <bool> wide;
+    callback back();
+    callback filter-changed();
+    callback use-model(int);
+    callback cancel-download();
+    callback download-model(int);
+    property <length> left-w: 300px;
+    property <length> list-x: 24px + root.left-w + 20px;
+    Room { wide: root.wide; }
+    if !root.wide: VerticalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        padding-top: 52px;
+        padding-bottom: 14px;
+        spacing: 12px;
+        Pane {
+            vertical-stretch: 0;
+            height: ctl.preferred-height;
+            ctl := VerticalLayout {
+                padding-left: 14px;
+                padding-right: 14px;
+                padding-top: 13px;
+                padding-bottom: 13px;
+                spacing: 10px;
+                ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+                HorizontalLayout { alignment: start; ShelfRow { changed => { root.filter-changed(); } } }
+                Compressed { changed => { root.filter-changed(); } }
+            }
+        }
+        Pane {
+            vertical-stretch: 1;
+            ModelList {
+                x: 2px;
+                y: 6px;
+                width: parent.width - 4px;
+                height: parent.height - 12px;
+                use-model(i) => { root.use-model(i); }
+                cancel-download => { root.cancel-download(); }
+                download-model(i) => { root.download-model(i); }
+            }
+        }
+    }
+    if root.wide: TiltPane {
+        x: 24px;
+        y: 58px;
+        width: root.left-w;
+        height: root.height - 80px;
+        VerticalLayout {
+            padding-top: 20px + parent.d * 1px * 0.5;
+            padding-bottom: 20px + parent.d * 1px * 0.5;
+            padding-left: 18px;
+            padding-right: 18px;
+            spacing: 14px;
+            ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+            VerticalLayout {
+                spacing: 6px;
+                vertical-stretch: 0;
+                alignment: start;
+                HorizontalLayout { padding-left: 4px; Label { text: "SHELF"; } }
+                ShelfColumn { changed => { root.filter-changed(); } }
+            }
+            Compressed { changed => { root.filter-changed(); } }
+            Rectangle { vertical-stretch: 1; }
+            Text {
+                text: Pages.models-used;
+                color: Glass.ink;
+                font-size: 28px;
+                font-weight: 400;
+                letter-spacing: -0.4px;
+                overflow: elide;
+            }
+        }
+    }
+    if root.wide: Pane {
+        x: root.list-x;
+        y: 58px;
+        width: root.width - root.list-x - 22px;
+        height: root.height - self.y - 22px;
+        ModelList {
+            x: 2px;
+            y: 6px;
+            width: parent.width - 4px;
+            height: parent.height - 12px;
+            wide: true;
+            use-model(i) => { root.use-model(i); }
+            cancel-download => { root.cancel-download(); }
+            download-model(i) => { root.download-model(i); }
+        }
+    }
+    if Main.status != "": Toast {
+        x: (root.width - self.width) / 2;
+        y: root.height - self.height - 24px;
+        max-w: root.width - 48px;
+        text: Main.status;
+    }
+    Head {
+        wide: root.wide;
+        title: "Models";
+        note: root.wide ? "" : Pages.models-used;
+        back => { root.back(); }
+    }
+}
+
+// ---------- Merge ----------
+
+// The name of the merged clip, on the nearest pane.
+component NameField inherits GlassField {
+    height: 40px;
+    font-size: 15px;
+    placeholder: "Name";
+    label: "Name of the merged clip";
+}
+
+// The new clip in the wide window: the picked clips stacked into one glass card.
+component Stack inherits Rectangle {
+    property <int> n: min(3, max(1, Pages.merge-rows.length));
+    height: 120px;
+    for k in root.n - 1: Rectangle {
+        x: 18px + (root.n - 1 - k) * 9px;
+        y: 4px + k * 8px;
+        width: parent.width - 36px - (root.n - 1 - k) * 18px;
+        height: 70px;
+        border-radius: 16px;
+        background: #ffffff0f;
+        border-width: 1px;
+        border-color: #ffffff2e;
+    }
+    Rectangle {
+        x: 12px;
+        y: 4px + (root.n - 1) * 8px;
+        width: parent.width - 24px;
+        height: 76px;
+        border-radius: 18px;
+        background: #6a687290;
+        border-width: 1px;
+        border-color: #ffffff8c;
+        Rectangle { x: 16px; y: 1px; width: parent.width - 32px; height: 1px; background: #ffffffa6; }
+        VerticalLayout {
+            padding-left: 16px;
+            padding-right: 16px;
+            padding-top: 12px;
+            padding-bottom: 12px;
+            spacing: 4px;
+            Label { text: "NEW CLIP"; font-size: 9.5px; }
+            Text {
+                text: Pages.merge-name != "" ? Pages.merge-name : "Name";
+                color: Pages.merge-name != "" ? Glass.ink : Glass.ink3;
+                font-size: 15px;
+                font-weight: 600;
+                overflow: elide;
+            }
+            // The clips laid end to end, one segment each.
+            Rectangle {
+                height: 6px;
+                property <int> parts: max(1, Pages.merge-rows.length);
+                for k in self.parts: Rectangle {
+                    x: k * parent.width / parent.parts;
+                    width: parent.width / parent.parts - 3px;
+                    border-radius: 3px;
+                    background: k == 0 ? #ffffffd9 : #ffffff8c;
+                }
+            }
+        }
+    }
+}
+
+// Cancel and the red Merge pill.
+component MergeKeys inherits HorizontalLayout {
+    callback cancel();
+    callback merge();
+    spacing: 8px;
+    VerticalLayout { alignment: center; Btn { height: 34px; text: "Cancel"; clicked => { root.cancel(); } } }
+    VerticalLayout {
+        alignment: center;
+        Btn {
+            height: 34px;
+            min-width: 124px;
+            primary: true;
+            red: true;
+            text: Pages.merging ? "Merging" : "Merge " + Pages.merge-rows.length + " clips";
+            enabled: !Pages.merging && Pages.merge-name != "";
+            clicked => { root.merge(); }
+        }
+    }
+}
+
+export component MergePage inherits Rectangle {
+    in property <bool> wide;
+    callback go(int);
+    callback move(int, int);
+    callback remove(int);
+    callback play(int);
+    callback run(string);
+    property <string> playing-name: Main.active-clip >= 0 && Main.active-clip < Main.clips.length && Main.playing ? Main.clips[Main.active-clip].name : "";
+    property <length> right-x: 436px;
+    property <length> right-w: root.width - root.right-x - 22px;
+    property <length> orn-w: root.wide ? min(420px, root.right-w - 20px) : root.width - 38px;
+    property <length> orn-x: root.wide ? root.right-x + (root.right-w - root.orn-w) / 2 : 19px;
+    property <length> orn-y: root.wide ? root.height - 78px : root.height - 68px;
+    Room { wide: root.wide; }
+
+    if !root.wide: VerticalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        padding-top: 52px;
+        padding-bottom: root.height - root.orn-y + 12px;
+        spacing: 12px;
+        Pane {
+            vertical-stretch: 1;
+            Scroller {
+                VerticalLayout {
+                    alignment: start;
+                    padding-left: 10px;
+                    padding-right: 10px;
+                    padding-top: 14px;
+                    padding-bottom: 8px;
+                    spacing: 6px;
+                    HorizontalLayout { padding-left: 8px; Label { text: "ORDER"; } }
+                    OrderList {
+                        rows: Pages.merge-rows;
+                        removable: true;
+                        playable: true;
+                        playing-name: root.playing-name;
+                        enabled: !Pages.merging;
+                        moved(a, b) => { root.move(a, b); }
+                        act(i) => { root.remove(i); }
+                        play(i) => { root.play(i); }
+                    }
+                }
+            }
+        }
+        Pane {
+            vertical-stretch: 0;
+            height: newclip.preferred-height;
+            shadow: 1;
+            newclip := VerticalLayout {
+                padding-left: 14px;
+                padding-right: 14px;
+                padding-top: 12px;
+                padding-bottom: 14px;
+                spacing: 8px;
+                HorizontalLayout { padding-left: 4px; Label { text: "NEW CLIP"; } }
+                NameField { text <=> Pages.merge-name; }
+            }
+        }
+    }
+
+    if root.wide: TiltPane {
+        x: 24px;
+        y: 58px;
+        width: 392px;
+        height: root.height - 150px;
+        VerticalLayout {
+            padding-top: 20px + parent.d * 1px * 0.5;
+            padding-bottom: 20px + parent.d * 1px * 0.5;
+            padding-left: 20px;
+            padding-right: 20px;
+            spacing: 10px;
+            HorizontalLayout { padding-left: 4px; Label { text: "NEW CLIP"; } }
+            Stack { }
+            Rectangle { vertical-stretch: 1; }
+            HorizontalLayout { padding-left: 4px; Label { text: "NAME"; } }
+            NameField { text <=> Pages.merge-name; }
+        }
+    }
+    if root.wide: Pane {
+        x: root.right-x;
+        y: 58px;
+        width: root.right-w;
+        height: root.height - 150px;
+        Scroller {
+            VerticalLayout {
+                alignment: start;
+                padding-left: 12px;
+                padding-right: 14px;
+                padding-top: 16px;
+                padding-bottom: 8px;
+                spacing: 6px;
+                HorizontalLayout { padding-left: 8px; Label { text: "ORDER"; } }
+                OrderList {
+                    rows: Pages.merge-rows;
+                    removable: true;
+                    playable: true;
+                    playing-name: root.playing-name;
+                    enabled: !Pages.merging;
+                    moved(a, b) => { root.move(a, b); }
+                    act(i) => { root.remove(i); }
+                    play(i) => { root.play(i); }
+                }
+            }
+        }
+    }
+
+    Capsule {
+        x: root.orn-x;
+        y: root.orn-y;
+        width: root.orn-w;
+        height: 48px;
+        shadow: 2;
+        HorizontalLayout {
+            padding-left: 16px;
+            padding-right: 7px;
+            spacing: 8px;
+            if Pages.merging: Text {
+                horizontal-stretch: 1;
+                text: "Merging " + Pages.merge-rows.length + " clips";
+                color: Glass.ink;
+                font-size: 12.5px;
+                font-weight: 500;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            if !Pages.merging && root.wide: HorizontalLayout {
+                horizontal-stretch: 1;
+                spacing: 9px;
+                VerticalLayout {
+                    alignment: center;
+                    Bead { lamp: Main.status != "" ? Glass.green : #ffffff40; }
+                }
+                Text {
+                    horizontal-stretch: 1;
+                    text: Main.status != "" ? Main.status : "No messages";
+                    color: Main.status != "" ? Glass.ink : Glass.ink3;
+                    font-size: 12.5px;
+                    font-weight: 500;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+            if !Pages.merging && !root.wide: Rectangle { horizontal-stretch: 1; }
+            MergeKeys {
+                cancel => { root.go(0); }
+                merge => { root.run(Pages.merge-name); }
+            }
+        }
+    }
+    Grab {
+        bar: root.wide ? 120px : 110px;
+        x: root.orn-x + (root.orn-w - self.width) / 2;
+        y: root.height - (root.wide ? 22px : 20px);
+    }
+    if !root.wide && Main.status != "": Toast {
+        x: (root.width - self.width) / 2;
+        y: root.orn-y - self.height - 10px;
+        max-w: root.width - 48px;
+        text: Main.status;
+    }
+    Head {
+        wide: root.wide;
+        title: "Clips";
+        heading: "Merge clips";
+        note: Pages.merge-rows.length + " clips";
+        back => { root.go(0); }
+    }
+}
+
+// ---------- Ask ----------
+
+// A passage an answer came from: its number on a cyan bead, the clip, its project, the
+// time and the words.
+component Source inherits Rectangle {
+    in property <AskSource> source;
+    in property <bool> show-project;
+    in property <string> project;
+    callback clicked;
+    height: 52px;
+    accessible-role: button;
+    accessible-label: root.source.n + " " + root.source.clip + " " + root.source.time;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        y: 1px;
+        height: parent.height - 2px;
+        border-radius: 16px;
+        background: t.has-hover ? #ffffff1f : #ffffff0f;
+        border-width: 1px;
+        border-color: t.has-hover ? #ffffff4d : #ffffff1f;
+    }
+    Rectangle {
+        x: 12px;
+        y: (parent.height - self.height) / 2;
+        width: 20px;
+        height: 20px;
+        border-radius: 10px;
+        background: #9fe3ff2e;
+        border-width: 1px;
+        border-color: #9fe3ff8c;
+        Text {
+            text: root.source.n;
+            color: Glass.cyan;
+            font-size: 10.5px;
+            font-weight: 700;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    VerticalLayout {
+        x: 42px;
+        width: parent.width - 54px;
+        alignment: center;
+        spacing: 2px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: root.source.clip;
+                color: Glass.ink;
+                font-size: 13px;
+                font-weight: 600;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if root.show-project && root.project != "": Text {
+                text: root.project;
+                color: Glass.ink3;
+                font-size: 10.5px;
+                vertical-alignment: center;
+            }
+            Text {
+                text: root.source.time;
+                color: Glass.ink3;
+                font-family: Glass.figures;
+                font-size: 11px;
+                vertical-alignment: center;
+            }
+        }
+        Text {
+            text: root.source.text;
+            color: Glass.ink2;
+            font-size: 11.5px;
+            overflow: elide;
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The answer pane: ANSWER, then the words, or three beads while it thinks (still: nothing
+// moves on a clock in this skin).
+component Answer inherits Pane {
+    in property <length> max-h: 320px;
+    shadow: 1;
+    height: min(body.preferred-height, root.max-h);
+    Scroller {
+        body := VerticalLayout {
+            padding-left: 18px;
+            padding-right: 18px;
+            padding-top: 14px;
+            padding-bottom: 16px;
+            spacing: 8px;
+            Label { text: "ANSWER"; }
+            if Pages.answer == "": HorizontalLayout {
+                spacing: 10px;
+                height: 26px;
+                for k in 3: VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 8px;
+                        height: 8px;
+                        border-radius: 4px;
+                        background: k == 0 ? #ffffff : k == 1 ? #ffffff99 : #ffffff4d;
+                    }
+                }
+                Text {
+                    text: "Thinking";
+                    color: Glass.ink2;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                }
+            }
+            if Pages.answer != "": Text {
+                text: Pages.answer;
+                color: Glass.ink;
+                font-size: 14px;
+                wrap: word-wrap;
+            }
+        }
+    }
+}
+
+export component AskPage inherits Rectangle {
+    in property <bool> wide;
+    callback go(int);
+    callback ask(string, bool);
+    callback open-source(int);
+    property <length> side: root.wide ? 24px : 14px;
+    property <length> q-y: root.wide ? 60px : 54px;
+    property <length> body-y: root.q-y + 48px + 16px;
+    Room { wide: root.wide; }
+    // The question, on the nearest pane.
+    Capsule {
+        x: root.side;
+        y: root.q-y;
+        width: root.width - 2 * root.side;
+        height: 48px;
+        shadow: 2;
+        HorizontalLayout {
+            padding-left: 7px;
+            padding-right: 7px;
+            spacing: 7px;
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                GlassField {
+                    height: 34px;
+                    radius: 17px;
+                    font-size: 13px;
+                    icon: "message";
+                    placeholder: "Ask about your clips";
+                    label: "Question";
+                    text <=> Pages.question;
+                    init => { self.grab(); }
+                    accepted => { if (Pages.question != "" && !Pages.asking) { root.ask(Pages.question, Pages.ask-all); } }
+                }
+            }
+            if Main.projects.length > 1: VerticalLayout {
+                alignment: center;
+                IconPill {
+                    height: 28px;
+                    font-size: 11px;
+                    text: "All projects";
+                    label: "Ask all projects";
+                    on: Pages.ask-all;
+                    clicked => { Pages.ask-all = !Pages.ask-all; }
+                }
+            }
+            VerticalLayout {
+                alignment: center;
+                Btn {
+                    height: 34px;
+                    min-width: 58px;
+                    primary: true;
+                    text: "Ask";
+                    enabled: Pages.question != "" && !Pages.asking;
+                    clicked => { root.ask(Pages.question, Pages.ask-all); }
+                }
+            }
+        }
+    }
+    if !root.wide: VerticalLayout {
+        x: root.side;
+        y: root.body-y;
+        width: root.width - 2 * root.side;
+        height: root.height - root.body-y - 14px;
+        spacing: 14px;
+        if Pages.answer != "" || Pages.asking: Answer { vertical-stretch: 0; max-h: (root.height - root.body-y) * 0.5; }
+        if Pages.sources.length > 0: Pane {
+            vertical-stretch: 1;
+            Scroller {
+                VerticalLayout {
+                    alignment: start;
+                    padding-left: 10px;
+                    padding-right: 12px;
+                    padding-top: 14px;
+                    padding-bottom: 10px;
+                    spacing: 4px;
+                    HorizontalLayout { padding-left: 8px; padding-bottom: 2px; Label { text: "SOURCES"; } }
+                    for s[i] in Pages.sources: Source {
+                        source: s;
+                        show-project: Pages.ask-all;
+                        project: s.place >= 0 && s.place < Main.projects.length ? Main.projects[s.place] : "";
+                        clicked => { root.open-source(i); root.go(1); }
+                    }
+                }
+            }
+        }
+        if Pages.sources.length == 0: Rectangle { vertical-stretch: 1; }
+    }
+    if root.wide: HorizontalLayout {
+        x: root.side;
+        y: root.body-y;
+        width: root.width - 2 * root.side;
+        height: root.height - root.body-y - 22px;
+        spacing: 18px;
+        VerticalLayout {
+            horizontal-stretch: 1.2;
+            alignment: start;
+            if Pages.answer != "" || Pages.asking: Answer { max-h: root.height - root.body-y - 22px; }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            if Pages.sources.length > 0: Pane {
+                vertical-stretch: 1;
+                Scroller {
+                    VerticalLayout {
+                        alignment: start;
+                        padding-left: 10px;
+                        padding-right: 12px;
+                        padding-top: 14px;
+                        padding-bottom: 10px;
+                        spacing: 4px;
+                        HorizontalLayout { padding-left: 8px; padding-bottom: 2px; Label { text: "SOURCES"; } }
+                        for s[i] in Pages.sources: Source {
+                            source: s;
+                            show-project: Pages.ask-all;
+                            project: s.place >= 0 && s.place < Main.projects.length ? Main.projects[s.place] : "";
+                            clicked => { root.open-source(i); root.go(1); }
+                        }
+                    }
+                }
+            }
+            if Pages.sources.length == 0: Rectangle { vertical-stretch: 1; }
+        }
+    }
+    if Main.status != "": Toast {
+        x: (root.width - self.width) / 2;
+        y: root.height - self.height - 24px;
+        max-w: root.width - 48px;
+        text: Main.status;
+    }
+    Head {
+        wide: root.wide;
+        title: "Ask";
+        back => { root.go(0); }
+    }
+}
+
+// ---------- The widget ----------
+
+// The widget's orb in its halo of 40 ticks: the halo is the live level, as on the main
+// page; the dim ring and the orb are pictures, the lit ticks lines.
+component WidgetOrb inherits Rectangle {
+    property <bool> hi: 1phx < 0.7px;
+    property <int> n: 40;
+    property <float> s: 96;
+    property <float> c: root.s / 2;
+    property <float> r1: root.c - 10;
+    property <float> r2: root.c - 2;
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0
+        ? clamp((Main.live[Main.live.length - 1] - 0.06) / 0.94, 0, 1) : 0;
+    property <int> lit: round(root.level * root.n);
+    width: 96px;
+    height: 96px;
+    Image {
+        width: 100%;
+        height: 100%;
+        source: root.hi ? @image-url("x-spatial/ring-w@2x.png") : @image-url("x-spatial/ring-w.png");
+        image-fit: fill;
+        accessible-role: none;
+    }
+    for k in root.n: Path {
+        property <float> f: k / root.n;
+        property <angle> a: k * 360deg / root.n - 90deg;
+        property <float> mid: (root.r1 + root.r2) / 2;
+        property <float> half: (root.r2 - root.r1) / 2;
+        property <length> sw: 2.4px;
+        visible: k < root.lit;
+        x: (root.c + self.mid * cos(self.a) - 6) * 1px - self.sw / 2;
+        y: (root.c + self.mid * sin(self.a) - 6) * 1px - self.sw / 2;
+        width: 12px + self.sw;
+        height: 12px + self.sw;
+        viewbox-width: 12;
+        viewbox-height: 12;
+        stroke: self.f > 0.85 ? Glass.rec-hi : self.f > 0.65 ? Glass.amber : #fffffff2;
+        stroke-width: self.sw;
+        stroke-line-cap: round;
+        commands: "M " + (6 - self.half * cos(self.a)) + " " + (6 - self.half * sin(self.a))
+            + " L " + (6 + self.half * cos(self.a)) + " " + (6 + self.half * sin(self.a));
+    }
+    // The orb's picture is 80px wider than the orb, for its glow.
+    Image {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: 142px;
+        height: 142px;
+        source: root.hi ? @image-url("x-spatial/orb-w@2x.png") : @image-url("x-spatial/orb-w.png");
+        image-fit: fill;
+        accessible-role: none;
+    }
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: 62px;
+        height: 62px;
+        border-radius: 31px;
+        background: t.pressed ? #00000024 : t.has-hover ? #ffffff14 : transparent;
+        accessible-role: button;
+        accessible-label: Main.recording ? "Stop recording" : "Record";
+        accessible-action-default => { Main.toggle-record(); }
+        Icon {
+            name: Main.recording ? "stop" : "mic";
+            tint: #ffffff;
+            width: Main.recording ? 18px : 22px;
+            height: self.width;
+        }
+        property <bool> hovering: t.has-hover;
+        changed hovering => { Tips.hover(self.hovering, Main.recording ? "Stop" : "Record", self.absolute-position, self.width, self.height); }
+        t := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { Tips.hide(); Main.toggle-record(); }
+        }
+    }
+}
+
+// The small always-on-top window (variant A, the orb card): the state chip, the timer,
+// Pause and Open window on the left, the record orb in its halo on the right, all on one
+// glass card over the room. A red edge while recording; the whole card moves the window.
+export component Widget inherits Rectangle {
+    property <bool> hi: 1phx < 0.7px;
+    Image {
+        width: 100%;
+        height: 100%;
+        source: root.hi ? @image-url("x-spatial/widget-room@2x.png") : @image-url("x-spatial/widget-room.png");
+        image-fit: fill;
+        accessible-role: none;
+    }
+    Rectangle { border-radius: 24px; background: Glass.fill; }
+    Rectangle { y: 0; height: 24px; border-top-left-radius: 24px; border-top-right-radius: 24px; background: #ffffff17; }
+    Rectangle { y: 24px; height: 26px; background: @linear-gradient(180deg, #ffffff17 0%, #ffffff00 100%); }
+    Rectangle {
+        border-radius: 24px;
+        border-width: Main.recording && !Main.paused ? 1.5px : 1px;
+        border-color: Main.recording && !Main.paused ? #ff6b78b3 : Glass.edge;
+    }
+    Rectangle { x: 18px; y: 1px; width: parent.width - 36px; height: 1px; background: @linear-gradient(90deg, #ffffff00 0%, #ffffff8c 18%, #ffffff8c 82%, #ffffff00 100%); }
+    WindowMoveArea {
+        HorizontalLayout {
+            padding-top: 14px;
+            padding-bottom: 12px;
+            padding-left: 16px;
+            padding-right: 12px;
+            spacing: 6px;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                HorizontalLayout { alignment: start; Status { } }
+                Rectangle { height: 8px; }
+                Timer { size: 34px; }
+                Rectangle { vertical-stretch: 1; }
+                HorizontalLayout {
+                    alignment: start;
+                    spacing: 6px;
+                    if Main.recording: GlassBtn {
+                        size: 28;
+                        icon: Main.paused ? "play" : "pause";
+                        icon-size: 11px;
+                        label: Main.paused ? "Resume" : "Pause";
+                        clicked => { Main.toggle-pause(); }
+                    }
+                    GlassBtn {
+                        size: 28;
+                        icon: "expand";
+                        icon-size: 12px;
+                        label: "Open the window";
+                        tip: "Open window";
+                        clicked => { Main.compact-changed(false); }
+                    }
+                }
+            }
+            VerticalLayout {
+                alignment: center;
+                WidgetOrb { }
+            }
+        }
+    }
+}
+
+// ---------- Questions and covers ----------
+
+// A glass sheet: brighter than anything else, its shadow outside it.
+component Sheet inherits Rectangle {
+    Shadow { kind: 1; box-w: root.width; box-h: root.height; }
+    Rectangle { border-radius: 28px; background: #4a4856d6; }
+    Rectangle { y: 0; height: 28px; border-top-left-radius: 28px; border-top-right-radius: 28px; background: #ffffff1c; }
+    Rectangle { y: 28px; height: max(0px, parent.height * 0.4 - 28px); background: @linear-gradient(180deg, #ffffff1c 0%, #ffffff00 100%); }
+    Rectangle { border-radius: 28px; border-width: 1px; border-color: #ffffff66; }
+    Rectangle { x: 18px; y: 1px; width: parent.width - 36px; height: 1px; background: @linear-gradient(90deg, #ffffff00 0%, #ffffff9e 18%, #ffffff9e 82%, #ffffff00 100%); }
+    TouchArea { }
+    @children
+}
+
+// A question over the dimmed room: a title and a short line, a field to write in, and
+// a row of pills. AppWindow works out the words; the pills report back. Titles have no
+// question mark (the copy rule).
+export component Dialog inherits Rectangle {
+    in property <string> title;
+    in property <string> note;
+    in property <string> field;
+    in property <string> ok;
+    in property <bool> ok-enabled;
+    // A single clip's delete question names the clip.
+    in property <string> clip-name;
+    callback close();
+    callback confirm();
+    callback discard();
+    property <int> kind: Main.dialog;
+    property <bool> writes: root.kind == 1 || root.kind >= 4;
+    property <string> heading: root.kind != 2 ? root.title
+        : Pages.delete-count > 1 ? "Delete " + Pages.delete-count + " clips"
+        : root.clip-name != "" ? "Delete " + root.clip-name : root.title;
+    background: #0e0c1294;
+    TouchArea { clicked => { root.close(); } }
+    Sheet {
+        width: min(parent.width - 48px, root.kind == 3 ? 380px : 360px);
+        height: box.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 - 24px;
+        box := VerticalLayout {
+            padding-left: 22px;
+            padding-right: 20px;
+            padding-top: 20px;
+            padding-bottom: 18px;
+            spacing: 5px;
+            Text {
+                text: root.heading;
+                color: Glass.ink;
+                font-size: 17px;
+                font-weight: 600;
+                overflow: elide;
+            }
+            if root.note != "": Text {
+                text: root.note;
+                color: Glass.ink2;
+                font-size: 12.5px;
+                wrap: word-wrap;
+            }
+            if root.writes: VerticalLayout {
+                padding-top: 10px;
+                spacing: 6px;
+                HorizontalLayout { padding-left: 4px; Label { text: root.field.to-uppercase(); } }
+                GlassField {
+                    height: 38px;
+                    font-size: 14px;
+                    label: root.field;
+                    text <=> Main.dialog-text;
+                    init => { self.grab(); }
+                    accepted => { if (root.ok-enabled) { root.confirm(); } }
+                }
+            }
+            HorizontalLayout {
+                padding-top: 14px;
+                alignment: end;
+                spacing: 8px;
+                Btn { height: 32px; text: "Cancel"; clicked => { root.close(); } }
+                if root.kind == 3: Btn { height: 32px; text: "Discard changes"; clicked => { root.discard(); } }
+                Btn {
+                    height: 32px;
+                    min-width: 76px;
+                    primary: true;
+                    red: root.kind == 2;
+                    text: root.ok;
+                    enabled: root.ok-enabled;
+                    clicked => { root.confirm(); }
+                }
+            }
+        }
+    }
+}
+
+// A halo of ticks lit to a part of the way round, for the speaking sheet and the drop.
+component Halo inherits Rectangle {
+    in property <float> part;
+    in property <color> lit: #ffffffe6;
+    in property <color> rest: #ffffff2e;
+    property <int> n: 40;
+    property <float> c: 48;
+    property <float> r1: 39;
+    property <float> r2: 46;
+    width: 96px;
+    height: 96px;
+    for k in root.n: Path {
+        property <angle> a: k * 360deg / root.n - 90deg;
+        property <float> mid: (root.r1 + root.r2) / 2;
+        property <float> half: (root.r2 - root.r1) / 2;
+        property <length> sw: 2.4px;
+        x: (root.c + self.mid * cos(self.a) - 6) * 1px - self.sw / 2;
+        y: (root.c + self.mid * sin(self.a) - 6) * 1px - self.sw / 2;
+        width: 12px + self.sw;
+        height: 12px + self.sw;
+        viewbox-width: 12;
+        viewbox-height: 12;
+        stroke: k < round(clamp(root.part, 0, 1) * root.n) ? root.lit : root.rest;
+        stroke-width: self.sw;
+        stroke-line-cap: round;
+        commands: "M " + (6 - self.half * cos(self.a)) + " " + (6 - self.half * sin(self.a))
+            + " L " + (6 + self.half * cos(self.a)) + " " + (6 + self.half * sin(self.a));
+    }
+    @children
+}
+
+// New words being spoken: a cyan glass orb in a halo that fills with the progress, the
+// percent on it, the stage and Cancel. It blocks clicks.
+export component Speaking inherits Rectangle {
+    callback cancel();
+    background: #0a080ebd;
+    TouchArea { }
+    Sheet {
+        width: min(parent.width - 48px, 300px);
+        height: box.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 - 24px;
+        box := VerticalLayout {
+            padding-left: 22px;
+            padding-right: 22px;
+            padding-top: 22px;
+            padding-bottom: 18px;
+            spacing: 6px;
+            HorizontalLayout {
+                alignment: center;
+                Halo {
+                    part: Pages.speak-progress;
+                    lit: Glass.cyan;
+                    Rectangle {
+                        x: 18px;
+                        y: 18px;
+                        width: 60px;
+                        height: 60px;
+                        border-radius: 30px;
+                        background: #9fe3ff59;
+                        border-width: 1px;
+                        border-color: #ffffff99;
+                        Rectangle { x: 14px; y: 5px; width: 32px; height: 14px; border-radius: 7px; background: #ffffff38; }
+                        Text {
+                            text: round(Pages.speak-progress * 100) + "%";
+                            color: Glass.ink;
+                            font-family: Glass.figures;
+                            font-size: 16px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+            Rectangle { height: 6px; }
+            Text {
+                text: "Speaking new words";
+                color: Glass.ink;
+                font-size: 16px;
+                font-weight: 600;
+                horizontal-alignment: center;
+            }
+            Text {
+                text: Pages.speak-stage;
+                color: Glass.ink2;
+                font-size: 12.5px;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+            }
+            HorizontalLayout {
+                padding-top: 12px;
+                alignment: center;
+                Btn { height: 32px; text: "Cancel"; clicked => { root.cancel(); } }
+            }
+        }
+    }
+}
+
+// Files dragged over the window: a dashed white frame 12px in and a white glass plus in
+// a full halo. The dashes are short rectangles along the straight sides and a quarter
+// arc in each corner.
+export component Drop inherits Rectangle {
+    property <length> r: 22px;
+    property <length> fw: root.width - 24px;
+    property <length> fh: root.height - 24px;
+    property <length> dash: 8px;
+    property <length> gap: 6px;
+    property <int> nx: max(0, floor((root.fw - 2 * root.r) / (root.dash + root.gap)));
+    property <int> ny: max(0, floor((root.fh - 2 * root.r) / (root.dash + root.gap)));
+    property <length> ox: (root.fw - 2 * root.r - root.nx * (root.dash + root.gap) + root.gap) / 2;
+    property <length> oy: (root.fh - 2 * root.r - root.ny * (root.dash + root.gap) + root.gap) / 2;
+    background: #0e0c12bd;
+    Rectangle {
+        x: 12px;
+        y: 12px;
+        width: root.fw;
+        height: root.fh;
+        border-radius: root.r;
+        background: #ffffff0f;
+        for i in root.nx: Rectangle { x: root.r + root.ox + i * (root.dash + root.gap); y: 0; width: root.dash; height: 2px; background: #ffffffb3; }
+        for i in root.nx: Rectangle { x: root.r + root.ox + i * (root.dash + root.gap); y: root.fh - 2px; width: root.dash; height: 2px; background: #ffffffb3; }
+        for i in root.ny: Rectangle { x: 0; y: root.r + root.oy + i * (root.dash + root.gap); width: 2px; height: root.dash; background: #ffffffb3; }
+        for i in root.ny: Rectangle { x: root.fw - 2px; y: root.r + root.oy + i * (root.dash + root.gap); width: 2px; height: root.dash; background: #ffffffb3; }
+        for k in 4: Path {
+            x: k == 0 || k == 3 ? 0 : root.fw - root.r;
+            y: k < 2 ? 0 : root.fh - root.r;
+            width: root.r;
+            height: root.r;
+            viewbox-width: 22;
+            viewbox-height: 22;
+            stroke: #ffffffb3;
+            stroke-width: 2px;
+            commands: k == 0 ? "M 1 22 A 21 21 0 0 1 22 1" : k == 1 ? "M 0 1 A 21 21 0 0 1 21 22"
+                : k == 2 ? "M 21 0 A 21 21 0 0 1 0 21" : "M 22 21 A 21 21 0 0 1 1 0";
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 16px;
+            HorizontalLayout {
+                alignment: center;
+                Halo {
+                    part: 1;
+                    lit: #ffffffb3;
+                    Rectangle {
+                        x: 18px;
+                        y: 20px;
+                        width: 60px;
+                        height: 60px;
+                        border-radius: 30px;
+                        background: #00000033;
+                    }
+                    Rectangle {
+                        x: 18px;
+                        y: 18px;
+                        width: 60px;
+                        height: 60px;
+                        border-radius: 30px;
+                        background: #f4f4f8;
+                        border-width: 1px;
+                        border-color: #ffffff;
+                        Icon { name: "plus"; tint: #24222b; width: 24px; height: 24px; stroke-width: 2.4px; }
+                    }
+                }
+            }
+            Text {
+                text: "Drop to import";
+                color: Glass.ink;
+                font-size: 18px;
+                font-weight: 600;
+                horizontal-alignment: center;
+            }
+        }
+    }
+}

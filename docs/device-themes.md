@@ -451,6 +451,59 @@ above its picker (the ornament sits at the window's foot).
 - Working set idle 41 to 42 vs 40 to 41 MB (about +1), wide 52 vs 48 to 49 MB (+3).
 - Exe +2.0 MB (44.83 to 46.85 MB): art 0.41 MB, fonts 7 KB, the rest generated code.
 
+**Built in step 5, Quest Menu main page (2026-10-29):** `ui/skins/px-quest.slint` (skin 8,
+theme "Quest Menu", index 15 in `Theme.names`), art in `ui/skins/px-quest/` (23 PNGs, 4 KB)
+from `tools/skin-art/px-quest.html` (`sh tools/skin-art/cut.sh px-quest OUT`). Its other
+pages are the classic ones in its blue and gold palette (`Theme.pages` 0).
+- Settings gallery: its tile is the Quest Menu line in `Gallery.devices` (`ui/gallery.slint`), band #2f5fd0.
+- Every panel is a menu window; the recorder is a character card (mic sprite, status lamp,
+  timer, IN bar, round REC); Import, Ask and the widget are a command menu, beside the
+  project and search (portrait) or docked under the card (wide). While recording the
+  menu's Import becomes Pause and Resume (Import is not offered then anyway). The player
+  is the EXP bar; the highlighted clip has the glove.
+- Fonts: Silkscreen 400 and 700 (OFL, no Reserved Font Name, Latin subset, 28 KB; its 5
+  has a square corner and a full middle bar, so it reads as 5) for the labels, lengths and
+  the title; Pixel 95 (Desktop 95's Pixelify Sans with the clear 5) for names and menus,
+  now with a 500 weight for the names; "Quest Figures" (2 KB) for the timer. Built by
+  `tools/skin-art/px-quest-fonts.py` and `dv-os95-fonts.py`.
+- Rust: `RECORDING_FPS` 4: the glove and the status lamp blink while recording (on and off
+  every half second, as the mockup's 1 s blink); at rest nothing moves.
+
+**Lessons from the Quest Menu:**
+- **Pixel frames without art:** the mockup's `border-image` frame is three 3px rings, and the
+  outer ink ring is the page colour, so a window is a white and a grey ring of four
+  rectangles each plus four face bands (`Win`). `clip-path` corners are 3px squares in the
+  colour behind (`Notches`). The pixel art itself is 1x PNGs drawn at 3x or 6x, pixelated.
+- **Tabular pixel figures:** Silkscreen's 1 is a pixel narrower than the other digits, so the
+  timer shifted whenever a 1 came or went. "Quest Figures" is its timer characters with the
+  1 given the digits' advance and centred in it, under its own family name.
+- **A new weight of a shared family:** Pixel 95 500 is a third of the way between the
+  variable font's two masters (no avar table), with the 5 redrawn from the interpolated
+  grid. Desktop 95 asks only for 400 and 700, so its text did not change (pixel match).
+- **Fixed windows in a column:** items of a `VerticalLayout` stretch by default, and a
+  window whose content is a layout takes that layout's sizes, so the card and the tools grew
+  until they got `vertical-stretch: 0`. A width that is "fixed when wide, else as long as
+  the text" is `min-width`/`max-width`, not `width: cond ? 180px : self.preferred-width`.
+- **Rotated text is art** again: the wide menu's upright CMD title is a PNG at 1x and 2x.
+- **What recording costs wide:** the timer's ink shadow (a second 52px text) about 2.5% at
+  1100x700, the blinking about 1%; narrowing the timer's boxes to the text saved nothing
+  measurable.
+- **UI Automation:** a component that inherits `Text` still shows as a Custom element with
+  its text when `accessible-role: none` is set where it is used; use a plain `Text`.
+- **Checks:** a project folder is listed only with a `.thrasher-project` file in it, and a
+  clip has "+ system" when `<name>.system.wav` sits beside it, so both can be staged in the
+  scratch `THRASHER_DIR` (long project name, system rows). The test microphone gives
+  silence, so the lit IN bar was not seen in the app.
+
+**Budgets measured on the Quest Menu** (test copy, 2.25x display, 10 s samples):
+- CPU idle 0.0 to 0.6% (Ember 0.0 to 0.2%); recording 5.5 to 6.7% at 520x700 (Ember 16.9
+  to 20.9%), 16.3 to 20.0% at 1100x700 (Ember 22.2%).
+- Working set idle 41.7 vs Ember 41.1 MB; wide 49.8 vs 48.6 MB; recording 45.0 vs 43.6 MB,
+  wide 53.4 vs 51.9 MB.
+- Exe +2.22 MB (55.54 to 57.76 MB): fonts 56 KB, art 4 KB, the rest generated code. Ember,
+  Tape Deck, Phosphor and Desktop 95 main pages at 520x700 and 1100x700 match before and
+  after.
+
 ### Art
 
 - **Chrome and textures** (walnut, leatherette, brass, bezels, pixel frames) become small

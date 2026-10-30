@@ -4,6 +4,7 @@
 #
 #   sh tools/skin-art/cut.sh tape OUT_DIR    (or x-comic)
 #   sh tools/skin-art/cut.sh dash OUT_DIR    (the Car Dashboard, into ui/skins/dash/)
+#   sh tools/skin-art/cut.sh px-quest OUT_DIR (the Quest Menu, into ui/skins/px-quest/)
 #
 # reads tools/skin-art/<skin>.html and the piece list below, and writes OUT_DIR/<name>.png
 # and OUT_DIR/<name>@2x.png. Copy the ones the skin uses to crates/thrasher-app/ui/skins/<skin>/.
@@ -45,6 +46,12 @@ px-pocket) PIECES="mic:mic:9:11 mics:mics:5:7 gear:gear:9:9 min:min:7:7 close:cl
   play:play:6:7 pause:pause:6:7 stop:stop:7:7 dots:dots:2:8 down:down:7:4 find:find:8:8 cur:cur:4:7 check:check:8:6
   sprite:sprite:16:24 key-12:key-12:12:12 key-11:key-11:11:11 key-16:key-16:16:16 dpad:dpad:19:19
   dith:dith:4:4 sep:sep:4:4 rule-row:rule-row:4:2 rule-col:rule-col:2:4 rule-sur:rule-sur:4:1 grid:grid:2:2" ;;
+# Quest Menu: pixel art (only the 1x cut is used, scaled up pixelated in Slint) and the
+# wide command menu's upright title (1x and 2x).
+px-quest) PIECES="gear:gear:7:7 min:min:7:7 close:close:7:7 play:play:5:5 pause:pause:5:5 dots:dots:1:5
+  imp:imp:7:7 ask:ask:7:7 widget:widget:7:7 search:search:7:7 down:down:5:3 note:note:4:5 cpause:cpause:7:7
+  cplay:cplay:7:7 check:check:5:5 hand:hand:8:6 mic:mic:10:14 rec-s:rec-s:19:19 rec-l:rec-l:33:33
+  stop-s:stop-s:19:19 stop-l:stop-l:33:33 cmd:cmd:14:32" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 

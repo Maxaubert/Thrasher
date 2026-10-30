@@ -522,10 +522,11 @@ pages are the classic ones in its blue and gold palette (`Theme.pages` 0).
   project and search (portrait) or docked under the card (wide). While recording the
   menu's Import becomes Pause and Resume (Import is not offered then anyway). The player
   is the EXP bar; the highlighted clip has the glove.
-- Fonts: Silkscreen 400 and 700 (OFL, no Reserved Font Name, Latin subset, 28 KB; its 5
-  has a square corner and a full middle bar, so it reads as 5) for the labels, lengths and
-  the title; Pixel 95 (Desktop 95's Pixelify Sans with the clear 5) for names and menus,
-  now with a 500 weight for the names; "Quest Figures" (2 KB) for the timer. Built by
+- Fonts: "Pocket Small" (Silkscreen 400 with a square 5, shared with Pocket and Brick Phone,
+  built by `px-pocket-fonts.py`) for the labels and lengths, since Silkscreen's own 5 differs
+  from its S by two pixels; Silkscreen 700 (OFL, no Reserved Font Name, Latin subset, 13 KB)
+  only for the title, which has no digits; Pixel 95 (Desktop 95's Pixelify Sans with the clear 5) for names and menus,
+  now with a 500 weight for the names; "Quest Figures" (2 KB, with the same square 5) for the timer. Built by
   `tools/skin-art/px-quest-fonts.py` and `dv-os95-fonts.py`.
 - Rust: `RECORDING_FPS` 4: the glove and the status lamp blink while recording (on and off
   every half second, as the mockup's 1 s blink); at rest nothing moves.

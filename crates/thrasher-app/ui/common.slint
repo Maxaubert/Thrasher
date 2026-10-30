@@ -153,7 +153,7 @@ export struct Palette {
 // settings page switches it.
 export global Theme {
     in-out property <int> current: 0;
-    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass", "Car Dashboard", "Pocket", "Quest Menu", "Brick Phone", "Answering Machine"];
+    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass", "Car Dashboard", "Pocket", "Quest Menu", "Brick Phone", "Answering Machine", "Pocket Synth"];
     out property <[Palette]> palettes: [
         // Ember
         { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618, card-line: #00000000 },
@@ -194,6 +194,9 @@ export global Theme {
         // Answering Machine: beige plastic and paper, a red LED (its main page is
         // ui/skins/dv-answer.slint).
         { bg: #d9cfb9, card: #e8dfcb, row: #efe8d8, raised: #e1d7c1, line: #c9bda3, line-soft: #d6cab0, edge: #a89b7f, text: #2f271e, text2: #3e3428, muted: #5b4f3d, dim: #6e624d, accent: #cf3c28, accent-hover: #b8311f, on-accent: #fff3ec, wave: #8b7c63, wave-dim: #b3a68b, track: #bfb399, danger: #b8311f, hover: #d0c5ae, hover-soft: #d6ccb6, row-hover: #e7dfcc, picked: #fbe9dd, popup: #efe8d8, popup-edge: #a89b7f, knob: #86795f, faint: #86795f, fainter: #b3a68b, rec-rest: #e0a596, divider: #d6cab0, border: #a89b7f, card-edge: #bfb399, footer: #c5b9a0, press: #f0c9bd, card-line: #a89b7f },
+        // Pocket Synth: white aluminium and orange keys (its main page is
+        // ui/skins/dv-synth.slint).
+        { bg: #e8e6e0, card: #f6f5f1, row: #f1efea, raised: #efede8, line: #d6d3cb, line-soft: #dedbd3, edge: #c4c0b6, text: #1c1c1b, text2: #2e2d2b, muted: #5f5b53, dim: #7a766d, accent: #e94a12, accent-hover: #d43f0b, on-accent: #ffffff, wave: #a9a59b, wave-dim: #c4c0b6, track: #d6d3cb, danger: #c8402c, hover: #dedbd3, hover-soft: #e3e0d9, row-hover: #e3e1db, picked: #fde3d6, popup: #f6f5f1, popup-edge: #b3afa5, knob: #8f8b81, faint: #a9a59b, fainter: #c4c0b6, rec-rest: #f4b59a, divider: #dedbd3, border: #c4c0b6, card-edge: #d2cfc7, footer: #e2dfd8, press: #f9c8b3, card-line: #d2cfc7 },
     ];
     out property <color> bg: root.palettes[root.current].bg;
     out property <color> card: root.palettes[root.current].card;
@@ -243,8 +246,8 @@ export global Theme {
     // ui/skins/x-comic.slint; 5 Spatial Glass, ui/skins/x-spatial.slint; 6 Car Dashboard,
     // ui/skins/x-dash.slint; 7 Pocket, ui/skins/px-pocket.slint; 8 Quest Menu,
     // ui/skins/px-quest.slint; 9 Brick Phone, ui/skins/dv-brick.slint; 10 Answering
-    // Machine, ui/skins/dv-answer.slint.
-    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    // Machine, ui/skins/dv-answer.slint; 11 Pocket Synth, ui/skins/dv-synth.slint.
+    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
     out property <int> skin: root.skins[root.current];
     // How the other pages are built: 1 Tape Deck's (skins/tape-pages.slint), else 0, the
     // classic pages in the theme's palette (also for skins whose pages are not built yet).
@@ -3826,6 +3829,9 @@ export global Main {
     in-out property <length> list-y;
     // The height of one clip row; the skin shown sets it (54px for the classic look).
     in-out property <length> row-h: 54px;
+    // Clips side by side in one row of the list: 4 for the Pocket Synth's pad bank in a
+    // wide window, else 1. Keyboard scrolling and clamp-list count rows with it.
+    out property <int> cols: Theme.skin == 11 && Win.width >= 820px ? 4 : 1;
     in-out property <length> list-height: 300px;
 
     // The projects (0 is Inbox) and the one shown.
@@ -3882,7 +3888,7 @@ export global Main {
 
     // Keeps the list from staying scrolled past its end after it shrinks (a delete).
     public function clamp-list() {
-        self.list-y = clamp(self.list-y, min(0px, self.list-height - self.clips.length * self.row-h), 0px);
+        self.list-y = clamp(self.list-y, min(0px, self.list-height - ceil(self.clips.length / self.cols) * self.row-h), 0px);
     }
 }
 

@@ -1,0 +1,1963 @@
+// The Pocket Synth main page: a tiny white aluminium sampler
+// (docs/mockups/device-themes/dv-synth.html). The recorder is a mono pixel screen (the
+// state, the microphone, the timer in dot matrix figures and a segment meter); REC,
+// Import, Ask and the widget are numbered keys 09 to 12 beside it. The project picker is
+// a PROJ knob with its screen, the search a second screen. Portrait windows list the
+// clips as numbered rows with a key each; wide ones lay them out as a bank of pads, four
+// across and two down, with the screen, the keys and the speaker on the left. The footer
+// is the transport key 13, a screen with the clip in the player and a row of step LEDs
+// for its progress.
+//
+// Fixed art is PNGs in dv-synth/ (1x and 2x), cut from tools/skin-art/dv-synth.html with
+// headless Edge: the screens in three slices (`Slice3`), the fixed keys whole with their
+// shadows, the pads' shadows as nine-slice pictures (their bodies are drawn here), the
+// knobs, LEDs, screws and round buttons. The timer is "Synth Figures", Doto's dot matrix
+// digits (tools/skin-art/dv-synth-fonts.py). Only the status square moves on the Fx clock,
+// blinking while recording.
+
+import { Theme, Fx, Main, Tips, ProjectMenu, TextField, Scroller, ClipMenu, WaveSeek, ClipRow, SearchHit } from "../common.slint";
+
+// The sampler's colours, from the mockup.
+global Ps {
+    out property <color> ink: #1c1c1b;
+    out property <color> mute: #7a766d;
+    out property <color> faint: #a9a59b;
+    out property <color> edge: #c4c0b6;
+    out property <color> key-ink: #2a2a28;
+    out property <color> or: #ff5a1e;
+    out property <color> or2: #e94a12;
+    out property <color> oled: #0b0c0c;
+    out property <color> px: #eef3ee;
+    out property <color> px-dim: #3a3e3c;
+    out property <color> dev: #b9c0ba;
+    out property <color> hint: #8c948e;
+    out property <color> lcd-silk: #7d857f;
+    out property <color> wave: #2b2a28;
+    out property <brush> body: @linear-gradient(180deg, #eeece7 0%, #e2dfd8 100%);
+}
+
+// A piece of art, the 2x cut when the display is dense.
+component Art inherits Image {
+    in property <image> lo;
+    in property <image> hi;
+    source: 1phx < 0.7px ? root.hi : root.lo;
+    image-fit: fill;
+    accessible-role: none;
+}
+
+// A part of variable width: its left and right ends and a thin middle column stretched
+// between them. The pieces carry `pad` of shadow around the part on every side; `cap`
+// is the width of an end piece.
+component Slice3 inherits Rectangle {
+    in property <image> l;
+    in property <image> m;
+    in property <image> r;
+    in property <image> l2;
+    in property <image> m2;
+    in property <image> r2;
+    in property <length> pad;
+    in property <length> cap;
+    property <bool> hi: 1phx < 0.7px;
+    Image {
+        x: -root.pad;
+        y: -root.pad;
+        width: root.cap;
+        height: root.height + 2 * root.pad;
+        source: root.hi ? root.l2 : root.l;
+        image-fit: fill;
+    }
+    Image {
+        x: root.cap - root.pad;
+        y: -root.pad;
+        width: max(0px, root.width + 2 * root.pad - 2 * root.cap);
+        height: root.height + 2 * root.pad;
+        source: root.hi ? root.m2 : root.m;
+        image-fit: fill;
+    }
+    Image {
+        x: root.width + root.pad - root.cap;
+        y: -root.pad;
+        width: root.cap;
+        height: root.height + 2 * root.pad;
+        source: root.hi ? root.r2 : root.r;
+        image-fit: fill;
+    }
+}
+
+// The black screen of a toolbar field or the footer, 30 or 24 high.
+component Lcd inherits Slice3 {
+    in property <bool> short;
+    pad: 3px;
+    cap: 16px;
+    l: root.short ? @image-url("dv-synth/lcd24-l.png") : @image-url("dv-synth/lcd30-l.png");
+    m: root.short ? @image-url("dv-synth/lcd24-m.png") : @image-url("dv-synth/lcd30-m.png");
+    r: root.short ? @image-url("dv-synth/lcd24-r.png") : @image-url("dv-synth/lcd30-r.png");
+    l2: root.short ? @image-url("dv-synth/lcd24-l@2x.png") : @image-url("dv-synth/lcd30-l@2x.png");
+    m2: root.short ? @image-url("dv-synth/lcd24-m@2x.png") : @image-url("dv-synth/lcd30-m@2x.png");
+    r2: root.short ? @image-url("dv-synth/lcd24-r@2x.png") : @image-url("dv-synth/lcd30-r@2x.png");
+}
+
+// An icon from the mockup, stroked 1.7 units of 24 wide. A stroked path is fitted into
+// its box less the stroke, so the path's box is larger by the stroke and moved back by
+// half of it.
+component Glyph inherits Rectangle {
+    in property <string> name;
+    in property <color> tint: Ps.key-ink;
+    property <length> sw: root.width * 1.7 / 24;
+    property <bool> solid: root.name == "play" || root.name == "pause" || root.name == "stop" || root.name == "dots";
+    width: 12px;
+    height: 12px;
+    Path {
+        x: root.solid ? 0 : -root.sw / 2;
+        y: root.solid ? 0 : -root.sw / 2;
+        width: root.width + (root.solid ? 0 : root.sw);
+        height: root.height + (root.solid ? 0 : root.sw);
+        viewbox-width: 24;
+        viewbox-height: 24;
+        stroke: root.solid ? transparent : root.tint;
+        stroke-width: root.sw;
+        stroke-line-cap: round;
+        stroke-line-join: round;
+        fill: root.solid ? root.tint : transparent;
+        commands: root.name == "gear" ? "M 9 12 A 3 3 0 1 0 15 12 A 3 3 0 1 0 9 12 Z M 12 2.5 L 12 5.5 M 12 18.5 L 12 21.5 M 2.5 12 L 5.5 12 M 18.5 12 L 21.5 12 M 5.3 5.3 L 7.4 7.4 M 16.6 16.6 L 18.7 18.7 M 5.3 18.7 L 7.4 16.6 M 16.6 7.4 L 18.7 5.3"
+            : root.name == "min" ? "M 6 12 L 18 12"
+            : root.name == "close" ? "M 7 7 L 17 17 M 17 7 L 7 17"
+            : root.name == "mic" ? "M 9 6 A 3 3 0 0 1 15 6 L 15 11 A 3 3 0 0 1 9 11 Z M 5.5 11 A 6.5 6.5 0 0 0 18.5 11 M 12 17.5 L 12 21"
+            : root.name == "import" ? "M 12 4 L 12 15 M 7.5 10.5 L 12 15 L 16.5 10.5 M 5 19.5 L 19 19.5"
+            : root.name == "ask" ? "M 5 5.5 L 19 5.5 L 19 15.5 L 10 15.5 L 6 19 L 6 15.5 L 5 15.5 Z"
+            : root.name == "widget" ? "M 5.5 5 L 18.5 5 A 2 2 0 0 1 20.5 7 L 20.5 17 A 2 2 0 0 1 18.5 19 L 5.5 19 A 2 2 0 0 1 3.5 17 L 3.5 7 A 2 2 0 0 1 5.5 5 Z"
+            : root.name == "down" ? "M 7 10 L 12 15 L 17 10"
+            : root.name == "search" ? "M 5 11 A 6 6 0 1 0 17 11 A 6 6 0 1 0 5 11 Z M 15.5 15.5 L 20 20"
+            : root.name == "check" ? "M 5 12.5 L 10 17 L 19 7"
+            : root.name == "play" ? "M 8 5.5 L 8 18.5 L 18.5 12 Z"
+            : root.name == "pause" ? "M 7 5.5 L 10.5 5.5 L 10.5 18.5 L 7 18.5 Z M 13.5 5.5 L 17 5.5 L 17 18.5 L 13.5 18.5 Z"
+            : root.name == "stop" ? "M 7 7 L 17 7 L 17 17 L 7 17 Z"
+            : root.name == "dots" ? "M 10 5.5 A 2 2 0 1 0 14 5.5 A 2 2 0 1 0 10 5.5 Z M 10 12 A 2 2 0 1 0 14 12 A 2 2 0 1 0 10 12 Z M 10 18.5 A 2 2 0 1 0 14 18.5 A 2 2 0 1 0 10 18.5 Z"
+            : "M 0 0";
+    }
+    // The small filled window of the widget icon.
+    Path {
+        visible: root.name == "widget";
+        width: 100%;
+        height: 100%;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        fill: root.tint;
+        commands: "M 12.5 11.5 L 16.5 11.5 A 1 1 0 0 1 17.5 12.5 L 17.5 15 A 1 1 0 0 1 16.5 16 L 12.5 16 A 1 1 0 0 1 11.5 15 L 11.5 12.5 A 1 1 0 0 1 12.5 11.5 Z";
+    }
+}
+
+// The silkscreen print on the aluminium: small spaced capitals.
+component Silk inherits Text {
+    color: Ps.mute;
+    font-family: "JetBrains Mono";
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.12px;
+    vertical-alignment: center;
+    accessible-role: none;
+    accessible-label: "";
+}
+
+// A round button in the title bar: Settings, minimise and close.
+component TitleKey inherits Rectangle {
+    in property <string> icon;
+    in property <string> label;
+    callback clicked;
+    width: 22px;
+    height: 22px;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        y: t.pressed ? 1px : 0;
+        Art {
+            x: -2px;
+            y: -2px;
+            width: 26px;
+            height: 26px;
+            lo: @image-url("dv-synth/tbtn.png");
+            hi: @image-url("dv-synth/tbtn@2x.png");
+        }
+        Rectangle {
+            visible: t.has-hover;
+            border-radius: 11px;
+            background: t.pressed ? #00000014 : #0000000a;
+        }
+        Glyph {
+            name: root.icon;
+            tint: #3b3a37;
+            width: 12px;
+            height: 12px;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The title bar: the orange square, the name, the model badge (and "Pocket sampler" when
+// wide), then Settings, minimise and close.
+component Title inherits Rectangle {
+    in property <bool> big;
+    callback go(int);
+    height: 34px;
+    Rectangle { y: parent.height - 1px; height: 1px; background: Ps.edge; }
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    HorizontalLayout {
+        padding-left: 16px;
+        padding-right: 12px;
+        padding-bottom: 1px;
+        spacing: 10px;
+        HorizontalLayout {
+            horizontal-stretch: 0;
+            spacing: 8px;
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 2px;
+                    background: Ps.or;
+                }
+            }
+            Text {
+                horizontal-stretch: 0;
+                text: "THRASHER";
+                color: Ps.ink;
+                font-family: "Inter Tight";
+                font-size: 12px;
+                font-weight: 800;
+                letter-spacing: 2.64px;
+                vertical-alignment: center;
+            }
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 0;
+                Rectangle {
+                    width: badge.preferred-width + 10px;
+                    height: 15px;
+                    border-radius: 3px;
+                    border-width: 1px;
+                    border-color: Ps.faint;
+                    badge := Text {
+                        x: 5px;
+                        text: "PS 16";
+                        color: Ps.mute;
+                        font-family: "JetBrains Mono";
+                        font-size: 9px;
+                        font-weight: 500;
+                        letter-spacing: 1.08px;
+                        vertical-alignment: center;
+                        accessible-role: none;
+                    }
+                }
+            }
+            if root.big: HorizontalLayout {
+                horizontal-stretch: 0;
+                padding-left: 6px;
+                Silk { text: "POCKET SAMPLER"; }
+            }
+        }
+        Rectangle { horizontal-stretch: 1; }
+        VerticalLayout {
+            alignment: center;
+            TitleKey { icon: "gear"; label: "Settings"; clicked => { root.go(3); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            TitleKey { icon: "min"; label: "Minimize"; clicked => { Main.minimize-window(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            TitleKey { icon: "close"; label: "Close"; clicked => { Main.close-window(); } }
+        }
+    }
+}
+
+// A knob: dark (IN, 44 or 62) or light (PROJ, 30 or 32). It only shows.
+component Knob inherits Rectangle {
+    in property <int> size: 44;
+    width: root.size * 1px;
+    height: root.size * 1px;
+    accessible-role: none;
+    Art {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        lo: root.size == 62 ? @image-url("dv-synth/knob-62.png") : root.size == 30 ? @image-url("dv-synth/knob-30.png")
+            : root.size == 32 ? @image-url("dv-synth/knob-32.png") : @image-url("dv-synth/knob-44.png");
+        hi: root.size == 62 ? @image-url("dv-synth/knob-62@2x.png") : root.size == 30 ? @image-url("dv-synth/knob-30@2x.png")
+            : root.size == 32 ? @image-url("dv-synth/knob-32@2x.png") : @image-url("dv-synth/knob-44@2x.png");
+    }
+}
+
+// The mono screen of the recorder: the state with its square (blinking while recording),
+// the microphone, the timer and the segment meter. Portrait: the timer and the meter
+// side by side under the state; wide: the timer big, the meter under it, the microphone
+// at the foot. Faint scanlines run over all of it.
+component Screen inherits Rectangle {
+    in property <bool> big;
+    property <string> clock: Main.elapsed + Main.elapsed-tenth;
+    // The square blinks as in the mockup, 0.6 s on and 0.6 s dim (the clock runs at twice
+    // the speed while recording).
+    property <bool> dim: Main.recording && !Main.paused && Math.mod(floor(Fx.t / 1.2), 2) == 1;
+    // An hour or more takes two more characters; the wide timer shrinks to fit them.
+    property <bool> long: Main.elapsed.character-count > 5;
+    property <length> size: root.big ? (root.long ? 54px : 70px) : 40px;
+    property <length> pad-x: root.big ? 18px : 13px;
+    property <length> clock-w: root.clock.character-count * (root.size * 0.62);
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;
+    // The meter: 20 segments beside the portrait timer at the mockup's width, more on a
+    // wider screen; 32 across the wide screen.
+    property <length> meter-x: root.big ? root.pad-x : root.pad-x + root.clock-w + 14px;
+    property <length> meter-w: root.width - root.pad-x - root.meter-x;
+    property <length> meter-y: root.big ? 129px : 43px;
+    property <length> meter-h: root.big ? 16px : 22px;
+    property <int> n: root.big ? 32 : clamp(round(root.meter-w / 7.72px), 8, 40);
+    property <int> on: round(clamp(root.level, 0, 1) * root.n);
+    property <length> seg-w: (root.meter-w - (root.n - 1) * 2px) / root.n;
+    accessible-role: AccessibleRole.text;
+    accessible-label: (Main.recording ? (Main.paused ? "Paused " : "Recording ") : "Ready ") + root.clock;
+    Slice3 {
+        pad: 4px;
+        cap: 26px;
+        l: root.big ? @image-url("dv-synth/oled-w-l.png") : @image-url("dv-synth/oled-p-l.png");
+        m: root.big ? @image-url("dv-synth/oled-w-m.png") : @image-url("dv-synth/oled-p-m.png");
+        r: root.big ? @image-url("dv-synth/oled-w-r.png") : @image-url("dv-synth/oled-p-r.png");
+        l2: root.big ? @image-url("dv-synth/oled-w-l@2x.png") : @image-url("dv-synth/oled-p-l@2x.png");
+        m2: root.big ? @image-url("dv-synth/oled-w-m@2x.png") : @image-url("dv-synth/oled-p-m@2x.png");
+        r2: root.big ? @image-url("dv-synth/oled-w-r@2x.png") : @image-url("dv-synth/oled-p-r@2x.png");
+    }
+    // The state.
+    Rectangle {
+        x: root.pad-x;
+        y: (root.big ? 16px : 11px) + 2px;
+        width: 7px;
+        height: 7px;
+        background: Ps.px;
+        opacity: root.dim ? 0.35 : 1;
+    }
+    Text {
+        x: root.pad-x + 14px;
+        y: root.big ? 16px : 11px;
+        height: root.big ? 11px : 10px;
+        text: Main.recording ? (Main.paused ? "PAUSED" : "REC") : "READY";
+        color: Ps.px;
+        font-family: "JetBrains Mono";
+        font-size: root.big ? 11px : 10px;
+        font-weight: 700;
+        letter-spacing: root.big ? 2.2px : 2px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    // Wide: "MONO IN" at the right; portrait: the microphone there.
+    if root.big: Text {
+        x: root.width - root.pad-x - self.width;
+        y: 17px;
+        height: 9px;
+        text: "MONO IN";
+        color: Ps.lcd-silk;
+        font-family: "JetBrains Mono";
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 1.44px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    HorizontalLayout {
+        x: root.big ? root.pad-x : root.width - root.pad-x - self.width;
+        y: root.big ? 157px : 11px;
+        width: min(self.preferred-width, root.width - 2 * root.pad-x - (root.big ? 0 : 100px));
+        height: 11px;
+        spacing: 6px;
+        Glyph {
+            name: "mic";
+            tint: Ps.dev;
+            width: 11px;
+            height: 11px;
+        }
+        Text {
+            text: Main.device-label;
+            color: Ps.dev;
+            font-family: "JetBrains Mono";
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.4px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+    // The timer.
+    Text {
+        x: root.pad-x;
+        y: root.big ? 43px + (70px - root.size) / 2 : 31px;
+        height: root.size;
+        text: root.clock;
+        color: Ps.px;
+        font-family: "Synth Figures";
+        font-size: root.size;
+        font-weight: 700;
+        letter-spacing: root.size * 0.02;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    // The segment meter: each segment a little taller than the last, lit up to the level,
+    // the last three orange.
+    for i in root.n: Rectangle {
+        property <length> h: root.meter-h * (0.45 + 0.55 * i / root.n);
+        x: root.meter-x + i * (root.seg-w + 2px);
+        y: root.meter-y + root.meter-h - self.h;
+        width: root.seg-w;
+        height: self.h;
+        background: i < root.on ? (i >= root.n - 3 ? Ps.or : Ps.px) : Ps.px-dim;
+    }
+    // Scanlines, one dark device pixel row every 3px.
+    property <int> lines: floor(root.height / 3px);
+    for i in root.lines: Rectangle {
+        x: 3px;
+        y: round((root.height - 1px - i * 3px) / 1phx) * 1phx;
+        width: root.width - 6px;
+        height: max(1phx, round(1px / 1phx) * 1phx);
+        background: #00000047;
+    }
+}
+
+// A function key (09 to 12 beside the screen): white, or orange for REC; `lit` glows
+// orange (Pause latched). Its number is printed in the corner and its word under it.
+component FnKey inherits Rectangle {
+    in property <bool> big;
+    in property <bool> rec;
+    in property <bool> lit;
+    in property <string> num;
+    in property <string> icon;
+    in property <string> word;
+    in property <string> label;
+    in property <string> tip: root.label;
+    callback clicked;
+    property <bool> orange: root.rec || root.lit;
+    property <length> kw: root.big ? (root.rec ? 96px : 72px) : (root.rec ? 76px : 52px);
+    property <length> kh: root.big ? 58px : 44px;
+    property <length> m: root.lit ? 18px : 12px;
+    width: root.kw;
+    height: root.kh + 14px;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    face := Rectangle {
+        y: t.pressed ? 1px : 0;
+        width: root.kw;
+        height: root.kh;
+        Art {
+            x: -root.m;
+            y: -root.m;
+            width: root.kw + 2 * root.m;
+            height: root.kh + 2 * root.m;
+            lo: root.big ? (root.rec ? @image-url("dv-synth/fk-w-or.png") : root.lit ? @image-url("dv-synth/fk-w-lit.png") : @image-url("dv-synth/fk-w.png"))
+                : (root.rec ? @image-url("dv-synth/fk-p-or.png") : root.lit ? @image-url("dv-synth/fk-p-lit.png") : @image-url("dv-synth/fk-p.png"));
+            hi: root.big ? (root.rec ? @image-url("dv-synth/fk-w-or@2x.png") : root.lit ? @image-url("dv-synth/fk-w-lit@2x.png") : @image-url("dv-synth/fk-w@2x.png"))
+                : (root.rec ? @image-url("dv-synth/fk-p-or@2x.png") : root.lit ? @image-url("dv-synth/fk-p-lit@2x.png") : @image-url("dv-synth/fk-p@2x.png"));
+        }
+        Rectangle {
+            visible: t.has-hover;
+            border-radius: 8px;
+            background: t.pressed ? #00000014 : root.orange ? #ffffff1a : #0000000a;
+        }
+        Text {
+            x: 6px;
+            y: 5px;
+            height: 8px;
+            text: root.num;
+            color: root.orange ? #ffffff99 : #2a2a2899;
+            font-family: "JetBrains Mono";
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 0.48px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Glyph {
+            name: root.icon;
+            tint: root.orange ? #ffffff : Ps.key-ink;
+            width: root.big ? 20px : 17px;
+            height: self.width;
+        }
+    }
+    Silk {
+        y: root.kh + 6px;
+        width: root.kw;
+        height: 8px;
+        text: root.word;
+        color: root.rec ? Ps.or2 : Ps.mute;
+        horizontal-alignment: center;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, root.kh); }
+    t := TouchArea {
+        height: root.kh;
+        y: 0;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The keys beside the screen: REC (Stop while recording), Import (Pause and Resume
+// while recording, when Import is not offered), Ask (with the local AI) and the widget.
+component FnKeys inherits HorizontalLayout {
+    in property <bool> big;
+    callback go(int);
+    callback refocus();
+    spacing: root.big ? 12px : 10px;
+    alignment: start;
+    FnKey {
+        big: root.big;
+        rec: true;
+        num: "09";
+        icon: Main.recording ? "stop" : "mic";
+        word: Main.recording ? "STOP" : "REC";
+        label: Main.recording ? "Stop and save" : "Record";
+        tip: Main.recording ? "Stop" : "Record";
+        clicked => { Main.toggle-record(); root.refocus(); }
+    }
+    FnKey {
+        big: root.big;
+        num: "10";
+        lit: Main.recording && Main.paused;
+        icon: !Main.recording ? "import" : Main.paused ? "play" : "pause";
+        word: !Main.recording ? "IMPORT" : Main.paused ? "RESUME" : "PAUSE";
+        label: !Main.recording ? "Import audio or video" : Main.paused ? "Resume" : "Pause";
+        tip: !Main.recording ? "Import" : Main.paused ? "Resume" : "Pause";
+        clicked => {
+            if (Main.recording) {
+                Main.toggle-pause();
+                root.refocus();
+            } else {
+                Main.import-files();
+            }
+        }
+    }
+    if Main.can-ai: FnKey {
+        big: root.big;
+        num: "11";
+        icon: "ask";
+        word: "ASK";
+        label: "Ask your clips";
+        tip: "Ask";
+        clicked => { root.go(6); }
+    }
+    FnKey {
+        big: root.big;
+        num: "12";
+        icon: "widget";
+        word: "WIDGET";
+        label: "Small widget";
+        tip: "Widget";
+        clicked => { Main.compact-changed(true); }
+    }
+}
+
+// The recorder in a portrait window: the screen, then the keys and the IN knob.
+component RecorderFront inherits Rectangle {
+    callback go(int);
+    callback refocus();
+    height: 203px;
+    Rectangle { y: parent.height - 1px; height: 1px; background: Ps.edge; }
+    Screen {
+        x: 16px;
+        y: 12px;
+        width: parent.width - 32px;
+        height: 108px;
+    }
+    FnKeys {
+        x: 16px;
+        y: 134px;
+        width: parent.width - 32px - 44px - 10px;
+        height: 58px;
+        go(p) => { root.go(p); }
+        refocus => { root.refocus(); }
+    }
+    Knob {
+        x: parent.width - 16px - 44px;
+        y: 134px;
+        size: 44;
+    }
+    Silk {
+        x: parent.width - 16px - 44px;
+        y: 184px;
+        width: 44px;
+        height: 8px;
+        text: "IN";
+        horizontal-alignment: center;
+    }
+}
+
+// The speaker grille of a wide window: one band of dot rows (10px, the dots' period),
+// repeated down, the last one cut to fit.
+component Grille inherits Rectangle {
+    property <bool> hi: 1phx < 0.7px;
+    property <int> s: root.hi ? 2 : 1;
+    property <int> k: ceil(root.height / 10px);
+    for i in root.k: Image {
+        x: 0;
+        y: i * 10px;
+        width: 277px;
+        height: min(10px, root.height - i * 10px);
+        source: root.hi ? @image-url("dv-synth/grille@2x.png") : @image-url("dv-synth/grille.png");
+        source-clip-x: 0;
+        source-clip-y: 0;
+        source-clip-width: 277 * root.s;
+        source-clip-height: round(min(10px, root.height - i * 10px) / 1px * root.s);
+        image-fit: fill;
+        accessible-role: none;
+    }
+}
+
+// The recorder in a wide window, on the left: the screen, the keys, then the IN knob and
+// the speaker in the room left (both go in a short window).
+component RecorderSide inherits Rectangle {
+    callback go(int);
+    callback refocus();
+    property <length> rest: root.height - 304px - 16px;
+    width: 392px;
+    Rectangle { background: @linear-gradient(180deg, #00000004 0%, #0000000a 100%); }
+    Rectangle { x: parent.width - 1px; width: 1px; background: Ps.edge; }
+    Screen {
+        big: true;
+        x: 18px;
+        y: 16px;
+        width: 355px;
+        height: 188px;
+    }
+    FnKeys {
+        big: true;
+        x: 18px;
+        y: 218px;
+        width: 355px;
+        height: 72px;
+        go(p) => { root.go(p); }
+        refocus => { root.refocus(); }
+    }
+    if root.rest >= 80px: Knob {
+        x: 18px;
+        y: 304px + (root.rest - 77px) / 2;
+        size: 62;
+    }
+    if root.rest >= 80px: Silk {
+        x: 18px;
+        y: 304px + (root.rest - 77px) / 2 + 69px;
+        width: 62px;
+        height: 8px;
+        text: "IN";
+        horizontal-alignment: center;
+    }
+    if root.rest >= 30px: Grille {
+        x: 96px;
+        y: 304px;
+        width: 277px;
+        height: root.rest;
+    }
+}
+
+// The project picker: the PROJ knob and its screen with the project's name; either
+// opens the project menu. ProjectMenu holds what it offers. `most` is the most room the
+// name may take (it elides past it); `least` is the screen's width in the mockup.
+component Picker inherits HorizontalLayout {
+    in property <bool> big;
+    in property <length> most: 200px;
+    callback refocus();
+    property <bool> enabled: !Main.recording;
+    property <length> least: root.big ? 118px : 94px;
+    property <string> name: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+    spacing: root.big ? 12px : 9px;
+    VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: root.big ? 32px : 30px;
+            height: self.width;
+            opacity: root.enabled ? 1 : 0.6;
+            Knob { size: root.big ? 32 : 30; }
+            TouchArea {
+                enabled: root.enabled;
+                mouse-cursor: pointer;
+                clicked => { menu.show(); }
+            }
+        }
+    }
+    lcd := Rectangle {
+        // The mockup's width, or as wide as the name needs (it elides past `most`).
+        width: max(min(root.least, root.most + 70px), row.preferred-width);
+        height: 30px;
+        opacity: root.enabled ? 1 : 0.6;
+        accessible-role: combobox;
+        accessible-label: "Project";
+        accessible-value: root.name;
+        accessible-expandable: true;
+        accessible-action-default => { if (root.enabled) { menu.show(); } }
+        accessible-action-expand => { if (root.enabled) { menu.show(); } }
+        Lcd { }
+        Rectangle {
+            visible: t.has-hover && root.enabled;
+            border-radius: 6px;
+            background: #ffffff12;
+        }
+        row := HorizontalLayout {
+            padding-left: 10px;
+            padding-right: 10px;
+            spacing: 8px;
+            Text {
+                text: "PROJ";
+                color: Ps.lcd-silk;
+                font-family: "JetBrains Mono";
+                font-size: 7px;
+                font-weight: 700;
+                letter-spacing: 0.98px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            Text {
+                text: root.name;
+                color: Ps.px;
+                font-family: "JetBrains Mono";
+                font-size: 11px;
+                font-weight: 500;
+                vertical-alignment: center;
+                max-width: root.most;
+                overflow: elide;
+                accessible-role: none;
+            }
+            Rectangle { horizontal-stretch: 1; }
+            VerticalLayout {
+                alignment: center;
+                Glyph {
+                    name: "down";
+                    tint: Ps.px;
+                    width: 12px;
+                    height: 12px;
+                }
+            }
+        }
+        t := TouchArea {
+            enabled: root.enabled;
+            mouse-cursor: pointer;
+            clicked => { menu.show(); }
+        }
+        menu := ProjectMenu {
+            width: parent.width;
+            height: parent.height;
+            projects: Main.projects;
+            current: Main.project;
+            has-clips: Main.clips.length > 0;
+            choose(i) => { Main.choose-project(i); root.refocus(); }
+            create => { Main.dialog-text = ""; Main.dialog = 4; }
+            rename => { Main.dialog-text = Main.projects[Main.project]; Main.dialog = 5; }
+            delete => { Main.delete-project(); root.refocus(); }
+            export => { Main.export-project(); root.refocus(); }
+        }
+    }
+}
+
+// The search field on its screen.
+component Search inherits Rectangle {
+    callback go(int);
+    callback refocus();
+    height: 30px;
+    Lcd { }
+    TextField {
+        height: parent.height;
+        radius: 6px;
+        fill: transparent;
+        rest-edge: transparent;
+        ink: Ps.px;
+        hint: Ps.hint;
+        font-size: 11px;
+        family: "JetBrains Mono";
+        side: 10px;
+        icon: "search";
+        placeholder: "Search";
+        label: "Search clips";
+        takes-escape: true;
+        select-fill: #ff5a1e66;
+        select-ink: Ps.px;
+        focus-ticket: Main.search-ticket;
+        text <=> Main.query;
+        edited(t) => { Main.search(t, Main.search-all); }
+        escaped => { Main.query = ""; Main.search("", Main.search-all); root.refocus(); }
+        accepted => { if (Main.hits.length > 0) { Main.open-hit(0); root.go(1); } }
+    }
+}
+
+// While searching with more than one project: search them all instead of this one.
+component AllKey inherits Rectangle {
+    width: all-text.preferred-width + 20px;
+    height: 30px;
+    accessible-role: checkbox;
+    accessible-label: "Search all projects";
+    accessible-checked: Main.search-all;
+    accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+    Lcd { }
+    all-text := Text {
+        x: 10px;
+        height: parent.height;
+        text: "ALL PROJECTS";
+        color: Main.search-all ? Ps.or : Ps.lcd-silk;
+        font-family: "JetBrains Mono";
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 1.12px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+    }
+}
+
+// The toolbar: the PROJ knob and screen, the search screen (and ALL PROJECTS while
+// searching), and in a wide window the bank shown. The picker takes at most what the
+// rest leaves (`avail` is the toolbar's width, worked out by the page).
+component Toolbar inherits HorizontalLayout {
+    in property <bool> big;
+    in property <length> avail;
+    callback go(int);
+    callback refocus();
+    property <bool> all: Main.query != "" && Main.projects.length > 1;
+    property <bool> bank: root.big && Main.query == "" && Main.clips.length > 0;
+    property <length> gap: root.big ? 12px : 9px;
+    // Clips 1 to 8 are bank A, 9 to 16 bank B and so on: the bank of the pads at the top.
+    in property <int> bank-index;
+    property <[string]> letters: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
+    property <length> all-w: root.all ? 108px + root.gap : 0;
+    property <length> bank-w: root.bank ? 48px + root.gap : 0;
+    property <length> search-min: root.big ? 120px : 90px;
+    padding-left: root.big ? 20px : 16px;
+    padding-right: root.big ? 20px : 16px;
+    padding-top: root.big ? 14px : 9px;
+    padding-bottom: root.big ? 12px : 8px;
+    spacing: root.gap;
+    Picker {
+        big: root.big;
+        // The padding, the knob, the screen around the name (its padding, PROJ, the
+        // chevron and their gaps), the smallest search and the gaps.
+        most: max(40px, min(260px, root.avail - 2 * root.padding-left - 32px - root.gap - 92px - root.gap - root.search-min - root.all-w - root.bank-w));
+        refocus => { root.refocus(); }
+    }
+    VerticalLayout {
+        alignment: center;
+        horizontal-stretch: 1;
+        min-width: root.search-min;
+        Search {
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+    }
+    if root.all: VerticalLayout {
+        alignment: center;
+        AllKey { }
+    }
+    if root.bank: Silk {
+        text: "BANK " + (root.bank-index < 26 ? root.letters[root.bank-index] : "" + (root.bank-index + 1));
+        accessible-role: text;
+        accessible-label: self.text;
+    }
+}
+
+// A clip's waveform: rounded bars, orange (or white on a lit pad) on the highlighted
+// clip; what has played is darker.
+component Wave inherits Rectangle {
+    in property <[float]> values;
+    in property <int> n;
+    in property <color> ink;
+    in property <color> played;
+    in property <float> progress: -1;
+    property <length> step: root.width / root.n;
+    for i in root.n: Rectangle {
+        property <float> v: root.values.length > 0 ? root.values[floor(i * root.values.length / root.n)] : 0.06;
+        x: i * root.step + root.step * 0.2;
+        width: root.step * 0.6;
+        height: max(2px, root.height * max(0.14, self.v));
+        y: (root.height - self.height) / 2;
+        border-radius: root.step * 0.3;
+        background: (i + 0.5) / root.n <= root.progress ? root.played : root.ink;
+    }
+}
+
+// TRANSCRIBED, printed in a thin orange frame.
+component Tag inherits Rectangle {
+    width: tag.preferred-width + 6px;
+    height: 12.5px;
+    border-radius: 2px;
+    border-width: 1px;
+    border-color: #e94a128c;
+    tag := Text {
+        x: 3px;
+        text: "TRANSCRIBED";
+        color: Ps.or2;
+        font-family: "JetBrains Mono";
+        font-size: 7.5px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        vertical-alignment: center;
+    }
+}
+
+// The when line under a clip's name: the date, TRANSCRIBED and "+ system".
+component When inherits HorizontalLayout {
+    in property <ClipRow> item;
+    in property <bool> tags: true;
+    spacing: 5px;
+    alignment: start;
+    Text {
+        text: root.item.when;
+        color: Ps.mute;
+        font-family: "JetBrains Mono";
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: 0.36px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    if root.tags && root.item.transcribed: VerticalLayout {
+        alignment: center;
+        Tag { }
+    }
+    // The sound of the computer was recorded too.
+    if root.tags && root.item.has-system: Text {
+        text: "+ system";
+        color: Ps.mute;
+        font-family: "JetBrains Mono";
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: 0.36px;
+        vertical-alignment: center;
+    }
+}
+
+// The round menu button of a clip: manage, rename, export, delete.
+component Dots inherits Rectangle {
+    in property <string> name;
+    callback clicked;
+    width: 20px;
+    height: 20px;
+    accessible-role: button;
+    accessible-label: "Menu for " + root.name;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        y: t.pressed ? 1px : 0;
+        Art {
+            x: -2px;
+            y: -2px;
+            width: 24px;
+            height: 24px;
+            lo: @image-url("dv-synth/dots.png");
+            hi: @image-url("dv-synth/dots@2x.png");
+        }
+        Rectangle {
+            visible: t.has-hover;
+            border-radius: 10px;
+            background: #0000000d;
+        }
+        Glyph {
+            name: "dots";
+            tint: #55524c;
+            width: 10px;
+            height: 10px;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The key at the start of a row: it plays or pauses the clip, lit orange on the
+// highlighted one.
+component RowKey inherits Rectangle {
+    in property <bool> lit;
+    in property <bool> playing;
+    in property <string> name;
+    callback clicked;
+    width: 28px;
+    height: 27px;
+    accessible-role: button;
+    accessible-label: (root.playing ? "Pause " : "Play ") + root.name;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        y: t.pressed ? 1px : 0;
+        Art {
+            x: root.lit ? -18px : -12px;
+            y: root.lit ? -18px : -12px;
+            width: root.lit ? 64px : 52px;
+            height: root.lit ? 63px : 51px;
+            lo: root.lit ? @image-url("dv-synth/rk-lit.png") : @image-url("dv-synth/rk.png");
+            hi: root.lit ? @image-url("dv-synth/rk-lit@2x.png") : @image-url("dv-synth/rk@2x.png");
+        }
+        Rectangle {
+            visible: t.has-hover;
+            border-radius: 6px;
+            background: root.lit ? #ffffff1a : #0000000a;
+        }
+        Glyph {
+            name: root.playing ? "pause" : "play";
+            tint: root.lit ? #ffffff : Ps.key-ink;
+            width: 11px;
+            height: 11px;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// One clip in a portrait window: its number, its key, the name with when it was made
+// (and TRANSCRIBED, "+ system"), the waveform, the length and the menu.
+component Row inherits Rectangle {
+    in property <int> index;
+    in property <ClipRow> item;
+    in property <length> window-h;
+    // The width of the list, from the page (the row's own width would loop through the layout).
+    in property <length> row-w;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    property <bool> selected: root.index == Main.selected;
+    property <bool> picked: Main.picked[root.index];
+    property <bool> active: root.index == Main.active-clip;
+    property <bool> lit: root.selected || root.picked;
+    // The waveform gives way to the name in a narrow window: the name keeps at least 110px.
+    property <length> wave-room: root.row-w - 8px - 18px - 28px - 50px - 20px - 5 * 8px - 110px;
+    property <length> wave-w: root.wave-room >= 30px ? min(54px, root.wave-room) : 0;
+    height: 33px;
+    accessible-role: list-item;
+    accessible-label: root.item.name + ", " + root.item.duration;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected || root.picked;
+    accessible-action-default => { root.select(false, false); }
+    function select(ctrl: bool, shift: bool) {
+        Main.pick(root.index, ctrl, shift);
+        root.refocus();
+    }
+    function open-menu() {
+        menu.show-at(root.width - 4px - 210px, (root.height + 20px) / 2 + 4px);
+    }
+    Rectangle {
+        visible: root.lit;
+        opacity: root.selected ? 1 : 0.6;
+        border-radius: 6px;
+        background: #ff5a1e17;
+        border-width: root.selected ? 1px : 0;
+        border-color: #ff5a1e59;
+    }
+    Rectangle {
+        visible: !root.lit && row-touch.has-hover;
+        border-radius: 6px;
+        background: #00000008;
+    }
+    row-touch := TouchArea {
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                root.select(e.modifiers.control, e.modifiers.shift);
+            }
+            // On release: the press that closes an open menu is used up by that menu.
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                menu.show-at(self.mouse-x, self.mouse-y);
+            }
+        }
+        // Opens just this clip, even out of several picked.
+        double-clicked => { root.select(false, false); Main.open-clip(root.index); root.go(1); }
+    }
+    HorizontalLayout {
+        padding-left: 4px;
+        padding-right: 4px;
+        spacing: 8px;
+        Text {
+            width: 18px;
+            text: (root.index < 9 ? "0" : "") + (root.index + 1);
+            color: root.selected ? Ps.or2 : Ps.mute;
+            font-family: "JetBrains Mono";
+            font-size: 9px;
+            font-weight: 700;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        VerticalLayout {
+            alignment: center;
+            RowKey {
+                lit: root.selected;
+                playing: root.active && Main.playing;
+                name: root.item.name;
+                clicked => { Main.play-clip(root.index); root.refocus(); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            spacing: 3px;
+            Text {
+                height: 13.75px;
+                text: root.item.name;
+                color: root.active ? Ps.or2 : Ps.ink;
+                font-family: "Inter Tight";
+                font-size: 12.5px;
+                font-weight: 600;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            When {
+                height: root.item.transcribed ? 12.5px : 9px;
+                item: root.item;
+            }
+        }
+        // The waveform: a click on the highlighted clip moves its start, a double click
+        // plays from there.
+        if root.wave-w > 0: VerticalLayout {
+            alignment: center;
+            Wave {
+                width: root.wave-w;
+                height: 16px;
+                n: max(6, round(root.wave-w / 54px * 13));
+                values: root.item.wave;
+                ink: root.selected ? Ps.or2 : #2b2a2880;
+                played: root.selected ? #a8360b : Ps.ink;
+                progress: root.active ? Main.play-fraction : -1;
+                WaveSeek {
+                    selected: root.selected;
+                    active: root.active;
+                    select(ctrl, shift) => { root.select(ctrl, shift); }
+                    cue(f) => { Main.cue-clip(root.index, f); root.refocus(); }
+                    play-at(f) => { Main.play-clip-at(root.index, f); root.refocus(); }
+                    menu(x, y) => { menu.show-at(x - root.absolute-position.x, y - root.absolute-position.y); }
+                }
+            }
+        }
+        Text {
+            width: 50px;
+            text: root.item.duration;
+            color: Ps.ink;
+            font-family: "JetBrains Mono";
+            font-size: 11px;
+            font-weight: 500;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+        }
+        VerticalLayout {
+            alignment: center;
+            Dots {
+                name: root.item.name;
+                clicked => { root.open-menu(); }
+            }
+        }
+    }
+    menu := ClipMenu {
+        width: parent.width;
+        height: parent.height;
+        item: root.item;
+        merge-count: root.picked ? Main.picked-count : 0;
+        projects: Main.projects;
+        project: Main.project;
+        window-h: root.window-h;
+        merge => { Main.start-merge(); root.go(5); }
+        open => { Main.open-clip(root.index); root.go(1); }
+        rename => { root.ask-rename(root.index); }
+        export(kind) => { Main.selected = root.index; Main.export-as(kind); root.refocus(); }
+        delete => { root.ask-delete(root.index); }
+        move-to(p) => { Main.move-clip(root.index, p); root.refocus(); }
+    }
+}
+
+// The LED of a pad, or a step of the footer: off, orange, or white (on a lit pad).
+component Led inherits Rectangle {
+    in property <int> lamp;
+    in property <bool> small;
+    width: root.small ? 5px : 6px;
+    height: self.width;
+    Art {
+        x: -6px;
+        y: -6px;
+        width: parent.width + 12px;
+        height: parent.height + 12px;
+        lo: root.small ? (root.lamp == 1 ? @image-url("dv-synth/step-on.png") : @image-url("dv-synth/step-off.png"))
+            : root.lamp == 1 ? @image-url("dv-synth/led-on.png") : root.lamp == 2 ? @image-url("dv-synth/led-w.png") : @image-url("dv-synth/led-off.png");
+        hi: root.small ? (root.lamp == 1 ? @image-url("dv-synth/step-on@2x.png") : @image-url("dv-synth/step-off@2x.png"))
+            : root.lamp == 1 ? @image-url("dv-synth/led-on@2x.png") : root.lamp == 2 ? @image-url("dv-synth/led-w@2x.png") : @image-url("dv-synth/led-off@2x.png");
+    }
+}
+
+// One clip in a wide window: a pad that plays or pauses it (lit orange on the
+// highlighted clip), with its number, LED and waveform; under it the name, the menu,
+// when it was made, the length, and TRANSCRIBED or "+ system".
+component Pad inherits Rectangle {
+    in property <int> index;
+    in property <ClipRow> item;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    property <bool> selected: root.index == Main.selected;
+    property <bool> picked: Main.picked[root.index];
+    property <bool> active: root.index == Main.active-clip;
+    property <bool> lit: root.selected || root.picked;
+    property <bool> playing: root.active && Main.playing;
+    property <length> face-h: max(40px, root.height - 60px);
+    accessible-role: list-item;
+    accessible-label: root.item.name + ", " + root.item.duration;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected || root.picked;
+    accessible-action-default => { root.select(false, false); }
+    function select(ctrl: bool, shift: bool) {
+        Main.pick(root.index, ctrl, shift);
+        root.refocus();
+    }
+    function open-menu() {
+        menu.show-at(root.width - 210px, root.face-h + 9px + 24px);
+    }
+    // The pad: its shadow (or orange glow), the hard lip under it, then the face. Its
+    // gradient is square, so the rounded ends are solid caps of its two colours.
+    face := Rectangle {
+        y: face-touch.pressed ? 1px : 0;
+        height: root.face-h;
+        Image {
+            x: root.selected ? -20px : -12px;
+            y: root.selected ? -20px : -12px;
+            width: parent.width + (root.selected ? 40px : 24px);
+            height: parent.height + (root.selected ? 40px : 24px);
+            source: root.selected ? @image-url("dv-synth/pad-glow.png", nine-slice(30 30 30 30)) : @image-url("dv-synth/pad-shade.png", nine-slice(22 22 22 22));
+            accessible-role: none;
+        }
+        Rectangle {
+            y: 2px;
+            border-radius: 10px;
+            background: root.lit ? #a8360b : #b3afa5;
+        }
+        Rectangle {
+            y: 0;
+            height: 10px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            background: root.lit ? #ff6a30 : #f6f5f1;
+        }
+        Rectangle {
+            y: 10px;
+            height: parent.height - 20px;
+            background: root.lit ? @linear-gradient(180deg, #ff6a30 0%, #e94a12 100%) : @linear-gradient(180deg, #f6f5f1 0%, #e6e4de 100%);
+        }
+        Rectangle {
+            y: parent.height - 10px;
+            height: 10px;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            background: root.lit ? #e94a12 : #e6e4de;
+        }
+        Rectangle {
+            visible: !root.lit;
+            border-radius: 10px;
+            border-width: 1px;
+            border-color: #d2cfc7;
+        }
+        Rectangle {
+            x: 7px;
+            y: root.lit ? 0 : 1px;
+            width: parent.width - 14px;
+            height: 1px;
+            background: root.lit ? #ff9a6e : #ffffff;
+        }
+        Rectangle {
+            visible: face-touch.has-hover;
+            border-radius: 10px;
+            background: face-touch.pressed ? #00000014 : root.lit ? #ffffff1a : #00000008;
+        }
+        Text {
+            x: 10px;
+            y: 9px;
+            height: 10px;
+            text: (root.index < 9 ? "0" : "") + (root.index + 1);
+            color: root.lit ? #ffffffb3 : #2a2a28b3;
+            font-family: "JetBrains Mono";
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Led {
+            x: parent.width - 10px - 6px;
+            y: 11px;
+            lamp: root.lit && (root.selected || root.playing) ? 2 : root.selected || root.playing ? 1 : 0;
+        }
+        face-touch := TouchArea {
+            mouse-cursor: pointer;
+            pointer-event(e) => {
+                if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                    // Ctrl or Shift picks it, as on a row; a plain click plays or pauses it.
+                    if (e.modifiers.control || e.modifiers.shift) {
+                        root.select(e.modifiers.control, e.modifiers.shift);
+                    } else {
+                        Tips.hide();
+                        Main.play-clip(root.index);
+                        root.refocus();
+                    }
+                }
+                if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                    menu.show-at(self.mouse-x, self.mouse-y);
+                }
+            }
+        }
+        // The play key in the middle, for screen readers the pad's button.
+        Rectangle {
+            x: (parent.width - 18px) / 2;
+            y: (parent.height - 9px) / 2 - 9px;
+            width: 18px;
+            height: 18px;
+            accessible-role: button;
+            accessible-label: (root.playing ? "Pause " : "Play ") + root.item.name;
+            accessible-action-default => { Main.play-clip(root.index); }
+            Glyph {
+                name: root.playing ? "pause" : "play";
+                tint: root.lit ? #ffffff : Ps.key-ink;
+                width: 18px;
+                height: 18px;
+            }
+        }
+        property <bool> hovering: face-touch.has-hover;
+        changed hovering => { Tips.hover(self.hovering, root.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+        // The waveform: a click on the highlighted clip moves its start, a double click
+        // plays from there.
+        if root.face-h >= 70px: Wave {
+            x: 10px;
+            y: parent.height - 10px - 18px;
+            width: parent.width - 24px;
+            height: 18px;
+            n: max(8, round((parent.width - 24px) / 106px * 17));
+            values: root.item.wave;
+            ink: root.lit ? #ffffffe6 : #2b2a2873;
+            played: root.lit ? #a8360b : Ps.ink;
+            progress: root.active ? Main.play-fraction : -1;
+            WaveSeek {
+                selected: root.selected;
+                active: root.active;
+                select(ctrl, shift) => { root.select(ctrl, shift); }
+                cue(f) => { Main.cue-clip(root.index, f); root.refocus(); }
+                play-at(f) => { Main.play-clip-at(root.index, f); root.refocus(); }
+                menu(x, y) => { menu.show-at(x - root.absolute-position.x, y - root.absolute-position.y); }
+            }
+        }
+    }
+    // The label under the pad: a click highlights the clip, a double click opens it.
+    label-touch := TouchArea {
+        y: root.face-h;
+        height: root.height - root.face-h;
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                root.select(e.modifiers.control, e.modifiers.shift);
+            }
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                menu.show-at(self.mouse-x, root.face-h + self.mouse-y);
+            }
+        }
+        double-clicked => { root.select(false, false); Main.open-clip(root.index); root.go(1); }
+    }
+    HorizontalLayout {
+        x: 2px;
+        y: root.face-h + 9px;
+        width: parent.width - 4px;
+        height: 20px;
+        spacing: 6px;
+        Text {
+            text: root.item.name;
+            color: root.active ? Ps.or2 : Ps.ink;
+            font-family: "Inter Tight";
+            font-size: 13px;
+            font-weight: 600;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+        Dots {
+            name: root.item.name;
+            clicked => { root.open-menu(); }
+        }
+    }
+    HorizontalLayout {
+        x: 2px;
+        y: root.face-h + 33px;
+        width: parent.width - 4px;
+        height: 11px;
+        spacing: 6px;
+        When {
+            item: root.item;
+            tags: false;
+            horizontal-stretch: 1;
+        }
+        Text {
+            text: root.item.duration;
+            color: Ps.ink;
+            font-family: "JetBrains Mono";
+            font-size: 11px;
+            font-weight: 500;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+            horizontal-stretch: 0;
+        }
+    }
+    HorizontalLayout {
+        x: 2px;
+        y: root.face-h + 49px;
+        width: parent.width - 4px;
+        height: 12.5px;
+        spacing: 5px;
+        alignment: start;
+        if root.item.transcribed: Tag { }
+        if root.item.has-system: Text {
+            text: "+ system";
+            color: Ps.mute;
+            font-family: "JetBrains Mono";
+            font-size: 9px;
+            font-weight: 500;
+            letter-spacing: 0.36px;
+            vertical-alignment: center;
+        }
+    }
+    menu := ClipMenu {
+        width: parent.width;
+        height: parent.height;
+        item: root.item;
+        merge-count: root.picked ? Main.picked-count : 0;
+        projects: Main.projects;
+        project: Main.project;
+        window-h: root.window-h;
+        merge => { Main.start-merge(); root.go(5); }
+        open => { Main.open-clip(root.index); root.go(1); }
+        rename => { root.ask-rename(root.index); }
+        export(kind) => { Main.selected = root.index; Main.export-as(kind); root.refocus(); }
+        delete => { root.ask-delete(root.index); }
+        move-to(p) => { Main.move-clip(root.index, p); root.refocus(); }
+    }
+}
+
+// A search result: the clip (and its project when all are searched, extra hits as +2),
+// then the words around the match with the match in orange.
+component Hit inherits Rectangle {
+    in property <SearchHit> hit;
+    in property <bool> show-project;
+    callback clicked;
+    height: 44px;
+    accessible-role: button;
+    accessible-label: root.hit.clip + ", " + root.hit.before + " " + root.hit.matched + " " + root.hit.after;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        visible: t.has-hover;
+        border-radius: 6px;
+        background: #00000008;
+    }
+    Rectangle {
+        x: 4px;
+        y: parent.height - 1px;
+        width: parent.width - 8px;
+        height: 1px;
+        background: #0000000f;
+    }
+    VerticalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        alignment: center;
+        spacing: 4px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: root.hit.clip;
+                color: Ps.ink;
+                font-family: "Inter Tight";
+                font-size: 12.5px;
+                font-weight: 600;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if root.show-project: Silk {
+                text: root.hit.project.to-uppercase();
+                accessible-role: text;
+                accessible-label: root.hit.project;
+            }
+            if root.hit.more > 0: Text {
+                text: "+" + root.hit.more;
+                color: Ps.or2;
+                font-family: "JetBrains Mono";
+                font-size: 10px;
+                font-weight: 700;
+                vertical-alignment: center;
+            }
+        }
+        if root.hit.matched != "": HorizontalLayout {
+            spacing: 4px;
+            if root.hit.before != "": Text {
+                text: root.hit.before;
+                color: Ps.mute;
+                font-family: "JetBrains Mono";
+                font-size: 10px;
+                font-weight: 500;
+                horizontal-stretch: 0;
+            }
+            Text {
+                text: root.hit.matched;
+                color: Ps.or2;
+                font-family: "JetBrains Mono";
+                font-size: 10px;
+                font-weight: 700;
+                horizontal-stretch: 0;
+            }
+            Text {
+                text: root.hit.after;
+                color: Ps.mute;
+                font-family: "JetBrains Mono";
+                font-size: 10px;
+                font-weight: 500;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The search results, or "No matches".
+component Hits inherits Scroller {
+    callback go(int);
+    VerticalLayout {
+        alignment: start;
+        if Main.hits.length == 0: Text {
+            height: 40px;
+            text: "No matches";
+            color: Ps.mute;
+            font-family: "JetBrains Mono";
+            font-size: 11px;
+            font-weight: 500;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        for h[i] in Main.hits: Hit {
+            hit: h;
+            show-project: Main.search-all;
+            clicked => { Main.open-hit(i); root.go(1); }
+        }
+    }
+}
+
+// The footer: the transport key 13, the screen with the clip in the player (else the
+// highlighted one, else nothing) and its time, and the step LEDs as its progress; a
+// click on the steps jumps there.
+component Player inherits Rectangle {
+    in property <bool> big;
+    callback refocus();
+    property <int> shown: Main.active-clip >= 0 && Main.active-clip < Main.clips.length ? Main.active-clip
+        : Main.selected >= 0 && Main.selected < Main.clips.length ? Main.selected : -1;
+    property <bool> is-active: self.shown >= 0 && self.shown == Main.active-clip;
+    property <float> at: root.is-active ? clamp(Main.play-fraction, 0, 1) : 0;
+    property <string> pos: root.shown < 0 ? "--:--" : root.is-active ? Main.play-position : "0:00";
+    property <string> len: root.shown < 0 ? "--:--" : Main.clips[root.shown].duration;
+    property <length> key-w: root.big ? 46px : 38px;
+    property <length> key-h: root.big ? 40px : 36px;
+    property <length> pad-x: root.big ? 20px : 16px;
+    property <length> lcd-x: root.pad-x + root.key-w + 12px;
+    property <length> lcd-w: root.big ? 250px : root.width - root.lcd-x - root.pad-x;
+    property <length> steps-x: root.big ? root.lcd-x + 250px + 12px : root.lcd-x + 2px;
+    property <length> steps-w: root.big ? root.width - root.pad-x - root.steps-x : root.lcd-w - 4px;
+    property <length> steps-y: root.big ? 29px : 43.5px;
+    // As many steps as fit at the mockup's spacing (24 in portrait, 48 wide).
+    property <int> n: max(8, floor((root.steps-w - 5px) / 13.3px) + 1);
+    property <int> lit: round(root.at * root.n);
+    vertical-stretch: 0;
+    height: root.big ? 62px : 60px;
+    Rectangle { background: @linear-gradient(180deg, #00000005 0%, #0000000d 100%); }
+    Rectangle { y: 0; height: 1px; background: Ps.edge; }
+    // The transport key.
+    Rectangle {
+        x: root.pad-x;
+        y: (root.height - root.key-h) / 2;
+        width: root.key-w;
+        height: root.key-h;
+        accessible-role: button;
+        accessible-label: root.is-active && Main.playing ? "Pause" : "Play";
+        accessible-enabled: root.shown >= 0;
+        accessible-action-default => { if (root.shown >= 0) { Main.play-clip(root.shown); } }
+        Rectangle {
+            y: play.pressed ? 1px : 0;
+            opacity: root.shown >= 0 ? 1 : 0.85;
+            Art {
+                x: -12px;
+                y: -12px;
+                width: parent.width + 24px;
+                height: parent.height + 24px;
+                lo: root.big ? @image-url("dv-synth/dk-w.png") : @image-url("dv-synth/dk-p.png");
+                hi: root.big ? @image-url("dv-synth/dk-w@2x.png") : @image-url("dv-synth/dk-p@2x.png");
+            }
+            Rectangle {
+                visible: play.has-hover && root.shown >= 0;
+                border-radius: 8px;
+                background: #ffffff12;
+            }
+            Text {
+                x: root.big ? 5px : 4px;
+                y: root.big ? 4px : 3px;
+                height: 7px;
+                text: "13";
+                color: #ecebe699;
+                font-family: "JetBrains Mono";
+                font-size: 7px;
+                font-weight: 700;
+                letter-spacing: 0.42px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            Glyph {
+                name: root.is-active && Main.playing ? "pause" : "play";
+                tint: #ecebe6;
+                width: 15px;
+                height: 15px;
+            }
+        }
+        property <bool> hovering: play.has-hover;
+        changed hovering => { Tips.hover(self.hovering, root.is-active && Main.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+        play := TouchArea {
+            enabled: root.shown >= 0;
+            mouse-cursor: pointer;
+            clicked => { Tips.hide(); Main.play-clip(root.shown); root.refocus(); }
+        }
+    }
+    // The screen.
+    Rectangle {
+        x: root.lcd-x;
+        y: root.big ? 16px : 12.5px;
+        width: root.lcd-w;
+        height: root.big ? 30px : 24px;
+        Lcd { short: !root.big; }
+        HorizontalLayout {
+            padding-left: 10px;
+            padding-right: 10px;
+            spacing: 10px;
+            Text {
+                text: root.shown >= 0 ? Main.clips[root.shown].name : "Nothing playing";
+                color: Ps.px;
+                font-family: "JetBrains Mono";
+                font-size: 11px;
+                font-weight: 500;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            Text {
+                horizontal-stretch: 0;
+                text: root.pos + " / " + root.len;
+                color: Ps.px;
+                font-family: "JetBrains Mono";
+                font-size: 11px;
+                font-weight: 500;
+                vertical-alignment: center;
+                accessible-role: AccessibleRole.text;
+                accessible-label: root.shown < 0 ? "" : root.pos + " of " + root.len;
+            }
+        }
+    }
+    // The step LEDs: lit up to how far the clip has played.
+    Rectangle {
+        x: root.steps-x;
+        y: root.steps-y;
+        width: root.steps-w;
+        height: 5px;
+        for i in root.n: Led {
+            small: true;
+            x: i * (root.steps-w - 5px) / max(1, root.n - 1);
+            y: 0;
+            lamp: i < root.lit ? 1 : 0;
+        }
+        // Click to jump; taller than the steps so they are easy to hit.
+        TouchArea {
+            y: -8px;
+            height: parent.height + 16px;
+            enabled: root.shown >= 0;
+            mouse-cursor: pointer;
+            clicked => {
+                Main.selected = root.shown;
+                Main.seek-fraction(clamp(self.mouse-x / self.width, 0, 1));
+                root.refocus();
+            }
+        }
+    }
+    // The screws in the corners.
+    Art {
+        x: root.big ? 8px : 7px;
+        y: root.height - (root.big ? 17px : 16px);
+        width: 9px;
+        height: 9px;
+        lo: @image-url("dv-synth/screw.png");
+        hi: @image-url("dv-synth/screw@2x.png");
+    }
+    Art {
+        x: root.width - (root.big ? 17px : 16px);
+        y: root.height - (root.big ? 17px : 16px);
+        width: 9px;
+        height: 9px;
+        lo: @image-url("dv-synth/screw.png");
+        hi: @image-url("dv-synth/screw@2x.png");
+    }
+}
+
+// The main page. Portrait: the title bar, the recorder, the toolbar, the clip rows and
+// the footer, top to bottom. Wide: the recorder on the left, the toolbar and the pad
+// bank on the right, between the title bar and the footer.
+export component MainPage inherits Rectangle {
+    // The window's size classes, as AppWindow works them out.
+    in property <bool> narrow;
+    in property <bool> wide;
+    in property <bool> tall;
+    // Opens page p (see AppWindow.page).
+    callback go(int);
+    // The rename and delete questions for clip i.
+    callback ask-rename(int);
+    callback ask-delete(int);
+    // Gives the keyboard back to the window's shortcuts.
+    callback refocus();
+
+    // The pad bank shows two rows of four (one bank of eight) in its room, three in a
+    // tall window; a row of pads is `pitch` high with the gap under it.
+    property <length> bank-h: 460px;
+    property <int> bank-rows: root.bank-h >= 780px ? 3 : 2;
+    property <length> pad-pitch: root.bank-h / root.bank-rows;
+    property <length> pitch: root.wide ? root.pad-pitch : 33px;
+    init => { Main.row-h = root.pitch; }
+    changed pitch => { Main.row-h = root.pitch; Main.clamp-list(); }
+    property <int> top-row: round(-Main.list-y / max(1px, root.pad-pitch));
+
+    background: Ps.body;
+    // The brushed aluminium: a light line every 3px.
+    Image {
+        width: 100%;
+        height: 100%;
+        source: @image-url("dv-synth/brush.png");
+        horizontal-tiling: repeat;
+        vertical-tiling: repeat;
+        horizontal-alignment: left;
+        vertical-alignment: top;
+        accessible-role: none;
+    }
+    VerticalLayout {
+        Title {
+            big: root.wide;
+            go(p) => { root.go(p); }
+        }
+        if !root.wide: RecorderFront {
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+        if !root.wide: Toolbar {
+            avail: root.width;
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+        if !root.wide: Rectangle { height: 1px; background: Ps.edge; }
+        if !root.wide: HorizontalLayout {
+            vertical-stretch: 1;
+            padding-left: 12px;
+            padding-right: 12px;
+            padding-top: 4px;
+            if Main.query != "": Hits { go(p) => { root.go(p); } }
+            if Main.query == "": Scroller {
+                content-y <=> Main.list-y;
+                property <int> count: Main.clips.length;
+                init => { Main.list-height = self.visible-height; Main.clamp-list(); }
+                changed visible-height => { Main.list-height = self.visible-height; Main.clamp-list(); }
+                changed count => { Main.clamp-list(); }
+                VerticalLayout {
+                    alignment: start;
+                    if Main.clips.length == 0: Text {
+                        height: 40px;
+                        text: "No clips";
+                        color: Ps.mute;
+                        font-family: "JetBrains Mono";
+                        font-size: 11px;
+                        font-weight: 500;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    for clip[i] in Main.clips: Row {
+                        index: i;
+                        item: clip;
+                        window-h: root.height;
+                        row-w: root.width - 24px;
+                        go(p) => { root.go(p); }
+                        ask-rename(n) => { root.ask-rename(n); }
+                        ask-delete(n) => { root.ask-delete(n); }
+                        refocus => { root.refocus(); }
+                    }
+                }
+            }
+        }
+        if root.wide: HorizontalLayout {
+            vertical-stretch: 1;
+            RecorderSide {
+                go(p) => { root.go(p); }
+                refocus => { root.refocus(); }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                Toolbar {
+                    big: true;
+                    avail: root.width - 392px;
+                    bank-index: floor(root.top-row * 4 / 8);
+                    go(p) => { root.go(p); }
+                    refocus => { root.refocus(); }
+                }
+                HorizontalLayout {
+                    vertical-stretch: 1;
+                    padding-left: 20px;
+                    padding-right: 20px;
+                    padding-top: 6px;
+                    if Main.query != "": Hits { go(p) => { root.go(p); } }
+                    if Main.query == "": bank := Scroller {
+                        content-y <=> Main.list-y;
+                        property <int> count: Main.clips.length;
+                        // Four pads across with 16px between them.
+                        property <length> pad-w: (self.visible-width - 3 * 16px) / 4;
+                        init => { root.bank-h = self.visible-height; Main.list-height = self.visible-height; Main.clamp-list(); }
+                        changed visible-height => { root.bank-h = self.visible-height; Main.list-height = self.visible-height; Main.clamp-list(); }
+                        changed count => { Main.clamp-list(); }
+                        Rectangle {
+                            x: 0;
+                            y: 0;
+                            width: bank.visible-width;
+                            height: ceil(Main.clips.length / 4) * root.pad-pitch;
+                            if Main.clips.length == 0: Text {
+                                y: 0;
+                                height: 40px;
+                                text: "No clips";
+                                color: Ps.mute;
+                                font-family: "JetBrains Mono";
+                                font-size: 11px;
+                                font-weight: 500;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                            for clip[i] in Main.clips: Pad {
+                                x: Math.mod(i, 4) * (bank.pad-w + 16px);
+                                y: floor(i / 4) * root.pad-pitch;
+                                width: bank.pad-w;
+                                height: root.pad-pitch - 18px;
+                                index: i;
+                                item: clip;
+                                window-h: root.height;
+                                go(p) => { root.go(p); }
+                                ask-rename(n) => { root.ask-rename(n); }
+                                ask-delete(n) => { root.ask-delete(n); }
+                                refocus => { root.refocus(); }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // An export from the clip menu or the project menu: what it is, how far along,
+        // and a check when done. It takes its own room above the footer.
+        if Main.export-state != 0: Rectangle {
+            vertical-stretch: 0;
+            height: 30px;
+            Rectangle { y: 0; height: 1px; background: Ps.edge; }
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                spacing: 10px;
+                if Main.export-state == 2: VerticalLayout {
+                    alignment: center;
+                    Glyph {
+                        name: "check";
+                        tint: Ps.or2;
+                        width: 12px;
+                        height: 12px;
+                    }
+                }
+                Text {
+                    text: (Main.export-state == 2 ? "Exported " : "Exporting ") + Main.export-name;
+                    color: Ps.ink;
+                    font-family: "JetBrains Mono";
+                    font-size: 11px;
+                    font-weight: 500;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+                if Main.export-state == 1: VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 120px;
+                        height: 4px;
+                        border-radius: 2px;
+                        background: Ps.edge;
+                        Rectangle {
+                            x: 0;
+                            width: parent.width * clamp(Main.export-progress, 0, 1);
+                            border-radius: 2px;
+                            background: Ps.or;
+                        }
+                    }
+                }
+                if Main.export-state == 1: Text {
+                    text: round(Main.export-progress * 100) + "%";
+                    color: Ps.mute;
+                    font-family: "JetBrains Mono";
+                    font-size: 10px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                    width: 34px;
+                    horizontal-alignment: right;
+                }
+            }
+        }
+
+        Player {
+            big: root.wide;
+            refocus => { root.refocus(); }
+        }
+    }
+
+    // Messages float just above the footer, so nothing moves when they come and go.
+    if Main.status != "": Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - (root.wide ? 62px : 60px) - self.height - 10px;
+        width: min(msg.preferred-width + 28px, parent.width - 32px);
+        height: 28px;
+        border-radius: 6px;
+        background: #0b0c0cf2;
+        border-width: 1px;
+        border-color: #9a968c;
+        msg := Text {
+            text: Main.status;
+            color: Ps.px;
+            font-family: "JetBrains Mono";
+            font-size: 11px;
+            font-weight: 500;
+            overflow: elide;
+            x: 14px;
+            width: parent.width - 28px;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+}

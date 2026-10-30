@@ -4272,7 +4272,7 @@ export component Scroller inherits Rectangle {
             moved => { if (self.pressed) { self.follow(); } }
         }
     }
-    if root.bar && !root.ink-rail && root.range > 1px: Rectangle {
+    if root.bar && !root.bar95 && !root.ink-rail && root.range > 1px: Rectangle {
         x: parent.width - self.width - 2px;
         y: (-fl.content-y / root.range) * (fl.height - root.thumb-h);
         width: drag.has-hover || drag.pressed ? 6px : 3px;

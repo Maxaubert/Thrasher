@@ -1,0 +1,48 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:"Anton";src:url(../../crates/thrasher-app/ui/fonts/Anton-400.ttf)}
+:root{--p1:#ff2d4a;--p1d:#9c0f25;--gold:#ffcc1f}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+#a{position:absolute;left:0;top:0;overflow:hidden}
+/* The parts, as in the mockup (docs/mockups/device-themes/x-fighter.html). */
+.rec{position:absolute;display:grid;place-items:center}
+.rec .dia{position:absolute;transform:rotate(45deg);background:linear-gradient(135deg,#ff5a6e,var(--p1) 45%,#a3001a);
+  border:3px solid #000;outline:2px solid var(--gold);box-shadow:inset 0 -6px 0 rgba(0,0,0,.25),inset 0 4px 0 rgba(255,255,255,.25)}
+.rec.stop .dia{background:linear-gradient(135deg,#ffe066,var(--gold) 45%,#c77a00)}
+.rec svg{position:relative}
+.rec .rl{position:absolute;font-family:"Anton";letter-spacing:2px;color:#fff;font-size:12px;bottom:-4px;
+  background:#000;padding:0 6px;transform:skewX(-12deg);line-height:normal}
+.stagebg{position:absolute;inset:0;
+  background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.7) 100%),radial-gradient(70% 45% at 50% 62%,rgba(255,45,74,.28),transparent 70%),#110e20}
+.floor{position:absolute;left:0;right:0;bottom:0;height:120px;
+  background:repeating-linear-gradient(90deg,rgba(255,204,31,.12) 0 2px,transparent 2px 46px);transform:perspective(200px) rotateX(55deg);transform-origin:bottom}
+.selbg{position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 0%,#221a44 0%,#0d0b16 70%)}
+</style></head><body><div id="a"></div>
+<script>
+// One part of the Fighter Select mockup alone on a transparent page, for cutting into
+// PNGs: ?el=name&w=css-width&h=css-height (sh tools/skin-art/cut.sh x-fighter OUT).
+// The text, the meters, the tiles, the fighters (paths) and the skewed boxes are drawn
+// live in Slint (ui/skins/x-fighter.slint); only what the software renderer cannot draw
+// is cut here: the turned record diamond, the stage's soft glow and its floor in
+// perspective, and the select panel's elliptic glow.
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+const mic = (s) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="#fff"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5M8 21.5h8"/></svg>`;
+const stop = (s) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" fill="#000"/></svg>`;
+// The FIGHT diamond (STOP while recording): the box of the mockup's .rec, centred in the cut.
+const rec = (box, dia, icon, word, font, bottom, stopped) => {
+  const m = (W - box) / 2;
+  a.innerHTML = `<div class="rec${stopped ? ' stop' : ''}" style="left:${m}px;top:${(H - box) / 2 - 3}px;width:${box}px;height:${box}px">
+    <div class="dia" style="width:${dia}px;height:${dia}px"></div>${stopped ? stop(icon) : mic(icon)}
+    <div class="rl" style="font-size:${font}px;bottom:${bottom}px">${word}</div></div>`;
+};
+if (el === 'rec-p') rec(78, 52, 26, 'FIGHT', 12, -4, false);
+if (el === 'stop-p') rec(78, 52, 26, 'STOP', 12, -4, true);
+if (el === 'rec-w') rec(150, 96, 46, 'FIGHT', 16, 2, false);
+if (el === 'stop-w') rec(150, 96, 46, 'STOP', 16, 2, true);
+if (el === 'stage') a.innerHTML = '<div class="stagebg"></div>';
+if (el === 'floor') a.innerHTML = '<div class="floor"></div>';
+if (el === 'selbg') a.innerHTML = '<div class="selbg"></div>';
+</script></body></html>

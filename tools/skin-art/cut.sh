@@ -7,6 +7,7 @@
 #   sh tools/skin-art/cut.sh px-quest OUT_DIR (the Quest Menu, into ui/skins/px-quest/)
 #   sh tools/skin-art/cut.sh dv-brick OUT_DIR (the Brick Phone, into ui/skins/dv-brick/)
 #   sh tools/skin-art/cut.sh dv-synth OUT_DIR (the Pocket Synth, into ui/skins/dv-synth/)
+#   sh tools/skin-art/cut.sh x-fighter OUT_DIR (Fighter Select, into ui/skins/x-fighter/)
 #
 # reads tools/skin-art/<skin>.html and the piece list below, and writes OUT_DIR/<name>.png
 # and OUT_DIR/<name>@2x.png. Copy the ones the skin uses to crates/thrasher-app/ui/skins/<skin>/.
@@ -97,6 +98,10 @@ dv-synth) PIECES="oled-p-l:oled-p-l:26:116 oled-p-m:oled-p-m:2:116 oled-p-r:oled
   led-off:led-off:18:18 led-on:led-on:18:18 led-w:led-w:18:18 step-off:led-off:17:17 step-on:led-on:17:17
   tbtn:tbtn:26:26 dots:dots:24:24 screw:screw:9:9 knob-44:knob-44:52:52 knob-62:knob-62:70:70 knob-30:knob-30:38:38
   knob-32:knob-32:40:40 grille:grille:277:10 brush:brush:3:1" ;;
+# Fighter Select: the record diamond (FIGHT, and STOP while recording) at both sizes,
+# the floor at 1x and 2x; the soft glows (stage, selbg) are used at 1x only, stretched.
+x-fighter) PIECES="rec-p:rec-p:96:96 stop-p:stop-p:96:96 rec-w:rec-w:170:170 stop-w:stop-w:170:170
+  floor:floor:480:120 stage:stage:200:280 selbg:selbg:240:200" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 

@@ -341,7 +341,7 @@ are the classic ones in a white aluminium and orange palette (`Theme.pages` 0).
   jumps).
 - The PROJ knob opens the project menu, like its screen. The IN knob only shows: the
   microphone is picked in Settings, as in the classic look, so the main page gains no option.
-- `Main.cols` (4 for the wide pad bank, else 1) makes the arrow keys and `clamp-list` scroll by
+- `Main.list-cols` (4 for the wide pad bank, else 1; shared with Fighter Select) makes the arrow keys and `clamp-list` scroll by
   rows of pads; `AppWindow.move-selection` uses it. Up and Down still step one clip.
 - Only the status square moves: it blinks while recording (`RECORDING_FPS` 4, `EFFECT_FPS` 0).
 - Fonts: "Synth Figures", Doto 700 (OFL, no Reserved Font Name) as a static instance with only
@@ -351,7 +351,7 @@ are the classic ones in a white aluminium and orange palette (`Theme.pages` 0).
 
 **Lessons from the Pocket Synth:**
 - **A grid list needs its row count:** keyboard scrolling worked out `selected * row-h`, which
-  is wrong for four clips to a row. `Main.cols` comes from `Theme.skin` and `Win.width`, not
+  is wrong for four clips to a row. `Main.list-cols` comes from `Theme.skin` and `Win.width`, not
   from the page, so no other skin has to reset it when the theme changes.
 - **A pad in both directions:** its soft shadow and orange glow are nine-slice PNGs (outside the
   box only, as Spatial Glass); its body is drawn: a 2px lip under it, solid rounded caps as tall
@@ -384,6 +384,70 @@ are the classic ones in a white aluminium and orange palette (`Theme.pages` 0).
 - Exe +2.34 MB (65.61 to 67.96 MB): art 0.15 MB, font 7 KB, the rest generated code. Ember, Tape
   Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700 match pixel for
   pixel before and after.
+**Built in step 5, Fighter Select main page (2026-10-30):** `ui/skins/x-fighter.slint` (skin 12,
+theme "Fighter Select", index 19 in `Theme.names`, after Pocket Synth), art in `ui/skins/x-fighter/` (12 PNGs, 0.10 MB) from
+`tools/skin-art/x-fighter.html` (`sh tools/skin-art/cut.sh x-fighter OUT`). Its other pages are
+the classic ones in its violet palette (`Theme.pages` 0).
+- Settings gallery: its tile is the Fighter Select line in `Gallery.devices` (`ui/gallery.slint`), band #d63a2a.
+- The recorder is P1's HUD: the microphone, the health bar (the live level in gold over a red
+  peak that falls behind it, -60 to 0 dB), the round clock and READY (RECORDING, PAUSED), and
+  FIGHT, the turned record diamond (a gold STOP while recording). Wide windows make it the fight
+  stage on the left, with a fighter, the floor and a faint VS. The Stage chip is the project
+  picker (its STAGE word is left out when the toolbar is squeezed); while recording, Import is
+  PAUSE and RESUME (Import is not offered then).
+- The clips are a select grid of fighter tiles: the mockup's eight stick fighters and backdrops by
+  clip number, TRANSCRIBED, play, the name plate (the name on one or two lines, when it was made
+  with "+ system", on a line of its own when the tile is narrow, the waveform, the length, the
+  menu). The highlighted clip has the P1 cursor;
+  it and the picked ones have a red frame and plate. Columns as fit tiles of about 86 px
+  (portrait) or 130 px (wide), rows as tall as fill the view. Up and Down still step one clip.
+- The footer is REPLAY with a four segment super meter; LV is how many segments are full.
+- Only the P1 cursor and the status dot move, blinking while recording (`RECORDING_FPS` 4).
+- Fonts (48 KB): Anton (OFL, no Reserved Font Name, Latin subset; its 5 has a flat top and a
+  square corner), "Fighter Oblique" (Anton's ASCII leaned 10 degrees) and "Fighter Figures" (the
+  timer's characters with the 1 widened to the other digits), all from
+  `python tools/skin-art/x-fighter-fonts.py SRC OUT`; Chakra Petch 600 and 700 come from the
+  Brick Phone.
+- Shared, no visible change elsewhere: `Main.grid-cols` and `Main.list-cols` (clips per row of
+  the list, 1 for every skin but this one; `move-selection` and `clamp-list` scroll by rows) and
+  `TextField.bare-focus` (no accent edge or ring; the skin's own frame shows the focus).
+
+**Lessons from Fighter Select:**
+- **What changes while recording must stay out of the page's layout.** The clock, the status
+  word and the dB label sat in layouts beside the grid; every tick their bindings marked the
+  page's layout dirty (Slint passes the change on without comparing values), so every tile's
+  paths were drawn again: recording took 80% of a core at 1100x700. Fixed sizes on the texts
+  and `min-height`/`preferred-height` on the panel did not help. Drawing the HUD and the stage
+  over empty slots of the layout (siblings after it, placed by `x`/`y`) brought it to 8.9%.
+  A width that must follow a rare change (the timer passing an hour) is set in a `changed`
+  handler only when it differs, not bound.
+- **`Path { fit: preserve; }` takes its commands in px**, with no scaling and no shrinking by the
+  stroke. Skewed boxes of any width (chips, keys, the bars) keep the mockup's angle this way,
+  with commands built from the box's size; the health bar's fill is a band worked out from the
+  level (`F.band`).
+- **Slanted type is a font:** Slint cannot skew text, so Fighter Oblique leans Anton's outlines
+  by tan(10 degrees) with fontTools (`TransformPen` into `TTGlyphPen`, composites decomposed).
+  READY, RECORDING, the logo and CLIP SELECT stay live text instead of art.
+- **No smooth scaling in the software renderer** (Slint 1.18 picks the nearest pixel), so the
+  tile fighters are paths on the mockup's 100 unit box (a glow, a dark body, the head, an
+  extra), not pictures that would alias at every tile size. Their glow is the accent mixed
+  with the backdrop, as one opaque gradient, so crossing strokes do not brighten as two
+  see-through paths would.
+- **`max-height` did not stop a wrapping Text** in a VerticalLayout from taking three lines: the
+  plate measures the name on one line in a hidden Text and gives it one or two lines' height.
+- **Checks:** `SLINT_DEBUG_PERFORMANCE=refresh_lazy,console` prints frames per second to the
+  trace: every skin draws about 60 frames a second while recording, so what costs is how much
+  each frame covers. A temporary bit mask from an environment variable that hides parts of
+  the page found the cost in one build.
+
+**Budgets measured on Fighter Select** (test copy, 2.25x display, 10 s samples, 2026-10-30):
+- CPU idle 0.2% at 520x700 and 0.0% at 1100x700 (Ember 0.0% and 0.2%); recording 7.8% and 8.9%
+  (Ember 14.4% and 20.9%).
+- Working set idle 45.6 vs Ember 41.2 MB (+4.4), wide 54.2 vs 49.0 MB (+5.2); recording 49.5 vs
+  44.5 MB, wide 58.0 vs 52.5 MB.
+- Exe +2.33 MB (65.61 to 67.94 MB): fonts 48 KB, art 0.10 MB, the rest generated code. Ember,
+  Tape Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700 match
+  before and after.
 
 ### Recipe from the pilot (follow it for the other skins)
 

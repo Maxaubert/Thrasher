@@ -1,0 +1,1928 @@
+// The Fighter Select main page: the recorder as a fighting game select screen
+// (docs/mockups/device-themes/x-fighter.html). The level is P1's health bar, the timer the
+// round clock, FIGHT records; every clip is a fighter tile with a name plate in a select
+// grid, and the highlighted one has the P1 cursor. The toolbar's Stage chip picks the
+// project; the footer's Replay plays. Portrait windows put the HUD on top; wide ones put
+// the fight stage on the left and the select grid on the right.
+//
+// The mockup's skewed boxes are paths drawn here at their real size (fit: preserve), so the
+// slant keeps its angle at any width; its slanted type is Fighter Oblique, Anton with its
+// outlines leaned 10 degrees (tools/skin-art/x-fighter-fonts.py), since Slint cannot skew
+// text. The fighters are the mockup's stick figures as paths on its 100 unit box. Only the
+// turned record diamond, the stage's soft glow, its floor in perspective and the select
+// panel's elliptic glow are art, cut by `sh tools/skin-art/cut.sh x-fighter OUT`. Nothing
+// moves at rest; while recording the P1 cursor and the status dot blink on the Fx clock
+// (RECORDING_FPS 4), and the health bar follows the live level.
+
+import { Main, Tips, Fx, ProjectMenu, TextField, Scroller, ClipMenu, WaveSeek, ClipRow, SearchHit } from "../common.slint";
+
+// The mockup's colours and fonts.
+global F {
+    out property <color> ink: #07070d;
+    out property <color> bg: #0d0b16;
+    out property <color> panel: #15122a;
+    out property <color> panel2: #1d1838;
+    out property <color> line: #2c2650;
+    out property <color> edge: #3a3266;
+    out property <color> text: #f2eefc;
+    out property <color> text2: #cfc8ea;
+    out property <color> dim: #9a92bf;
+    out property <color> faint: #5e578a;
+    out property <color> p1: #ff2d4a;
+    out property <color> p1d: #9c0f25;
+    out property <color> gold: #ffcc1f;
+    out property <color> gold2: #ff8a00;
+    out property <color> cyan: #27e0ff;
+    out property <color> green: #3dff7a;
+    out property <string> body: "Chakra Petch";
+    out property <string> disp: "Anton";
+    out property <string> lean: "Fighter Oblique";
+    out property <string> figures: "Fighter Figures";
+    // tan of the mockup's skews: 14 degrees (chips, keys), 12 (the play keys), 24 (bars).
+    out property <float> k14: 0.2493;
+    out property <float> k12: 0.2126;
+    out property <float> k24: 0.4452;
+    // Dimmed every other half second while recording (the Fx clock steps four times a
+    // second and runs twice as fast then): the P1 cursor and the status dot blink.
+    out property <bool> blink: !Main.recording || Main.paused || Math.mod(Math.floor(Fx.t), 2) == 0;
+    // The live level, -60 dB (0) to 0 dB (1), and a slower peak behind it (the health
+    // bar's red lag): the loudest of the last half second.
+    property <int> n: Main.live.length;
+    out property <float> level: Main.recording && !Main.paused && root.n > 0 ? clamp(Main.live[root.n - 1], 0, 1) : 0;
+    out property <float> peak: Main.recording && !Main.paused && root.n >= 16
+        ? clamp(max(max(max(Main.live[root.n - 1], Main.live[root.n - 4]), max(Main.live[root.n - 8], Main.live[root.n - 12])), Main.live[root.n - 16]), 0, 1)
+        : root.level;
+    out property <string> db: Main.recording && !Main.paused ? round(root.level * 60 - 60) + " DB" : "-- DB";
+
+    // A band leaning `k` px across per px of height: from x `l` to `r` as they are on row
+    // `c`, between rows `t` and `b`. Path commands in px (fit: preserve).
+    public pure function band(l: float, r: float, t: float, b: float, k: float, c: float) -> string {
+        return "M " + (l + k * (c - t)) + " " + t + " L " + (r + k * (c - t)) + " " + t + " L " + (r + k * (c - b)) + " " + b + " L " + (l + k * (c - b)) + " " + b + " Z";
+    }
+}
+
+// The eight fighters of the mockup (its `poses` and fig()), on a 100 unit box: the torso,
+// the four limbs, the stroke width, the head and its glow, the eye, and one stroked extra
+// (a headband or a tail) and one filled (horns or a scarf).
+global Pose {
+    out property <[string]> torso: [
+        "M 50 31 L 48 58", "M 41 33 L 46 59", "M 40 34 L 50 59", "M 50 40 L 50 65",
+        "M 53 32 L 47 58", "M 46 34 L 50 60", "M 50 29 L 50 57", "M 48 33 L 49 60"
+    ];
+    out property <[string]> limbs: [
+        "M 50 34 L 35 44 L 40 30 M 50 34 L 64 42 L 73 31 M 48 58 L 36 76 L 28 96 M 48 58 L 61 77 L 70 96",
+        "M 42 36 L 29 45 L 24 35 M 42 36 L 56 32 L 63 24 M 46 59 L 44 78 L 40 97 M 46 59 L 68 49 L 90 33",
+        "M 40 37 L 61 37 L 86 35 M 40 37 L 31 50 L 41 45 M 50 59 L 36 77 L 27 97 M 50 59 L 63 77 L 72 97",
+        "M 50 43 L 29 52 L 25 39 M 50 43 L 71 52 L 75 39 M 50 65 L 33 80 L 29 97 M 50 65 L 67 80 L 71 97",
+        "M 53 35 L 38 30 L 30 18 M 53 35 L 66 46 L 60 56 M 47 58 L 38 77 L 34 97 M 47 58 L 58 78 L 66 97",
+        "M 46 37 L 60 46 L 78 46 M 46 37 L 34 48 L 26 58 M 50 60 L 38 78 L 24 92 M 50 60 L 64 74 L 74 97",
+        "M 50 32 L 38 22 L 46 10 M 50 32 L 62 22 L 54 10 M 50 57 L 40 77 L 38 97 M 50 57 L 60 77 L 62 97",
+        "M 48 36 L 34 46 L 22 42 M 48 36 L 62 46 L 74 40 M 49 60 L 37 79 L 33 97 M 49 60 L 60 79 L 66 97"
+    ];
+    out property <[float]> w: [9, 9, 9, 13, 8, 10, 8, 10];
+    out property <[string]> glow-head: [
+        "M 41.4 20 A 10.6 10.6 0 1 0 62.6 20 A 10.6 10.6 0 1 0 41.4 20 Z",
+        "M 27.4 23 A 10.6 10.6 0 1 0 48.6 23 A 10.6 10.6 0 1 0 27.4 23 Z",
+        "M 24.4 25 A 10.6 10.6 0 1 0 45.6 25 A 10.6 10.6 0 1 0 24.4 25 Z",
+        "M 35.8 29 A 14.2 14.2 0 1 0 64.2 29 A 14.2 14.2 0 1 0 35.8 29 Z",
+        "M 46.3 22 A 9.7 9.7 0 1 0 65.7 22 A 9.7 9.7 0 1 0 46.3 22 Z",
+        "M 32.5 24 A 11.5 11.5 0 1 0 55.5 24 A 11.5 11.5 0 1 0 32.5 24 Z",
+        "M 40.3 18 A 9.7 9.7 0 1 0 59.7 18 A 9.7 9.7 0 1 0 40.3 18 Z",
+        "M 36.5 23 A 11.5 11.5 0 1 0 59.5 23 A 11.5 11.5 0 1 0 36.5 23 Z"
+    ];
+    out property <[string]> head: [
+        "M 42.9 20 A 9.1 9.1 0 1 0 61.1 20 A 9.1 9.1 0 1 0 42.9 20 Z",
+        "M 28.9 23 A 9.1 9.1 0 1 0 47.1 23 A 9.1 9.1 0 1 0 28.9 23 Z",
+        "M 25.9 25 A 9.1 9.1 0 1 0 44.1 25 A 9.1 9.1 0 1 0 25.9 25 Z",
+        "M 37.3 29 A 12.7 12.7 0 1 0 62.7 29 A 12.7 12.7 0 1 0 37.3 29 Z",
+        "M 47.8 22 A 8.2 8.2 0 1 0 64.2 22 A 8.2 8.2 0 1 0 47.8 22 Z",
+        "M 34 24 A 10 10 0 1 0 54 24 A 10 10 0 1 0 34 24 Z",
+        "M 41.8 18 A 8.2 8.2 0 1 0 58.2 18 A 8.2 8.2 0 1 0 41.8 18 Z",
+        "M 38 23 A 10 10 0 1 0 58 23 A 10 10 0 1 0 38 23 Z"
+    ];
+    out property <[string]> eye: [
+        "M 50 19 L 55 19", "M 36 22 L 41 22", "M 33 24 L 38 24", "M 48 28 L 53 28",
+        "M 54 21 L 59 21", "M 42 23 L 47 23", "M 48 17 L 53 17", "M 46 22 L 51 22"
+    ];
+    // The stroked extra: a headband in the accent (1) or a black tail (2), or none (0).
+    out property <[int]> line-kind: [1, 2, 0, 0, 0, 1, 2, 0];
+    out property <[string]> line: [
+        "M 49 17 Q 38 14 32 22 M 49 18 Q 40 22 35 29",
+        "M 42 17 Q 56 19 54 39",
+        "M 0 0", "M 0 0", "M 0 0",
+        "M 41 21 Q 30 18 24 26 M 41 22 Q 32 26 27 33",
+        "M 54 12 Q 68 14 66 34",
+        "M 0 0"
+    ];
+    // The filled extra: black horns (1) or a scarf in the accent (2), or none (0).
+    out property <[int]> solid-kind: [0, 0, 0, 1, 2, 0, 0, 1];
+    out property <[string]> solid: [
+        "M 0 0", "M 0 0", "M 0 0",
+        "M 44 23 L 39 13 L 48 21 Z M 56 23 L 61 13 L 52 21 Z",
+        "M 51 32 Q 69 30 79 38 L 73 42 Q 63 36 53 35 Z",
+        "M 0 0", "M 0 0",
+        "M 42 17 L 37 7 L 46 15 Z M 54 17 L 59 7 L 50 15 Z"
+    ];
+    // The tiles' backdrops, top and bottom, and the fighter's accent, by clip number.
+    out property <[color]> top: [#3b1a6e, #7a0f22, #0b4a5c, #6a4a05, #163a8a, #0f5a2c, #5c1458, #7a3a08];
+    out property <[color]> low: [#120626, #1d0308, #031419, #1a1002, #050d22, #03160b, #160414, #1e0d02];
+    out property <[color]> accent: [#b98cff, #ff8a96, #6ff0ff, #ffd86b, #8fb4ff, #7dffa8, #ff8af2, #ffb36b];
+}
+
+// The mockup's icons on their own grids.
+global G {
+    out property <string> gear: "M 15.2 12 A 3.2 3.2 0 1 1 8.8 12 A 3.2 3.2 0 1 1 15.2 12 Z M 12 2 L 12 5 M 12 19 L 12 22 M 2 12 L 5 12 M 19 12 L 22 12 M 4.9 4.9 L 7 7 M 17 17 L 19.1 19.1 M 4.9 19.1 L 7 17 M 17 7 L 19.1 4.9";
+    out property <string> min: "M 4 18 L 20 18";
+    out property <string> close: "M 5 5 L 19 19 M 19 5 L 5 19";
+    out property <string> import: "M 12 3 L 12 14 M 7 9 L 12 14 L 17 9 M 4 15 L 4 20 L 20 20 L 20 15";
+    out property <string> ask: "M 3 4 L 21 4 L 21 16 L 10 16 L 5 20 L 5 16 L 3 16 Z";
+    out property <string> widget: "M 3 4 L 21 4 L 21 20 L 3 20 Z M 3 9 L 21 9";
+    out property <string> widget-fill: "M 12 12 L 18 12 L 18 17 L 12 17 Z";
+    out property <string> search: "M 16 10 A 6 6 0 1 1 4 10 A 6 6 0 1 1 16 10 Z M 15 15 L 21 21";
+    out property <string> check: "M 5 12 L 10 17 L 19 7";
+    // Solid, on a 12 unit grid.
+    out property <string> play: "M 2.5 1.5 L 10.5 6 L 2.5 10.5 Z";
+    out property <string> pause: "M 2.5 1.5 L 5 1.5 L 5 10.5 L 2.5 10.5 Z M 7 1.5 L 9.5 1.5 L 9.5 10.5 L 7 10.5 Z";
+    out property <string> rec: "M 1.5 6 A 4.5 4.5 0 1 0 10.5 6 A 4.5 4.5 0 1 0 1.5 6 Z";
+    // Solid, on a 10 unit grid.
+    out property <string> down: "M 0 2 L 10 2 L 5 8 Z";
+}
+
+// An icon: `d` stroked (`sw` units wide) and `solid` filled, on a `view` unit grid. The
+// stroked path's box is larger by the stroke and moved back by half, since Slint fits a
+// path into its box less the stroke width.
+component Glyph inherits Rectangle {
+    in property <string> d;
+    in property <string> solid;
+    in property <float> view: 24;
+    in property <float> sw: 2.4;
+    in property <color> tint: F.text;
+    in property <bool> square;
+    property <length> s: self.width * root.sw / root.view;
+    width: 15px;
+    height: 15px;
+    Path {
+        visible: root.d != "";
+        x: -root.s / 2;
+        y: -root.s / 2;
+        width: root.width + root.s;
+        height: root.height + root.s;
+        viewbox-width: root.view;
+        viewbox-height: root.view;
+        stroke: root.tint;
+        stroke-width: root.s;
+        stroke-line-cap: root.square ? LineCap.square : LineCap.butt;
+        fill: transparent;
+        commands: root.d != "" ? root.d : "M 0 0";
+    }
+    Path {
+        visible: root.solid != "";
+        width: root.width;
+        height: root.height;
+        viewbox-width: root.view;
+        viewbox-height: root.view;
+        fill: root.tint;
+        commands: root.solid != "" ? root.solid : "M 0 0";
+    }
+}
+
+// A skewed box filling its own box: the top edge `k` px of slant per px of height to the
+// right of the bottom one, with a rim inside it.
+component Skew inherits Path {
+    in property <float> k: F.k14;
+    in property <brush> body;
+    in property <color> rim: transparent;
+    in property <length> rim-w: 1px;
+    property <float> w: self.width / 1px;
+    property <float> h: self.height / 1px;
+    property <float> e: root.rim-w / 1px / 2;
+    property <float> s: root.k * (root.h - 2 * root.e);
+    fit: preserve;
+    fill: root.body;
+    stroke: root.rim;
+    stroke-width: root.rim-w;
+    commands: "M " + (root.e + root.s) + " " + root.e + " L " + (root.w - root.e) + " " + root.e + " L " + (root.w - root.e - root.s) + " " + (root.h - root.e) + " L " + root.e + " " + (root.h - root.e) + " Z";
+}
+
+// A clickable skewed key with a tooltip: the title keys, the toolbar keys, the play keys.
+component Key inherits Rectangle {
+    in property <string> label;
+    in property <string> tip;
+    in property <bool> enabled: true;
+    in property <float> k: F.k14;
+    in property <color> body: F.panel2;
+    in property <color> hot-body: #2a2350;
+    in property <color> rim: F.edge;
+    in property <length> rim-w: 1px;
+    in property <bool> hand: true;
+    out property <bool> hot: t.has-hover && root.enabled;
+    out property <bool> down: t.pressed && t.has-hover;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Skew {
+        width: 100%;
+        height: 100%;
+        k: root.k;
+        body: root.hot ? root.hot-body : root.body;
+        rim: root.rim;
+        rim-w: root.rim-w;
+    }
+    @children
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: root.hand ? pointer : default;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// A label in the bold body type, spaced out.
+component Label inherits Text {
+    color: F.gold;
+    font-family: F.body;
+    font-weight: 700;
+    font-size: 9px;
+    letter-spacing: 2px;
+    vertical-alignment: center;
+}
+
+// Settings, minimise and close: a skewed dark key with a dim glyph, white when hovered;
+// close turns red.
+component TitleKey inherits Key {
+    in property <string> icon;
+    in property <length> size: 12px;
+    in property <float> sw;
+    in property <bool> danger;
+    in property <bool> plain;
+    tip: root.label;
+    hand: !root.plain;
+    width: 30px;
+    height: 24px;
+    body: #1b1733;
+    hot-body: root.danger ? F.p1 : #2a2350;
+    rim: #2e2850;
+    Glyph {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.size;
+        height: root.size;
+        d: root.icon;
+        sw: root.sw;
+        tint: root.hot ? #ffffff : F.dim;
+    }
+}
+
+// The title bar: THRASHER, SELECT YOUR CLIP, Settings, minimise and close.
+component Title inherits Rectangle {
+    callback go(int);
+    height: 34px;
+    background: @linear-gradient(90deg, #1a1430 0%, #0d0b16 70%);
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    Rectangle { y: parent.height - 2px; height: 2px; background: F.p1; }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 6px;
+        padding-bottom: 2px;
+        spacing: 0;
+        HorizontalLayout {
+            horizontal-stretch: 0;
+            Text {
+                text: "THRASH";
+                accessible-label: "Thrasher";
+                color: #ffffff;
+                font-family: F.lean;
+                font-size: 17px;
+                letter-spacing: 1.5px;
+                vertical-alignment: center;
+            }
+            Text {
+                text: "ER";
+                color: F.p1;
+                font-family: F.lean;
+                font-size: 17px;
+                letter-spacing: 1.5px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+        Text {
+            horizontal-stretch: 1;
+            text: "  SELECT YOUR CLIP";
+            color: F.gold;
+            font-family: F.body;
+            font-weight: 700;
+            font-size: 10px;
+            letter-spacing: 2.5px;
+            vertical-alignment: center;
+            overflow: elide;
+            accessible-role: none;
+        }
+        HorizontalLayout {
+            horizontal-stretch: 0;
+            spacing: 4px;
+            alignment: end;
+            VerticalLayout {
+                alignment: center;
+                TitleKey { icon: G.gear; size: 14px; sw: 2.2; label: "Settings"; clicked => { root.go(3); } }
+            }
+            VerticalLayout {
+                alignment: center;
+                TitleKey { icon: G.min; sw: 3; label: "Minimize"; plain: true; clicked => { Main.minimize-window(); } }
+            }
+            VerticalLayout {
+                alignment: center;
+                TitleKey { icon: G.close; sw: 3; label: "Close"; danger: true; plain: true; clicked => { Main.close-window(); } }
+            }
+        }
+    }
+}
+
+// P1's health bar: the input level in gold over a red lag that falls behind it, slanted
+// ticks and a gloss, in a black frame with a violet rim. 18px as in the mockup plus the
+// 1px rim outside it.
+component Health inherits Rectangle {
+    in property <float> level;
+    in property <float> lag;
+    property <float> w: self.width / 1px;
+    property <float> k: F.k24;
+    // The inside, between the 2px black frame: rows 3 to 17, slanting about row 10.
+    property <float> l: 3 + 3 * root.k;
+    property <float> r: root.w - 3 - 3 * root.k;
+    property <float> span: max(0, root.r - root.l);
+    height: 20px;
+    // The rim and the frame.
+    Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: #000000;
+        stroke: #4d3a64;
+        stroke-width: 1px;
+        commands: F.band(0.5 + 9.5 * root.k, root.w - 0.5 - 9.5 * root.k, 0.5, 19.5, root.k, 10);
+    }
+    Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: #2a0a12;
+        commands: F.band(root.l, root.r, 3, 17, root.k, 10);
+    }
+    if root.lag > 0.005: Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: #ff4d5e;
+        commands: F.band(root.l, root.l + root.span * root.lag, 3, 17, root.k, 10);
+    }
+    if root.level > 0.005: Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: @linear-gradient(180deg, #fff27a 0%, F.gold 35%, F.gold2 100%);
+        commands: F.band(root.l, root.l + root.span * root.level, 3, 17, root.k, 10);
+    }
+    // The ticks: a 2px dark band every 12px, slanted with the bar, kept off its ends.
+    Path {
+        x: (root.l + 7 * root.k) * 1px;
+        y: 3px;
+        width: max(0, root.span - 14 * root.k) * 1px;
+        height: 14px;
+        fit: preserve;
+        clip: true;
+        fill: #00000073;
+        commands: "M 10 0 L 12 0 L 5.8 14 L 3.8 14 Z M 22 0 L 24 0 L 17.8 14 L 15.8 14 Z M 34 0 L 36 0 L 29.8 14 L 27.8 14 Z M 46 0 L 48 0 L 41.8 14 L 39.8 14 Z M 58 0 L 60 0 L 53.8 14 L 51.8 14 Z M 70 0 L 72 0 L 65.8 14 L 63.8 14 Z M 82 0 L 84 0 L 77.8 14 L 75.8 14 Z M 94 0 L 96 0 L 89.8 14 L 87.8 14 Z M 106 0 L 108 0 L 101.8 14 L 99.8 14 Z M 118 0 L 120 0 L 113.8 14 L 111.8 14 Z M 130 0 L 132 0 L 125.8 14 L 123.8 14 Z M 142 0 L 144 0 L 137.8 14 L 135.8 14 Z M 154 0 L 156 0 L 149.8 14 L 147.8 14 Z M 166 0 L 168 0 L 161.8 14 L 159.8 14 Z M 178 0 L 180 0 L 173.8 14 L 171.8 14 Z M 190 0 L 192 0 L 185.8 14 L 183.8 14 Z M 202 0 L 204 0 L 197.8 14 L 195.8 14 Z M 214 0 L 216 0 L 209.8 14 L 207.8 14 Z M 226 0 L 228 0 L 221.8 14 L 219.8 14 Z M 238 0 L 240 0 L 233.8 14 L 231.8 14 Z M 250 0 L 252 0 L 245.8 14 L 243.8 14 Z M 262 0 L 264 0 L 257.8 14 L 255.8 14 Z M 274 0 L 276 0 L 269.8 14 L 267.8 14 Z M 286 0 L 288 0 L 281.8 14 L 279.8 14 Z M 298 0 L 300 0 L 293.8 14 L 291.8 14 Z M 310 0 L 312 0 L 305.8 14 L 303.8 14 Z M 322 0 L 324 0 L 317.8 14 L 315.8 14 Z M 334 0 L 336 0 L 329.8 14 L 327.8 14 Z M 346 0 L 348 0 L 341.8 14 L 339.8 14 Z M 358 0 L 360 0 L 353.8 14 L 351.8 14 Z M 370 0 L 372 0 L 365.8 14 L 363.8 14 Z M 382 0 L 384 0 L 377.8 14 L 375.8 14 Z M 394 0 L 396 0 L 389.8 14 L 387.8 14 Z M 406 0 L 408 0 L 401.8 14 L 399.8 14 Z M 418 0 L 420 0 L 413.8 14 L 411.8 14 Z M 430 0 L 432 0 L 425.8 14 L 423.8 14 Z M 442 0 L 444 0 L 437.8 14 L 435.8 14 Z M 454 0 L 456 0 L 449.8 14 L 447.8 14 Z M 466 0 L 468 0 L 461.8 14 L 459.8 14 Z M 478 0 L 480 0 L 473.8 14 L 471.8 14 Z M 490 0 L 492 0 L 485.8 14 L 483.8 14 Z M 502 0 L 504 0 L 497.8 14 L 495.8 14 Z M 514 0 L 516 0 L 509.8 14 L 507.8 14 Z M 526 0 L 528 0 L 521.8 14 L 519.8 14 Z M 538 0 L 540 0 L 533.8 14 L 531.8 14 Z M 550 0 L 552 0 L 545.8 14 L 543.8 14 Z M 562 0 L 564 0 L 557.8 14 L 555.8 14 Z M 574 0 L 576 0 L 569.8 14 L 567.8 14 Z M 586 0 L 588 0 L 581.8 14 L 579.8 14 Z M 598 0 L 600 0 L 593.8 14 L 591.8 14 Z M 610 0 L 612 0 L 605.8 14 L 603.8 14 Z M 622 0 L 624 0 L 617.8 14 L 615.8 14 Z M 634 0 L 636 0 L 629.8 14 L 627.8 14 Z M 646 0 L 648 0 L 641.8 14 L 639.8 14 Z M 658 0 L 660 0 L 653.8 14 L 651.8 14 Z M 670 0 L 672 0 L 665.8 14 L 663.8 14 Z M 682 0 L 684 0 L 677.8 14 L 675.8 14 Z M 694 0 L 696 0 L 689.8 14 L 687.8 14 Z M 706 0 L 708 0 L 701.8 14 L 699.8 14 Z M 718 0 L 720 0 L 713.8 14 L 711.8 14 Z M 730 0 L 732 0 L 725.8 14 L 723.8 14 Z M 742 0 L 744 0 L 737.8 14 L 735.8 14 Z M 754 0 L 756 0 L 749.8 14 L 747.8 14 Z M 766 0 L 768 0 L 761.8 14 L 759.8 14 Z M 778 0 L 780 0 L 773.8 14 L 771.8 14 Z M 790 0 L 792 0 L 785.8 14 L 783.8 14 Z";
+    }
+    // The gloss over the top 40%.
+    Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: #ffffff47;
+        commands: F.band(root.l, root.r, 3, 8.6, root.k, 10);
+    }
+}
+
+// The P1 tag: a skewed red box with P1 in the slanted type.
+component P1Tag inherits Rectangle {
+    in property <length> size: 13px;
+    in property <length> rim: 0;
+    width: p1.preferred-width + 14px + 2 * root.rim;
+    height: root.size * 1.5 + 2 * root.rim;
+    Skew {
+        width: 100%;
+        height: 100%;
+        body: F.p1;
+        rim: root.rim > 0 ? #000000 : transparent;
+        rim-w: max(root.rim, 1px);
+    }
+    p1 := Text {
+        x: 7px + root.rim;
+        width: self.preferred-width;
+        height: parent.height;
+        text: "P1";
+        color: #ffffff;
+        font-family: F.lean;
+        font-size: root.size;
+        letter-spacing: 1px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+}
+
+// FIGHT: the turned record diamond (STOP while recording). The art is the mockup's .rec
+// box with room round it for the diamond's corners and the word under it.
+component FightKey inherits Rectangle {
+    in property <bool> big;
+    callback refocus();
+    width: root.big ? 150px : 78px;
+    height: self.width;
+    accessible-role: button;
+    accessible-label: Main.recording ? "Stop and save" : "Record";
+    accessible-action-default => { Main.toggle-record(); root.refocus(); }
+    Image {
+        x: root.big ? -10px : -9px;
+        y: (root.big ? -7px : -6px) + (t.pressed && t.has-hover ? 2px : 0);
+        width: root.big ? 170px : 96px;
+        height: self.width;
+        image-fit: fill;
+        source: root.big
+            ? (Main.recording
+                ? (1phx < 0.7px ? @image-url("x-fighter/stop-w@2x.png") : @image-url("x-fighter/stop-w.png"))
+                : (1phx < 0.7px ? @image-url("x-fighter/rec-w@2x.png") : @image-url("x-fighter/rec-w.png")))
+            : (Main.recording
+                ? (1phx < 0.7px ? @image-url("x-fighter/stop-p@2x.png") : @image-url("x-fighter/stop-p.png"))
+                : (1phx < 0.7px ? @image-url("x-fighter/rec-p@2x.png") : @image-url("x-fighter/rec-p.png")));
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, Main.recording ? "Stop" : "Record", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); Main.toggle-record(); root.refocus(); }
+    }
+}
+
+// READY in gold with a green dot; RECORDING with a red dot (blinking), PAUSED in gold.
+// Its box is as wide as RECORDING (centred words when `centred`), so a change of state or
+// the blink never reaches the layout round it.
+component Status inherits Rectangle {
+    in property <length> size: 18px;
+    in property <bool> centred;
+    property <string> word: Main.paused ? "PAUSED" : Main.recording ? "RECORDING" : "READY";
+    width: 18px + widest.preferred-width;
+    height: root.size * 1.5;
+    widest := Text {
+        visible: false;
+        text: "RECORDING";
+        font-family: F.lean;
+        font-size: root.size;
+        letter-spacing: 2px;
+    }
+    shown := Text {
+        visible: false;
+        text: root.word;
+        font-family: F.lean;
+        font-size: root.size;
+        letter-spacing: 2px;
+    }
+    Rectangle {
+        x: root.centred ? (root.width - 18px - shown.preferred-width) / 2 : 0;
+        y: (root.height - 12px) / 2;
+        width: 12px;
+        height: 12px;
+        border-radius: 6px;
+        background: Main.recording && !Main.paused ? #3d0b14 : #0b3d1d;
+        Rectangle {
+            x: 2px;
+            y: 2px;
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: Main.paused ? F.gold : Main.recording ? (F.blink ? F.p1 : F.p1d) : F.green;
+        }
+    }
+    Text {
+        x: root.centred ? (root.width - 18px - shown.preferred-width) / 2 + 18px : 18px;
+        y: 0;
+        width: root.width - 18px;
+        height: root.height;
+        text: root.word;
+        color: Main.recording && !Main.paused ? F.p1 : F.gold;
+        font-family: F.lean;
+        font-size: root.size;
+        letter-spacing: 2px;
+        vertical-alignment: center;
+    }
+}
+
+// The round clock: white figures with a hard red shadow, 2px down and right.
+component Clock inherits Rectangle {
+    in property <length> size: 34px;
+    property <string> time: Main.elapsed + Main.elapsed-tenth;
+    // As wide as the longest time of its length (the figures are all one width). `long`
+    // is set only when the length changes, so the ticking time never reaches the layout
+    // (a binding would pass every tick on to it).
+    in-out property <bool> long;
+    changed time => {
+        if ((Main.elapsed.character-count > 5) != self.long) {
+            self.long = Main.elapsed.character-count > 5;
+        }
+    }
+    width: widest.preferred-width + 2px;
+    height: root.size;
+    widest := Text {
+        visible: false;
+        text: root.long ? "0:00:00.0" : "00:00.0";
+        font-family: F.figures;
+        font-size: root.size;
+        letter-spacing: 1px;
+    }
+    Text {
+        x: 2px;
+        y: 2px;
+        width: root.width - 2px;
+        height: root.size;
+        text: root.time;
+        color: F.p1d;
+        font-family: F.figures;
+        font-size: root.size;
+        letter-spacing: 1px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    face := Text {
+        x: 0;
+        y: 0;
+        width: root.width - 2px;
+        height: root.size;
+        text: root.time;
+        color: #ffffff;
+        font-family: F.figures;
+        font-size: root.size;
+        letter-spacing: 1px;
+        vertical-alignment: center;
+    }
+}
+
+// The microphone line: the P1 tag and the device.
+component Player1 inherits HorizontalLayout {
+    in property <length> size: 13px;
+    spacing: 6px;
+    P1Tag { size: root.size; }
+    Text {
+        horizontal-stretch: 1;
+        text: Main.device-label;
+        color: #ffffff;
+        font-family: F.body;
+        font-weight: 700;
+        font-size: root.size;
+        letter-spacing: 0.3px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// The labels under the health bar: what it is and the level in dB.
+component BarLabels inherits HorizontalLayout {
+    in property <string> what;
+    height: 13px;
+    Label { text: root.what; color: F.dim; font-size: 9.5px; horizontal-stretch: 1; }
+    // A fixed box, so the changing level does not reach the layout.
+    Label { text: F.db; color: F.dim; font-size: 9.5px; width: 52px; height: 13px; horizontal-alignment: right; }
+}
+
+// The portrait HUD: P1, the microphone, the health bar and FIGHT; then the status and the
+// round clock.
+component Hud inherits Rectangle {
+    callback refocus();
+    background: @linear-gradient(180deg, #291124 0%, #110e20 70%);
+    Rectangle { y: parent.height - 1px; height: 1px; background: F.line; }
+    VerticalLayout {
+        padding-top: 10px;
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-bottom: 12px;
+        spacing: 6px;
+        HorizontalLayout {
+            spacing: 10px;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 0;
+                Player1 { }
+                Rectangle { height: 6px; }
+                Health { level: F.level; lag: F.peak; }
+                Rectangle { height: 4px; }
+                BarLabels { what: "INPUT"; }
+            }
+            VerticalLayout {
+                alignment: center;
+                FightKey { refocus => { root.refocus(); } }
+            }
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            Status { }
+            Rectangle { horizontal-stretch: 1; }
+            VerticalLayout {
+                alignment: end;
+                Label { text: "ROUND"; letter-spacing: 3px; height: 16px; vertical-alignment: bottom; }
+            }
+            Clock { }
+        }
+    }
+}
+
+// A path on the fighters' 100 unit box, stroked `units` wide: its box is larger by the
+// stroke and moved back by half, so every layer lands on the same box.
+component Stroke inherits Path {
+    in property <length> size;
+    in property <float> units;
+    property <length> s: root.size * root.units / 100;
+    x: -root.s / 2;
+    y: -root.s / 2;
+    width: root.size + root.s;
+    height: root.size + root.s;
+    viewbox-width: 100;
+    viewbox-height: 100;
+    stroke-width: root.s;
+    stroke-line-cap: round;
+    stroke-line-join: round;
+    fill: transparent;
+}
+
+// A filled path on the fighters' box.
+component Solid inherits Path {
+    in property <length> size;
+    x: 0;
+    y: 0;
+    width: root.size;
+    height: root.size;
+    viewbox-width: 100;
+    viewbox-height: 100;
+}
+
+// One fighter of the mockup: a glow in its accent round a dark body, the head with its
+// glow and eye, and its extra. The glow is the accent mixed with the backdrop (the
+// mockup's 55% opaque group), so where its strokes cross it does not get brighter.
+component Fighter inherits Rectangle {
+    in property <int> pose;
+    in property <color> accent;
+    in property <color> top;
+    in property <color> low;
+    property <int> k: Math.mod(root.pose, 8);
+    property <float> w: Pose.w[root.k];
+    property <brush> glow: @linear-gradient(160deg, root.accent.mix(root.top, 0.55) 0%, root.accent.mix(root.low, 0.55) 85%);
+    property <brush> dark: @linear-gradient(90deg, #000000 0%, #14101f 100%);
+    Stroke { size: root.width; units: root.w + 8; stroke: root.glow; commands: Pose.torso[root.k]; }
+    Stroke { size: root.width; units: root.w + 3; stroke: root.glow; commands: Pose.limbs[root.k]; }
+    Stroke { size: root.width; units: root.w + 5; stroke: root.dark; commands: Pose.torso[root.k]; }
+    Stroke { size: root.width; units: root.w; stroke: root.dark; commands: Pose.limbs[root.k]; }
+    Solid { size: root.width; fill: root.accent.with-alpha(0.55); commands: Pose.glow-head[root.k]; }
+    Solid { size: root.width; fill: #05040a; commands: Pose.head[root.k]; }
+    Stroke { size: root.width; units: 1.6; stroke: root.accent; commands: Pose.eye[root.k]; }
+    Stroke {
+        visible: Pose.line-kind[root.k] != 0;
+        size: root.width;
+        units: Pose.line-kind[root.k] == 2 ? 5 : 2.5;
+        stroke: Pose.line-kind[root.k] == 2 ? #000000 : root.accent;
+        commands: Pose.line[root.k];
+    }
+    Solid {
+        visible: Pose.solid-kind[root.k] != 0;
+        size: root.width;
+        fill: Pose.solid-kind[root.k] == 1 ? #000000 : root.accent;
+        commands: Pose.solid[root.k];
+    }
+}
+
+// The wide HUD, the fight stage: the stage's glow, its scan lines and floor, a faint VS;
+// P1, the health bar, the round clock and the status, then a fighter and the big FIGHT.
+component Stage inherits Rectangle {
+    callback refocus();
+    clip: true;
+    Image {
+        width: 100%;
+        height: 100%;
+        image-fit: fill;
+        source: @image-url("x-fighter/stage.png");
+    }
+    for i in Math.floor(root.height / 23px): Rectangle {
+        y: root.height - (i + 1) * 23px;
+        height: 1px;
+        background: #27e0ff0d;
+    }
+    Image {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - 120px;
+        width: 480px;
+        height: 120px;
+        image-fit: fill;
+        source: 1phx < 0.7px ? @image-url("x-fighter/floor@2x.png") : @image-url("x-fighter/floor.png");
+    }
+    Text {
+        x: parent.width - self.preferred-width + 6px;
+        y: 150px;
+        height: 150px;
+        text: "VS";
+        color: #ffffff0a;
+        font-family: F.lean;
+        font-size: 150px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    VerticalLayout {
+        padding-top: 16px;
+        padding-left: 20px;
+        padding-right: 20px;
+        padding-bottom: 18px;
+        spacing: 0;
+        Player1 { size: 15px; }
+        Rectangle { height: 7px; }
+        Health { level: F.level; lag: F.peak; }
+        Rectangle { height: 4px; }
+        BarLabels { what: "INPUT LEVEL"; }
+        Rectangle { height: 18px; }
+        Label { text: "ROUND CLOCK"; letter-spacing: 3px; horizontal-alignment: center; height: 14px; }
+        Rectangle { height: 2px; }
+        HorizontalLayout {
+            alignment: center;
+            Clock { size: 76px; }
+        }
+        Rectangle { height: 6px; }
+        HorizontalLayout {
+            alignment: center;
+            Status { size: 24px; centred: true; }
+        }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            padding-left: 6px;
+            padding-right: 6px;
+            VerticalLayout {
+                alignment: end;
+                Rectangle {
+                    width: 120px;
+                    height: 150px;
+                    Fighter {
+                        x: 0;
+                        y: 0;
+                        width: 150px;
+                        height: 150px;
+                        pose: 0;
+                        accent: F.p1;
+                        top: #2a1024;
+                        low: #160c1c;
+                    }
+                }
+            }
+            Rectangle { horizontal-stretch: 1; }
+            VerticalLayout {
+                alignment: end;
+                padding-bottom: 4px;
+                FightKey { big: true; refocus => { root.refocus(); } }
+            }
+        }
+    }
+}
+
+// The Stage chip: STAGE, the project and a gold arrow. ProjectMenu holds what it offers.
+component StageChip inherits Rectangle {
+    in property <length> most: 100000px;
+    // STAGE before the name; left out when the chip is squeezed, so the name keeps room.
+    in property <bool> labelled: true;
+    callback refocus();
+    property <bool> enabled: !Main.recording;
+    property <string> name: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+    height: 30px;
+    width: min(root.most, lay.preferred-width);
+    accessible-role: combobox;
+    accessible-label: "Project";
+    accessible-value: root.name;
+    accessible-expandable: true;
+    accessible-action-default => { if (root.enabled) { menu.show(); } }
+    accessible-action-expand => { if (root.enabled) { menu.show(); } }
+    Skew {
+        width: 100%;
+        height: 100%;
+        body: t.has-hover && root.enabled ? #2a2350 : F.panel2;
+        rim: F.edge;
+    }
+    lay := HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 7px;
+        opacity: root.enabled ? 1 : 0.5;
+        if root.labelled: Label { text: "STAGE"; }
+        Text {
+            text: root.name;
+            color: F.text;
+            font-family: F.body;
+            font-weight: 700;
+            font-size: 13px;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+            min-width: 20px;
+        }
+        VerticalLayout {
+            alignment: center;
+            Glyph { width: 10px; height: 10px; view: 10; solid: G.down; tint: F.gold; }
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { menu.show(); }
+    }
+    menu := ProjectMenu {
+        width: parent.width;
+        height: parent.height;
+        projects: Main.projects;
+        current: Main.project;
+        has-clips: Main.clips.length > 0;
+        choose(i) => { Main.choose-project(i); root.refocus(); }
+        create => { Main.dialog-text = ""; Main.dialog = 4; }
+        rename => { Main.dialog-text = Main.projects[Main.project]; Main.dialog = 5; }
+        delete => { Main.delete-project(); root.refocus(); }
+        export => { Main.export-project(); root.refocus(); }
+    }
+}
+
+// The search field: a skewed black well with the magnifier.
+component Search inherits Rectangle {
+    callback go(int);
+    callback refocus();
+    height: 30px;
+    Skew {
+        width: 100%;
+        height: 100%;
+        body: #07060e;
+        rim: field.has-focus ? F.p1 : #2f2856;
+    }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 10px;
+        spacing: 4px;
+        VerticalLayout {
+            alignment: center;
+            Glyph { width: 14px; height: 14px; d: G.search; sw: 2.6; tint: F.dim; }
+        }
+        field := TextField {
+            y: 3px;
+            height: parent.height - 6px;
+            radius: 0;
+            fill: transparent;
+            rest-edge: transparent;
+            ink: F.text;
+            hint: F.faint;
+            font-size: 12.5px;
+            family: F.body;
+            side: 3px;
+            select-fill: F.p1.with-alpha(0.45);
+            bare-focus: true;
+            placeholder: "Search";
+            label: "Search clips";
+            takes-escape: true;
+            focus-ticket: Main.search-ticket;
+            text <=> Main.query;
+            edited(t) => { Main.search(t, Main.search-all); }
+            escaped => { Main.query = ""; Main.search("", Main.search-all); root.refocus(); }
+            accepted => { if (Main.hits.length > 0) { Main.open-hit(0); root.go(1); } }
+        }
+    }
+}
+
+// A toolbar key: its icon, and its word when there is room (wide).
+component ToolKey inherits Key {
+    in property <string> icon;
+    in property <string> fill-icon;
+    in property <float> view: 24;
+    in property <bool> square;
+    in property <string> word;
+    in property <bool> worded;
+    height: 30px;
+    width: row.preferred-width;
+    row := HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 5px;
+        alignment: center;
+        opacity: root.enabled ? 1 : 0.45;
+        VerticalLayout {
+            alignment: center;
+            Glyph {
+                width: root.view == 24 ? 15px : 12px;
+                height: self.width;
+                view: root.view;
+                d: root.icon;
+                solid: root.fill-icon;
+                square: root.square;
+                tint: root.hot ? #ffffff : #e9e4ff;
+            }
+        }
+        if root.worded: Text {
+            text: root.word;
+            color: root.hot ? #ffffff : #e9e4ff;
+            font-family: F.disp;
+            font-size: 12px;
+            letter-spacing: 1.5px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+}
+
+// Search every project instead of this one: a small skewed chip with a gold check.
+component AllChip inherits Rectangle {
+    height: 30px;
+    width: lay.preferred-width;
+    accessible-role: checkbox;
+    accessible-label: "Search all projects";
+    accessible-checked: Main.search-all;
+    accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+    Skew {
+        width: 100%;
+        height: 100%;
+        body: Main.search-all ? #3a1028 : F.panel2;
+        rim: Main.search-all ? F.p1 : F.edge;
+    }
+    lay := HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 5px;
+        if Main.search-all: VerticalLayout {
+            alignment: center;
+            Glyph { width: 11px; height: 11px; d: G.check; sw: 3; tint: F.gold; }
+        }
+        Text {
+            text: "All projects";
+            color: Main.search-all ? F.gold : F.dim;
+            font-family: F.body;
+            font-weight: 700;
+            font-size: 11px;
+            vertical-alignment: center;
+        }
+    }
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+    }
+}
+
+// The toolbar: the Stage chip, the search, then Import (Pause or Resume while recording,
+// when Import is not offered anyway), Ask (with the local AI) and the widget. `tw` is its
+// width, worked out by the page (its own width would loop back through the layout); the
+// keys keep their words while there is room and the project name takes what is left.
+component Toolbar inherits Rectangle {
+    in property <bool> wide;
+    in property <length> tw;
+    callback go(int);
+    callback refocus();
+    property <bool> all: Main.query != "" && Main.projects.length > 1;
+    property <int> keys: Main.can-ai ? 3 : 2;
+    // The keys with and without words, and the All projects chip.
+    property <length> bare: root.keys * 35px;
+    property <length> words: w-import.preferred-width + (Main.can-ai ? w-ask.preferred-width : 0) + w-widget.preferred-width + root.keys * 5px;
+    property <length> all-w: root.all ? w-all.preferred-width + 20px + 6px : 0;
+    property <length> fixed: 24px + 140px + root.bare + root.all-w + (root.keys + 1) * 6px;
+    property <bool> worded: root.wide && root.tw - root.fixed - root.words >= 150px;
+    property <length> most: max(90px, root.tw - root.fixed - (root.worded ? root.words : 0));
+    height: 47px;
+    background: #0f0c1d;
+    Rectangle { y: parent.height - 1px; height: 1px; background: F.line; }
+    w-import := Text { visible: false; text: Main.recording ? (Main.paused ? "RESUME" : "PAUSE") : "IMPORT"; font-family: F.disp; font-size: 12px; letter-spacing: 1.5px; }
+    w-ask := Text { visible: false; text: "ASK"; font-family: F.disp; font-size: 12px; letter-spacing: 1.5px; }
+    w-widget := Text { visible: false; text: "WIDGET"; font-family: F.disp; font-size: 12px; letter-spacing: 1.5px; }
+    w-all := Text { visible: false; text: "All projects"; font-family: F.body; font-weight: 700; font-size: 11px; }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-top: 8px;
+        padding-bottom: 9px;
+        spacing: 6px;
+        StageChip { most: root.most; labelled: root.most >= 150px; refocus => { root.refocus(); } }
+        Search {
+            horizontal-stretch: 1;
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+        if root.all: AllChip { }
+        ToolKey {
+            icon: Main.recording ? "" : G.import;
+            fill-icon: Main.recording ? (Main.paused ? G.play : G.pause) : "";
+            view: Main.recording ? 12 : 24;
+            square: true;
+            word: Main.recording ? (Main.paused ? "RESUME" : "PAUSE") : "IMPORT";
+            worded: root.worded;
+            label: Main.recording ? (Main.paused ? "Resume" : "Pause") : "Import audio or video";
+            tip: Main.recording ? (Main.paused ? "Resume" : "Pause") : "Import";
+            clicked => {
+                if (Main.recording) {
+                    Main.toggle-pause();
+                    root.refocus();
+                } else {
+                    Main.import-files();
+                }
+            }
+        }
+        if Main.can-ai: ToolKey {
+            icon: G.ask;
+            word: "ASK";
+            worded: root.worded;
+            label: "Ask your clips";
+            tip: "Ask";
+            clicked => { root.go(6); }
+        }
+        ToolKey {
+            icon: G.widget;
+            fill-icon: G.widget-fill;
+            word: "WIDGET";
+            worded: root.worded;
+            label: "Small widget";
+            tip: "Widget";
+            clicked => { Main.compact-changed(true); }
+        }
+    }
+}
+
+// The small waveform of a tile: 18 bars, the played part gold. A click on the highlighted
+// clip moves its start, a double click plays from there (WaveSeek).
+component Wave inherits Rectangle {
+    in property <ClipRow> item;
+    in property <int> index;
+    in property <bool> lit;
+    in property <bool> selected;
+    in property <bool> active;
+    callback select(bool, bool);
+    callback menu(length, length);
+    callback refocus();
+    height: 12px;
+    for i in 18: Rectangle {
+        property <float> v: root.item.wave.length > 0 ? root.item.wave[Math.floor(i * root.item.wave.length / 18)] : 0.06;
+        property <length> bh: round((2 + clamp(self.v, 0, 1) * 10) * 1px / 1phx) * 1phx;
+        x: round(i * root.width / 18 / 1phx) * 1phx;
+        y: round((root.height - self.bh) / 2 / 1phx) * 1phx;
+        width: max(1phx, round(root.width / 18 * 0.55 / 1phx) * 1phx);
+        height: self.bh;
+        background: root.active && (i + 0.5) / 18 <= Main.play-fraction ? F.gold : root.lit ? #ff8a96 : #6d64a3;
+    }
+    WaveSeek {
+        selected: root.selected;
+        active: root.active;
+        select(ctrl, shift) => { root.select(ctrl, shift); }
+        cue(f) => { Main.cue-clip(root.index, f); root.refocus(); }
+        play-at(f) => { Main.play-clip-at(root.index, f); root.refocus(); }
+        menu(x, y) => { root.menu(x, y); }
+    }
+}
+
+// One fighter tile: the backdrop with its number, the fighter, TRANSCRIBED and play; the
+// name plate with the name, when it was made (+ system), the waveform, the length and the
+// menu. The highlighted clip has the P1 cursor; it and the picked ones have a red frame and
+// plate.
+component Tile inherits Rectangle {
+    in property <int> index;
+    in property <ClipRow> item;
+    in property <bool> big;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    property <bool> selected: root.index == Main.selected;
+    property <bool> picked: Main.picked[root.index];
+    property <bool> active: root.index == Main.active-clip;
+    property <bool> lit: root.selected || root.picked;
+    property <int> k: Math.mod(root.index, 8);
+    accessible-role: list-item;
+    accessible-label: root.item.name + ", " + root.item.duration;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.lit;
+    accessible-action-default => { root.select(false, false); }
+    function select(ctrl: bool, shift: bool) {
+        Main.pick(root.index, ctrl, shift);
+        root.refocus();
+    }
+    function open-menu() {
+        menu.show-at(root.width - 8px - 210px, root.height - 14px);
+    }
+    // The name on one line, measured, so the plate knows when it takes two.
+    one-line := Text {
+        visible: false;
+        text: root.item.name;
+        font-family: F.body;
+        font-weight: 700;
+        font-size: root.big ? 12.5px : 11.5px;
+        letter-spacing: root.big ? 0 : -0.2px;
+        accessible-role: none;
+    }
+    one-meta := Text {
+        visible: false;
+        text: root.item.when + " + system";
+        font-family: F.body;
+        font-weight: 600;
+        font-size: 9.5px;
+        accessible-role: none;
+    }
+    // The frame: a violet rim outside the black edge; red and wider when lit.
+    Rectangle {
+        x: root.lit ? -3px : -1px;
+        y: self.x;
+        width: root.width - 2 * self.x;
+        height: root.height - 2 * self.y;
+        border-width: root.lit ? 3px : 1px;
+        border-color: root.lit ? F.p1 : touch.has-hover ? F.faint : F.edge;
+    }
+    Rectangle { background: #000000; }
+    port := Rectangle {
+        x: 2px;
+        y: 2px;
+        width: root.width - 4px;
+        height: plate.y - 2px;
+        clip: true;
+        background: @linear-gradient(160deg, Pose.top[root.k] 0%, Pose.low[root.k] 85%);
+        Text {
+            x: parent.width - self.preferred-width - 4px;
+            y: parent.height - 24px;
+            height: 22px;
+            text: (root.index + 1 < 10 ? "0" : "") + (root.index + 1);
+            color: #ffffff1f;
+            font-family: F.disp;
+            font-size: 22px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Fighter {
+            width: parent.height * 1.12;
+            height: self.width;
+            x: (parent.width - self.width) / 2;
+            y: parent.height * 1.06 - self.height;
+            pose: root.k;
+            accent: Pose.accent[root.k];
+            top: Pose.top[root.k];
+            low: Pose.low[root.k];
+        }
+        if root.item.transcribed: Rectangle {
+            x: 0;
+            y: 6px;
+            width: tx.preferred-width + 12px;
+            height: 12px;
+            Path {
+                width: 100%;
+                height: 100%;
+                viewbox-width: 100;
+                viewbox-height: 10;
+                fit: fill;
+                fill: F.cyan;
+                commands: "M 0 0 L 100 0 L 88 10 L 0 10 Z";
+            }
+            tx := Text {
+                x: 4px;
+                height: parent.height;
+                text: "TRANSCRIBED";
+                color: #000000;
+                font-family: F.body;
+                font-weight: 700;
+                font-size: 8px;
+                letter-spacing: 1.2px;
+                vertical-alignment: center;
+            }
+        }
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                root.select(e.modifiers.control, e.modifiers.shift);
+            }
+            // On release: the press that closes an open menu is used up by that menu.
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                menu.show-at(self.mouse-x, self.mouse-y);
+            }
+        }
+        // Opens just this clip, even out of several picked.
+        double-clicked => { root.select(false, false); Main.open-clip(root.index); root.go(1); }
+    }
+    Key {
+        x: 6px;
+        y: port.y + port.height - 4px - self.height;
+        width: 22px;
+        height: 22px;
+        k: F.k12;
+        body: #000000bf;
+        hot-body: #000000;
+        rim: #ffffff59;
+        label: (root.active && Main.playing ? "Pause " : "Play ") + root.item.name;
+        tip: root.active && Main.playing ? "Pause" : "Play";
+        clicked => { Main.play-clip(root.index); root.refocus(); }
+        Glyph {
+            x: 6px;
+            y: 6px;
+            width: 10px;
+            height: 10px;
+            view: 12;
+            solid: root.active && Main.playing ? G.pause : G.play;
+            tint: parent.hot ? F.gold : #ffffff;
+        }
+    }
+    plate := Rectangle {
+        x: 2px;
+        y: root.height - 2px - self.height;
+        width: root.width - 4px;
+        height: plate-lay.preferred-height;
+        background: #000000;
+        Rectangle {
+            y: 2px;
+            height: parent.height - 2px;
+            background: root.lit ? @linear-gradient(180deg, #5a0f22 0%, #2a0712 100%) : @linear-gradient(180deg, #221c40 0%, #16122c 100%);
+        }
+        plate-lay := VerticalLayout {
+            padding-top: 6px;
+            padding-left: 6px;
+            padding-right: 6px;
+            padding-bottom: 5px;
+            spacing: 0;
+            Text {
+                text: root.item.name;
+                color: #ffffff;
+                font-family: F.body;
+                font-weight: 700;
+                font-size: root.big ? 12.5px : 11.5px;
+                letter-spacing: root.big ? 0 : -0.2px;
+                wrap: word-wrap;
+                overflow: elide;
+                // One line, or two when it does not fit on one; longer names elide.
+                height: one-line.preferred-width > root.width - 16px ? 2 * one-line.preferred-height : one-line.preferred-height;
+            }
+            // When it was made, and "+ system" after it, or on a line of its own when both
+            // do not fit (narrow tiles), so it is never cut off.
+            Text {
+                text: root.item.when + (root.item.has-system ? (one-meta.preferred-width > root.width - 16px ? "\n+ system" : " + system") : "");
+                color: F.dim;
+                font-family: F.body;
+                font-weight: 600;
+                font-size: 9.5px;
+                overflow: elide;
+            }
+            HorizontalLayout {
+                padding-top: 2px;
+                spacing: 5px;
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+                    Wave {
+                        item: root.item;
+                        index: root.index;
+                        lit: root.lit;
+                        selected: root.selected;
+                        active: root.active;
+                        select(ctrl, shift) => { root.select(ctrl, shift); }
+                        menu(x, y) => { menu.show-at(x - root.absolute-position.x, y - root.absolute-position.y); }
+                        refocus => { root.refocus(); }
+                    }
+                }
+                Text {
+                    text: root.item.duration;
+                    color: F.gold;
+                    font-family: F.body;
+                    font-weight: 700;
+                    font-size: 10.5px;
+                    letter-spacing: 0.3px;
+                    vertical-alignment: center;
+                }
+                // The menu: manage, rename, export, delete.
+                Rectangle {
+                    width: root.big ? 12px : 8px;
+                    height: 16px;
+                    accessible-role: button;
+                    accessible-label: "Menu for " + root.item.name;
+                    accessible-action-default => { root.open-menu(); }
+                    for j in 3: Rectangle {
+                        x: (parent.width - 3px) / 2;
+                        y: 1.5px + j * 5px;
+                        width: 3px;
+                        height: 3px;
+                        background: more.has-hover ? F.gold : #ffffffcc;
+                    }
+                    property <bool> hovering: more.has-hover;
+                    changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
+                    more := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { Tips.hide(); root.open-menu(); }
+                    }
+                }
+            }
+        }
+    }
+    // The P1 cursor: four gold corners round the tile and the P1 badge on top, dimmed
+    // every other half second while recording.
+    if root.selected: Rectangle {
+        x: -7px;
+        y: -7px;
+        width: root.width + 14px;
+        height: root.height + 14px;
+        opacity: F.blink ? 1 : 0.35;
+        Rectangle { x: 0; y: 0; width: 12px; height: 3px; background: F.gold; }
+        Rectangle { x: 0; y: 0; width: 3px; height: 12px; background: F.gold; }
+        Rectangle { x: parent.width - 12px; y: 0; width: 12px; height: 3px; background: F.gold; }
+        Rectangle { x: parent.width - 3px; y: 0; width: 3px; height: 12px; background: F.gold; }
+        Rectangle { x: 0; y: parent.height - 3px; width: 12px; height: 3px; background: F.gold; }
+        Rectangle { x: 0; y: parent.height - 12px; width: 3px; height: 12px; background: F.gold; }
+        Rectangle { x: parent.width - 12px; y: parent.height - 3px; width: 12px; height: 3px; background: F.gold; }
+        Rectangle { x: parent.width - 3px; y: parent.height - 12px; width: 3px; height: 12px; background: F.gold; }
+    }
+    if root.selected: P1Tag {
+        x: (root.width - self.width) / 2;
+        y: -11px - 2px;
+        size: 11px;
+        rim: 2px;
+    }
+    menu := ClipMenu {
+        width: parent.width;
+        height: parent.height;
+        item: root.item;
+        merge-count: root.picked ? Main.picked-count : 0;
+        projects: Main.projects;
+        project: Main.project;
+        window-h: root.window-h;
+        merge => { Main.start-merge(); root.go(5); }
+        open => { Main.open-clip(root.index); root.go(1); }
+        rename => { root.ask-rename(root.index); }
+        export(kind) => { Main.selected = root.index; Main.export-as(kind); root.refocus(); }
+        delete => { root.ask-delete(root.index); }
+        move-to(p) => { Main.move-clip(root.index, p); root.refocus(); }
+    }
+}
+
+// A search result: a name plate with the clip (its project when all projects are
+// searched, extra hits as +2), then the words round the match, the match in gold.
+component Hit inherits Rectangle {
+    in property <SearchHit> hit;
+    in property <bool> show-project;
+    callback clicked;
+    property <bool> hot: t.has-hover;
+    height: 46px;
+    background: #000000;
+    accessible-role: button;
+    accessible-label: root.hit.clip + ", " + root.hit.before + " " + root.hit.matched + " " + root.hit.after;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        x: -1px;
+        y: -1px;
+        width: parent.width + 2px;
+        height: parent.height + 2px;
+        border-width: 1px;
+        border-color: root.hot ? F.p1 : F.edge;
+    }
+    Rectangle {
+        x: 2px;
+        y: 2px;
+        width: parent.width - 4px;
+        height: parent.height - 4px;
+        background: root.hot ? @linear-gradient(180deg, #5a0f22 0%, #2a0712 100%) : @linear-gradient(180deg, #221c40 0%, #16122c 100%);
+    }
+    VerticalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        alignment: center;
+        spacing: 2px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: root.hit.clip;
+                color: #ffffff;
+                font-family: F.body;
+                font-weight: 700;
+                font-size: 12.5px;
+                vertical-alignment: center;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if root.show-project: Text {
+                text: root.hit.project;
+                color: F.dim;
+                font-family: F.body;
+                font-weight: 600;
+                font-size: 10px;
+                vertical-alignment: center;
+            }
+            if root.hit.more > 0: Text {
+                text: "+" + root.hit.more;
+                color: F.gold;
+                font-family: F.body;
+                font-weight: 700;
+                font-size: 10.5px;
+                vertical-alignment: center;
+            }
+        }
+        if root.hit.matched != "": HorizontalLayout {
+            spacing: 4px;
+            if root.hit.before != "": Text {
+                text: root.hit.before;
+                color: F.dim;
+                font-family: F.body;
+                font-weight: 600;
+                font-size: 11px;
+                horizontal-stretch: 0;
+            }
+            Rectangle {
+                width: mark.preferred-width + 6px;
+                horizontal-stretch: 0;
+                background: F.gold;
+                mark := Text {
+                    text: root.hit.matched;
+                    color: #000000;
+                    font-family: F.body;
+                    font-weight: 700;
+                    font-size: 11px;
+                    horizontal-alignment: center;
+                }
+            }
+            Text {
+                text: root.hit.after;
+                color: F.dim;
+                font-family: F.body;
+                font-weight: 600;
+                font-size: 11px;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The select panel: CLIP SELECT, a red rule and how many fighters, then the grid of tiles
+// (or the search results). The grid has as many columns as fit tiles of about `tile` px
+// and rows as tall as fill the view about `ratio` times the tile's width; Main.row-h and
+// Main.list-height follow it, so the keys scroll it a row of tiles at a time.
+component Select inherits Rectangle {
+    in property <bool> big;
+    in property <length> window-h;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    // Room round the grid for the P1 badge above a tile and the cursor below.
+    property <length> pad-top: 14px;
+    property <length> pad-bottom: 8px;
+    property <length> gx: 8px;
+    property <length> gy: 9px;
+    property <length> inner-w: root.width - 24px - 6px;
+    property <length> tile: root.big ? 130px : 86px;
+    property <int> cols: max(2, Math.floor((root.inner-w + root.gx) / (root.tile + root.gx)));
+    property <length> tw: (root.inner-w - (root.cols - 1) * root.gx) / root.cols;
+    property <length> view-h: root.height - 8px - 22px - 2px;
+    property <length> usable: root.view-h - root.pad-top - root.pad-bottom;
+    property <int> rows: max(1, Math.round((root.usable + root.gy) / (root.tw * 1.7 + root.gy)));
+    property <length> th: max(110px, (root.usable - (root.rows - 1) * root.gy) / root.rows);
+    property <int> lines: Math.ceil(Main.clips.length / root.cols);
+    property <length> total: root.pad-top + root.lines * (root.th + root.gy) - root.gy + root.pad-bottom;
+    function sync() {
+        Main.grid-cols = root.cols;
+        Main.row-h = root.th + root.gy;
+        Main.list-height = root.usable + root.gy;
+        Main.clamp-list();
+    }
+    init => { root.sync(); }
+    changed cols => { root.sync(); }
+    changed th => { root.sync(); }
+    changed usable => { root.sync(); }
+    property <int> count: Main.clips.length;
+    changed count => { Main.clamp-list(); }
+    Image {
+        width: 100%;
+        height: 100%;
+        image-fit: fill;
+        source: @image-url("x-fighter/selbg.png");
+    }
+    VerticalLayout {
+        padding-top: 8px;
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-bottom: 0;
+        spacing: 2px;
+        HorizontalLayout {
+            spacing: 8px;
+            height: 22px;
+            HorizontalLayout {
+                horizontal-stretch: 0;
+                Text {
+                    text: "CLIP ";
+                    accessible-label: "Clip select";
+                    color: #ffffff;
+                    font-family: F.lean;
+                    font-size: 15px;
+                    letter-spacing: 2px;
+                    vertical-alignment: center;
+                }
+                Text {
+                    text: "SELECT";
+                    color: F.gold;
+                    font-family: F.lean;
+                    font-size: 15px;
+                    letter-spacing: 2px;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                Rectangle {
+                    height: 2px;
+                    background: @linear-gradient(90deg, F.p1 0%, #ff2d4a00 100%);
+                }
+            }
+            Label {
+                text: Main.query != "" ? (Main.hits.length == 1 ? "1 MATCH" : Main.hits.length + " MATCHES")
+                    : Main.clips.length == 1 ? "1 FIGHTER" : Main.clips.length + " FIGHTERS";
+                color: F.dim;
+                font-size: 9.5px;
+            }
+        }
+        if Main.query != "": Scroller {
+            vertical-stretch: 1;
+            VerticalLayout {
+                alignment: start;
+                padding-top: 6px;
+                padding-bottom: 8px;
+                padding-left: 1px;
+                padding-right: 7px;
+                spacing: 8px;
+                if Main.hits.length == 0: Text {
+                    height: 36px;
+                    text: "No matches";
+                    color: F.dim;
+                    font-family: F.body;
+                    font-weight: 600;
+                    font-size: 12.5px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                for h[i] in Main.hits: Hit {
+                    hit: h;
+                    show-project: Main.search-all;
+                    clicked => { Main.open-hit(i); root.go(1); }
+                }
+            }
+        }
+        if Main.query == "": Scroller {
+            vertical-stretch: 1;
+            content-y <=> Main.list-y;
+            content-height: root.total;
+            Rectangle {
+                width: root.width - 24px;
+                height: root.total;
+                for clip[i] in Main.clips: Tile {
+                    x: Math.mod(i, root.cols) * (root.tw + root.gx);
+                    y: root.pad-top + Math.floor(i / root.cols) * (root.th + root.gy);
+                    width: root.tw;
+                    height: root.th;
+                    index: i;
+                    item: clip;
+                    big: root.big;
+                    window-h: root.window-h;
+                    go(p) => { root.go(p); }
+                    ask-rename(n) => { root.ask-rename(n); }
+                    ask-delete(n) => { root.ask-delete(n); }
+                    refocus => { root.refocus(); }
+                }
+            }
+        }
+    }
+}
+
+// The replay bar: how far the clip in the player is, in four segments like a super meter,
+// gold in a slanted black frame. A click jumps there.
+component Super inherits Rectangle {
+    in property <int> shown;
+    in property <float> at;
+    callback refocus();
+    property <float> w: self.width / 1px;
+    property <float> k: F.k24;
+    property <float> l: 3 + 2 * root.k;
+    property <float> r: root.w - 3 - 2 * root.k;
+    property <float> span: max(0, root.r - root.l);
+    height: 11px;
+    Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: #000000;
+        stroke: F.edge;
+        stroke-width: 1px;
+        commands: F.band(0.5 + 5 * root.k, root.w - 0.5 - 5 * root.k, 0.5, 10.5, root.k, 5.5);
+    }
+    Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: #120a24;
+        commands: F.band(root.l, root.r, 3, 8, root.k, 5.5);
+    }
+    if root.at > 0.002: Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: @linear-gradient(180deg, #fff27a 0%, F.gold 45%, F.gold2 100%);
+        commands: F.band(root.l, root.l + root.span * root.at, 3, 8, root.k, 5.5);
+    }
+    Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: #000000;
+        commands: F.band(root.l + root.span * 0.25 - 0.6, root.l + root.span * 0.25 + 0.6, 3, 8, root.k, 5.5)
+            + " " + F.band(root.l + root.span * 0.5 - 0.6, root.l + root.span * 0.5 + 0.6, 3, 8, root.k, 5.5)
+            + " " + F.band(root.l + root.span * 0.75 - 0.6, root.l + root.span * 0.75 + 0.6, 3, 8, root.k, 5.5);
+    }
+    TouchArea {
+        y: -6px;
+        height: parent.height + 12px;
+        enabled: root.shown >= 0;
+        mouse-cursor: pointer;
+        clicked => {
+            Main.selected = root.shown;
+            Main.seek-fraction(clamp((self.mouse-x / 1px - root.l) / max(1, root.span), 0, 1));
+            root.refocus();
+        }
+    }
+}
+
+// The footer: the gold replay key, REPLAY and the clip in the player (else the highlighted
+// one), its time, the super meter of how far it is, and LV, its filled segments.
+component Player inherits Rectangle {
+    callback refocus();
+    property <int> shown: Main.active-clip >= 0 && Main.active-clip < Main.clips.length ? Main.active-clip
+        : Main.selected >= 0 && Main.selected < Main.clips.length ? Main.selected : -1;
+    property <bool> is-active: self.shown >= 0 && self.shown == Main.active-clip;
+    property <float> at: root.is-active ? clamp(Main.play-fraction, 0, 1) : 0;
+    height: 50px;
+    background: #0b0915;
+    Rectangle { y: 0; height: 2px; background: F.line; }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-top: 10px;
+        padding-bottom: 8px;
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            Key {
+                width: 34px;
+                height: 30px;
+                k: F.k14;
+                body: root.shown >= 0 ? F.gold : #6a5a20;
+                hot-body: #ffe066;
+                rim: #000000;
+                rim-w: 2px;
+                enabled: root.shown >= 0;
+                label: root.is-active && Main.playing ? "Pause" : "Play";
+                tip: root.is-active && Main.playing ? "Pause" : "Play";
+                clicked => { Main.play-clip(root.shown); root.refocus(); }
+                Glyph {
+                    x: 11px;
+                    y: 9px;
+                    width: 12px;
+                    height: 12px;
+                    view: 12;
+                    solid: root.is-active && Main.playing ? G.pause : G.play;
+                    tint: #000000;
+                }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 4px;
+            HorizontalLayout {
+                spacing: 7px;
+                Text {
+                    text: "REPLAY";
+                    color: F.gold;
+                    font-family: F.disp;
+                    font-size: 11px;
+                    letter-spacing: 1.5px;
+                    vertical-alignment: center;
+                }
+                Text {
+                    horizontal-stretch: 1;
+                    text: root.shown >= 0 ? Main.clips[root.shown].name : "Nothing playing";
+                    color: root.shown >= 0 ? F.text : F.dim;
+                    font-family: F.body;
+                    font-weight: root.shown >= 0 ? 700 : 600;
+                    font-size: 12.5px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                Text {
+                    text: root.shown < 0 ? "--:-- / --:--"
+                        : (root.is-active ? Main.play-position : "0:00") + " / " + Main.clips[root.shown].duration;
+                    color: F.text2;
+                    font-family: F.body;
+                    font-weight: 700;
+                    font-size: 11.5px;
+                    letter-spacing: 0.5px;
+                    vertical-alignment: center;
+                }
+            }
+            Super {
+                shown: root.shown;
+                at: root.at;
+                refocus => { root.refocus(); }
+            }
+        }
+        Text {
+            text: "LV " + Math.floor(root.at * 4);
+            color: F.cyan;
+            font-family: F.disp;
+            font-size: 11px;
+            letter-spacing: 1px;
+            vertical-alignment: bottom;
+        }
+    }
+}
+
+// An export from the clip menu or the project menu: what it is, the bar and a check when
+// done. It takes its own room above the player.
+component ExportBar inherits Rectangle {
+    height: 34px;
+    background: #0b0915;
+    Rectangle { y: 0; height: 1px; background: F.line; }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 9px;
+        if Main.export-state == 2: VerticalLayout {
+            alignment: center;
+            Glyph { width: 12px; height: 12px; d: G.check; sw: 3; tint: F.green; }
+        }
+        Text {
+            text: (Main.export-state == 2 ? "Exported " : "Exporting ") + Main.export-name;
+            color: F.text;
+            font-family: F.body;
+            font-weight: 600;
+            font-size: 12px;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+        if Main.export-state == 1: VerticalLayout {
+            alignment: center;
+            Super {
+                width: 120px;
+                shown: -1;
+                at: clamp(Main.export-progress, 0, 1);
+            }
+        }
+        if Main.export-state == 1: Text {
+            width: 36px;
+            text: round(Main.export-progress * 100) + "%";
+            color: F.dim;
+            font-family: F.body;
+            font-weight: 700;
+            font-size: 11px;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// The main page: the title bar, then (portrait) the HUD over the toolbar and the select
+// grid, or (wide) the fight stage beside them; the footer across.
+export component MainPage inherits Rectangle {
+    // The window's size classes, as AppWindow works them out.
+    in property <bool> narrow;
+    in property <bool> wide;
+    in property <bool> tall;
+    // Opens page p (see AppWindow.page).
+    callback go(int);
+    // The rename and delete questions for clip i.
+    callback ask-rename(int);
+    callback ask-delete(int);
+    // Gives the keyboard back to the window's shortcuts.
+    callback refocus();
+
+    property <length> stage-w: 400px;
+    property <length> hud-h: 142px;
+    property <length> foot-h: 50px + (Main.export-state != 0 ? 34px : 0);
+    background: F.bg;
+    VerticalLayout {
+        Title { vertical-stretch: 0; go(p) => { root.go(p); } }
+        // The HUD's room; the HUD itself is drawn over it, outside the layout (see below).
+        Rectangle { height: root.wide ? 0 : root.hud-h; vertical-stretch: 0; }
+        if !root.wide: Toolbar {
+            vertical-stretch: 0;
+            tw: root.width;
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+        if !root.wide: Select {
+            vertical-stretch: 1;
+            big: false;
+            window-h: root.height;
+            go(p) => { root.go(p); }
+            ask-rename(n) => { root.ask-rename(n); }
+            ask-delete(n) => { root.ask-delete(n); }
+            refocus => { root.refocus(); }
+        }
+        if root.wide: HorizontalLayout {
+            vertical-stretch: 1;
+            // The stage's room; the stage is drawn over it, outside the layout.
+            Rectangle { width: root.stage-w; }
+            Rectangle { width: 2px; background: #000000; }
+            Rectangle { width: 1px; background: F.line; }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                Toolbar {
+                    vertical-stretch: 0;
+                    wide: true;
+                    tw: root.width - root.stage-w - 3px;
+                    go(p) => { root.go(p); }
+                    refocus => { root.refocus(); }
+                }
+                Select {
+                    vertical-stretch: 1;
+                    big: true;
+                    window-h: root.height;
+                    go(p) => { root.go(p); }
+                    ask-rename(n) => { root.ask-rename(n); }
+                    ask-delete(n) => { root.ask-delete(n); }
+                    refocus => { root.refocus(); }
+                }
+            }
+        }
+        if Main.export-state != 0: ExportBar { vertical-stretch: 0; }
+        Player { vertical-stretch: 0; refocus => { root.refocus(); } }
+    }
+    // The HUD (portrait) and the stage (wide) sit over their rooms in the layout, not in
+    // it: what changes in them while recording (the clock, the level, the blinking) would
+    // otherwise run through the page's layout, and the software renderer would draw every
+    // tile again each tick.
+    if !root.wide: Hud {
+        x: 0;
+        y: 34px;
+        width: root.width;
+        height: root.hud-h;
+        refocus => { root.refocus(); }
+    }
+    if root.wide: Stage {
+        x: 0;
+        y: 34px;
+        width: root.stage-w;
+        height: root.height - 34px - root.foot-h;
+        refocus => { root.refocus(); }
+    }
+    // Messages float just above the footer on a name plate, so nothing moves when they
+    // come and go.
+    if Main.status != "": Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - root.foot-h - 10px - self.height;
+        width: min(msg.preferred-width + 28px, parent.width - 32px);
+        height: 30px;
+        background: #000000;
+        Rectangle {
+            x: -1px;
+            y: -1px;
+            width: parent.width + 2px;
+            height: parent.height + 2px;
+            border-width: 1px;
+            border-color: F.edge;
+        }
+        Rectangle {
+            x: 2px;
+            y: 2px;
+            width: parent.width - 4px;
+            height: parent.height - 4px;
+            background: @linear-gradient(180deg, #221c40 0%, #16122c 100%);
+        }
+        msg := Text {
+            x: 14px;
+            width: parent.width - 28px;
+            height: parent.height;
+            text: Main.status;
+            color: F.text;
+            font-family: F.body;
+            font-weight: 600;
+            font-size: 12px;
+            overflow: elide;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+    // The window's own edge.
+    Rectangle {
+        border-width: 1px;
+        border-color: #2a2445;
+    }
+}

@@ -504,6 +504,58 @@ pages are the classic ones in its blue and gold palette (`Theme.pages` 0).
   Tape Deck, Phosphor and Desktop 95 main pages at 520x700 and 1100x700 match before and
   after.
 
+**Built in step 5, Brick Phone main page (2026-10-29):** `ui/skins/dv-brick.slint` (skin 9,
+theme "Brick Phone", index 16 in `Theme.names`, after Pocket and Quest Menu), art in `ui/skins/dv-brick/`
+(112 PNGs, 138 KB) from `tools/skin-art/dv-brick.html` (`sh tools/skin-art/cut.sh dv-brick OUT`;
+`ONLY="a b"` cuts just those pieces). Its other pages are the classic ones in a charcoal and
+amber palette (`Theme.pages` 0).
+- Settings gallery: its tile is the Brick Phone line in `Gallery.devices` (`ui/gallery.slint`), band #7a8a3a.
+- The keys do the work: the green call key is Record, then Pause and Resume while recording;
+  the red end key is "Stop and save" (off while idle); the Menu soft key opens Settings and
+  Find puts the cursor in the search (as Ctrl+F); keys 1 2 3 are Import, Ask (a plain "2 ABC"
+  key without the local AI) and the widget; the rocker's up and down move the highlight as the
+  arrow keys do and its OK plays or pauses, like the footer's play. Keys 4 to # only show.
+- Portrait windows under 540 px high keep only keys 1 2 3 of the keypad; wide windows under
+  400 px of LCD leave out the big mic, and the right wing's gaps close up on short windows.
+- Fonts: Chakra Petch 600 and 700 (keys and brand), "Pocket Small" (Silkscreen 400 with a square
+  5, since its own 5 differs from its S by two pixels; LCD small caps, used at 8 px only, where
+  one font pixel is one px; shared with Pocket, built by `px-pocket-fonts.py`), VT323 (LCD words) and "Brick Figures" for the timer
+  (`tools/skin-art/dv-brick-fonts.py`), all OFL, Latin subset, 66 KB.
+- Wide rows give up the waveform as the list narrows (18 bars from 340 px of row, 10 from 280
+  px, none below), so the clip names keep their room at the 820 px minimum.
+- Rust: `RECORDING_FPS` 4 for the status dot blinking while recording; `EFFECT_FPS` 0.
+- Shared, no visible change elsewhere: `Scroller.bar` (off: the skin draws its own scrollbar)
+  and `TextField.select-fill` / `select-ink` (the LCD inverts selected text).
+
+**Lessons from the Brick Phone:**
+- **Elements outside a layout are centred by default.** An item with no `y` in a plain
+  Rectangle sits in the middle of its parent, not at the top (the keypad's first row and the
+  LCD sheen did). Give every placed item both `x` and `y`.
+- **`Image` sizes itself from its source** outside a layout: a tile with no `width` and
+  `height` is one tile big. Set both on every tiled image.
+- **Stretching rubber keys:** a CSS key (gradient, rounded, inset light, drop shadow) is cut in
+  three: the left 30 px, one 1 px column from the middle and the right 30 px, each with its
+  shadow margin. The column stretched with `image-fit: fill` is exact, so the key takes any
+  width with no seam. Hover and press are rounded solid rectangles in the key's corner radii
+  as CSS shrinks them (radii that add up past a side are scaled down together).
+- **A body gradient with rounded corners:** solid top and bottom caps as tall as the radii and
+  a square gradient between them, starting and ending on the caps' colours; the top light is a
+  lighter rounded rectangle 2 px above the body.
+- **Rounded LCD without rounded clipping:** four 6 px `Path` corners in the bezel's colour.
+- **A digit narrower than the rest jumps the timer:** Pixel 95's 1 is 0.43 em, the other digits
+  0.60. Brick Figures widens the 1 to the other digits and centres its outline, as its own
+  family with only the timer's characters (3 KB).
+- **Accessible roles are constants**, so a key that only shows is `KeyFace` without a
+  TouchArea and a key that acts is `Key` (button, classic name and tip).
+
+**Budgets measured on the Brick Phone** (test copy, 2.25x display, 10 s samples, 2026-10-29):
+- CPU idle 0.0 to 0.2% (Ember 0.0 to 0.3%); recording 7.2% at 520x700 (Ember 21.1%), 16.4% at
+  1100x700 (Ember 28.1%).
+- Working set idle 44.6 vs Ember 40.6 MB (+4.0); wide 52.1 vs 48.2 MB (+3.9).
+- Exe +2.79 MB (55.54 to 58.33 MB): art 0.14 MB, fonts 0.07 MB, the rest generated code. Ember,
+  Tape Deck and Phosphor main pages at 520x700, 420x560, 700x700 and 1100x700 match before and
+  after.
+
 ### Art
 
 - **Chrome and textures** (walnut, leatherette, brass, bezels, pixel frames) become small

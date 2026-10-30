@@ -37,7 +37,10 @@ global Q {
     out property <color> sep: #2a3aa8;
     out property <color> edge: #22264a;
     out property <string> font: "Pixel 95";
-    out property <string> label: "Silkscreen";
+    // Silkscreen 400 with a square 5 (its own 5 is two pixels from its S), shared with
+    // Pocket and Brick Phone; the title is Silkscreen 700, which has no digits there.
+    out property <string> label: "Pocket Small";
+    out property <string> title: "Silkscreen";
     out property <string> figures: "Quest Figures";
     // Off every other half second while recording (the Fx clock steps four times a second
     // and runs twice as fast then): the glove and the status lamp blink. Lit otherwise.
@@ -193,7 +196,7 @@ component Title inherits Rectangle {
             Text {
                 text: "Thrasher";
                 color: Q.white;
-                font-family: Q.label;
+                font-family: Q.title;
                 font-weight: 700;
                 font-size: 16px;
                 letter-spacing: 1px;

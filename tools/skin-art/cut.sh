@@ -8,6 +8,7 @@
 #   sh tools/skin-art/cut.sh dv-brick OUT_DIR (the Brick Phone, into ui/skins/dv-brick/)
 #   sh tools/skin-art/cut.sh dv-synth OUT_DIR (the Pocket Synth, into ui/skins/dv-synth/)
 #   sh tools/skin-art/cut.sh x-fighter OUT_DIR (Fighter Select, into ui/skins/x-fighter/)
+#   sh tools/skin-art/cut.sh px-cozy OUT_DIR  (the Cozy Cabin, into ui/skins/px-cozy/)
 #
 # reads tools/skin-art/<skin>.html and the piece list below, and writes OUT_DIR/<name>.png
 # and OUT_DIR/<name>@2x.png. Copy the ones the skin uses to crates/thrasher-app/ui/skins/<skin>/.
@@ -102,6 +103,14 @@ dv-synth) PIECES="oled-p-l:oled-p-l:26:116 oled-p-m:oled-p-m:2:116 oled-p-r:oled
 # the floor at 1x and 2x; the soft glows (stage, selbg) are used at 1x only, stretched.
 x-fighter) PIECES="rec-p:rec-p:96:96 stop-p:stop-p:96:96 rec-w:rec-w:170:170 stop-w:stop-w:170:170
   floor:floor:480:120 stage:stage:200:280 selbg:selbg:240:200" ;;
+# Cozy Cabin: pixel art one css pixel per art pixel, the wood and parchment tiles at three
+# times, the window scene and the lit lantern as frame strips; only the 1x cut is used.
+px-cozy) PIECES="gear:gear:7:7 min:min:7:6 close:close:7:5 play:play:5:9 pause:pause:5:9 down:down:5:3
+  search:search:7:7 imp:imp:7:7 ask:ask:8:7 widget:widget:8:6 tpause:tpause:5:7 tplay:tplay:5:7 dots:dots:1:5
+  mic:mic:5:7 micsm:micsm:3:4 scroll:scroll:5:5 check:check:5:5 stop:stop:5:5 flame:flame:5:6 plant:plant:7:7
+  mug:mug:7:7 candle:candle:5:7 books:books:9:6 jar:jar:6:7 tape:tape:8:6 lantern:lantern:18:23
+  lantern-hot:lantern-hot:18:23 lantern-lit:lantern-lit:72:23 glow-p:glow-p:38:38 glow-w:glow-w:72:72
+  wood:wood:192:144 wood-d:wood-d:192:144 parch:parch:96:96 scene-p:scene-p:1296:36 scene-w:scene-w:1872:66" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 

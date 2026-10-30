@@ -1,0 +1,239 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+svg,canvas{display:block}
+#a{position:absolute;left:0;top:0}
+</style></head><body><div id="a"></div>
+<script>
+// One element of the Cozy Cabin mockup (docs/mockups/device-themes/px-cozy.html), alone on
+// a transparent page, for cutting into PNGs. ?el=name&w=css-width&h=css-height
+// The pixel art is drawn one css pixel per art pixel; Slint scales it up three (or six)
+// times with `image-rendering: pixelated`, so only the 1x cut is used. One-colour icons
+// are white here and coloured in Slint with `colorize`. The wood and parchment tiles are
+// drawn three times larger here, since Slint repeats a tile at one image pixel per
+// logical pixel. The window scene and the lit lantern are frame strips (one frame after
+// the other, left to right) that loop, stepped by the Fx clock while recording.
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+
+// The mockup's colours; '#' is white, for icons Slint colours itself.
+const COL = {
+  '#':'#ffffff', k:'#2a170d', m:'#4b3a30', M:'#8f7562', H:'#c4a487',
+  o:'#e0662c', h:'#f0b23c', y:'#ffd982', p:'#ead4a2', q:'#9c7a45', v:'#6f9238', V:'#a3c25a',
+  w:'#7a4a28', W:'#9a6234', d:'#5a341d'
+};
+function svg(rows, colours) {
+  const h = rows.length, w = Math.max(...rows.map(r => r.length));
+  let out = '';
+  rows.forEach((r, y) => {
+    let x = 0;
+    while (x < r.length) {
+      const c = r[x];
+      let n = 1;
+      while (x + n < r.length && r[x + n] === c) n++;
+      if (c !== '.' && c !== ' ') out += `<rect x="${x}" y="${y}" width="${n}" height="1" fill="${colours[c]}"/>`;
+      x += n;
+    }
+  });
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges">${out}</svg>`;
+}
+
+// The mockup's pixel maps ('x' there is '#' here), plus pause and resume for the toolbar,
+// pause for the play keys, a check and the stop square for the lantern's tag.
+const I = {
+  gear:["...#...","#.###.#",".##.##.","##...##",".##.##.","#.###.#","...#..."],
+  min:[".......",".......",".......",".......",".......","#######"],
+  close:["##...##",".##.##.","..###..",".##.##.","##...##"],
+  play:["#....","##...","###..","####.","#####","####.","###..","##...","#...."],
+  pause:["##.##","##.##","##.##","##.##","##.##","##.##","##.##","##.##","##.##"],
+  down:["#####",".###.","..#.."],
+  search:[".###...","#...#..","#...#..","#...#..",".####..","....##.",".....##"],
+  imp:["...#...","...#...",".#.#.#.","..###..","...#...","#.....#","#######"],
+  ask:[".######.","#......#","#.#.#.##","#......#",".######.","..#.....","..#....."],
+  widget:["########","#......#","#......#","#...####","#...####","########"],
+  tpause:["##.##","##.##","##.##","##.##","##.##","##.##","##.##"],
+  tplay:["#....","##...","###..","####.","###..","##...","#...."],
+  dots:["#",".","#",".","#"],
+  mic:[".###.",".###.","#.#.#","#...#",".###.","..#..",".###."],
+  micsm:[".#.","###","#.#",".#."],
+  scroll:["####.","#..##","#.#.#","#...#","#####"],
+  check:["....#","...##","#.##.","###..",".#..."],
+  stop:["#####","#####","#####","#####","#####"],
+  flame:["..o..",".oo..",".oho.","ohhho","ohyho",".oyo."],
+  plant:["..V.V..","V.vVv.V",".vVvVv.","..vVv..","..oho..","..ooo..","...o..."],
+  mug:["..y.y..","...y...","kkkkkk.","kppppkk","kpqqpkk","kppppkk",".kkkk.."],
+  candle:["..h..",".hyh.","..k..",".ppp.",".ppp.",".pqp.","kkkkk"],
+  books:["oo.hh.vv.","oo.hh.vv.","oy.hy.vV.","oo.hh.vv.","oy.hy.vV.","oo.hh.vv."],
+  jar:[".kkkk.","kqqqqk","khhhhk","khyhhk","khhhhk","khhhhk",".kkkk."],
+  tape:["kkkkkkkk","kppppppk","kpkppkpk","kppppppk","kqqqqqqk","kkkkkkkk"],
+};
+
+// The lantern: 18x23, its glass and flame unlit (as at rest) or lit, in four flame shapes.
+const LANTERN_TOP = [
+  ".......kkkk.......",
+  "......kM..Mk......",
+  "......k....k......",
+  ".......kkkk.......",
+  ".....kkkkkkkk.....",
+  "....kMMHMMMMMk....",
+  "...kMmmmmmmmmmk...",
+  "..kkkkkkkkkkkkkk..",
+  "..kmMGGggggggMmk..",
+];
+const LANTERN_FOOT = [
+  "..kmMGggkggggMmk..",
+  "..kmMGggkggggMmk..",
+  "..kkkkkkkkkkkkkk..",
+  ".kMMHMMMMMMMMMMMk.",
+  ".kmmmmmmmmmmmmmmk.",
+  "..kkkkkkkkkkkkkk..",
+];
+// Rows 9 to 16, columns 6 to 11 of the glass: the mockup's flame, then leaning right,
+// taller, and leaning left.
+const FLAMES = [
+  ["gggggg","gggfgg","ggffgg","gfFfgg","gfFFfg","fFFFfg","fFFFfg","gfFfgg"],
+  ["gggggg","ggggfg","gggffg","ggfFfg","gfFFfg","fFFFfg","fFFFfg","gfFfgg"],
+  ["gggfgg","ggffgg","ggfFgg","gfFFfg","gfFFfg","fFFFfg","fFFFfg","gfFfgg"],
+  ["gggggg","gggggg","gfgggg","gffggg","gfFfgg","fFFFfg","fFFFfg","gfFfgg"],
+];
+function lantern(k) {
+  return [...LANTERN_TOP, ...FLAMES[k].map(f => "..kmMG" + f + "gMmk.."), ...LANTERN_FOOT];
+}
+const UNLIT = { g:'#b9772f', G:'#dca04e', f:'#f0892c', F:'#ffd06a' };
+const LIT = { g:'#f7c45a', G:'#fff0b0', f:'#ff8f2e', F:'#fff6cf' };
+
+// The glow round the lantern: quantised rings of see-through honey, one art pixel a cell.
+function glow(n) {
+  const c = (n - 1) / 2;
+  const lv = ['', 'rgba(255,196,90,.10)', 'rgba(255,196,90,.17)', 'rgba(255,205,110,.26)'];
+  let rects = '';
+  for (let y = 0; y < n; y++) {
+    const lvl = xx => { const d = Math.hypot(xx - c, (y - c) * 1.05) / c; return d < .42 ? 3 : d < .7 ? 2 : d < 1 ? 1 : 0; };
+    let x = 0;
+    while (x < n) {
+      const l = lvl(x); let k = 1;
+      while (x + k < n && lvl(x + k) === l) k++;
+      if (l) rects += `<rect x="${x}" y="${y}" width="${k}" height="1" fill="${lv[l]}"/>`;
+      x += k;
+    }
+  }
+  return `<svg width="${n}" height="${n}" viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges">${rects}</svg>`;
+}
+
+// ---------- seeded random, as the mockup ----------
+function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+
+// ---------- wood and parchment tiles (the mockup's, three times larger) ----------
+function scaled(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'));
+  const big = document.createElement('canvas'); big.width = w * 3; big.height = h * 3;
+  const g = big.getContext('2d'); g.imageSmoothingEnabled = false;
+  g.drawImage(c, 0, 0, w * 3, h * 3);
+  return big;
+}
+function woodTile(base, seedN) {
+  return scaled(64, 48, g => {
+    const W = 64, r = rng(seedN);
+    const shade = (hex, k) => { const n = parseInt(hex.slice(1), 16); const f = v => Math.max(0, Math.min(255, Math.round(v * k))); return `rgb(${f(n>>16)},${f((n>>8)&255)},${f(n&255)})`; };
+    for (let row = 0; row < 8; row++) {
+      const y0 = row * 6;
+      let x = Math.floor(r() * 30);
+      const joints = [x % W, (x + 24 + Math.floor(r() * 12)) % W];
+      for (let px_ = 0; px_ < W; px_++) {
+        const seg = (px_ >= Math.min(...joints) && px_ < Math.max(...joints)) ? 0 : 1;
+        g.fillStyle = shade(base, seg ? 1 : 0.92 + row % 2 * 0.04);
+        g.fillRect(px_, y0, 1, 5);
+      }
+      g.fillStyle = shade(base, 0.55); g.fillRect(0, y0 + 5, W, 1);
+      g.fillStyle = shade(base, 1.18); g.fillRect(0, y0, W, 1);
+      joints.forEach(j => { g.fillStyle = shade(base, 0.55); g.fillRect(j, y0, 1, 5); g.fillStyle = shade(base, 1.18); g.fillRect((j + 1) % W, y0 + 1, 1, 4); });
+      for (let k = 0; k < 7; k++) {
+        const gx = Math.floor(r() * W), gy = y0 + 1 + Math.floor(r() * 4), len = 2 + Math.floor(r() * 6);
+        g.fillStyle = shade(base, r() < .5 ? 0.82 : 1.1);
+        for (let i = 0; i < len; i++) g.fillRect((gx + i) % W, gy, 1, 1);
+      }
+      if (r() < .35) { const kx = Math.floor(r() * W); g.fillStyle = shade(base, .6); g.fillRect(kx, y0 + 2, 2, 1); g.fillStyle = shade(base, .75); g.fillRect(kx - 1, y0 + 2, 1, 1); g.fillRect(kx + 2, y0 + 2, 1, 1); }
+    }
+  });
+}
+function parchTile() {
+  return scaled(32, 32, g => {
+    const W = 32, r = rng(77);
+    g.fillStyle = '#ead4a2'; g.fillRect(0, 0, W, W);
+    for (let i = 0; i < 46; i++) { g.fillStyle = r() < .7 ? '#e0c690' : '#f3e2b8'; g.fillRect(Math.floor(r()*W), Math.floor(r()*W), 1, 1); }
+    for (let i = 0; i < 3; i++) { g.fillStyle = '#dcc088'; const x = Math.floor(r()*W), y = Math.floor(r()*W); g.fillRect(x, y, 3, 1); }
+  });
+}
+
+// ---------- the window scene: dusk pines with fireflies, as a looping strip ----------
+// The mockup's scene, with every motion a whole number of turns over the loop, so the
+// last frame runs on into the first.
+const FRAMES = 24;
+function sceneStrip(W, H, k) {
+  const r = rng(5 + k);
+  const stars = Array.from({length: Math.round(W * H / 90)}, () => [Math.floor(r()*W), Math.floor(r()*H*0.45), r()*6]);
+  const flies = Array.from({length: Math.round(W / 8)}, () => [r()*W, H*0.55 + r()*H*0.38, r()*6.28, 0.5 + r()]);
+  const pines = []; for (let x = -4; x < W + 6; x += 5 + Math.floor(r()*5)) pines.push([x, 10 + Math.floor(r()*Math.min(16, H*0.35))]);
+  const far = []; for (let x = 0; x < W; x++) far.push(Math.round(H*0.58 + Math.sin(x*0.13 + k)*3 + Math.sin(x*0.05)*4));
+  const c = document.createElement('canvas'); c.width = W * FRAMES; c.height = H;
+  const g = c.getContext('2d');
+  const turns = v => Math.max(1, Math.round(v));
+  for (let f = 0; f < FRAMES; f++) {
+    g.save(); g.translate(f * W, 0);
+    g.beginPath(); g.rect(0, 0, W, H); g.clip();
+    const ph = f / FRAMES * Math.PI * 2;
+    // The canvas colour of the mockup, under the sky's bands and the hills.
+    g.fillStyle = '#1d2340'; g.fillRect(0, 0, W, H);
+    const bands = ['#1b1f3c', '#232850', '#2e3060', '#463a6a', '#6a4868', '#9a5a5c'];
+    const bh = H * 0.62 / bands.length;
+    bands.forEach((col, i) => {
+      g.fillStyle = col; g.fillRect(0, Math.floor(i*bh), W, Math.ceil(bh) + 1);
+      if (i) { g.fillStyle = bands[i-1]; const y = Math.floor(i*bh); for (let x = (i % 2); x < W; x += 2) g.fillRect(x, y, 1, 1); }
+    });
+    stars.forEach(([x, y, p], i) => { const b = Math.sin(ph * (1 + i % 2) + p); if (b > -0.3) { g.fillStyle = b > .6 ? '#fff2cc' : '#9aa0c8'; g.fillRect(x, y, 1, 1); } });
+    const mx = W - 12, my = 5;
+    g.fillStyle = '#f6e7c4'; g.fillRect(mx+1, my, 4, 6); g.fillRect(mx, my+1, 6, 4);
+    g.fillStyle = '#d9c398'; g.fillRect(mx+3, my+2, 1, 1); g.fillRect(mx+1, my+3, 1, 1);
+    g.fillStyle = '#2b3150';
+    far.forEach((h, x) => g.fillRect(x, h, 1, H - h));
+    g.fillStyle = '#ffd982'; g.fillRect(Math.floor(W*0.3), far[Math.floor(W*0.3)] + 2, 1, 1);
+    pines.forEach(([x, h], i) => {
+      const base = H - 4 - (i % 2); g.fillStyle = i % 3 ? '#1a2a26' : '#203430';
+      for (let y = 0; y < h; y++) { const w = Math.floor((y % 4) + y / 2.6); g.fillRect(x - Math.floor(w/2), base - h + y, w + 1, 1); }
+      g.fillStyle = '#24150c'; g.fillRect(x, base, 1, 2);
+    });
+    g.fillStyle = '#20301c'; g.fillRect(0, H - 4, W, 4);
+    g.fillStyle = '#2d4224'; for (let x = 0; x < W; x += 3) g.fillRect(x, H - 4, 1, 1);
+    flies.forEach(([x0, y0, p, sp]) => {
+      const x = Math.round((x0 + Math.sin(ph * turns(sp) + p) * 4 + W) % W);
+      const y = Math.round(y0 + Math.cos(ph * turns(sp * 1.3) + p * 1.7) * 3);
+      const b = Math.sin(ph * turns(sp * 2.6) + p);
+      if (b < -0.2) return;
+      if (b > 0.4) { g.fillStyle = 'rgba(255,210,110,.35)'; g.fillRect(x-1, y, 3, 1); g.fillRect(x, y-1, 1, 3); }
+      g.fillStyle = b > 0.4 ? '#fff0a0' : '#c9a24a'; g.fillRect(x, y, 1, 1);
+    });
+    g.restore();
+  }
+  return c;
+}
+
+const put = c => { a.innerHTML = ''; a.appendChild(c); };
+if (I[el]) a.innerHTML = svg(I[el], COL);
+else if (el === 'lantern') a.innerHTML = svg(lantern(0), { ...COL, ...UNLIT });
+else if (el === 'lantern-hot') a.innerHTML = svg(lantern(0), { ...COL, ...LIT });
+else if (el === 'lantern-lit') {
+  const rows = [0, 1, 2, 3].map(lantern);
+  a.innerHTML = svg(rows[0].map((_, y) => rows.map(r => r[y]).join('')), { ...COL, ...LIT });
+}
+else if (el === 'glow-p') a.innerHTML = glow(38);
+else if (el === 'glow-w') a.innerHTML = glow(72);
+else if (el === 'wood') put(woodTile('#7a4a28', 11));
+else if (el === 'wood-d') put(woodTile('#553119', 23));
+else if (el === 'parch') put(parchTile());
+else if (el === 'scene-p') put(sceneStrip(54, 36, 0));
+else if (el === 'scene-w') put(sceneStrip(78, 66, 1));
+</script>
+</body></html>

@@ -153,7 +153,7 @@ export struct Palette {
 // settings page switches it.
 export global Theme {
     in-out property <int> current: 0;
-    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass", "Car Dashboard", "Pocket", "Quest Menu", "Brick Phone"];
+    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass", "Car Dashboard", "Pocket", "Quest Menu", "Brick Phone", "Answering Machine"];
     out property <[Palette]> palettes: [
         // Ember
         { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618, card-line: #00000000 },
@@ -191,6 +191,9 @@ export global Theme {
         { bg: #0a0b1a, card: #1c2b92, row: #15206f, raised: #2335a6, line: #2a3486, line-soft: #1f2f9b, edge: #5f679e, text: #f4f1e6, text2: #c9cdf0, muted: #a9aed0, dim: #8d93b8, accent: #ffd23f, accent-hover: #ffe27a, on-accent: #0a0b1a, wave: #5f679e, wave-dim: #3a4280, track: #15206f, danger: #ff8a6a, hover: #2335a6, hover-soft: #1f2f9b, row-hover: #121a5e, picked: #3049c9, popup: #15206f, popup-edge: #8d93b8, knob: #8d93b8, faint: #8d93b8, fainter: #3a4280, rec-rest: #8f1f1a, divider: #15206f, border: #2a3486, card-edge: #2a3486, footer: #0a0b1a, press: #3049c9, card-line: #8d93b8 },
         // Brick Phone: charcoal rubber and an amber backlight (its main page is ui/skins/dv-brick.slint).
         { bg: #17181a, card: #232428, row: #26272b, raised: #2d2e32, line: #2a2b2f, line-soft: #212225, edge: #3c3e43, text: #ece7dc, text2: #d2cdc3, muted: #a3a29e, dim: #8d9097, accent: #ffb24a, accent-hover: #ffc36e, on-accent: #3b1f05, wave: #55585e, wave-dim: #44464b, track: #2a2b2f, danger: #f08a7c, hover: #2d2e32, hover-soft: #28292d, row-hover: #1d1e21, picked: #3a2f1f, popup: #26272b, popup-edge: #55585e, knob: #8d9097, faint: #6d7076, fainter: #44464b, rec-rest: #6d5532, divider: #212225, border: #2d2e32, card-edge: #2d2e32, footer: #131416, press: #4a3a22, card-line: #00000000 },
+        // Answering Machine: beige plastic and paper, a red LED (its main page is
+        // ui/skins/dv-answer.slint).
+        { bg: #d9cfb9, card: #e8dfcb, row: #efe8d8, raised: #e1d7c1, line: #c9bda3, line-soft: #d6cab0, edge: #a89b7f, text: #2f271e, text2: #3e3428, muted: #5b4f3d, dim: #6e624d, accent: #cf3c28, accent-hover: #b8311f, on-accent: #fff3ec, wave: #8b7c63, wave-dim: #b3a68b, track: #bfb399, danger: #b8311f, hover: #d0c5ae, hover-soft: #d6ccb6, row-hover: #e7dfcc, picked: #fbe9dd, popup: #efe8d8, popup-edge: #a89b7f, knob: #86795f, faint: #86795f, fainter: #b3a68b, rec-rest: #e0a596, divider: #d6cab0, border: #a89b7f, card-edge: #bfb399, footer: #c5b9a0, press: #f0c9bd, card-line: #a89b7f },
     ];
     out property <color> bg: root.palettes[root.current].bg;
     out property <color> card: root.palettes[root.current].card;
@@ -239,8 +242,9 @@ export global Theme {
     // ui/skins/phosphor.slint; 3 Desktop 95, ui/skins/dv-os95.slint; 4 Comic Book,
     // ui/skins/x-comic.slint; 5 Spatial Glass, ui/skins/x-spatial.slint; 6 Car Dashboard,
     // ui/skins/x-dash.slint; 7 Pocket, ui/skins/px-pocket.slint; 8 Quest Menu,
-    // ui/skins/px-quest.slint; 9 Brick Phone, ui/skins/dv-brick.slint.
-    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    // ui/skins/px-quest.slint; 9 Brick Phone, ui/skins/dv-brick.slint; 10 Answering
+    // Machine, ui/skins/dv-answer.slint.
+    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     out property <int> skin: root.skins[root.current];
     // How the other pages are built: 1 Tape Deck's (skins/tape-pages.slint), else 0, the
     // classic pages in the theme's palette (also for skins whose pages are not built yet).

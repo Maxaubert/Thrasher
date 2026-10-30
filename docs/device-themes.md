@@ -265,6 +265,67 @@ used). Its other pages are the classic ones in a green LCD palette (`Theme.pages
 - Exe +1.89 MB (55.54 to 57.43 MB): fonts 34 KB, art 3 KB, the rest generated code. Ember,
   Tape Deck and Phosphor main pages at 520x700 and 1100x700 match before and after.
 
+**Built in step 5, Answering Machine main page (2026-10-29):** `ui/skins/dv-answer.slint`
+(skin 10, theme "Answering Machine", index 17 in `Theme.names`, after Pocket, Quest Menu and
+Brick Phone), art in `ui/skins/dv-answer/`
+(58 pieces at 1x and 2x, 0.24 MB) from `tools/skin-art/dv-answer.html`
+(`sh tools/skin-art/cut.sh dv-answer OUT`).
+- Settings gallery: its tile is the Answering Machine line in `Gallery.devices` (`ui/gallery.slint`), band #d9452b.
+- The recorder is the machine: the smoked display (the clip count with the NEW lamp, the
+  state, the timer, the microphone), the red REC key, the micro cassette (its reels turn
+  while recording), the LED meter (-40 to 0 dB) and the speaker. Wide windows move LOAD, ASK
+  and MINI onto the key bed beside REC. Settings is the SET nub in the title bar. While
+  recording, LOAD is PAUSE and RESUME (latched amber), since Import is not offered then.
+- The clips are a numbered message log on paper. The highlighted one is lit red with its
+  number on a small display; the head says "2 OF 8" ("MESSAGE 2 OF 8" wide), or
+  "8 MESSAGES" when none is highlighted. Rows show the TRANSCRIBED stamp and "+ SYSTEM".
+- The NEW lamp is lit while there are clips and blinks while one is recorded; with the
+  reels that is the only motion (`RECORDING_FPS` 12, `EFFECT_FPS` 0).
+- A wider portrait window gets more meter bars (10 at the mockup's 400px, up to 20); the
+  well fits them.
+- Its other pages are the classic ones in its beige palette (`Theme.pages` 0).
+- Fonts (0.19 MB): Barlow Condensed 600 and 700 and Courier Prime 400 and 700 (OFL, no
+  reserved names, Latin subset; their 5s are clear), and Memo Segments, a seven segment
+  face drawn from the mockup's own segment shapes (2 KB: digits, minus, colon, point).
+  `python tools/skin-art/dv-answer-fonts.py SRC OUT` makes all five.
+
+**Lessons from the Answering Machine:**
+- **Parts of any width in three slices.** A part with a gradient, an inset shadow, rings and
+  round corners cannot be drawn by the software renderer. Cut it as its left end, a 2px
+  column from its middle and its right end, each with the shadow margin (`Slice3`); the
+  column stretched with `image-fit: fill` is exact, since the part does not change along its
+  width. So an angled gradient becomes a vertical one (the display's sheen is 180 degrees,
+  not 165).
+- **Seven segment figures are a font.** Slint cannot split a string per character, so a
+  frame strip per digit does not work for a timer. A small TrueType font built with
+  fontTools (`FontBuilder`, the segments as polygons, the 7 degree lean, digits as tall as
+  the em so the font size is the digit height) draws the mockup's shapes exactly. The unlit
+  segments are the same layout as 8s in a dim colour underneath, picked by
+  `character-count` and right-aligned with the lit text. No glow: copies of a text that
+  changes cost CPU (see Phosphor).
+- **A dot grille at any height without a tall image.** A 7px tile is blocky at 2.25x (tiles
+  repeat one image pixel per logical pixel). The wide grille is cut 37 rows tall and built
+  from `source-clip` pieces: the top 14 rows, one 7-row band repeated by a `for`, the bottom
+  9 rows. Each piece starts on a multiple of 7, so the dots stay in step. The first version
+  showed part of a 429 row cut (1.8 MB decoded at 2x).
+- **Fewer `if`s, smaller exe.** One picture or `Slice3` whose sources are picked by a
+  condition (and `visible` for overlays) instead of an `if` per variant (six key faces, a
+  portrait and a wide version of each part) took the skin from +3.17 MB to +2.68 MB.
+- **Toolbar room:** the words under the keys (RESUME is wider than its key) and the
+  ALL PROJECTS chip count in the room the project name may take. Checked with a 40
+  character project name and a query at 420x560, 520x700, 700x700 and 1100x700.
+- **Checks:** the test copy's microphone is silent, so the meter stayed dark in every shot;
+  Ask is not offered there (no local AI), so the ASK key was not seen; tooltips do not show
+  headless (as for every theme).
+
+**Budgets measured on the Answering Machine** (test copy, 2.25x display, 10 s samples):
+- CPU idle 0.0% at 520x700 and 0.2% at 1100x700 (Ember 0.0% and 0.2%); recording 9.2% and
+  11.1% (Ember 22.7% and 23.9%).
+- Working set idle 45.4 vs Ember 39.6 MB (+5.8), wide 53.9 vs 48.0 MB (+5.9); recording
+  48.2 vs 43.0 MB, wide 56.9 vs 51.4 MB.
+- Exe +2.68 MB (55.54 to 58.21 MB): fonts 0.19 MB, art 0.24 MB, the rest generated code.
+  Ember, Tape Deck and Phosphor main pages at 520x700 and 1100x700 match before and after.
+
 ### Recipe from the pilot (follow it for the other skins)
 
 - **Art:** an element page `tools/skin-art/<skin>.html` draws each fixed piece of the

@@ -1,0 +1,124 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:"Barlow Condensed";font-weight:700;src:url(../../crates/thrasher-app/ui/fonts/BarlowCondensed-700.ttf)}
+@font-face{font-family:"Courier Prime";font-weight:700;src:url(../../crates/thrasher-app/ui/fonts/CourierPrime-700.ttf)}
+:root{
+  --plastic:#d9cfb9; --print:#5b4f3d; --print-soft:#86795f;
+  --smoke:#1b1311; --smoke-2:#2a1d19;
+  --led:#ff4630; --led-glow:rgba(255,60,40,.55);
+  --rubber:#4b4540; --rubber-hi:#635c56; --rubber-lo:#2f2b27;
+  --rec:#cf3c28; --rec-lo:#9a2617;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+#a{position:absolute;left:0;top:0;overflow:hidden}
+#a>div{position:absolute}
+/* The parts, as in the mockup (docs/mockups/device-themes/dv-answer.html). */
+.disp{border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 38%),linear-gradient(180deg,var(--smoke-2),var(--smoke));
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.7),0 0 0 2px #a39679,0 0 0 3px #8a7e65,0 1px 0 3px rgba(255,255,255,.45)}
+.mwrap{border-radius:6px;background:#241a16;box-shadow:inset 0 2px 4px rgba(0,0,0,.7),0 0 0 2px #a39679,0 1px 0 2px rgba(255,255,255,.4)}
+.mc{border-radius:7px;overflow:hidden;background:linear-gradient(180deg,#3a302a,#211915);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.7),0 0 0 2px #a39679,0 1px 0 2px rgba(255,255,255,.4)}
+.mc .glass{position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,0) 45%)}
+.mc .tag{position:absolute;left:8px;top:6px;font:700 8px/1 "Barlow Condensed";letter-spacing:.2em;color:#a98a7d}
+.cas{position:absolute;border-radius:4px;background:linear-gradient(180deg,#8f8a84,#6c6762);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+.cas .lbl{position:absolute;left:6%;right:6%;top:9%;height:24%;background:#f1ead9;border-radius:2px;
+  font-family:"Courier Prime";font-weight:700;color:#6a3226;display:flex;align-items:center;justify-content:center;letter-spacing:.06em}
+.cas .lbl::after{content:"";position:absolute;left:0;right:0;bottom:2px;height:2px;background:var(--rec)}
+.cas .win2{position:absolute;left:14%;right:14%;bottom:12%;height:44%;border-radius:20px;background:#1a1411;box-shadow:inset 0 1px 3px #000;display:flex;align-items:center;justify-content:space-around}
+.ring{border-radius:50%;box-shadow:0 0 0 4px #4a2d22}
+.reel{position:absolute;border-radius:50%;background:#e9e3d6}
+.reel::before{content:"";position:absolute;inset:22%;border-radius:50%;background:
+  conic-gradient(#1a1411 0 20deg,transparent 20deg 120deg,#1a1411 120deg 140deg,transparent 140deg 240deg,#1a1411 240deg 260deg,transparent 260deg)}
+.reel::after{content:"";position:absolute;inset:40%;border-radius:50%;background:#1a1411}
+.key{border-radius:9px;background:linear-gradient(180deg,var(--rubber-hi),var(--rubber) 60%,#433d38);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -2px 0 rgba(0,0,0,.2),0 2.5px 0 var(--rubber-lo),0 4px 6px rgba(0,0,0,.3)}
+.key.rec{background:linear-gradient(180deg,#e55a43,var(--rec) 55%,#b8311f);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -2px 0 rgba(0,0,0,.2),0 3px 0 var(--rec-lo),0 5px 8px rgba(0,0,0,.35)}
+.nub{border-radius:6px;background:linear-gradient(180deg,var(--rubber-hi),var(--rubber));box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 1.5px 0 var(--rubber-lo),0 2px 3px rgba(0,0,0,.25)}
+.pbtn{border-radius:50%;background:linear-gradient(180deg,var(--rubber-hi),var(--rubber));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 1.5px 0 var(--rubber-lo),0 2px 3px rgba(0,0,0,.25)}
+.pbtn.red{background:linear-gradient(180deg,#e55a43,var(--rec));box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 1.5px 0 var(--rec-lo),0 2px 3px rgba(0,0,0,.25)}
+.picker{border-radius:6px;background:linear-gradient(180deg,#f3ecdc,#e1d7c1);box-shadow:0 0 0 1px #a89b7f,0 1.5px 0 1px #94876c,inset 0 1px 0 #fff}
+.search{background:#c3b79c;box-shadow:inset 0 2px 3px rgba(0,0,0,.3),0 1px 0 rgba(255,255,255,.6)}
+.strip{border-radius:5px;background:linear-gradient(180deg,var(--smoke-2),var(--smoke));box-shadow:inset 0 2px 4px rgba(0,0,0,.7),0 0 0 1.5px #a39679}
+.track{border-radius:3px;background:#9f9378;box-shadow:inset 0 1px 2px rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.5)}
+.thumb{border-radius:3px;background:linear-gradient(180deg,var(--rubber-hi),var(--rubber));box-shadow:0 1px 2px rgba(0,0,0,.4)}
+.grille{border-radius:10px;background-color:#b3a68b;
+  background-image:radial-gradient(circle,#2b221c 0 1.7px,transparent 2.1px);background-size:7px 7px;background-position:2px 2px;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.55)}
+.well{border-radius:12px;background:linear-gradient(180deg,#b7aa8f,#c8bca2);box-shadow:inset 0 2px 4px rgba(0,0,0,.28),0 1px 0 rgba(255,255,255,.6)}
+.led{border-radius:50%;background:#5a1a12;box-shadow:inset 0 1px 1px rgba(0,0,0,.6)}
+.led.on{background:radial-gradient(circle at 35% 35%,#ffd2c6,var(--led) 55%,#a3180c);box-shadow:0 0 6px var(--led-glow)}
+.dot{border-radius:50%}
+</style></head><body><div id="a"></div>
+<script>
+// One part of the Answering Machine mockup (docs/mockups/device-themes/dv-answer.html),
+// alone on a transparent page, for cutting into PNGs: ?el=name&w=css-width&h=css-height.
+// A part of variable width is cut in three: name-l (the left end), name-m (a 2px column
+// from the middle, stretched in Slint) and name-r (the right end). The page draws the
+// whole part with its shadow margin and shows only that slice. The text, the icons, the
+// seven segment figures, the meter and the waveforms are drawn live in Slint
+// (ui/skins/dv-answer.slint).
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+// A part: its class (and style) at bw x bh with margin m around it for the shadow; the
+// slice says which part of it the page box shows.
+const part = (cls, bw, bh, m, style = '', inner = '') => {
+  const slice = el.match(/-(l|m|r)$/);
+  let left = m;
+  if (slice && slice[1] === 'r') left = W - m - bw;
+  if (slice && slice[1] === 'm') left = Math.round(W / 2 - bw / 2);
+  a.innerHTML = `<div class="${cls}" style="left:${left}px;top:${m}px;width:${bw}px;height:${bh}px;${style}">${inner}</div>`;
+};
+const base = el.replace(/-(l|m|r)$/, '');
+// Slices: the whole part is drawn 160 wide, wider than both ends together.
+const P = {
+  'disp-p': ['disp', 92, 4], 'disp-w': ['disp', 124, 4],
+  'mw-p': ['mwrap', 40, 3], 'mw-w': ['mwrap', 62, 3],
+  'rec-w': ['key rec', 62, 14], 'key-w': ['key', 62, 14],
+  'pick-p': ['picker', 30, 3], 'pick-w': ['picker', 34, 3],
+  'srch-p': ['search', 30, 2, 'border-radius:15px'], 'srch-w': ['search', 34, 2, 'border-radius:17px'],
+  'strip': ['strip', 24, 2], 'track': ['track', 6, 1],
+};
+if (P[base] && /-(l|m|r)$/.test(el)) {
+  const [cls, bh, m, style] = P[base];
+  part(cls, 160, bh, m, style || '');
+}
+// Single parts at their size, with the margin m.
+const one = (cls, m, style = '', inner = '') => part(cls, W - 2 * m, H - 2 * m, m, style, inner);
+if (el === 'rec-p') one('key rec', 14);
+if (el === 'tk') one('key', 14);
+if (el === 'play-p' || el === 'play-w') one('key', 14);
+if (el === 'nub') one('nub', 6);
+if (el === 'pb-s' || el === 'pb-l') one('pbtn', 6);
+if (el === 'pb-s-red' || el === 'pb-l-red') one('pbtn red', 6);
+if (el === 'thumb') one('thumb', 3);
+if (el === 'grille-p' || el === 'grille-w') one('grille', 1);
+if (el === 'keys') one('well', 1);
+if (el === 'led-on') one('led on', 4);
+if (el === 'led-off') one('led', 4);
+const dot = (c, g) => one('dot', 4, `background:${c};box-shadow:0 0 5px ${g}`);
+if (el === 'dot-ready') dot('#7fd15a', 'rgba(127,209,90,.7)');
+if (el === 'dot-rec') dot('#ff4630', 'rgba(255,60,40,.7)');
+if (el === 'dot-pause') dot('#ffb22e', 'rgba(255,178,46,.7)');
+
+// The micro cassette window with the cassette in it, the reels' wells and the wound
+// tape on the left reel; the reels go on top (reel-p, reel-w).
+const mc = (tag, cw, ch, lbl, reel) => {
+  const inner = `<span class="tag">${tag}</span>
+    <div class="cas" style="width:${cw}px;height:${ch}px;left:50%;top:56%;transform:translate(-50%,-50%)">
+      <div class="lbl" style="font-size:${lbl}px">MC 60</div>
+      <div class="win2"><div class="ring" style="width:${reel}px;height:${reel}px"></div><div style="width:${reel}px;height:${reel}px"></div></div></div>
+    <div class="glass"></div>`;
+  one('mc', 3, '', inner);
+};
+if (el === 'mc-p') mc('MICRO', 112, 56, 9, 16);
+if (el === 'mc-w') mc('MICRO CASSETTE', 160, 74, 11, 22);
+// A reel turning: 8 frames side by side, 15 degrees apart (its spokes repeat every 120).
+if (el === 'reel-p' || el === 'reel-w') {
+  const d = H;
+  let s = '';
+  for (let i = 0; i < 8; i++) s += `<div class="reel" style="left:${i * d}px;top:0;width:${d}px;height:${d}px;transform:rotate(${i * 15}deg)"></div>`;
+  a.innerHTML = s;
+}
+</script></body></html>

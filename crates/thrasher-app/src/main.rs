@@ -1742,7 +1742,12 @@ fn main() -> Result<(), slint::PlatformError> {
                 .unwrap_or(0) as i32,
         );
         let theme = ui.global::<Theme>();
-        if let Some(i) = theme.get_names().iter().position(|n| n == a.settings.theme) {
+        // An empty name holds a place for a skin that is not in yet; never land on it.
+        if let Some(i) = theme
+            .get_names()
+            .iter()
+            .position(|n| !n.is_empty() && n == a.settings.theme)
+        {
             theme.set_current(i as i32);
         }
         fill_gallery(&ui);

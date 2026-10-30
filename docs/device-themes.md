@@ -487,6 +487,9 @@ used). Its other pages are the classic ones in a wood and honey palette (`Theme.
 - **A layout item needs a height:** a `HorizontalLayout` placed by x and y with no height takes
   its parent's, so a `VerticalLayout { alignment: center }` inside it put the status dot and the
   mic icon in the middle of the card.
+- **Heights that hold pixel art grow with it:** art on whole device pixels is about 4% larger at
+  2.25x (and 11% at 1.5x), so the portrait recorder's fixed 243 px let the toolbar cover the
+  readout's foot; its height now follows the window art (review, 2026-10-30).
 - **TextField is 36 px tall by default:** in a 30 px well its text sat 3 px low until it got
   `height: 30px`.
 - **Hidden measuring copies:** an invisible `AllBox` used to measure the toolbar's room still

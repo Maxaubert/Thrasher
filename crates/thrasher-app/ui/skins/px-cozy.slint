@@ -606,6 +606,10 @@ component Recorder inherits Rectangle {
     }
     property <length> card-y: root.big ? 282px : pane.y + pane.height + 36px;
     property <length> card-h: root.big ? 152px : 79px;
+    // The portrait recorder's height: the mockup's 243px, which the card overhangs by 7px.
+    // The art grows on whole device pixels (3.11px a pixel at 2.25x), so a fixed 243px
+    // would let the toolbar cover the card's foot.
+    out property <length> need: root.card-y + root.card-h - 7px;
     // The card's hard shadow, under it.
     Rectangle {
         x: root.pad + 6px;
@@ -1559,7 +1563,7 @@ export component MainPage inherits Rectangle {
         spacing: 0;
         Title { vertical-stretch: 0; go(p) => { root.go(p); } }
         if !root.wide: Recorder {
-            height: 243px;
+            height: self.need;
             vertical-stretch: 0;
             big: false;
             refocus => { root.refocus(); }

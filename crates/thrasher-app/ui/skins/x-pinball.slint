@@ -146,7 +146,8 @@ component Matrix inherits Rectangle {
     clip: true;
     background: Pb.dmd-bg;
     accessible-role: AccessibleRole.text;
-    accessible-label: (Main.recording ? (Main.paused ? "Paused " : "Recording ") : "Ready ") + root.clock;
+    // The dots are silent, so the microphone is read here too, as the classic card's text is.
+    accessible-label: (Main.recording ? (Main.paused ? "Paused " : "Recording ") : "Ready ") + root.clock + ", " + Main.device-label;
     DotGrid {
         pitch: root.pitch;
         lines: 4;
@@ -730,11 +731,13 @@ component FieldW inherits Rectangle {
         tip: "Ask";
         clicked => { root.go(6); }
     }
-    // Without Ask, the widget takes its place at the top.
+    // Without Ask, the widget takes its place at the top. In a short window the
+    // triangle's foot rises so its word stays above the apron (it sits between the two
+    // above, so they never meet).
     Bumper {
         big: true;
         x: 16px + (Main.can-ai ? 105px : 176px);
-        y: 46px + (Main.can-ai ? 62px : 0);
+        y: Main.can-ai ? max(46px, min(46px + 62px, root.height - self.height - 6px)) : 46px;
         kind: 2;
         icon: "pip";
         text: "WIDGET";

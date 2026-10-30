@@ -393,10 +393,12 @@ the classic ones in its violet palette (`Theme.pages` 0).
   peak that falls behind it, -60 to 0 dB), the round clock and READY (RECORDING, PAUSED), and
   FIGHT, the turned record diamond (a gold STOP while recording). Wide windows make it the fight
   stage on the left, with a fighter, the floor and a faint VS. The Stage chip is the project
-  picker; while recording, Import is PAUSE and RESUME (Import is not offered then).
+  picker (its STAGE word is left out when the toolbar is squeezed); while recording, Import is
+  PAUSE and RESUME (Import is not offered then).
 - The clips are a select grid of fighter tiles: the mockup's eight stick fighters and backdrops by
   clip number, TRANSCRIBED, play, the name plate (the name on one or two lines, when it was made
-  with "+ system", the waveform, the length, the menu). The highlighted clip has the P1 cursor;
+  with "+ system", on a line of its own when the tile is narrow, the waveform, the length, the
+  menu). The highlighted clip has the P1 cursor;
   it and the picked ones have a red frame and plate. Columns as fit tiles of about 86 px
   (portrait) or 130 px (wide), rows as tall as fill the view. Up and Down still step one clip.
 - The footer is REPLAY with a four segment super meter; LV is how many segments are full.

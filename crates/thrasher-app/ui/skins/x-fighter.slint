@@ -295,6 +295,7 @@ component Title inherits Rectangle {
             horizontal-stretch: 0;
             Text {
                 text: "THRASH";
+                accessible-label: "Thrasher";
                 color: #ffffff;
                 font-family: F.lean;
                 font-size: 17px;
@@ -308,6 +309,7 @@ component Title inherits Rectangle {
                 font-size: 17px;
                 letter-spacing: 1.5px;
                 vertical-alignment: center;
+                accessible-role: none;
             }
         }
         Text {
@@ -792,6 +794,8 @@ component Stage inherits Rectangle {
 // The Stage chip: STAGE, the project and a gold arrow. ProjectMenu holds what it offers.
 component StageChip inherits Rectangle {
     in property <length> most: 100000px;
+    // STAGE before the name; left out when the chip is squeezed, so the name keeps room.
+    in property <bool> labelled: true;
     callback refocus();
     property <bool> enabled: !Main.recording;
     property <string> name: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
@@ -814,7 +818,7 @@ component StageChip inherits Rectangle {
         padding-right: 12px;
         spacing: 7px;
         opacity: root.enabled ? 1 : 0.5;
-        Label { text: "STAGE"; }
+        if root.labelled: Label { text: "STAGE"; }
         Text {
             text: root.name;
             color: F.text;
@@ -1002,7 +1006,7 @@ component Toolbar inherits Rectangle {
         padding-top: 8px;
         padding-bottom: 9px;
         spacing: 6px;
-        StageChip { most: root.most; refocus => { root.refocus(); } }
+        StageChip { most: root.most; labelled: root.most >= 150px; refocus => { root.refocus(); } }
         Search {
             horizontal-stretch: 1;
             go(p) => { root.go(p); }
@@ -1116,6 +1120,14 @@ component Tile inherits Rectangle {
         font-weight: 700;
         font-size: root.big ? 12.5px : 11.5px;
         letter-spacing: root.big ? 0 : -0.2px;
+        accessible-role: none;
+    }
+    one-meta := Text {
+        visible: false;
+        text: root.item.when + " + system";
+        font-family: F.body;
+        font-weight: 600;
+        font-size: 9.5px;
         accessible-role: none;
     }
     // The frame: a violet rim outside the black edge; red and wider when lit.
@@ -1248,8 +1260,10 @@ component Tile inherits Rectangle {
                 // One line, or two when it does not fit on one; longer names elide.
                 height: one-line.preferred-width > root.width - 16px ? 2 * one-line.preferred-height : one-line.preferred-height;
             }
+            // When it was made, and "+ system" after it, or on a line of its own when both
+            // do not fit (narrow tiles), so it is never cut off.
             Text {
-                text: root.item.when + (root.item.has-system ? " + system" : "");
+                text: root.item.when + (root.item.has-system ? (one-meta.preferred-width > root.width - 16px ? "\n+ system" : " + system") : "");
                 color: F.dim;
                 font-family: F.body;
                 font-weight: 600;
@@ -1504,6 +1518,7 @@ component Select inherits Rectangle {
                 horizontal-stretch: 0;
                 Text {
                     text: "CLIP ";
+                    accessible-label: "Clip select";
                     color: #ffffff;
                     font-family: F.lean;
                     font-size: 15px;
@@ -1517,6 +1532,7 @@ component Select inherits Rectangle {
                     font-size: 15px;
                     letter-spacing: 2px;
                     vertical-alignment: center;
+                    accessible-role: none;
                 }
             }
             VerticalLayout {

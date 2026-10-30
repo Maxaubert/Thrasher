@@ -723,7 +723,9 @@ step 3 was.
   red, the playhead an ink line with a red flag, trimmed ends under grey halftone, yellow tabs
   as the trim handles, `TrimTouch` as before); Speed is a five cell strip, Loop a key that
   sinks while on; Export is the red key in the halftone footer. Settings are tagged white
-  cards on a hard shadow with an inked scroll rail; the models are collector cards (pips for
+  cards on a hard shadow with an inked scroll rail (wide: Recording and Window, Files and
+  Your voice, Transcription and AI in three columns; narrow: Recording, Files,
+  Transcription, AI, Your voice, Window, as the portrait mockup stacks them); the models are collector cards (pips for
   quality and speed, the one in use yellow with the IN USE stamp); merging is a crossover
   issue (a cell per clip and a plus burst, wide) with the order as numbered speech bubbles;
   Ask is a thought bubble field and the answer a speech bubble with the ANSWER caption; the

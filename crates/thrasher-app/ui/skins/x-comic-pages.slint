@@ -1356,6 +1356,52 @@ component RowSelect inherits Select {
     height: 32px;
 }
 
+// The WINDOW card. It ends the first column of a wide window and the page of a narrow
+// one, as the mockup stacks the cards (docs/mockups/device-themes/x-comic-pages).
+component WindowCard inherits Card {
+    callback close-to-tray-changed(bool);
+    callback start-with-windows-changed(bool);
+    title: "WINDOW";
+    Row {
+        first: true;
+        label: "Close button hides to tray";
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "Close button hides to tray";
+                checked <=> Pages.close-to-tray;
+                toggled(on) => { root.close-to-tray-changed(on); }
+            }
+        }
+    }
+    Row {
+        label: "Start with Windows";
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "Start with Windows";
+                checked <=> Pages.start-with-windows;
+                toggled(on) => { root.start-with-windows-changed(on); }
+            }
+        }
+    }
+}
+
+// The YOUR VOICE card. It ends the second column of a wide window and comes just
+// before WINDOW in a narrow one.
+component VoiceCard inherits Card {
+    title: "YOUR VOICE";
+    Row {
+        first: true;
+        label: "Voice engine";
+        Plain { text: "OmniVoice"; }
+    }
+    Row {
+        label: "Voice sample";
+        Plain { text: "20 s from the clip"; }
+    }
+}
+
 export component SettingsPage inherits VerticalLayout {
     in property <bool> wide;
     callback back();
@@ -1480,31 +1526,9 @@ export component SettingsPage inherits VerticalLayout {
                                     }
                                 }
                             }
-                            Card {
-                                title: "WINDOW";
-                                Row {
-                                    first: true;
-                                    label: "Close button hides to tray";
-                                    VerticalLayout {
-                                        alignment: center;
-                                        Toggle {
-                                            label: "Close button hides to tray";
-                                            checked <=> Pages.close-to-tray;
-                                            toggled(on) => { root.close-to-tray-changed(on); }
-                                        }
-                                    }
-                                }
-                                Row {
-                                    label: "Start with Windows";
-                                    VerticalLayout {
-                                        alignment: center;
-                                        Toggle {
-                                            label: "Start with Windows";
-                                            checked <=> Pages.start-with-windows;
-                                            toggled(on) => { root.start-with-windows-changed(on); }
-                                        }
-                                    }
-                                }
+                            if root.wide: WindowCard {
+                                close-to-tray-changed(on) => { root.close-to-tray-changed(on); }
+                                start-with-windows-changed(on) => { root.start-with-windows-changed(on); }
                             }
                         }
                         VerticalLayout {
@@ -1631,18 +1655,7 @@ export component SettingsPage inherits VerticalLayout {
                                     }
                                 }
                             }
-                            Card {
-                                title: "YOUR VOICE";
-                                Row {
-                                    first: true;
-                                    label: "Voice engine";
-                                    Plain { text: "OmniVoice"; }
-                                }
-                                Row {
-                                    label: "Voice sample";
-                                    Plain { text: "20 s from the clip"; }
-                                }
-                            }
+                            if root.wide: VoiceCard { }
                         }
                         VerticalLayout {
                             horizontal-stretch: 1;
@@ -1775,6 +1788,11 @@ export component SettingsPage inherits VerticalLayout {
                                         Btn { text: "Download"; primary: true; height: 28px; clicked => { root.download-ai(1); } }
                                     }
                                 }
+                            }
+                            if !root.wide: VoiceCard { }
+                            if !root.wide: WindowCard {
+                                close-to-tray-changed(on) => { root.close-to-tray-changed(on); }
+                                start-with-windows-changed(on) => { root.start-with-windows-changed(on); }
                             }
                         }
                     }

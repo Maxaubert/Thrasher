@@ -977,7 +977,10 @@ impl App {
                 .file_name()
                 .map(|f| f.to_string_lossy().into_owned())
                 .unwrap_or_default();
-            ui.set_detail_meta(format!("{} · {shown} · {tracks} · {file}", when(c.created)).into());
+            let head = format!("{} · {shown} · {tracks}", when(c.created));
+            ui.set_detail_meta(format!("{head} · {file}").into());
+            ui.set_detail_head(head.into());
+            ui.set_detail_file(file.into());
         }
         self.show_detail_wave(ui);
         // Also reads the `transkript` folder Max's older tooling writes to.

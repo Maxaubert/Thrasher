@@ -389,8 +389,8 @@ component Display inherits Rectangle {
             alignment: center;
             horizontal-stretch: 1;
             spacing: root.big ? 4px : 0;
-            Text { text: Pages.detail-meta; color: #1d9c3f; font-family: "VT323"; font-size: root.big ? 20px : 16px; overflow: elide; }
-            Text { text: root.name + ".wav"; color: Os.scope; font-family: "VT323"; font-size: root.big ? 20px : 16px; overflow: elide; }
+            Text { text: Pages.detail-head; color: #1d9c3f; font-family: "VT323"; font-size: root.big ? 20px : 16px; overflow: elide; }
+            Text { text: Pages.detail-file; color: Os.scope; font-family: "VT323"; font-size: root.big ? 20px : 16px; overflow: elide; }
         }
         VerticalLayout {
             alignment: center;
@@ -592,7 +592,7 @@ component PlayerBar inherits HorizontalLayout {
         icon: @image-url("dv-os95/pen.png");
         text: "Rename";
         label: "Rename clip";
-        tip: "";
+        tip: "Rename";
         enabled: !Main.recording;
         clicked => { root.rename(); }
     }
@@ -600,7 +600,7 @@ component PlayerBar inherits HorizontalLayout {
         icon: @image-url("dv-os95/bin.png");
         text: "Delete";
         label: "Delete clip";
-        tip: "";
+        tip: "Delete";
         enabled: !Main.recording;
         clicked => { root.delete(); }
     }
@@ -1083,7 +1083,7 @@ export component SettingsPage inherits Frame {
                     y: root.wide ? 0 : 2px;
                     width: parent.width - (root.wide ? 0 : 4px);
                     height: parent.height - (root.wide ? 0 : 4px);
-                    bar95: true;
+                    bar95: self.content-height > self.visible-height + 1px;
                     VerticalLayout {
                         alignment: start;
                         padding-left: root.wide ? 2px : 8px;

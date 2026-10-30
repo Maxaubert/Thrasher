@@ -4282,11 +4282,13 @@ export component TranscriptCard inherits Rectangle {
             spacing: Theme.tape || Theme.phos ? 6px : Theme.os95 ? 4px : 8px;
             // Desktop 95: Notepad's toolbar; the window round it (skins/dv-os95-pages.slint)
             // carries the title, and the change count sits in its status bar.
+            // Desktop 95 drops the empty bar while there is no text yet (mockup 1B).
             HorizontalLayout {
-                height: Theme.phos ? 24px : Theme.os95 ? 27px : 28px;
+                property <bool> os-bare: Theme.os95 && !root.editing && (root.transcript == "" || root.transcribing);
+                height: Theme.phos ? 24px : Theme.os95 ? (self.os-bare ? 0 : 27px) : 28px;
                 spacing: Theme.tape ? 5px : Theme.phos ? 6px : Theme.os95 ? 4px : 0;
-                padding-top: Theme.os95 ? 2px : 0;
-                padding-bottom: Theme.os95 ? 2px : 0;
+                padding-top: Theme.os95 && !self.os-bare ? 2px : 0;
+                padding-bottom: Theme.os95 && !self.os-bare ? 2px : 0;
                 Text {
                     text: Theme.os95 ? "" : "TRANSCRIPT";
                     horizontal-stretch: Theme.os95 ? 0 : 1;
@@ -5097,6 +5099,9 @@ export global Pages {
     in-out property <float> trim-start: 0;
     in-out property <float> trim-end: 1;
     in property <string> detail-meta;
+    // The same without its file name, and the file name alone (Desktop 95's two lines).
+    in property <string> detail-head;
+    in property <string> detail-file;
     in-out property <bool> renaming;
     in property <[OrderRow]> parts;
     in property <bool> parts-busy;

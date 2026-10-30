@@ -182,6 +182,8 @@ export component AppWindow inherits Window {
     in-out property <float> trim-end <=> Pages.trim-end;
     callback trim-changed(float, float);
     in property <string> detail-meta <=> Pages.detail-meta;
+    in property <string> detail-head <=> Pages.detail-head;
+    in property <string> detail-file <=> Pages.detail-file;
 
     in-out property <string> status <=> Main.status;
     in property <bool> can-transcribe <=> Pages.can-transcribe;

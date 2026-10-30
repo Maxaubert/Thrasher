@@ -1,0 +1,91 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+:root{
+  --body:#e8e6e0; --edge:#c4c0b6; --ink:#1c1c1b; --mute:#7a766d; --faint:#a9a59b;
+  --cap:#f6f5f1; --cap2:#e6e4de; --capShadow:#b3afa5;
+  --dk2:#1f1f1e; --or:#ff5a1e; --or2:#e94a12; --oled:#0b0c0c;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:transparent;overflow:hidden}
+#a{position:absolute;left:0;top:0;overflow:hidden}
+#a>div{position:absolute}
+/* The parts, as in the mockup (docs/mockups/device-themes/dv-synth.html). */
+.oled{background:var(--oled);border-radius:7px;box-shadow:0 0 0 3px #222221,0 0 0 4px #9a968c,inset 0 0 18px rgba(0,0,0,.9)}
+.lcd{border-radius:6px;background:var(--oled);box-shadow:0 0 0 2px #262625,0 0 0 3px #a19d93,inset 0 0 10px #000}
+.key{border-radius:8px;background:linear-gradient(180deg,var(--cap),var(--cap2));
+  box-shadow:0 2px 0 var(--capShadow),0 3px 7px rgba(0,0,0,.16),inset 0 1px 0 #fff,inset 0 0 0 1px #d2cfc7}
+.key.dk{background:linear-gradient(180deg,#3a3a38,var(--dk2));box-shadow:0 2px 0 #0f0f0e,0 3px 7px rgba(0,0,0,.28),inset 0 1px 0 #555}
+.key.or{background:linear-gradient(180deg,#ff6a30,var(--or2));box-shadow:0 2px 0 #a8360b,0 3px 8px rgba(233,74,18,.35),inset 0 1px 0 #ff9a6e}
+.key.lit{background:linear-gradient(180deg,#ff6a30,var(--or2));box-shadow:0 2px 0 #a8360b,0 0 0 3px rgba(255,90,30,.22),0 0 14px rgba(255,90,30,.45),inset 0 1px 0 #ff9a6e}
+/* Only the shadow of a pad (its body is drawn in Slint): a CSS shadow paints outside the box. */
+.shade{border-radius:10px;box-shadow:0 3px 7px rgba(0,0,0,.16)}
+.glow{border-radius:10px;box-shadow:0 0 0 3px rgba(255,90,30,.22),0 0 14px rgba(255,90,30,.45)}
+.led{border-radius:50%;background:#c4c0b6;box-shadow:inset 0 1px 1px rgba(0,0,0,.25)}
+.led.on{background:var(--or);box-shadow:0 0 6px var(--or),0 0 0 1px #ffb08c inset}
+.led.w{background:#fff;box-shadow:0 0 5px #fff}
+.knob{border-radius:50%;background:repeating-conic-gradient(from -135deg,#8f8b81 0 1.5deg,transparent 1.5deg 27deg)}
+.knob .cap{position:absolute;border-radius:50%;background:radial-gradient(circle at 38% 30%,#4a4a47,#1d1d1c 70%);box-shadow:0 2px 3px rgba(0,0,0,.4),inset 0 0 0 1px #000}
+.knob .cap:after{content:"";position:absolute;left:50%;top:12%;width:2px;height:32%;margin-left:-1px;border-radius:1px;background:var(--or)}
+.knob.light .cap{background:radial-gradient(circle at 38% 30%,#ffffff,#d6d3cb 72%);box-shadow:0 2px 3px rgba(0,0,0,.25),inset 0 0 0 1px #b4b0a6}
+.tbtn{border-radius:50%;background:linear-gradient(#f9f8f5,#e2dfd8);box-shadow:0 1px 0 #aaa69c,inset 0 0 0 1px #c8c4ba}
+.dots{border-radius:50%;background:linear-gradient(#f7f6f2,#dfdcd5);box-shadow:0 1px 0 #aeaa9f,inset 0 0 0 1px #cdc9c0}
+.screw{border-radius:50%;background:radial-gradient(circle at 35% 35%,#fbfaf7,#b8b4aa);box-shadow:inset 0 0 0 1px #a39f95}
+.screw:after{content:"";position:absolute;left:1.5px;right:1.5px;top:3.8px;height:1.4px;background:#8f8b81;transform:rotate(35deg)}
+.grille{background-image:radial-gradient(circle,#9d998f 1.6px,transparent 2px);background-size:10px 10px;background-position:5px 5px;opacity:.8}
+</style></head><body><div id="a"></div>
+<script>
+// One part of the Pocket Synth mockup (docs/mockups/device-themes/dv-synth.html), alone
+// on a transparent page, for cutting into PNGs: ?el=name&w=css-width&h=css-height.
+// A part of variable width is cut in three: name-l (the left end), name-m (a 2px column
+// from the middle, stretched in Slint) and name-r (the right end). The text, the icons,
+// the timer, the meter, the waveforms and the pads' bodies are drawn live in Slint
+// (ui/skins/dv-synth.slint).
+const q = new URLSearchParams(location.search), el = q.get('el'), W = +q.get('w'), H = +q.get('h');
+const a = document.getElementById('a');
+a.style.width = W + 'px'; a.style.height = H + 'px';
+// A part: its class (and style) at bw x bh with margin m around it for the shadow; the
+// slice says which part of it the page box shows.
+const part = (cls, bw, bh, m, style = '', inner = '') => {
+  const slice = el.match(/-(l|m|r)$/);
+  let left = m;
+  if (slice && slice[1] === 'r') left = W - m - bw;
+  if (slice && slice[1] === 'm') left = Math.round(W / 2 - bw / 2);
+  a.innerHTML = `<div class="${cls}" style="left:${left}px;top:${m}px;width:${bw}px;height:${bh}px;${style}">${inner}</div>`;
+};
+const base = el.replace(/-(l|m|r)$/, '');
+// Slices: the whole part is drawn 200 wide, wider than both ends together.
+const P = { 'oled-p': ['oled', 108, 4], 'oled-w': ['oled', 188, 4], 'lcd30': ['lcd', 30, 3], 'lcd24': ['lcd', 24, 3] };
+if (P[base] && /-(l|m|r)$/.test(el)) {
+  const [cls, bh, m] = P[base];
+  part(cls, 200, bh, m);
+}
+// Single parts at their size, with the margin m.
+const one = (cls, m, style = '', inner = '') => part(cls, W - 2 * m, H - 2 * m, m, style, inner);
+// The keys: function keys (portrait 52 and 76 by 44, wide 72 and 96 by 58), the row
+// keys (28 by 27), the transport key; -or the REC key, -lit a key that glows.
+const KEYS = { 'fk-p': 'key', 'fk-p-or': 'key or', 'fk-p-lit': 'key lit', 'fk-w': 'key', 'fk-w-or': 'key or', 'fk-w-lit': 'key lit',
+  'rk': 'key', 'rk-lit': 'key lit', 'dk-p': 'key dk', 'dk-w': 'key dk' };
+if (KEYS[el]) one(KEYS[el], el.endsWith('-lit') ? 18 : 12, el.startsWith('rk') ? 'border-radius:6px' : '');
+// The pads' shadows, cut 64 (or 80) square for a nine-slice.
+if (el === 'pad-shade') one('shade', 12);
+if (el === 'pad-glow') one('glow', 20);
+if (el === 'led-off') one('led', 6);
+if (el === 'led-on') one('led on', 6);
+if (el === 'led-w') one('led w', 6);
+if (el === 'tbtn') one('tbtn', 2);
+if (el === 'dots') one('dots', 2);
+if (el === 'screw') one('screw', 0);
+// A knob: dark (IN) or light (PROJ), with its ticks; d is the knob, pad its tick ring.
+const knob = (light, pad) => {
+  const m = 4, d = W - 2 * m;
+  part('knob' + (light ? ' light' : ''), d, d, m, '', `<div class="cap" style="left:${pad}px;top:${pad}px;width:${d - 2 * pad}px;height:${d - 2 * pad}px"></div>`);
+};
+if (el === 'knob-44') knob(false, 4);
+if (el === 'knob-62') knob(false, 5);
+if (el === 'knob-30') knob(true, 3);
+if (el === 'knob-32') knob(true, 3);
+// The speaker grille: one band of dot rows, 10 px (one period), repeated in Slint.
+if (el === 'grille') a.innerHTML = `<div class="grille" style="left:0;top:0;width:${W}px;height:${H}px"></div>`;
+// The brushed aluminium: a light line every 3 px.
+if (el === 'brush') a.innerHTML = `<div style="left:2px;top:0;width:1px;height:${H}px;background:rgba(255,255,255,.18)"></div>`;
+</script></body></html>

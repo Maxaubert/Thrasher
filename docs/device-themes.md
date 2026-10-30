@@ -326,6 +326,65 @@ Brick Phone), art in `ui/skins/dv-answer/`
 - Exe +2.68 MB (55.54 to 58.21 MB): fonts 0.19 MB, art 0.24 MB, the rest generated code.
   Ember, Tape Deck and Phosphor main pages at 520x700 and 1100x700 match before and after.
 
+**Built in step 5, Pocket Synth main page (2026-10-30):** `ui/skins/dv-synth.slint` (skin 11,
+theme "Pocket Synth", index 18 in `Theme.names`), art in `ui/skins/dv-synth/` (73 PNGs, 148 KB)
+from `tools/skin-art/dv-synth.html` (`sh tools/skin-art/cut.sh dv-synth OUT`). Its other pages
+are the classic ones in a white aluminium and orange palette (`Theme.pages` 0).
+- Settings gallery: its tile is the Pocket Synth line in `Gallery.devices` (`ui/gallery.slint`), band #ff6a1a.
+- The recorder is the mono screen (state, microphone, timer, segment meter) with keys 09 to 12
+  beside it: REC (Stop while recording), Import (Pause and Resume while recording, lit orange
+  while paused), Ask (with the local AI) and the widget. Portrait windows list the clips as
+  numbered rows with a key each; wide ones show them as a pad bank, four across and two down
+  (three in a tall window), with "BANK A" for clips 1 to 8, B for 9 to 16. A pad plays or
+  pauses its clip (Ctrl or Shift picks it), its label highlights it and a double click there
+  opens it. The footer is transport key 13, a screen and step LEDs for the progress (a click
+  jumps).
+- The PROJ knob opens the project menu, like its screen. The IN knob only shows: the
+  microphone is picked in Settings, as in the classic look, so the main page gains no option.
+- `Main.cols` (4 for the wide pad bank, else 1) makes the arrow keys and `clamp-list` scroll by
+  rows of pads; `AppWindow.move-selection` uses it. Up and Down still step one clip.
+- Only the status square moves: it blinks while recording (`RECORDING_FPS` 4, `EFFECT_FPS` 0).
+- Fonts: "Synth Figures", Doto 700 (OFL, no Reserved Font Name) as a static instance with only
+  the timer's characters, 7 KB (`tools/skin-art/dv-synth-fonts.py`). Its 5 has a flat top and a
+  square corner, so it does not read as S; its digits are all 0.6 em, so the timer holds still.
+  The rest is Inter Tight and JetBrains Mono, already in the app (a 600 label asks for 700).
+
+**Lessons from the Pocket Synth:**
+- **A grid list needs its row count:** keyboard scrolling worked out `selected * row-h`, which
+  is wrong for four clips to a row. `Main.cols` comes from `Theme.skin` and `Win.width`, not
+  from the page, so no other skin has to reset it when the theme changes.
+- **A pad in both directions:** its soft shadow and orange glow are nine-slice PNGs (outside the
+  box only, as Spatial Glass); its body is drawn: a 2px lip under it, solid rounded caps as tall
+  as the radius and a square gradient between them, the inner ring and the top light line. The
+  fixed keys (function keys, row keys, the transport key) are whole PNGs with their shadows.
+- **The pad bank's room comes from the scroller:** the pad pitch is its visible height over the
+  rows shown, set from its `changed visible-height`, and `Main.row-h` follows it. The content
+  rectangle sits in a `VerticalLayout` (alignment start) in the Flickable: placed pads alone
+  leave the Flickable the height of its view, so the wheel did nothing and there was no bar
+  (arrow keys still worked, as they set `list-y` directly). Review fix, 2026-10-30.
+- **Nothing in the layout may be bound to the scroll position:** with "BANK A" bound to
+  `Main.list-y`, the first wheel step panicked with "Recursion detected" (the Flickable reads
+  the layout while it scrolls). `top-row` is now set in `changed` handlers. The bank keeps its
+  last 8px for the scroll bar, so the bar does not run over the pads.
+- **A logo row in a layout stretches:** Text and nested layouts take spare width by default, so
+  the badge drifted to the middle of the title bar until they got `horizontal-stretch: 0`.
+- **Toolbar room:** the screen around the project name is 92px of chrome (padding, PROJ, the
+  chevron, gaps); counting 60px let a long name push the search off a 420px window. Checked
+  with a 43 character project name, with and without a query (ALL PROJECTS), at 420x560,
+  700x700, 820x600 and 1100x700.
+- **Checks:** the test microphone is silent, so the meter showed only its first segments; Ask is
+  not offered there; tooltips do not show headless. Once a release build stopped with rustc's
+  `STATUS_STACK_BUFFER_OVERRUN`; the same build ran clean again.
+
+**Budgets measured on the Pocket Synth** (test copy, 2.25x display, 10 s samples, 2026-10-30):
+- CPU idle 0.3% at 520x700 and 1100x700 (Ember 0.2% and 0.0%); recording 10.3% and 8.8% (Ember
+  16.1% and 19.4%).
+- Working set idle 46.1 vs Ember 42.4 MB (+3.7), wide 53.7 vs 50.1 MB (+3.6); recording 48.6 vs
+  46.1 MB, wide 56.4 vs 53.7 MB.
+- Exe +2.34 MB (65.61 to 67.96 MB): art 0.15 MB, font 7 KB, the rest generated code. Ember, Tape
+  Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700 match pixel for
+  pixel before and after.
+
 ### Recipe from the pilot (follow it for the other skins)
 
 - **Art:** an element page `tools/skin-art/<skin>.html` draws each fixed piece of the

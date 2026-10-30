@@ -6,6 +6,7 @@
 #   sh tools/skin-art/cut.sh dash OUT_DIR    (the Car Dashboard, into ui/skins/dash/)
 #   sh tools/skin-art/cut.sh px-quest OUT_DIR (the Quest Menu, into ui/skins/px-quest/)
 #   sh tools/skin-art/cut.sh dv-brick OUT_DIR (the Brick Phone, into ui/skins/dv-brick/)
+#   sh tools/skin-art/cut.sh dv-synth OUT_DIR (the Pocket Synth, into ui/skins/dv-synth/)
 #
 # reads tools/skin-art/<skin>.html and the piece list below, and writes OUT_DIR/<name>.png
 # and OUT_DIR/<name>@2x.png. Copy the ones the skin uses to crates/thrasher-app/ui/skins/<skin>/.
@@ -85,6 +86,17 @@ dv-answer) PIECES="disp-p-l:disp-p-l:14:100 disp-p-m:disp-p-m:2:100 disp-p-r:dis
   grille-p:grille-p:94:80 grille-w:grille-w:256:39 keys:keys:366:98 led-on:led-on:16:16 led-off:led-off:16:16
   dot-ready:dot-ready:15:15 dot-rec:dot-rec:15:15 dot-pause:dot-pause:15:15
   mc-p:mc-p:148:84 mc-w:mc-w:214:110 reel-p:reel-p:128:16 reel-w:reel-w:176:22" ;;
+# Pocket Synth: the screens in three slices (-l, -m, -r), the fixed keys whole with their
+# shadows, the pads' shadows for a nine-slice, the knobs, LEDs and round buttons; the
+# grille is one band of dot rows and the brushed tile one period (both repeated in Slint).
+dv-synth) PIECES="oled-p-l:oled-p-l:26:116 oled-p-m:oled-p-m:2:116 oled-p-r:oled-p-r:26:116
+  oled-w-l:oled-w-l:26:196 oled-w-m:oled-w-m:2:196 oled-w-r:oled-w-r:26:196
+  lcd30-l:lcd30-l:16:36 lcd30-m:lcd30-m:2:36 lcd30-r:lcd30-r:16:36 lcd24-l:lcd24-l:16:30 lcd24-m:lcd24-m:2:30 lcd24-r:lcd24-r:16:30
+  fk-p:fk-p:76:68 fk-p-or:fk-p-or:100:68 fk-p-lit:fk-p-lit:88:80 fk-w:fk-w:96:82 fk-w-or:fk-w-or:120:82 fk-w-lit:fk-w-lit:108:94
+  rk:rk:52:51 rk-lit:rk-lit:64:63 dk-p:dk-p:62:60 dk-w:dk-w:70:64 pad-shade:pad-shade:64:64 pad-glow:pad-glow:80:80
+  led-off:led-off:18:18 led-on:led-on:18:18 led-w:led-w:18:18 step-off:led-off:17:17 step-on:led-on:17:17
+  tbtn:tbtn:26:26 dots:dots:24:24 screw:screw:9:9 knob-44:knob-44:52:52 knob-62:knob-62:70:70 knob-30:knob-30:38:38
+  knob-32:knob-32:40:40 grille:grille:277:10 brush:brush:3:1" ;;
 *) echo "no piece list for $SKIN"; exit 1 ;;
 esac
 

@@ -1,0 +1,1920 @@
+// The Phonograph main page: a Victorian wax cylinder recorder in mahogany and brass
+// (docs/mockups/device-themes/x-phono.html). The record key is the brass horn bell with
+// a red wax seal; the level is a flyball governor that spreads as the voice gets louder;
+// the timer is a brass counter of figure wheels and the wax cylinder turns on its
+// mandrel while recording. Import, Ask and the widget are ivory keys; the project is a
+// brass card holder, the clips are labelled cylinder tins whose lids play them, and the
+// footer is the reproducer rail with its stylus carriage. Portrait windows stack the
+// machine above the tins; wide ones put the whole machine on the left.
+//
+// Fixed art is PNGs in x-phono/ (1x and 2x), cut from tools/skin-art/x-phono.html with
+// headless Edge. A part of variable width is three pieces (`Slice3`): its two ends and a
+// 2px column stretched between them. The governor is a strip of 12 frames picked by the
+// level; the mandrel hub is a strip of 6 and the cylinder's sheen is moved on the Fx
+// clock, which runs only while recording. Fonts: Cinzel, and EB Garamond with lining
+// tabular figures as "Phono Garamond" and "Phono Figures" (tools/skin-art/x-phono-fonts.py).
+
+import { Theme, Fx, Main, Tips, Icon, ProjectMenu, TextField, Scroller, ClipMenu, WaveSeek, ClipRow, SearchHit } from "../common.slint";
+
+// The machine's colours, from the mockup.
+global Ph {
+    out property <color> brass-hi: #f6e3a1;
+    out property <color> brass: #d1a84f;
+    out property <color> brass-mid: #b58a35;
+    out property <color> brass-lo: #7a5717;
+    out property <color> engrave: #3a2709;
+    out property <color> ivory: #f1e6c9;
+    out property <color> ink: #2b1a0e;
+    out property <color> ink-soft: #6a4c30;
+    out property <color> wax: #a3261c;
+    out property <color> wax-hi: #d0463a;
+    out property <color> plate-ink: #efdcb2;
+    out property <color> np: #d9c49a;
+    out property <color> hint: #a88d63;
+    out property <color> tag-ink: #e9dcb8;
+    out property <color> wave: #5a3a1ccc;
+    // The tins' paper labels, in turn, and the highlighted one.
+    out property <[color]> labels: [#eadbb7, #dfe0bf, #ead3c0];
+    out property <color> label-lit: #f2e5c4;
+    out property <brush> wood: @linear-gradient(180deg, #5e2614 0%, #4a1c10 45%, #3a150b 100%);
+    out property <brush> wood-dark: @linear-gradient(180deg, #2e130b 0%, #1f0d07 100%);
+}
+
+// A piece of art, the 2x cut when the display is dense.
+component Art inherits Image {
+    in property <image> lo;
+    in property <image> hi;
+    source: 1phx < 0.7px ? root.hi : root.lo;
+    image-fit: fill;
+}
+
+// A tile repeated from the box's top left, one image pixel per logical pixel.
+component Tile inherits Image {
+    width: 100%;
+    height: 100%;
+    horizontal-tiling: repeat;
+    vertical-tiling: repeat;
+    horizontal-alignment: left;
+    vertical-alignment: top;
+}
+
+// A part of variable width: its left and right ends and a thin middle column stretched
+// between them. The pieces carry `pad` of shadow around the part on every side; `cap`
+// is the width of an end piece.
+component Slice3 inherits Rectangle {
+    in property <image> l;
+    in property <image> m;
+    in property <image> r;
+    in property <image> l2;
+    in property <image> m2;
+    in property <image> r2;
+    in property <length> pad;
+    in property <length> cap;
+    property <bool> hi: 1phx < 0.7px;
+    Image {
+        x: -root.pad;
+        y: -root.pad;
+        width: root.cap;
+        height: root.height + 2 * root.pad;
+        source: root.hi ? root.l2 : root.l;
+        image-fit: fill;
+    }
+    Image {
+        x: root.cap - root.pad;
+        y: -root.pad;
+        width: max(0px, root.width + 2 * root.pad - 2 * root.cap);
+        height: root.height + 2 * root.pad;
+        source: root.hi ? root.m2 : root.m;
+        image-fit: fill;
+    }
+    Image {
+        x: root.width + root.pad - root.cap;
+        y: -root.pad;
+        width: root.cap;
+        height: root.height + 2 * root.pad;
+        source: root.hi ? root.r2 : root.r;
+        image-fit: fill;
+    }
+}
+
+// Mahogany: its gradient with the grain over it; `dark` is the darker wood of the
+// toolbar, the tins' shelf and the footer.
+component Wood inherits Rectangle {
+    in property <bool> dark;
+    background: root.dark ? Ph.wood-dark : Ph.wood;
+    Tile {
+        source: root.dark ? @image-url("x-phono/woodd.png") : @image-url("x-phono/wood.png");
+    }
+}
+
+// Small caps engraved in brass colour: INPUT, COUNTER, LEVEL.
+component Lbl inherits Text {
+    color: Ph.brass;
+    font-family: "Cinzel";
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 1.7px;
+    accessible-role: none;
+    accessible-label: "";
+}
+
+// A brass knob in the title bar: Settings (the gear), minimise and close (screws).
+component TitleKey inherits Rectangle {
+    in property <image> lo;
+    in property <image> hi;
+    in property <string> label;
+    in property <bool> round: true;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        y: t.pressed ? 1px : 0;
+        Art {
+            x: -2px;
+            y: -2px;
+            width: root.width + 4px;
+            height: root.height + 4px;
+            lo: root.lo;
+            hi: root.hi;
+        }
+        Rectangle {
+            visible: t.has-hover;
+            border-radius: self.width / 2;
+            background: #fff6d82e;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The title bar: the brass name plate, Settings, minimise and close.
+component Title inherits Rectangle {
+    callback go(int);
+    height: 40px;
+    Wood { }
+    Rectangle { y: parent.height - 3px; height: 1px; background: #ffc88c14; }
+    Rectangle { y: parent.height - 2px; height: 2px; background: #160904; }
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    Art {
+        x: 12px - 2px;
+        y: 6px - 2px;
+        width: 214px;
+        height: 30px;
+        lo: @image-url("x-phono/plate.png");
+        hi: @image-url("x-phono/plate@2x.png");
+        accessible-role: none;
+    }
+    HorizontalLayout {
+        padding-right: 10px;
+        padding-bottom: 2px;
+        spacing: 10px;
+        alignment: end;
+        VerticalLayout {
+            alignment: center;
+            TitleKey {
+                width: 22px;
+                height: 22px;
+                label: "Settings";
+                lo: @image-url("x-phono/gear.png");
+                hi: @image-url("x-phono/gear@2x.png");
+                clicked => { root.go(3); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            TitleKey {
+                width: 22px;
+                height: 22px;
+                label: "Minimize";
+                lo: @image-url("x-phono/screw-min.png");
+                hi: @image-url("x-phono/screw-min@2x.png");
+                clicked => { Main.minimize-window(); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            TitleKey {
+                width: 22px;
+                height: 22px;
+                label: "Close";
+                lo: @image-url("x-phono/screw-close.png");
+                hi: @image-url("x-phono/screw-close@2x.png");
+                clicked => { Main.close-window(); }
+            }
+        }
+    }
+}
+
+// The state tag: a jewel lamp (green ready, red recording, amber paused) and the word.
+component StateTag inherits Rectangle {
+    width: word.preferred-width + 7px + 9px + 6px + 10px;
+    height: 20px;
+    Rectangle {
+        x: -1.5px;
+        y: -1.5px;
+        width: parent.width + 3px;
+        height: parent.height + 3px;
+        border-radius: 11.5px;
+        background: Ph.brass-mid;
+    }
+    Rectangle {
+        border-radius: 10px;
+        background: #170e08;
+    }
+    Art {
+        x: 7px - 6px;
+        y: (parent.height - 9px) / 2 - 6px;
+        width: 21px;
+        height: 21px;
+        lo: !Main.recording ? @image-url("x-phono/jewel-g.png") : Main.paused ? @image-url("x-phono/jewel-a.png") : @image-url("x-phono/jewel-r.png");
+        hi: !Main.recording ? @image-url("x-phono/jewel-g@2x.png") : Main.paused ? @image-url("x-phono/jewel-a@2x.png") : @image-url("x-phono/jewel-r@2x.png");
+    }
+    word := Text {
+        x: 7px + 9px + 6px;
+        height: parent.height;
+        text: Main.recording ? (Main.paused ? "PAUSED" : "RECORDING") : "READY";
+        color: Ph.tag-ink;
+        font-family: "Cinzel";
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 2.2px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+}
+
+// The counter: brass around ivory figure wheels, one per digit, with the separators
+// engraved between them. "Phono Figures" lays the digits out one advance apart and the
+// separators take no room, so each wheel shows its digit by clipping the whole string.
+component Odometer inherits Rectangle {
+    in property <bool> big;
+    in property <string> text: Main.elapsed + Main.elapsed-tenth;
+    property <length> size: root.big ? 22px : 15px;
+    property <length> cw: root.big ? 15px : 10px;
+    property <length> ch: root.big ? 25px : 17px;
+    property <length> sw: root.big ? 5px : 4px;
+    // One digit of Phono Figures: 0.513 em.
+    property <length> adv: root.size * 0.513;
+    // Not character-count alone: as a repeater count it generated Rust that did not compile.
+    property <int> count: root.text == "" ? 0 : root.text.character-count;
+    // Counted from the end, every third character from the second is a separator:
+    // "00:00.0", "1:02:03.4".
+    property <int> m: root.count - 2;
+    function is-sep(i: int) -> bool {
+        return i <= root.m && Math.mod(root.m - i, 3) == 0;
+    }
+    function seps-before(i: int) -> int {
+        return i > root.m ? floor(root.m / 3) + 1 : floor(root.m / 3) - floor((root.m - i) / 3);
+    }
+    function at(i: int) -> length {
+        return (i - root.seps-before(i)) * root.cw + root.seps-before(i) * root.sw + i * 2px;
+    }
+    width: root.at(root.count) - 2px + 6px;
+    height: root.ch + 6px;
+    accessible-role: AccessibleRole.text;
+    accessible-label: (Main.recording ? (Main.paused ? "Paused " : "Recording ") : "Ready ") + root.text;
+    Slice3 {
+        pad: 3px;
+        cap: 10px;
+        l: root.big ? @image-url("x-phono/odo-w-l.png") : @image-url("x-phono/odo-p-l.png");
+        m: root.big ? @image-url("x-phono/odo-w-m.png") : @image-url("x-phono/odo-p-m.png");
+        r: root.big ? @image-url("x-phono/odo-w-r.png") : @image-url("x-phono/odo-p-r.png");
+        l2: root.big ? @image-url("x-phono/odo-w-l@2x.png") : @image-url("x-phono/odo-p-l@2x.png");
+        m2: root.big ? @image-url("x-phono/odo-w-m@2x.png") : @image-url("x-phono/odo-p-m@2x.png");
+        r2: root.big ? @image-url("x-phono/odo-w-r@2x.png") : @image-url("x-phono/odo-p-r@2x.png");
+    }
+    for i in root.count: cell := Rectangle {
+        property <bool> sep: root.is-sep(i);
+        x: 3px + root.at(i);
+        y: 3px;
+        width: self.sep ? root.sw : root.cw;
+        height: root.ch;
+        Art {
+            visible: !cell.sep;
+            width: parent.width;
+            height: parent.height;
+            lo: root.big ? @image-url("x-phono/cell-w.png") : @image-url("x-phono/cell-p.png");
+            hi: root.big ? @image-url("x-phono/cell-w@2x.png") : @image-url("x-phono/cell-p@2x.png");
+        }
+        Text {
+            visible: cell.sep;
+            text: i == root.m ? "." : ":";
+            color: Ph.engrave;
+            font-family: "Phono Garamond";
+            font-size: root.size * 0.9;
+            font-weight: 600;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        // A window one digit wide in the middle of the wheel, so the neighbours stay hidden.
+        Rectangle {
+            visible: !cell.sep;
+            x: (root.cw - root.adv) / 2;
+            width: root.adv;
+            clip: true;
+            Text {
+                x: -(i - root.seps-before(i)) * root.adv;
+                width: root.count * root.adv + 2px;
+                height: parent.height;
+                text: root.text;
+                color: Ph.ink;
+                font-family: "Phono Figures";
+                font-size: root.size;
+                font-weight: 600;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+    }
+}
+
+// The wax cylinder on its mandrel: brass end caps, the grooved wax (the cut part on the
+// left darker and finer), the reproducer riding on it and the hub with its spokes. While
+// recording the hub turns (6 frames through the cross's 90 degree repeat) and the sheen
+// runs along the wax.
+component Cylinder inherits Rectangle {
+    in property <bool> big;
+    property <bool> turning: Main.recording && !Main.paused;
+    property <bool> hi: 1phx < 0.7px;
+    property <length> h: root.big ? 58px : 36px;
+    property <length> bw: root.width - 16px;
+    property <length> hub: root.big ? 40px : 26px;
+    property <length> box: root.big ? 30px : 19px;
+    property <int> frame: root.turning ? Math.mod(floor(Fx.t * 5), 6) : 0;
+    // The sheen moves 30px a second (Fx.t runs 2 a second while recording).
+    property <length> shift: root.turning ? Math.mod(Fx.t * 15, 90) * 1px : 0;
+    property <int> stripes: ceil(root.bw / 90px) + 1;
+    height: root.h + 16px;
+    accessible-role: none;
+    // The end caps.
+    Art {
+        x: -2px;
+        y: 12px + root.h * 0.15 - 2px;
+        width: 12px;
+        height: root.h * 0.7 + 4px;
+        lo: root.big ? @image-url("x-phono/cap-w.png") : @image-url("x-phono/cap-p.png");
+        hi: root.big ? @image-url("x-phono/cap-w@2x.png") : @image-url("x-phono/cap-p@2x.png");
+    }
+    Art {
+        x: root.width - 8px - 2px;
+        y: 12px + root.h * 0.15 - 2px;
+        width: 12px;
+        height: root.h * 0.7 + 4px;
+        lo: root.big ? @image-url("x-phono/cap-w.png") : @image-url("x-phono/cap-p.png");
+        hi: root.big ? @image-url("x-phono/cap-w@2x.png") : @image-url("x-phono/cap-p@2x.png");
+    }
+    // The wax.
+    Rectangle {
+        x: 8px;
+        y: 12px;
+        width: root.bw;
+        height: root.h;
+        Rectangle {
+            x: 4px;
+            width: parent.width - 8px;
+            background: @linear-gradient(90deg, #7b4a20 0%, #9b6630 50%, #7b4a20 100%);
+        }
+        Tile {
+            x: 4px;
+            width: parent.width - 8px;
+            source: @image-url("x-phono/groove.png");
+        }
+        Rectangle {
+            x: 4px;
+            width: parent.width - 8px;
+            background: @linear-gradient(180deg, #0000008c 0%, #00000000 22%, #ffdcaa47 34%, #00000000 48%, #00000099 100%);
+        }
+        // The part already cut.
+        Rectangle {
+            x: 4px;
+            width: parent.width * 0.34 - 4px;
+            background: @linear-gradient(180deg, #00000059 0%, #00000000 30%, #00000000 70%, #00000066 100%);
+        }
+        Tile {
+            x: 4px;
+            width: parent.width * 0.34 - 4px;
+            source: @image-url("x-phono/groovec.png");
+        }
+        // The sheen, stripes 6px wide every 90px.
+        Rectangle {
+            x: 2px;
+            width: parent.width - 4px;
+            clip: true;
+            for k in root.stripes: Rectangle {
+                x: 40px - 2px + (k - 1) * 90px + root.shift;
+                width: 6px;
+                background: #ffdca01f;
+            }
+        }
+        Art {
+            x: 0;
+            width: 4px;
+            height: parent.height;
+            lo: root.big ? @image-url("x-phono/cyl-w-l.png") : @image-url("x-phono/cyl-p-l.png");
+            hi: root.big ? @image-url("x-phono/cyl-w-l@2x.png") : @image-url("x-phono/cyl-p-l@2x.png");
+        }
+        Art {
+            x: parent.width - 4px;
+            width: 4px;
+            height: parent.height;
+            lo: root.big ? @image-url("x-phono/cyl-w-r.png") : @image-url("x-phono/cyl-p-r.png");
+            hi: root.big ? @image-url("x-phono/cyl-w-r@2x.png") : @image-url("x-phono/cyl-p-r@2x.png");
+        }
+    }
+    // The mandrel hub, its middle on the right end.
+    Image {
+        x: root.width - root.hub / 2 - 2px;
+        y: 12px + root.h / 2 - root.hub / 2 - 2px;
+        width: root.hub + 4px;
+        height: root.hub + 4px;
+        source: root.big ? (root.hi ? @image-url("x-phono/hub-w@2x.png") : @image-url("x-phono/hub-w.png"))
+            : (root.hi ? @image-url("x-phono/hub-p@2x.png") : @image-url("x-phono/hub-p.png"));
+        source-clip-x: root.frame * (root.big ? 44 : 30) * (root.hi ? 2 : 1);
+        source-clip-y: 0;
+        source-clip-width: (root.big ? 44 : 30) * (root.hi ? 2 : 1);
+        source-clip-height: (root.big ? 44 : 30) * (root.hi ? 2 : 1);
+        image-fit: fill;
+    }
+    // The reproducer and its stylus, a third along.
+    Art {
+        x: root.width * 0.34 + 2px - root.box / 2 - 2px;
+        y: -14px - 2px;
+        width: root.box + 4px;
+        height: root.box + 12px;
+        lo: root.big ? @image-url("x-phono/repro-w.png") : @image-url("x-phono/repro-p.png");
+        hi: root.big ? @image-url("x-phono/repro-w@2x.png") : @image-url("x-phono/repro-p@2x.png");
+    }
+}
+
+// The flyball governor: 12 frames from still to full spread, picked by the input level
+// while recording (the scale runs from -40 dB, pp, to 0, ff).
+component Governor inherits Rectangle {
+    in property <bool> big;
+    property <bool> hi: 1phx < 0.7px;
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;
+    property <int> frame: round(clamp((root.level * 60 - 20) / 40, 0, 1) * 11);
+    property <int> fw: (root.big ? 84 : 52) * (root.hi ? 2 : 1);
+    property <int> fh: (root.big ? 130 : 80) * (root.hi ? 2 : 1);
+    width: root.big ? 84px : 52px;
+    height: root.big ? 130px : 80px;
+    accessible-role: none;
+    Image {
+        width: parent.width;
+        height: parent.height;
+        source: root.big ? (root.hi ? @image-url("x-phono/gov-w@2x.png") : @image-url("x-phono/gov-w.png"))
+            : (root.hi ? @image-url("x-phono/gov-p@2x.png") : @image-url("x-phono/gov-p.png"));
+        source-clip-x: root.frame * root.fw;
+        source-clip-y: 0;
+        source-clip-width: root.fw;
+        source-clip-height: root.fh;
+        image-fit: fill;
+    }
+}
+
+// The horn bell: Record, and Stop and save while recording. The wax seal in its throat
+// carries the microphone (a stop square while recording); the brass plate under it says
+// what it does.
+component Bell inherits Rectangle {
+    in property <bool> big;
+    callback refocus();
+    property <length> d: root.big ? 178px : 108px;
+    property <length> seal: root.big ? 64px : 39px;
+    width: root.d;
+    height: root.d + 9px + 18px;
+    Rectangle {
+        width: root.d;
+        height: root.d;
+        x: 0;
+        y: 0;
+        accessible-role: button;
+        accessible-label: Main.recording ? "Stop and save" : "Record";
+        accessible-action-default => { root.press(); }
+        Art {
+            x: -20px;
+            y: -20px;
+            width: root.d + 40px;
+            height: root.d + 40px;
+            lo: root.big ? @image-url("x-phono/bell-w.png") : @image-url("x-phono/bell-p.png");
+            hi: root.big ? @image-url("x-phono/bell-w@2x.png") : @image-url("x-phono/bell-p@2x.png");
+        }
+        // A red halo round the seal while the wax is being cut.
+        Rectangle {
+            visible: Main.recording && !Main.paused;
+            x: (root.d - self.width) / 2;
+            y: (root.d - self.height) / 2;
+            width: root.seal + 10px;
+            height: self.width;
+            border-radius: self.width / 2;
+            background: #d0463a38;
+        }
+        Rectangle {
+            x: (root.d - root.seal) / 2;
+            y: (root.d - root.seal) / 2 + (t.pressed ? 1px : 0);
+            width: root.seal;
+            height: root.seal;
+            Art {
+                x: -8px;
+                y: -8px;
+                width: root.seal + 16px;
+                height: root.seal + 16px;
+                lo: root.big ? @image-url("x-phono/seal-w.png") : @image-url("x-phono/seal-p.png");
+                hi: root.big ? @image-url("x-phono/seal-w@2x.png") : @image-url("x-phono/seal-p@2x.png");
+            }
+            Rectangle {
+                visible: t.has-hover || t.pressed;
+                border-radius: self.width / 2;
+                background: t.pressed ? #0000002e : #ffffff1f;
+            }
+            Icon {
+                name: Main.recording ? "stop" : "mic";
+                tint: #f7e6c4;
+                width: root.big ? (Main.recording ? 22px : 30px) : (Main.recording ? 14px : 18px);
+                height: self.width;
+            }
+        }
+        property <bool> hovering: t.has-hover;
+        changed hovering => { Tips.hover(self.hovering, Main.recording ? "Stop" : "Record", self.absolute-position, self.width, self.height); }
+        t := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { Tips.hide(); root.press(); }
+        }
+    }
+    Art {
+        x: (root.d - 92px) / 2 - 2px;
+        y: root.d + 9px - 2px;
+        width: 96px;
+        height: 22px;
+        lo: Main.recording ? @image-url("x-phono/plate-stop.png") : @image-url("x-phono/plate-rec.png");
+        hi: Main.recording ? @image-url("x-phono/plate-stop@2x.png") : @image-url("x-phono/plate-rec@2x.png");
+        accessible-role: none;
+    }
+    function press() {
+        Main.toggle-record();
+        root.refocus();
+    }
+}
+
+// An ivory key with its icon and word: the crank (Import), the ear trumpet (Ask) and the
+// pocket watch (the widget). `icon` names an app icon instead of the art (Pause, Resume).
+component IvoryKey inherits Rectangle {
+    in property <bool> big;
+    in property <image> art;
+    in property <image> art2;
+    in property <string> icon;
+    in property <string> text;
+    in property <string> label;
+    in property <string> tip: root.label;
+    // Latched down (Resume while paused).
+    in property <bool> lit;
+    callback clicked;
+    property <bool> down: t.pressed || root.lit;
+    property <length> is: root.big ? 20px : 17px;
+    height: root.big ? 42px : 32px;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        y: root.down ? 1.5px : 0;
+        Slice3 {
+            pad: 8px;
+            cap: 16px;
+            l: root.big ? @image-url("x-phono/key-w-l.png") : @image-url("x-phono/key-p-l.png");
+            m: root.big ? @image-url("x-phono/key-w-m.png") : @image-url("x-phono/key-p-m.png");
+            r: root.big ? @image-url("x-phono/key-w-r.png") : @image-url("x-phono/key-p-r.png");
+            l2: root.big ? @image-url("x-phono/key-w-l@2x.png") : @image-url("x-phono/key-p-l@2x.png");
+            m2: root.big ? @image-url("x-phono/key-w-m@2x.png") : @image-url("x-phono/key-p-m@2x.png");
+            r2: root.big ? @image-url("x-phono/key-w-r@2x.png") : @image-url("x-phono/key-p-r@2x.png");
+        }
+        Rectangle {
+            visible: root.lit;
+            border-radius: 5px;
+            background: #b58a3547;
+        }
+        Rectangle {
+            visible: t.has-hover && !root.down;
+            border-radius: 5px;
+            background: #ffffff33;
+        }
+        HorizontalLayout {
+            alignment: center;
+            spacing: 7px;
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: root.is;
+                    height: root.is;
+                    Image {
+                        visible: root.icon == "";
+                        width: parent.width;
+                        height: parent.height;
+                        source: 1phx < 0.7px ? root.art2 : root.art;
+                        image-fit: fill;
+                    }
+                    Icon {
+                        visible: root.icon != "";
+                        name: root.icon;
+                        tint: Ph.ink;
+                        width: root.is - 5px;
+                        height: root.is - 5px;
+                    }
+                }
+            }
+            Text {
+                text: root.text;
+                color: Ph.ink;
+                font-family: "Cinzel";
+                font-size: root.big ? 10.5px : 9.5px;
+                font-weight: 700;
+                letter-spacing: root.big ? 1.68px : 1.52px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The key row: Import (Pause and Resume while recording, when Import is not offered),
+// Ask (with the local AI) and the widget.
+component Keys inherits HorizontalLayout {
+    in property <bool> big;
+    callback go(int);
+    callback refocus();
+    spacing: 8px;
+    IvoryKey {
+        horizontal-stretch: 1;
+        big: root.big;
+        art: root.big ? @image-url("x-phono/i-crank-20.png") : @image-url("x-phono/i-crank-17.png");
+        art2: root.big ? @image-url("x-phono/i-crank-20@2x.png") : @image-url("x-phono/i-crank-17@2x.png");
+        icon: !Main.recording ? "" : Main.paused ? "play" : "pause";
+        text: !Main.recording ? "IMPORT" : Main.paused ? "RESUME" : "PAUSE";
+        label: !Main.recording ? "Import audio or video" : Main.paused ? "Resume" : "Pause";
+        tip: !Main.recording ? "Import" : self.label;
+        lit: Main.recording && Main.paused;
+        clicked => {
+            if (Main.recording) {
+                Main.toggle-pause();
+                root.refocus();
+            } else {
+                Main.import-files();
+            }
+        }
+    }
+    if Main.can-ai: IvoryKey {
+        horizontal-stretch: 1;
+        big: root.big;
+        art: root.big ? @image-url("x-phono/i-trumpet-20.png") : @image-url("x-phono/i-trumpet-17.png");
+        art2: root.big ? @image-url("x-phono/i-trumpet-20@2x.png") : @image-url("x-phono/i-trumpet-17@2x.png");
+        text: "ASK";
+        label: "Ask your clips";
+        tip: "Ask";
+        clicked => { root.go(6); }
+    }
+    IvoryKey {
+        horizontal-stretch: 1;
+        big: root.big;
+        art: root.big ? @image-url("x-phono/i-watch-20.png") : @image-url("x-phono/i-watch-17.png");
+        art2: root.big ? @image-url("x-phono/i-watch-20@2x.png") : @image-url("x-phono/i-watch-17@2x.png");
+        text: "WIDGET";
+        label: "Small widget";
+        tip: "Widget";
+        clicked => { Main.compact-changed(true); }
+    }
+}
+
+// The input device on its dark plate.
+component DevicePlate inherits Rectangle {
+    in property <bool> big;
+    height: root.big ? 28px : 24px;
+    Slice3 {
+        pad: 1px;
+        cap: 7px;
+        l: root.big ? @image-url("x-phono/dev-w-l.png") : @image-url("x-phono/dev-p-l.png");
+        m: root.big ? @image-url("x-phono/dev-w-m.png") : @image-url("x-phono/dev-p-m.png");
+        r: root.big ? @image-url("x-phono/dev-w-r.png") : @image-url("x-phono/dev-p-r.png");
+        l2: root.big ? @image-url("x-phono/dev-w-l@2x.png") : @image-url("x-phono/dev-p-l@2x.png");
+        m2: root.big ? @image-url("x-phono/dev-w-m@2x.png") : @image-url("x-phono/dev-p-m@2x.png");
+        r2: root.big ? @image-url("x-phono/dev-w-r@2x.png") : @image-url("x-phono/dev-p-r@2x.png");
+    }
+    Text {
+        x: 12px;
+        width: parent.width - 24px;
+        height: parent.height;
+        text: Main.device-label;
+        color: Ph.plate-ink;
+        font-family: "Phono Garamond";
+        font-size: root.big ? 16px : 14px;
+        font-weight: 500;
+        font-italic: true;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// The machine in a portrait window: the state, the counter and the cylinder with the
+// input under them on the left, then the governor and the horn.
+component MachineFront inherits Rectangle {
+    callback refocus();
+    property <length> col-w: root.width - 14px - 108px - 10px - 52px - 10px - 14px;
+    height: 186px;
+    Wood { }
+    StateTag {
+        x: 14px;
+        y: 10px + 1.5px;
+    }
+    Odometer {
+        x: 14px + root.col-w - self.width;
+        y: 10px;
+    }
+    Cylinder {
+        x: 14px;
+        y: 10px + 23px + 8px;
+        width: root.col-w - 12px;
+    }
+    Lbl {
+        x: 14px;
+        y: 101px;
+        text: "INPUT";
+    }
+    DevicePlate {
+        x: 14px;
+        y: 116px;
+        width: root.col-w;
+    }
+    Governor {
+        x: root.width - 14px - 108px - 10px - 52px;
+        y: 56px;
+    }
+    Bell {
+        x: root.width - 14px - 108px;
+        y: 22px;
+        refocus => { root.refocus(); }
+    }
+}
+
+// The machine in a wide window, on the left: the state and the counter, the cylinder,
+// the governor and the horn, then the input and the keys at the foot. A short window
+// takes the small horn and governor and closes the gaps.
+component MachineSide inherits Rectangle {
+    callback go(int);
+    callback refocus();
+    property <bool> roomy: root.height >= 484px;
+    // Without COUNTER over the counter in the shortest windows.
+    property <bool> counter-word: root.height >= 400px;
+    property <length> pad: root.roomy ? 16px : 12px;
+    property <length> top-h: root.counter-word ? 46.5px : 31px;
+    property <length> cyl-y: root.pad + root.top-h + 6px;
+    property <length> mid-y: root.cyl-y + 74px + (root.roomy ? 20px : 10px);
+    property <length> mid-h: root.roomy ? 205px : 135px;
+    property <length> keys-y: root.height - root.pad - 42px;
+    property <length> dev-y: root.keys-y - (root.roomy ? 14px : 10px) - 28px;
+    width: 400px;
+    Wood { }
+    Rectangle { x: parent.width - 4px; width: 1px; background: #ffc88c14; }
+    Rectangle { x: parent.width - 3px; width: 3px; background: #160904; }
+    StateTag {
+        x: 20px;
+        y: root.pad + (root.top-h - 20px) / 2;
+    }
+    VerticalLayout {
+        x: 20px;
+        y: root.pad;
+        width: 360px;
+        height: root.top-h;
+        spacing: 4px;
+        if root.counter-word: HorizontalLayout {
+            alignment: end;
+            Lbl { text: "COUNTER"; }
+        }
+        HorizontalLayout {
+            alignment: end;
+            Odometer { big: true; }
+        }
+    }
+    Cylinder {
+        big: true;
+        x: 20px;
+        y: root.cyl-y;
+        width: 348px;
+    }
+    VerticalLayout {
+        x: 20px;
+        y: root.mid-y + root.mid-h - self.height;
+        width: root.roomy ? 84px : 52px;
+        height: self.preferred-height;
+        spacing: 6px;
+        Governor { big: root.roomy; }
+        HorizontalLayout {
+            alignment: center;
+            Lbl { text: "LEVEL"; }
+        }
+    }
+    Bell {
+        big: root.roomy;
+        x: 20px + (root.roomy ? 84px : 52px) + 16px + (360px - (root.roomy ? 84px : 52px) - 16px - self.width) / 2;
+        y: root.mid-y;
+        refocus => { root.refocus(); }
+    }
+    Lbl {
+        x: 20px;
+        y: root.dev-y - 5px - 11.5px;
+        text: "INPUT";
+    }
+    DevicePlate {
+        big: true;
+        x: 20px;
+        y: root.dev-y;
+        width: 360px;
+    }
+    Keys {
+        big: true;
+        x: 20px;
+        y: root.keys-y;
+        width: 360px;
+        height: 42px;
+        go(p) => { root.go(p); }
+        refocus => { root.refocus(); }
+    }
+}
+
+// The project picker as a brass card holder. ProjectMenu holds what it offers. `most`
+// is the most room the name may take (it elides past it).
+component Holder inherits Rectangle {
+    in property <bool> big;
+    in property <length> most: 200px;
+    callback refocus();
+    property <bool> enabled: !Main.recording;
+    width: name.width + 3px + 10px + 8px + 10px + 10px + 3px;
+    height: root.big ? 46px : 28px;
+    opacity: root.enabled ? 1 : 0.65;
+    accessible-role: combobox;
+    accessible-label: "Project";
+    accessible-value: Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "";
+    accessible-expandable: true;
+    accessible-action-default => { if (root.enabled) { menu.show(); } }
+    accessible-action-expand => { if (root.enabled) { menu.show(); } }
+    Slice3 {
+        pad: 3px;
+        cap: 11px;
+        l: root.big ? @image-url("x-phono/hold-w-l.png") : @image-url("x-phono/hold-p-l.png");
+        m: root.big ? @image-url("x-phono/hold-w-m.png") : @image-url("x-phono/hold-p-m.png");
+        r: root.big ? @image-url("x-phono/hold-w-r.png") : @image-url("x-phono/hold-p-r.png");
+        l2: root.big ? @image-url("x-phono/hold-w-l@2x.png") : @image-url("x-phono/hold-p-l@2x.png");
+        m2: root.big ? @image-url("x-phono/hold-w-m@2x.png") : @image-url("x-phono/hold-p-m@2x.png");
+        r2: root.big ? @image-url("x-phono/hold-w-r@2x.png") : @image-url("x-phono/hold-p-r@2x.png");
+    }
+    Rectangle {
+        visible: t.has-hover && root.enabled;
+        x: 3px;
+        y: 3px;
+        width: parent.width - 6px;
+        height: parent.height - 6px;
+        border-radius: 2px;
+        background: #ffffff40;
+    }
+    name := Text {
+        x: 3px + 10px;
+        width: min(self.preferred-width, root.most);
+        height: parent.height;
+        text: (Main.project >= 0 && Main.project < Main.projects.length ? Main.projects[Main.project] : "").to-uppercase();
+        color: Ph.ink;
+        font-family: "Cinzel";
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 2.2px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    Icon {
+        x: name.x + name.width + 8px;
+        y: (parent.height - self.height) / 2;
+        name: "down";
+        tint: Ph.ink;
+        width: 10px;
+        height: 10px;
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { menu.show(); }
+    }
+    menu := ProjectMenu {
+        width: parent.width;
+        height: parent.height;
+        projects: Main.projects;
+        current: Main.project;
+        has-clips: Main.clips.length > 0;
+        choose(i) => { Main.choose-project(i); root.refocus(); }
+        create => { Main.dialog-text = ""; Main.dialog = 4; }
+        rename => { Main.dialog-text = Main.projects[Main.project]; Main.dialog = 5; }
+        delete => { Main.delete-project(); root.refocus(); }
+        export => { Main.export-project(); root.refocus(); }
+    }
+}
+
+// The search field, a dark slot ringed in brass.
+component Search inherits Rectangle {
+    in property <bool> big;
+    callback go(int);
+    callback refocus();
+    height: root.big ? 46px : 28px;
+    Slice3 {
+        pad: 1px;
+        cap: 7px;
+        l: root.big ? @image-url("x-phono/srch-w-l.png") : @image-url("x-phono/srch-p-l.png");
+        m: root.big ? @image-url("x-phono/srch-w-m.png") : @image-url("x-phono/srch-p-m.png");
+        r: root.big ? @image-url("x-phono/srch-w-r.png") : @image-url("x-phono/srch-p-r.png");
+        l2: root.big ? @image-url("x-phono/srch-w-l@2x.png") : @image-url("x-phono/srch-p-l@2x.png");
+        m2: root.big ? @image-url("x-phono/srch-w-m@2x.png") : @image-url("x-phono/srch-p-m@2x.png");
+        r2: root.big ? @image-url("x-phono/srch-w-r@2x.png") : @image-url("x-phono/srch-p-r@2x.png");
+    }
+    TextField {
+        height: parent.height;
+        radius: 3px;
+        fill: transparent;
+        rest-edge: transparent;
+        ink: Ph.plate-ink;
+        hint: Ph.hint;
+        font-size: 15px;
+        family: "Phono Garamond";
+        hint-italic: true;
+        side: 12px;
+        icon: "search";
+        placeholder: "Search";
+        label: "Search clips";
+        takes-escape: true;
+        focus-ticket: Main.search-ticket;
+        text <=> Main.query;
+        edited(t) => { Main.search(t, Main.search-all); }
+        escaped => { Main.query = ""; Main.search("", Main.search-all); root.refocus(); }
+        accepted => { if (Main.hits.length > 0) { Main.open-hit(0); root.go(1); } }
+    }
+}
+
+// While searching with more than one project: search them all instead of this one.
+component AllKey inherits Rectangle {
+    in property <bool> big;
+    width: all-text.preferred-width + 26px;
+    height: root.big ? 46px : 28px;
+    accessible-role: checkbox;
+    accessible-label: "Search all projects";
+    accessible-checked: Main.search-all;
+    accessible-action-default => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+    Slice3 {
+        pad: 3px;
+        cap: 11px;
+        l: root.big ? @image-url("x-phono/hold-w-l.png") : @image-url("x-phono/hold-p-l.png");
+        m: root.big ? @image-url("x-phono/hold-w-m.png") : @image-url("x-phono/hold-p-m.png");
+        r: root.big ? @image-url("x-phono/hold-w-r.png") : @image-url("x-phono/hold-p-r.png");
+        l2: root.big ? @image-url("x-phono/hold-w-l@2x.png") : @image-url("x-phono/hold-p-l@2x.png");
+        m2: root.big ? @image-url("x-phono/hold-w-m@2x.png") : @image-url("x-phono/hold-p-m@2x.png");
+        r2: root.big ? @image-url("x-phono/hold-w-r@2x.png") : @image-url("x-phono/hold-p-r@2x.png");
+    }
+    all-text := Text {
+        x: 13px;
+        height: parent.height;
+        text: "ALL PROJECTS";
+        color: Main.search-all ? Ph.wax : Ph.ink-soft;
+        font-family: "Cinzel";
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 1.8px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Main.search-all = !Main.search-all; Main.search(Main.query, Main.search-all); }
+    }
+}
+
+// The toolbar over the tins: the card holder and the search field. The holder takes at
+// most what the rest leaves (`avail` is the toolbar's width, worked out by the page).
+component Toolbar inherits HorizontalLayout {
+    in property <bool> big;
+    in property <length> avail;
+    callback go(int);
+    callback refocus();
+    property <length> all-w: Main.query != "" && Main.projects.length > 1 ? 125px : 0;
+    property <length> pad: root.big ? 18px : 12px;
+    height: root.big ? 58px : 40px;
+    padding-left: root.pad;
+    padding-right: root.pad;
+    spacing: 10px;
+    VerticalLayout {
+        alignment: center;
+        Holder {
+            big: root.big;
+            // The padding, the holder around its name, the smallest search field and a gap.
+            most: max(40px, min(root.big ? 300px : 220px, root.avail - 2 * root.pad - 44px - 10px - 110px - root.all-w));
+            refocus => { root.refocus(); }
+        }
+    }
+    VerticalLayout {
+        alignment: center;
+        horizontal-stretch: 1;
+        min-width: 110px;
+        Search {
+            big: root.big;
+            go(p) => { root.go(p); }
+            refocus => { root.refocus(); }
+        }
+    }
+    if Main.query != "" && Main.projects.length > 1: VerticalLayout {
+        alignment: center;
+        AllKey { big: root.big; }
+    }
+}
+
+// A clip's waveform: thin bars; what has played is darker.
+component Wave inherits Rectangle {
+    in property <[float]> values;
+    in property <float> progress: -1;
+    property <int> n: max(1, floor(root.width / 3px));
+    for i in root.n: Rectangle {
+        property <float> v: root.values.length > 0 ? root.values[floor(i * root.values.length / root.n)] : 0.06;
+        x: i * 3px;
+        width: 1.6px;
+        height: max(1.5px, root.height * 0.9 * (0.2 + 0.8 * self.v));
+        y: (root.height - self.height) / 2;
+        border-radius: 0.8px;
+        background: (i + 0.5) / root.n <= root.progress ? Ph.ink : Ph.wave;
+    }
+}
+
+// The play lid of a tin: brass, wax red on the highlighted clip.
+component Lid inherits Rectangle {
+    in property <bool> big;
+    in property <bool> lit;
+    in property <bool> playing;
+    in property <string> name;
+    callback clicked;
+    width: root.big ? 40px : 26px;
+    height: self.width;
+    accessible-role: button;
+    accessible-label: (root.playing ? "Pause " : "Play ") + root.name;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        y: t.pressed ? 1px : 0;
+        Art {
+            x: -3px;
+            y: -3px;
+            width: root.width + 6px;
+            height: root.height + 6px;
+            lo: root.big ? root.lit ? @image-url("x-phono/lid-w-sel.png") : @image-url("x-phono/lid-w.png") : root.lit ? @image-url("x-phono/lid-p-sel.png") : @image-url("x-phono/lid-p.png");
+            hi: root.big ? root.lit ? @image-url("x-phono/lid-w-sel@2x.png") : @image-url("x-phono/lid-w@2x.png") : root.lit ? @image-url("x-phono/lid-p-sel@2x.png") : @image-url("x-phono/lid-p@2x.png");
+        }
+        Rectangle {
+            visible: t.has-hover;
+            border-radius: self.width / 2;
+            background: #fff6d826;
+        }
+        Icon {
+            x: (parent.width - self.width) / 2 + (root.playing ? 0 : (root.big ? 1.5px : 1px));
+            name: root.playing ? "pause" : "play";
+            tint: root.lit ? #fbe6cf : Ph.ink;
+            width: root.big ? 13px : 9px;
+            height: self.width;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The body of a tin from `x` to the row's end: dark rims, the paper label in its colour
+// with the cylinder's light over it, and the two printed rules.
+component TinBody inherits Rectangle {
+    in property <color> label;
+    in property <bool> big;
+    // The highlight ring: 0 none, 1 picked, 2 the highlighted clip.
+    in property <int> ring;
+    Rectangle {
+        visible: root.ring > 0;
+        x: -6px;
+        y: -6px;
+        width: parent.width + 12px;
+        height: parent.height + 12px;
+        border-top-right-radius: 10px;
+        border-bottom-right-radius: 10px;
+        background: #f6d27824;
+    }
+    Rectangle {
+        visible: root.ring > 0;
+        x: -3px;
+        y: -3px;
+        width: parent.width + 6px;
+        height: parent.height + 6px;
+        border-top-right-radius: 7px;
+        border-bottom-right-radius: 7px;
+        background: #4a3209;
+    }
+    Rectangle {
+        visible: root.ring > 0;
+        x: -2px;
+        y: -2px;
+        width: parent.width + 4px;
+        height: parent.height + 4px;
+        border-top-right-radius: 6px;
+        border-bottom-right-radius: 6px;
+        background: root.ring == 2 ? Ph.brass-hi : Ph.brass-mid;
+    }
+    // Its shadow.
+    Rectangle {
+        visible: root.ring == 0;
+        y: 2px;
+        border-top-right-radius: 4px;
+        border-bottom-right-radius: 4px;
+        background: #00000042;
+    }
+    Rectangle {
+        visible: root.ring == 0;
+        y: 3px;
+        border-top-right-radius: 4px;
+        border-bottom-right-radius: 4px;
+        background: #00000024;
+    }
+    Rectangle {
+        width: parent.width - 4px;
+        x: 0;
+        background: #1c0f08;
+    }
+    Rectangle {
+        x: 0;
+        y: 3px;
+        width: parent.width;
+        height: parent.height - 6px;
+        border-top-right-radius: 1px;
+        border-bottom-right-radius: 1px;
+        background: root.label;
+    }
+    Rectangle {
+        x: 0;
+        width: parent.width - 4px;
+        background: @linear-gradient(180deg, #00000059 0%, #00000000 26%, #ffffff2e 38%, #00000000 55%, #00000052 100%);
+    }
+    Art {
+        x: parent.width - 4px;
+        width: 4px;
+        height: parent.height;
+        lo: root.big ? @image-url("x-phono/tin-w-r.png") : @image-url("x-phono/tin-p-r.png");
+        hi: root.big ? @image-url("x-phono/tin-w-r@2x.png") : @image-url("x-phono/tin-p-r@2x.png");
+    }
+    Rectangle { x: 8px; y: 5px; width: parent.width - 16px; height: 1px; background: #5a371473; }
+    Rectangle { x: 8px; y: parent.height - 6px; width: parent.width - 16px; height: 1px; background: #5a371473; }
+}
+
+// One clip as a cylinder tin: the lid (play), the name with when it was made, whether it
+// is transcribed and whether it has the computer's sound, the waveform, the length and
+// the menu.
+component Tin inherits Rectangle {
+    in property <int> index;
+    in property <ClipRow> item;
+    in property <bool> big;
+    in property <length> window-h;
+    // The width of the list, from the page (the row's own width would loop through the layout).
+    in property <length> row-w;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    property <bool> selected: root.index == Main.selected;
+    property <bool> picked: Main.picked[root.index];
+    property <bool> active: root.index == Main.active-clip;
+    property <length> h: root.big ? 50px : 28px;
+    property <length> lid: root.big ? 40px : 26px;
+    property <length> bx: root.lid - 8px;
+    property <length> tx: root.bx + (root.big ? 20px : 15px);
+    property <length> len-w: root.big ? 72px : 44px;
+    property <length> dots-w: 20px;
+    // The waveform gives way to the name in a narrow list: the name keeps at least 150px
+    // (110px in portrait); a wave under 30px goes.
+    property <length> wave-room: root.row-w - root.tx - root.len-w - root.dots-w - (root.big ? 150px : 110px);
+    property <length> wave-w: root.wave-room >= 30px ? min(root.big ? 120px : 36px, root.wave-room) : 0;
+    property <length> text-w: root.row-w - root.tx - root.wave-w - (root.wave-w > 0 ? 8px : 0) - root.len-w - root.dots-w;
+    // The date, the stamp and "+ SYSTEM" after the name on one line (portrait) or under it.
+    property <length> stamp-w: root.item.transcribed ? (root.big ? 84px : 70px) - (root.big ? 6px : 4px) : 0;
+    property <length> sys-w: root.item.has-system ? sys.preferred-width + 6px : 0;
+    height: root.big ? 57px : 31px;
+    accessible-role: list-item;
+    accessible-label: root.item.name + ", " + root.item.duration;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected || root.picked;
+    accessible-action-default => { root.select(false, false); }
+    function select(ctrl: bool, shift: bool) {
+        Main.pick(root.index, ctrl, shift);
+        root.refocus();
+    }
+    TinBody {
+        x: root.bx;
+        y: 0;
+        width: root.row-w - root.bx;
+        height: root.h;
+        big: root.big;
+        label: root.selected ? Ph.label-lit : Ph.labels[Math.mod(root.index, 3)];
+        ring: root.selected ? 2 : root.picked ? 1 : 0;
+    }
+    Rectangle {
+        visible: row-touch.has-hover && !root.selected;
+        x: root.bx;
+        y: 3px;
+        width: root.row-w - root.bx - 4px;
+        height: root.h - 6px;
+        background: #ffffff1c;
+    }
+    row-touch := TouchArea {
+        x: root.bx;
+        y: 0;
+        width: root.row-w - root.bx;
+        height: root.h;
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.left && self.has-hover) {
+                root.select(e.modifiers.control, e.modifiers.shift);
+            }
+            // On release: the press that closes an open menu is used up by that menu.
+            if (e.kind == PointerEventKind.up && e.button == PointerEventButton.right) {
+                menu.show-at(self.x + self.mouse-x, self.mouse-y);
+            }
+        }
+        // Opens just this clip, even out of several picked.
+        double-clicked => { root.select(false, false); Main.open-clip(root.index); root.go(1); }
+    }
+    Lid {
+        x: 0;
+        y: (root.h - self.height) / 2;
+        big: root.big;
+        lit: root.selected;
+        playing: root.active && Main.playing;
+        name: root.item.name;
+        clicked => { Main.play-clip(root.index); root.refocus(); }
+    }
+    // The name and its line. In portrait the date follows the name on its baseline
+    // (Cinzel sits 3px lower when both are centred); wide, it is a line of its own.
+    nm := Text {
+        x: root.tx;
+        y: root.big ? root.h / 2 - 17.4px : 0;
+        width: root.big ? root.text-w : min(self.preferred-width, max(20px, root.text-w - when.preferred-width - 6px - root.stamp-w - root.sys-w));
+        height: root.big ? 21px : root.h;
+        text: root.item.name;
+        color: Ph.ink;
+        font-family: "Phono Garamond";
+        font-size: root.big ? 19px : 15px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    property <length> line-x: root.big ? root.tx : nm.x + nm.width + 6px;
+    property <length> line-y: root.big ? root.h / 2 - 17.4px + 21px + 1px : 3px;
+    property <length> line-h: root.big ? 13px : root.h;
+    when := Text {
+        x: root.line-x;
+        y: root.line-y;
+        width: min(self.preferred-width, max(0px, root.tx + root.text-w - self.x));
+        height: root.line-h;
+        text: root.item.when.to-uppercase();
+        color: Ph.ink-soft;
+        font-family: "Cinzel";
+        font-size: root.big ? 9.5px : 7.5px;
+        font-weight: 600;
+        letter-spacing: root.big ? 0.76px : 0.6px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    Art {
+        visible: root.item.transcribed;
+        x: when.x + when.width + (root.big ? 5px - 6px : 5px - 4px);
+        y: root.line-y + (root.line-h - self.height) / 2;
+        width: root.big ? 84px : 70px;
+        height: root.big ? 16px : 14px;
+        lo: root.big ? @image-url("x-phono/stamp-w.png") : @image-url("x-phono/stamp-p.png");
+        hi: root.big ? @image-url("x-phono/stamp-w@2x.png") : @image-url("x-phono/stamp-p@2x.png");
+        accessible-role: AccessibleRole.text;
+        accessible-label: "transcribed";
+    }
+    // The sound of the computer was recorded too.
+    sys := Text {
+        visible: root.item.has-system;
+        x: when.x + when.width + root.stamp-w + 6px;
+        y: root.line-y;
+        height: root.line-h;
+        text: "+ SYSTEM";
+        color: Ph.ink-soft;
+        font-family: "Cinzel";
+        font-size: root.big ? 9.5px : 7.5px;
+        font-weight: 600;
+        letter-spacing: root.big ? 0.76px : 0.6px;
+        vertical-alignment: center;
+    }
+    // The waveform: a click on the highlighted clip moves its start, a double click
+    // plays from there.
+    if root.wave-w > 0: Wave {
+        x: root.tx + root.text-w + 8px;
+        y: (root.h - self.height) / 2;
+        width: root.wave-w;
+        height: root.big ? 22px : 14px;
+        values: root.item.wave;
+        progress: root.active ? Main.play-fraction : -1;
+        WaveSeek {
+            selected: root.selected;
+            active: root.active;
+            select(ctrl, shift) => { root.select(ctrl, shift); }
+            cue(f) => { Main.cue-clip(root.index, f); root.refocus(); }
+            play-at(f) => { Main.play-clip-at(root.index, f); root.refocus(); }
+            menu(x, y) => { menu.show-at(x - root.absolute-position.x, y - root.absolute-position.y); }
+        }
+    }
+    Text {
+        x: root.row-w - root.dots-w - root.len-w;
+        y: 0;
+        width: root.len-w;
+        height: root.h;
+        text: root.item.duration;
+        color: Ph.ink;
+        font-family: "Phono Garamond";
+        font-size: root.big ? 17px : 13.5px;
+        font-weight: 600;
+        vertical-alignment: center;
+        horizontal-alignment: right;
+    }
+    // The three brass studs: manage, rename, export, delete.
+    Rectangle {
+        x: root.row-w - root.dots-w;
+        y: (root.h - self.height) / 2;
+        width: root.dots-w;
+        height: root.big ? 30px : 22px;
+        accessible-role: button;
+        accessible-label: "Menu for " + root.item.name;
+        accessible-action-default => { root.open-menu(); }
+        Rectangle {
+            visible: dots.has-hover;
+            x: 4px;
+            width: parent.width - 8px;
+            border-radius: 3px;
+            background: #0000001a;
+        }
+        Art {
+            x: (parent.width - 4px) / 2;
+            y: (parent.height - 15px) / 2;
+            width: 4px;
+            height: 15px;
+            lo: @image-url("x-phono/dots.png");
+            hi: @image-url("x-phono/dots@2x.png");
+        }
+        property <bool> hovering: dots.has-hover;
+        changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
+        dots := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { Tips.hide(); root.open-menu(); }
+        }
+    }
+    function open-menu() {
+        menu.show-at(root.row-w - 8px - 210px, (root.h + 22px) / 2 + 4px);
+    }
+    menu := ClipMenu {
+        width: root.row-w;
+        height: root.h;
+        item: root.item;
+        merge-count: root.picked ? Main.picked-count : 0;
+        projects: Main.projects;
+        project: Main.project;
+        window-h: root.window-h;
+        merge => { Main.start-merge(); root.go(5); }
+        open => { Main.open-clip(root.index); root.go(1); }
+        rename => { root.ask-rename(root.index); }
+        export(kind) => { Main.selected = root.index; Main.export-as(kind); root.refocus(); }
+        delete => { root.ask-delete(root.index); }
+        move-to(p) => { Main.move-clip(root.index, p); root.refocus(); }
+    }
+}
+
+// A search result as a plain tin: the clip (and its project when all are searched,
+// extra hits as +2), then the words around the match with the match in wax red.
+component Hit inherits Rectangle {
+    in property <SearchHit> hit;
+    in property <bool> show-project;
+    in property <bool> big;
+    in property <int> index;
+    in property <length> row-w;
+    callback clicked;
+    height: root.big ? 57px : 47px;
+    accessible-role: button;
+    accessible-label: root.hit.clip + ", " + root.hit.before + " " + root.hit.matched + " " + root.hit.after;
+    accessible-action-default => { root.clicked(); }
+    TinBody {
+        x: 0;
+        y: 0;
+        width: root.row-w;
+        height: parent.height - (root.big ? 7px : 5px);
+        big: root.big;
+        label: Ph.labels[Math.mod(root.index, 3)];
+    }
+    Rectangle {
+        visible: t.has-hover;
+        x: 0;
+        y: 3px;
+        width: root.row-w - 4px;
+        height: parent.height - (root.big ? 7px : 5px) - 6px;
+        background: #ffffff1c;
+    }
+    VerticalLayout {
+        x: 0;
+        y: 0;
+        width: root.row-w;
+        height: parent.height - (root.big ? 7px : 5px);
+        padding-left: root.big ? 20px : 14px;
+        padding-right: root.big ? 20px : 14px;
+        alignment: center;
+        spacing: 1px;
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: root.hit.clip;
+                color: Ph.ink;
+                font-family: "Phono Garamond";
+                font-size: root.big ? 17px : 14px;
+                font-weight: 600;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+            if root.show-project: Text {
+                text: root.hit.project.to-uppercase();
+                color: Ph.ink-soft;
+                font-family: "Cinzel";
+                font-size: 8.5px;
+                font-weight: 600;
+                letter-spacing: 1px;
+                vertical-alignment: center;
+                accessible-label: root.hit.project;
+            }
+            if root.hit.more > 0: Text {
+                text: "+" + root.hit.more;
+                color: Ph.wax;
+                font-family: "Phono Garamond";
+                font-size: 13px;
+                font-weight: 600;
+                vertical-alignment: center;
+            }
+        }
+        if root.hit.matched != "": HorizontalLayout {
+            spacing: 4px;
+            if root.hit.before != "": Text {
+                text: root.hit.before;
+                color: Ph.ink-soft;
+                font-family: "Phono Garamond";
+                font-size: root.big ? 14px : 12.5px;
+                font-weight: 500;
+                font-italic: true;
+                horizontal-stretch: 0;
+            }
+            Text {
+                text: root.hit.matched;
+                color: Ph.wax;
+                font-family: "Phono Garamond";
+                font-size: root.big ? 14px : 12.5px;
+                font-weight: 600;
+                horizontal-stretch: 0;
+            }
+            Text {
+                text: root.hit.after;
+                color: Ph.ink-soft;
+                font-family: "Phono Garamond";
+                font-size: root.big ? 14px : 12.5px;
+                font-weight: 500;
+                font-italic: true;
+                overflow: elide;
+                horizontal-stretch: 1;
+            }
+        }
+    }
+    t := TouchArea {
+        x: 0;
+        width: root.row-w;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The shelf of tins, or the search results while there is a query. The page makes it
+// 10px wider than the rows, so the scroll bar sits beside the tins and not over the
+// menu studs.
+component Shelf inherits Rectangle {
+    in property <bool> big;
+    in property <length> window-h;
+    in property <length> row-w;
+    callback go(int);
+    callback ask-rename(int);
+    callback ask-delete(int);
+    callback refocus();
+    if Main.query != "": Scroller {
+        VerticalLayout {
+            alignment: start;
+            if Main.hits.length == 0: Text {
+                height: 40px;
+                text: "No matches";
+                color: Ph.np;
+                font-family: "Phono Garamond";
+                font-size: 15px;
+                font-weight: 500;
+                font-italic: true;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            for h[i] in Main.hits: Hit {
+                hit: h;
+                index: i;
+                big: root.big;
+                row-w: root.row-w;
+                show-project: Main.search-all;
+                clicked => { Main.open-hit(i); root.go(1); }
+            }
+        }
+    }
+    if Main.query == "": Scroller {
+        content-y <=> Main.list-y;
+        property <int> count: Main.clips.length;
+        init => { Main.list-height = self.visible-height; Main.clamp-list(); }
+        changed visible-height => { Main.list-height = self.visible-height; Main.clamp-list(); }
+        changed count => { Main.clamp-list(); }
+        VerticalLayout {
+            alignment: start;
+            if Main.clips.length == 0: Text {
+                height: 40px;
+                text: "No cylinders yet";
+                color: Ph.np;
+                font-family: "Phono Garamond";
+                font-size: 15px;
+                font-weight: 500;
+                font-italic: true;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            for clip[i] in Main.clips: Tin {
+                index: i;
+                item: clip;
+                big: root.big;
+                window-h: root.window-h;
+                row-w: root.row-w;
+                go(p) => { root.go(p); }
+                ask-rename(n) => { root.ask-rename(n); }
+                ask-delete(n) => { root.ask-delete(n); }
+                refocus => { root.refocus(); }
+            }
+        }
+    }
+}
+
+// The footer: the play knob, what plays (else the highlighted clip, else nothing), the
+// reproducer rail with its stylus carriage (a click on the rail jumps) and the time.
+component Player inherits Rectangle {
+    in property <bool> big;
+    property <int> shown: Main.active-clip >= 0 && Main.active-clip < Main.clips.length ? Main.active-clip
+        : Main.selected >= 0 && Main.selected < Main.clips.length ? Main.selected : -1;
+    property <bool> is-active: self.shown >= 0 && self.shown == Main.active-clip;
+    property <float> at: root.is-active ? clamp(Main.play-fraction, 0, 1) : 0;
+    property <string> pos: root.shown < 0 ? "--:--" : root.is-active ? Main.play-position : "0:00";
+    property <string> len: root.shown < 0 ? "--:--" : Main.clips[root.shown].duration;
+    property <length> knob: root.big ? 34px : 30px;
+    callback refocus();
+    vertical-stretch: 0;
+    height: root.big ? 56px : 52px;
+    Wood { dark: true; }
+    Rectangle { y: 0; height: 2px; background: #0d0503; }
+    Rectangle { y: 2px; height: 1px; background: #ffc88c12; }
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: root.knob;
+                height: root.knob;
+                accessible-role: button;
+                accessible-label: root.is-active && Main.playing ? "Pause" : "Play";
+                accessible-enabled: root.shown >= 0;
+                accessible-action-default => { if (root.shown >= 0) { Main.play-clip(root.shown); root.refocus(); } }
+                Rectangle {
+                    y: k.pressed ? 1px : 0;
+                    Art {
+                        x: -6px;
+                        y: -6px;
+                        width: root.knob + 12px;
+                        height: root.knob + 12px;
+                        lo: root.big ? @image-url("x-phono/knob-w.png") : @image-url("x-phono/knob-p.png");
+                        hi: root.big ? @image-url("x-phono/knob-w@2x.png") : @image-url("x-phono/knob-p@2x.png");
+                    }
+                    Rectangle {
+                        visible: k.has-hover && root.shown >= 0;
+                        border-radius: self.width / 2;
+                        background: #fff6d826;
+                    }
+                    Icon {
+                        x: (parent.width - self.width) / 2 + (root.is-active && Main.playing ? 0 : 1px);
+                        name: root.is-active && Main.playing ? "pause" : "play";
+                        tint: Ph.ink;
+                        width: root.big ? 11px : 10px;
+                        height: self.width;
+                    }
+                }
+                property <bool> hovering: k.has-hover;
+                changed hovering => { Tips.hover(self.hovering, root.is-active && Main.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+                k := TouchArea {
+                    enabled: root.shown >= 0;
+                    mouse-cursor: pointer;
+                    clicked => { Tips.hide(); Main.play-clip(root.shown); root.refocus(); }
+                }
+            }
+        }
+        Text {
+            text: root.shown >= 0 ? Main.clips[root.shown].name : "Nothing playing";
+            max-width: root.width * 0.38;
+            color: root.is-active && Main.playing ? Ph.brass-hi : Ph.np;
+            font-family: "Phono Garamond";
+            font-size: root.big ? 17px : 15px;
+            font-weight: 500;
+            font-italic: true;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 0;
+        }
+        // The rail and the carriage.
+        Rectangle {
+            horizontal-stretch: 1;
+            min-width: 40px;
+            Rectangle {
+                y: (parent.height - 16px) / 2;
+                height: 16px;
+                Slice3 {
+                    pad: 2px;
+                    cap: 8px;
+                    l: @image-url("x-phono/rail-l.png");
+                    m: @image-url("x-phono/rail-m.png");
+                    r: @image-url("x-phono/rail-r.png");
+                    l2: @image-url("x-phono/rail-l@2x.png");
+                    m2: @image-url("x-phono/rail-m@2x.png");
+                    r2: @image-url("x-phono/rail-r@2x.png");
+                }
+                if root.is-active && root.at > 0: Rectangle {
+                    x: 6px;
+                    y: 7px;
+                    width: (parent.width - 24px) * root.at;
+                    height: 2px;
+                    background: #a3261cb3;
+                }
+                Art {
+                    x: 6px + (parent.width - 24px) * root.at - 3px;
+                    y: -3px;
+                    width: 18px;
+                    height: 22px;
+                    lo: @image-url("x-phono/car.png");
+                    hi: @image-url("x-phono/car@2x.png");
+                }
+                // Click to jump; taller than the rail so it is easy to hit.
+                TouchArea {
+                    y: -8px;
+                    height: parent.height + 16px;
+                    enabled: root.shown >= 0;
+                    mouse-cursor: pointer;
+                    clicked => {
+                        Main.selected = root.shown;
+                        Main.seek-fraction(self.mouse-x / self.width);
+                        root.refocus();
+                    }
+                }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: tw.preferred-width + 16px;
+                height: root.big ? 23px : 21px;
+                accessible-role: AccessibleRole.text;
+                accessible-label: root.shown < 0 ? "" : root.pos + " of " + root.len;
+                Slice3 {
+                    pad: 3px;
+                    cap: 9px;
+                    l: root.big ? @image-url("x-phono/tw-w-l.png") : @image-url("x-phono/tw-p-l.png");
+                    m: root.big ? @image-url("x-phono/tw-w-m.png") : @image-url("x-phono/tw-p-m.png");
+                    r: root.big ? @image-url("x-phono/tw-w-r.png") : @image-url("x-phono/tw-p-r.png");
+                    l2: root.big ? @image-url("x-phono/tw-w-l@2x.png") : @image-url("x-phono/tw-p-l@2x.png");
+                    m2: root.big ? @image-url("x-phono/tw-w-m@2x.png") : @image-url("x-phono/tw-p-m@2x.png");
+                    r2: root.big ? @image-url("x-phono/tw-w-r@2x.png") : @image-url("x-phono/tw-p-r@2x.png");
+                }
+                tw := Text {
+                    x: 8px;
+                    height: parent.height;
+                    text: root.pos + " / " + root.len;
+                    color: Ph.ink;
+                    font-family: "Phono Garamond";
+                    font-size: root.big ? 14px : 12.5px;
+                    font-weight: 600;
+                    letter-spacing: root.big ? 0.56px : 0.5px;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+            }
+        }
+    }
+}
+
+// The main page. Portrait: the title bar, the machine, the key row, the toolbar, the
+// tins and the footer, top to bottom. Wide: the machine on the left, the toolbar and the
+// tins on the right, between the title bar and the footer.
+export component MainPage inherits Rectangle {
+    // The window's size classes, as AppWindow works them out.
+    in property <bool> narrow;
+    in property <bool> wide;
+    in property <bool> tall;
+    // Opens page p (see AppWindow.page).
+    callback go(int);
+    // The rename and delete questions for clip i.
+    callback ask-rename(int);
+    callback ask-delete(int);
+    // Gives the keyboard back to the window's shortcuts.
+    callback refocus();
+
+    property <length> pitch: root.wide ? 57px : 31px;
+    init => { Main.row-h = root.pitch; }
+    changed pitch => { Main.row-h = root.pitch; Main.clamp-list(); }
+
+    background: #1f0d07;
+    VerticalLayout {
+        Title { go(p) => { root.go(p); } }
+        if !root.wide: MachineFront { refocus => { root.refocus(); } }
+        if !root.wide: Rectangle {
+            height: 45px;
+            Wood { }
+            Keys {
+                x: 14px;
+                y: 4px;
+                width: parent.width - 28px;
+                height: 32px;
+                go(p) => { root.go(p); }
+                refocus => { root.refocus(); }
+            }
+        }
+        if !root.wide: Rectangle {
+            height: 40px;
+            Wood { dark: true; }
+            Toolbar {
+                avail: root.width;
+                go(p) => { root.go(p); }
+                refocus => { root.refocus(); }
+            }
+        }
+        if !root.wide: Rectangle {
+            vertical-stretch: 1;
+            Wood { dark: true; }
+            HorizontalLayout {
+                padding-left: 10px;
+                padding-right: 2px;
+                padding-top: 4px;
+                Shelf {
+                    window-h: root.height;
+                    row-w: root.width - 22px;
+                    go(p) => { root.go(p); }
+                    ask-rename(n) => { root.ask-rename(n); }
+                    ask-delete(n) => { root.ask-delete(n); }
+                    refocus => { root.refocus(); }
+                }
+            }
+        }
+        if root.wide: HorizontalLayout {
+            vertical-stretch: 1;
+            MachineSide {
+                go(p) => { root.go(p); }
+                refocus => { root.refocus(); }
+            }
+            Rectangle {
+                horizontal-stretch: 1;
+                Wood { dark: true; }
+                VerticalLayout {
+                    Toolbar {
+                        big: true;
+                        avail: root.width - 400px;
+                        go(p) => { root.go(p); }
+                        refocus => { root.refocus(); }
+                    }
+                    HorizontalLayout {
+                        vertical-stretch: 1;
+                        padding-left: 16px;
+                        padding-right: 10px;
+                        padding-top: 4px;
+                        Shelf {
+                            big: true;
+                            window-h: root.height;
+                            row-w: root.width - 400px - 36px;
+                            go(p) => { root.go(p); }
+                            ask-rename(n) => { root.ask-rename(n); }
+                            ask-delete(n) => { root.ask-delete(n); }
+                            refocus => { root.refocus(); }
+                        }
+                    }
+                }
+            }
+        }
+
+        // An export from the clip menu or the project menu: what it is, how far along,
+        // and a check when done. It takes its own room above the footer.
+        if Main.export-state != 0: Rectangle {
+            vertical-stretch: 0;
+            height: 30px;
+            background: #24100a;
+            Rectangle { y: 0; height: 1px; background: Ph.brass-lo; }
+            HorizontalLayout {
+                padding-left: 14px;
+                padding-right: 14px;
+                spacing: 10px;
+                if Main.export-state == 2: Icon {
+                    name: "check";
+                    tint: Ph.brass;
+                    width: 12px;
+                    height: 12px;
+                    y: (parent.height - self.height) / 2;
+                }
+                Text {
+                    text: (Main.export-state == 2 ? "Exported " : "Exporting ") + Main.export-name;
+                    color: Ph.plate-ink;
+                    font-family: "Phono Garamond";
+                    font-size: 14px;
+                    font-weight: 500;
+                    font-italic: true;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+                if Main.export-state == 1: Rectangle {
+                    width: 120px;
+                    height: 4px;
+                    y: (parent.height - self.height) / 2;
+                    border-radius: 2px;
+                    background: #3a1a0d;
+                    Rectangle {
+                        x: 0;
+                        width: parent.width * clamp(Main.export-progress, 0, 1);
+                        border-radius: 2px;
+                        background: Ph.brass;
+                    }
+                }
+                if Main.export-state == 1: Text {
+                    text: round(Main.export-progress * 100) + "%";
+                    color: Ph.np;
+                    font-family: "Phono Garamond";
+                    font-size: 13px;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                    width: 34px;
+                    horizontal-alignment: right;
+                }
+            }
+        }
+
+        Player {
+            big: root.wide;
+            refocus => { root.refocus(); }
+        }
+    }
+
+    // Messages float just above the footer, so nothing moves when they come and go.
+    if Main.status != "": Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - (root.wide ? 56px : 52px) - self.height - 10px;
+        width: min(msg.preferred-width + 28px, parent.width - 32px);
+        height: 28px;
+        border-radius: 4px;
+        background: #1b0b06f2;
+        border-width: 1px;
+        border-color: Ph.brass-mid;
+        msg := Text {
+            text: Main.status;
+            color: Ph.plate-ink;
+            font-family: "Phono Garamond";
+            font-size: 14px;
+            font-weight: 500;
+            font-italic: true;
+            overflow: elide;
+            x: 14px;
+            width: parent.width - 28px;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+}

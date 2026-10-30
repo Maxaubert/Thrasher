@@ -3921,9 +3921,9 @@ fn export_reporter(weak: slint::Weak<AppWindow>) -> impl Fn(f32) {
 }
 
 /// Steps per second of each theme's effect, in the order of `Theme.names`; 0 for none.
-const EFFECT_FPS: [f32; 22] = [
+const EFFECT_FPS: [f32; 23] = [
     0.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
 ];
 
 /// Steps per second of motion that runs only while recording (not paused), such as the Tape
@@ -3932,11 +3932,12 @@ const EFFECT_FPS: [f32; 22] = [
 /// (4), the Brick Phone's blinking LCD dot (4), the Answering Machine's micro cassette
 /// reels and NEW lamp (12), the Pocket Synth's blinking status square (4), the Fighter
 /// Select's blinking P1 cursor (4), the Cozy Cabin's fireflies, lantern flame and status dot
-/// (8) and the Pinball display's blinking status lamp (4); the clock stands still otherwise,
-/// so a still page costs nothing.
-const RECORDING_FPS: [f32; 22] = [
+/// (8), the Pinball display's blinking status lamp (4) and the Phonograph's turning mandrel
+/// hub and cylinder sheen (12); the clock stands still otherwise, so a still page costs
+/// nothing.
+const RECORDING_FPS: [f32; 23] = [
     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0, 4.0, 0.0, 6.0, 0.0, 0.0, 4.0, 4.0, 4.0, 12.0,
-    4.0, 4.0, 8.0, 4.0,
+    4.0, 4.0, 8.0, 4.0, 12.0,
 ];
 
 /// Advances `Fx.t`, the clock of the theme effects, twice as fast while recording. It

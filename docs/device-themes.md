@@ -509,9 +509,9 @@ used). Its other pages are the classic ones in a wood and honey palette (`Theme.
   pixel before and after.
 
 **Built in step 5, Pinball main page (2026-10-30):** `ui/skins/x-pinball.slint` (skin 14, theme
-"Pinball", index 21 in `Theme.names`, after Cozy Cabin), art in `ui/skins/x-pinball/` (87 PNGs, 1.0 MB) from `tools/skin-art/x-pinball.html`
+"Pinball", index 21 in `Theme.names`, after Cozy Cabin; `EFFECT_FPS` 0 and `RECORDING_FPS` 4
+there), art in `ui/skins/x-pinball/` (87 PNGs, 1.0 MB) from `tools/skin-art/x-pinball.html`
 (`sh tools/skin-art/cut.sh x-pinball OUT`; the playfields and the display glow are used at 1x only).
-`EFFECT_FPS` and `RECORDING_FPS` take its 0 and 4 at that place.
 - Settings gallery: its tile is the Pinball line in `Gallery.devices`, band #e0316b.
 - The backglass holds the Monoton title and the orange dot matrix (the state with its lamp, the
   timer, the microphone); the playfield holds the lane lights (the input level, -40 to 0 dB),
@@ -568,6 +568,72 @@ used). Its other pages are the classic ones in a wood and honey palette (`Theme.
 - Exe +2.96 MB (62.57 to 65.53 MB): art 1.0 MB, fonts 0.18 MB, the rest generated code.
   Ember, Tape Deck, Phosphor, Pocket and Answering Machine main pages at 520x700, 420x560,
   700x700 and 1100x700 match before and after, pixel for pixel.
+
+**Built in step 5, Phonograph main page (2026-10-30):** `ui/skins/x-phono.slint` (skin 15,
+theme "Phonograph", index 22 in `Theme.names`, after Pinball), art in `ui/skins/x-phono/` (172 PNGs, 0.76 MB) from
+`tools/skin-art/x-phono.html` (`sh tools/skin-art/cut.sh x-phono OUT`; the four tiles use only
+their 1x cut). Its other pages are the classic ones in a mahogany and brass palette
+(`Theme.pages` 0).
+- Settings gallery: its tile is the Phonograph line in `Gallery.devices` (`ui/gallery.slint`), band #b48c4b.
+- The recorder is the machine: the state tag with its jewel lamp, the brass counter of figure
+  wheels, the wax cylinder on its mandrel with the reproducer, the flyball governor (the level,
+  -40 to 0 dB, pp to ff) and the horn bell, whose wax seal is Record ("Stop and save" while
+  recording, with STOP on its plate). Import, Ask and the widget are ivory keys under it
+  (portrait) or at the foot of the machine (wide); while recording the Import key is Pause and
+  Resume, since Import is not offered then. The project is a brass card holder, the clips are
+  cylinder tins whose lids play them, the footer is the reproducer rail with its carriage.
+- Short wide windows (under 484 px of machine) take the portrait horn and governor and close
+  the gaps; under 400 px the COUNTER word goes.
+- Motion only while recording (`RECORDING_FPS` 12, `EFFECT_FPS` 0): the mandrel hub turns and
+  the sheen runs along the wax. The governor follows `Main.live`, so it needs no clock.
+- Fonts (0.15 MB): Cinzel 600 and 700, and EB Garamond as "Phono Garamond" 600 and italic 500
+  with its lining tabular figures as the plain digits, plus "Phono Figures" for the counter
+  (OFL, no reserved names, Latin subset): `python tools/skin-art/x-phono-fonts.py SRC OUT`.
+  Their 5s have a flat top bar and read clearly. Shared, no visible change elsewhere:
+  `TextField.hint-italic` (the search placeholder is italic).
+
+**Lessons from the Phonograph:**
+- **Old style figures by default:** EB Garamond's plain digits hang below the line and Slint
+  cannot turn on `lnum` or `tnum`, so the build maps the `lnum` then the `tnum` glyph of each
+  digit in the cmap and renames the family. Check a text font's default figures before using it.
+- **Figure wheels for a proportional font:** "Phono Figures" keeps only the digits and makes
+  `:` and `.` empty glyphs of no width, so in "01:23.4" digit k starts at k advances. Each wheel
+  clips the whole string with a window exactly one advance wide, centred in the wheel; a window
+  as wide as the wheel showed slivers of the neighbouring digits. The separators are their own
+  Texts between the wheels.
+- **A level gauge as a frame strip:** the governor's arms, balls, collar and pointer are 12
+  frames cut from the mockup's SVG and picked by the level. No `Path` is drawn, the look is the
+  mockup's exactly, and recording costs no more than a meter (9.8% at 520x700).
+- **A gradient across a part of any width with round ends:** the cylinder's middle is a Slint
+  `90deg` gradient (square), with the grooves as 3px and 2px tiles and the light as a vertical
+  gradient over it; only its 4px ends are PNGs, which works because the gradient ends on the
+  same colour at both ends. The tins' label colour changes per row, so their body is Slint too,
+  with only the rounded right end as an alpha PNG over a label coloured rectangle.
+- **The scroll bar takes clicks:** `Scroller`'s bar has a drag area over its right 11px, which
+  ate the clicks on the menu studs at the end of each tin. The page makes the scroller 10px
+  wider than the rows (`row-w` comes from the page), so the bar sits in the gutter beside them.
+- **Slint 1.18 snags:** a repeater over `text.character-count` generated Rust that did not
+  compile ("cast cannot be followed by a method call"); `text == "" ? 0 : text.character-count`
+  works (as in `Digits`). A property named `col` cannot be declared on any element (it is a
+  GridLayout property). An `Image` inside a plain Rectangle draws at its source size unless it
+  gets a width and a height, so a 2x wheel was drawn twice as big.
+- **rustc crash:** a release build died once with `STATUS_STACK_BUFFER_OVERRUN` in the huge
+  generated `app.rs`; `RUST_MIN_STACK=67108864` built it every time after.
+- **Checks:** the working set of the same build and theme varied by up to 5 MB from one
+  launch to the next; take several samples and give the range. The test microphone gives silence, so the governor
+  stayed at rest in every shot; Ask is not offered there (no local AI), so its key was not seen;
+  tooltips do not show headless (as for every theme). One dot of Ember's idle meter flips
+  between two states from run to run, in the old build and the new.
+
+**Budgets measured on the Phonograph** (test copy, 2.25x display, 10 s samples):
+- CPU idle 0.0 to 0.5% (Ember 0.0 to 0.5%); recording 9.8 to 11.3% at 520x700 (Ember 16.4
+  to 19.7%) and 13.4 to 16.6% at 1100x700 (Ember 20.5 to 25.9%), two runs.
+- Working set idle 44.4 to 50.4 vs Ember 41.2 to 42.4 MB (+3 to +8), wide 55.8 to 58.2 vs
+  49.9 to 50.6 MB (+6 to +8); recording 52.5 to 53.3 vs 44.9 to 45.5 MB, wide 60.8 to 61.5 vs
+  52.9 to 54.4 MB. The wide governor strip is the biggest piece (2.1 MB decoded at 2x).
+- Exe +2.62 MB (65.61 to 68.23 MB): fonts 0.15 MB, art 0.76 MB, the rest generated code.
+  Ember, Tape Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700
+  match before and after.
 
 ### Recipe from the pilot (follow it for the other skins)
 

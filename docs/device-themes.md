@@ -1029,6 +1029,16 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
    - easier first: Phosphor, Desktop 95, Comic Book, Spatial Glass, Car Dashboard
    - then: Pocket, Quest Menu, Brick Phone, Answering Machine, Pocket Synth, Fighter Select
    - heaviest last: Cozy Cabin, Pinball, Phonograph
+   - Main pages of all 14: done 2026-10-30 (#104 to #119).
+   - Other pages, batch 1 (Phosphor, Desktop 95, Comic Book, Spatial Glass, Car Dashboard):
+     mockups approved by Max 2026-10-30, in `mockups/device-themes/<skin>-pages/`. Max's picks:
+     widget variant A for Desktop 95 (mini Sound Recorder) and Spatial Glass; flavour labels
+     that are not app text stay (Comic Book captions such as UH OH and MEANWHILE, Car Dashboard
+     modes such as PLAY MODE, the merged total on the Dash gauge, the Dash Disk heading).
+   - Other pages, batch 2 (Pocket, Quest Menu, Brick Phone, Answering Machine, Pocket Synth,
+     Fighter Select) and batch 3 (Cozy Cabin, Pinball, Phonograph): mockups next.
+   - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`
+     (`.claude/targets/shared`), never a target per copy.
 6. **Docs:** update `docs/plan.md` section 16 and the building notes.
 
 ### Checks for each skin PR
@@ -1040,6 +1050,11 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
 - Recording state shown (timer running, meter moving).
 - CPU, memory and exe size within budget.
 - `cargo fmt`, `clippy -D warnings`, tests.
+
+### Copy rule for dialogs
+
+Dialog titles drop their question mark in every theme ("Delete clip_005", not
+"Delete clip_005?"), per the short-copy rule (Max, 2026-10-30).
 
 ## 6. Risks
 

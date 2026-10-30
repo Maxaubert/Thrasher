@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comic Book Chrome</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#141010; --paper:#fdf4dc; --paper2:#f6e8c3; --red:#e3342f; --yel:#ffd43b;
+  --blue:#2a6fdb; --cyan:#7cc6ee; --grey:#b9ad93; --sub:#6d6452; --suby:#5a4400;
+  --B:"Bangers",sans-serif; --C:"Comic Neue",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#141113;color:#f4ead2;font-family:var(--C);font-weight:700;padding:26px 30px 50px;
+  background-image:radial-gradient(#2a2427 1.2px,transparent 1.6px);background-size:9px 9px}
+button{font:inherit;color:inherit;background:none;border:0}
+svg{display:block}
+
+/* ---------- sheet ---------- */
+.top{margin-bottom:22px}
+.top h1{font-family:var(--B);font-weight:400;font-size:46px;letter-spacing:2px;color:var(--yel);-webkit-text-stroke:1.5px #000;text-shadow:4px 4px 0 var(--red);line-height:1}
+.top h1 small{display:block;font-size:14px;letter-spacing:3px;color:#cdbf9f;-webkit-text-stroke:0;text-shadow:none;margin-bottom:6px}
+.top p{font-size:15px;margin-top:8px;color:#f4ead2;max-width:1000px}
+section.pg{margin:0 0 50px;padding-top:24px;border-top:3px solid #2e2629}
+.pg h2{font-family:var(--B);font-weight:400;font-size:38px;letter-spacing:1.5px;color:var(--yel);-webkit-text-stroke:1.2px #000;text-shadow:3px 3px 0 var(--red);line-height:1}
+.pg h2 small{font-size:14px;letter-spacing:2px;color:#cdbf9f;-webkit-text-stroke:0;text-shadow:none;margin-right:12px;vertical-align:8px}
+.pg .idea{font-size:15px;margin:8px 0 10px;color:#f4ead2}
+.pg ul{list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,560px));gap:4px 30px;font-size:13.5px;color:#d9ccb0;margin-bottom:18px}
+.pg li::before{content:"";display:inline-block;width:9px;height:9px;background:var(--yel);border:1.5px solid #000;transform:rotate(45deg);margin-right:9px}
+.stage{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start}
+.lbl{font-family:var(--B);letter-spacing:1.5px;font-size:15px;color:#cdbf9f;margin-bottom:7px}
+.states{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start;margin-top:30px}
+.sub3{font-family:var(--B);font-weight:400;letter-spacing:1.5px;font-size:20px;color:#f4ead2;margin:28px 0 10px}
+.note{font-size:13px;color:#cdbf9f;margin-top:10px}
+
+/* ---------- window = comic page ---------- */
+.win{background:var(--paper);border:3px solid #000;box-shadow:7px 7px 0 #000;display:flex;flex-direction:column;color:var(--ink);overflow:hidden;position:relative}
+.p{width:400px;height:620px;padding:0 9px 9px;gap:7px}
+.w{width:1000px;height:620px;padding:0 11px 11px;gap:9px}
+.sheet{background:var(--paper);border:3px solid #000;box-shadow:6px 6px 0 #000;color:var(--ink);position:relative;overflow:hidden}
+.panel{border:3px solid var(--ink);background:#fff;position:relative}
+.dots{background-color:#fff;background-image:radial-gradient(var(--cyan) 1.6px,transparent 1.9px);background-size:7px 7px}
+.dotsY{background-color:var(--yel);background-image:radial-gradient(#f39b1d 1.5px,transparent 1.8px);background-size:6px 6px}
+.dotsG{background-color:#fff;background-image:radial-gradient(#cfc4aa 1.2px,transparent 1.5px);background-size:5px 5px}
+.dotsR{background-color:var(--red);background-image:radial-gradient(#b81f1b 1.5px,transparent 1.8px);background-size:6px 6px}
+.hdr{font-family:var(--B);letter-spacing:1.5px;font-size:13px;position:absolute;top:-3px;left:-3px;background:var(--ink);color:var(--yel);padding:2px 8px 1px;z-index:2;white-space:nowrap}
+.hdr.r{left:auto;right:-3px}
+.sp{flex:1}
+
+/* masthead */
+.mast{display:flex;align-items:center;height:46px;gap:8px;border-bottom:3px solid var(--ink);margin:0 -9px;padding:0 9px;background:var(--paper);flex:none}
+.w .mast{margin:0 -11px;padding:0 11px;height:50px}
+.logo{font-family:var(--B);font-size:30px;letter-spacing:2px;color:var(--red);-webkit-text-stroke:1.4px #000;text-shadow:3px 3px 0 var(--yel),4px 4px 0 #000;transform:rotate(-3deg) skewX(-6deg);line-height:1}
+.w .logo{font-size:34px}
+.logo.s{font-size:24px}
+.issue{font-family:var(--B);font-size:12px;letter-spacing:1px;border:2px solid var(--ink);background:var(--yel);padding:1px 5px 0;line-height:1.2;transform:rotate(3deg)}
+.tb{width:30px;height:30px;display:grid;place-items:center;border:2.5px solid var(--ink);background:#fff;box-shadow:2px 2px 0 var(--ink);flex:none}
+.tb.gear{border-radius:50%;background:var(--yel)}
+.tb svg{width:17px;height:17px}
+
+/* ink button */
+.ib{height:34px;min-width:34px;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:2.5px solid var(--ink);background:#fff;box-shadow:2px 2px 0 var(--ink);
+  font-family:var(--B);font-size:14px;letter-spacing:1px;padding:0 8px;white-space:nowrap;flex:none;color:var(--ink);line-height:1}
+.ib svg{width:17px;height:17px;flex:none}
+.ib.y{background:var(--yel)} .ib.r{background:var(--red);color:#fff} .ib.r svg{stroke:#fff} .ib.c{background:var(--cyan)}
+.ib.k{background:var(--ink);color:var(--yel)}
+.ib.on{background:var(--yel);transform:translate(2px,2px);box-shadow:none}
+.ib.off{opacity:.45;box-shadow:none}
+.ib.sm{height:28px;min-width:28px;font-size:12.5px;padding:0 6px}
+.ib.sm svg{width:14px;height:14px}
+.ib.big{height:40px;font-size:17px;padding:0 14px}
+.ib.round{border-radius:50%;padding:0;width:34px}
+.ib.hov{background:#fff7d6}
+.cap{font-family:var(--B);letter-spacing:1.2px;background:var(--yel);border:2.5px solid var(--ink);padding:2px 8px 1px;display:inline-flex;align-items:center;gap:6px;font-size:15px;line-height:1.1;box-shadow:2px 2px 0 var(--ink);width:max-content;white-space:nowrap}
+.cap.wh{background:#fff}
+.cap .dot{width:9px;height:9px;border-radius:50%;background:#2fbf4f;border:2px solid var(--ink)}
+.cap .dot.r{background:var(--red)} .cap .dot.a{background:#ff9d1c} .cap .dot.g{background:var(--grey)}
+.tagR{font-family:var(--B);font-size:11px;letter-spacing:.5px;background:var(--red);color:#fff;border:2px solid var(--ink);padding:0 4px;line-height:1.25;white-space:nowrap}
+.tagY{font-family:var(--B);font-size:11px;letter-spacing:.5px;background:var(--yel);border:2px solid var(--ink);padding:0 4px;line-height:1.25;white-space:nowrap}
+.tagB{font-family:var(--B);font-size:11px;letter-spacing:.8px;background:var(--blue);color:#fff;border:2px solid var(--ink);padding:0 4px;line-height:1.25;white-space:nowrap}
+.stampR{font-family:var(--B);font-size:13px;letter-spacing:1px;background:var(--red);color:#fff;border:2.5px solid var(--ink);padding:1px 6px 0;line-height:1.2;transform:rotate(-4deg);white-space:nowrap}
+.bubble{background:#fff;border:2.5px solid var(--ink);border-radius:50% / 46%;position:relative;display:inline-block}
+.tail{position:absolute;right:16%;bottom:-17px;width:24px;height:19px;overflow:visible}
+
+/* switch */
+.sw{width:42px;height:22px;border:2.5px solid var(--ink);border-radius:11px;background:#fff;position:relative;flex:none;display:inline-block}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--grey);border:2px solid var(--ink);box-sizing:border-box}
+.sw.on{background:var(--yel)} .sw.on::after{left:21px;background:var(--red)}
+.sw.dis{opacity:.4}
+/* select = caption picker */
+.pick{height:32px;display:inline-flex;align-items:center;gap:7px;padding:0 9px 0 10px;background:var(--yel);border:2.5px solid var(--ink);box-shadow:2px 2px 0 var(--ink);
+  font-weight:700;font-size:13px;white-space:nowrap;flex:none;max-width:210px}
+.pick span{flex:1;overflow:hidden;text-overflow:ellipsis}
+.pick svg{width:11px;height:11px;flex:none}
+.pick.dis{opacity:.45;box-shadow:none}
+.field{height:36px;display:flex;align-items:center;padding:0 12px;background:#fff;border:2.5px solid var(--ink);font-weight:700;font-size:15px;color:var(--ink);white-space:nowrap;overflow:hidden}
+.field.focus{box-shadow:0 0 0 2.5px var(--yel),0 0 0 5px var(--ink)}
+.field.ph{color:#9a8f78}
+.field .selt{background:#ffe680}
+.caret{display:inline-block;width:2.5px;height:17px;background:var(--red);vertical-align:-3px;margin-left:1px;flex:none}
+
+/* clip list from the main page */
+.tools{display:flex;gap:6px;align-items:center;height:40px;flex:none}
+.tools .pick{height:36px;font-family:var(--B);font-size:17px;letter-spacing:1.2px;font-weight:400}
+.search{flex:1;height:36px;display:flex;align-items:center;gap:6px;padding:0 12px;background:#fff;border:2.5px solid var(--ink);border-radius:18px;position:relative;font-weight:700;font-size:13.5px;color:#8a7f69;min-width:0}
+.search.q{color:var(--ink)}
+.search svg{width:15px;height:15px;flex:none}
+.search::after{content:"";position:absolute;left:14px;bottom:-9px;width:8px;height:8px;border:2.2px solid var(--ink);border-radius:50%;background:#fff}
+.search::before{content:"";position:absolute;left:7px;bottom:-15px;width:5px;height:5px;border:2px solid var(--ink);border-radius:50%;background:#fff}
+.tools .ib{height:36px;min-width:36px}
+.w .tools{height:44px}.w .tools .pick,.w .search,.w .tools .ib{height:40px}.w .search{border-radius:20px}
+.list{flex:1;padding:5px 7px 5px 6px;display:flex;flex-direction:column;gap:3px;overflow:hidden;min-height:0}
+.w .list{padding:24px 10px 8px;gap:5px}
+.row{display:flex;align-items:center;gap:9px;height:31px;flex:none}
+.w .row{height:40px;gap:12px}
+.play{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--ink);background:#fff;display:grid;place-items:center;flex:none}
+.w .play{width:30px;height:30px}
+.play svg{width:10px;height:10px;margin-left:2px}
+.play.pa svg{margin-left:0}
+.sb{flex:1;min-width:0;height:100%;display:flex;align-items:center;gap:8px;background:#fff;border:2.2px solid var(--ink);border-radius:15px;padding:0 6px 0 9px;position:relative}
+.sb::before{content:"";position:absolute;left:-9px;top:50%;margin-top:-5px;width:10px;height:10px;background:inherit;border-left:2.2px solid var(--ink);border-bottom:2.2px solid var(--ink);transform:skewY(-30deg)}
+.sb .wv{width:38px;height:18px;flex:none}
+.w .sb .wv{width:70px;height:22px}
+.nm{flex:1;min-width:0;line-height:1.05}
+.nm b{display:block;font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.w .nm b{font-size:15px}
+.nm i{font-style:normal;font-size:10.5px;color:var(--sub);font-weight:700}
+.w .nm i{font-size:11.5px}
+.nm i em{font-style:normal;color:var(--blue)}
+.len{font-family:var(--B);font-size:15px;letter-spacing:1px;white-space:nowrap}
+.w .len{font-size:17px}
+.more{width:16px;height:22px;display:grid;place-items:center;flex:none}
+.more svg{width:4px;height:16px}
+.more.hot{background:var(--yel);border:2px solid var(--ink)}
+.row.sel .sb{background:var(--yel);border-width:2.6px;box-shadow:3px 3px 0 var(--ink)}
+.row.sel .play{background:var(--red)} .row.sel .play svg path{fill:#fff}
+.row.sel .nm i{color:var(--suby)}
+.row.pk .sb{background:#fff4c2}
+.row.pk .play{background:var(--yel)}
+.zap{position:absolute;right:-6px;top:-9px;font-family:var(--B);font-size:11px;letter-spacing:.5px;background:var(--red);color:#fff;border:2px solid var(--ink);padding:0 4px;transform:rotate(8deg);line-height:1.25}
+.rec{display:grid;overflow:hidden;flex:none}
+.p .rec{height:164px;grid-template-columns:1fr 124px;grid-template-rows:auto 1fr auto;padding:8px 6px 8px 10px;column-gap:4px}
+.timer{font-family:var(--B);font-size:42px;letter-spacing:2px;padding:4px 18px 0;line-height:1;align-self:center;justify-self:start}
+.dev{font-weight:700;font-size:12.5px;background:#fff;border:2.5px solid var(--ink);padding:3px 8px;display:inline-flex;gap:6px;align-items:center;width:max-content}
+.dev svg{width:14px;height:14px}
+.dev b{font-family:var(--B);font-weight:400;letter-spacing:1px;font-size:12px;color:var(--red)}
+.meter{display:flex;align-items:flex-end;gap:1px;font-family:var(--B);line-height:.85;height:32px;margin-top:4px}
+.meter span{color:var(--paper);-webkit-text-stroke:1.3px var(--grey);display:inline-block}
+.meter span.on{-webkit-text-stroke:1.4px #000}
+.burstwrap{grid-row:1 / 4;grid-column:2;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.burst{display:block;filter:drop-shadow(3px 3px 0 #000)}
+.wbody{flex:1;display:grid;grid-template-columns:40% 1fr;gap:9px;min-height:0}
+.w .rec{grid-template-columns:1fr;grid-template-rows:auto auto 1fr auto auto;padding:12px 16px 14px;justify-items:start}
+.w .rec .burstwrap{grid-row:3;grid-column:1;justify-self:center}
+.w .timer{font-size:58px;padding:6px 26px 0;margin-top:12px;justify-self:center}
+.w .meter{height:46px;justify-self:center}
+.w .dev{margin-top:10px;font-size:14px;justify-self:center}
+.wright{display:flex;flex-direction:column;gap:9px;min-height:0}
+
+/* footer */
+.foot{height:50px;display:flex;align-items:center;gap:9px;padding:0 10px;flex:none}
+.w .foot{height:52px}
+.foot .play{background:var(--yel)}
+.np{font-weight:700;font-size:13px;white-space:nowrap;background:#fff;border:2.2px solid var(--ink);padding:2px 8px}
+.np small{display:block;font-family:var(--B);font-size:10.5px;letter-spacing:1px;color:var(--red);font-weight:400;line-height:1}
+.prog{flex:1;height:14px;border:2.5px solid var(--ink);background:#fff;position:relative;min-width:40px}
+.prog::after{content:"";position:absolute;inset:2px;background-image:radial-gradient(#cfc4aa 1.2px,transparent 1.5px);background-size:5px 5px}
+.time{font-family:var(--B);font-size:15px;letter-spacing:1px;white-space:nowrap;background:#fff;border:2.2px solid var(--ink);padding:2px 7px 0}
+.status{flex:1;min-width:0;height:30px;display:flex;align-items:center;gap:7px;padding:0 10px;background:#fff;border:2.2px solid var(--ink);font-weight:700;font-size:12.5px;white-space:nowrap;overflow:hidden}
+.status small{font-family:var(--B);font-weight:400;font-size:11px;letter-spacing:1px;color:var(--red)}
+.status.blank{color:#a59a82}
+.status.blank small{color:#a59a82}
+
+/* progress fill */
+.bar{height:16px;border:2.5px solid var(--ink);background:#fff;position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;background-color:var(--red);background-image:radial-gradient(#b81f1b 1.4px,transparent 1.7px);background-size:5px 5px;border-right:2.5px solid var(--ink)}
+
+/* menus = panels */
+.menu{position:absolute;background:#fff;border:3px solid var(--ink);box-shadow:5px 5px 0 var(--ink);padding:4px 0;z-index:20;color:var(--ink)}
+.menu.st{position:relative;display:inline-block}
+.menu .it{display:flex;align-items:center;gap:8px;height:30px;padding:0 12px;font-weight:700;font-size:13.5px;white-space:nowrap}
+.menu .it .t{flex:1}
+.menu .it .tg{font-family:var(--B);font-weight:400;font-size:12px;letter-spacing:1px;color:var(--sub)}
+.menu .it svg{width:13px;height:13px;flex:none}
+.menu .it.hov{background:#fff1b0}
+.menu .it.lit{background:var(--yel);box-shadow:inset 4px 0 0 var(--red)}
+.menu .it.cur{color:#9a8f78}
+.menu .it.dng{color:var(--red)}
+.menu .it.off{opacity:.4}
+.menu .grp{font-family:var(--B);font-size:11.5px;letter-spacing:1.5px;color:var(--yel);background:var(--ink);margin:4px 10px 2px;padding:1px 6px 0;width:max-content}
+.menu .rule{height:2.5px;background:var(--ink);margin:4px 0}
+.menu .fld{margin:6px 8px;height:30px;display:flex;align-items:center;gap:7px;padding:0 12px;border:2.2px solid var(--ink);border-radius:15px;font-size:12.5px;color:#8a7f69}
+.menu .fld svg{width:13px;height:13px}
+.menu .inst{font-family:var(--B);font-weight:400;font-size:11px;letter-spacing:1px;background:var(--cyan);border:2px solid var(--ink);padding:0 4px;line-height:1.3}
+.menu .dot6{width:9px;height:9px;border-radius:50%;background:var(--red);border:2px solid var(--ink)}
+
+/* dialogs = splash panel */
+.dim{position:absolute;inset:0;background:rgba(20,16,16,.62);z-index:10}
+.dlg{position:absolute;left:50%;top:50%;transform:translate(-50%,-56%);width:330px;background:#fff;border:3px solid var(--ink);box-shadow:6px 6px 0 var(--ink);padding:26px 18px 16px;z-index:11;color:var(--ink)}
+.dlg.st{position:relative;left:auto;top:auto;transform:none}
+.dlg h3{font-family:var(--B);font-weight:400;font-size:28px;letter-spacing:1.2px;line-height:1}
+.dlg h3 .hn{font-family:var(--C);font-weight:700;font-size:22px;letter-spacing:0;background:var(--yel);padding:0 4px;border:2px solid var(--ink)}
+.dlg p{font-size:13.5px;color:var(--sub);margin-top:7px}
+.dlg .lb{font-family:var(--B);font-size:12px;letter-spacing:1.2px;color:var(--red);margin:12px 0 4px}
+.dlg .keys{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.dlg .bar{margin-top:14px}
+.dlg .hdr{font-size:14px}
+
+/* tooltip and toast */
+.tip{position:absolute;z-index:30;font-weight:700;font-size:12px;background:var(--yel);border:2.2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:2px 8px;white-space:nowrap;color:var(--ink)}
+.toast{position:absolute;left:50%;transform:translateX(-50%);z-index:25;font-weight:700;font-size:13px;background:#fff;border:2.5px solid var(--ink);box-shadow:4px 4px 0 var(--ink);padding:4px 12px;white-space:nowrap;color:var(--ink);display:flex;gap:8px;align-items:center}
+.toast small{font-family:var(--B);font-weight:400;font-size:12px;letter-spacing:1px;color:#fff;background:var(--red);border:2px solid var(--ink);padding:0 4px;line-height:1.2}
+
+.still *,.still *::before,.still *::after{animation:none!important}
+
+.desk{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start;padding:22px;background:#2a2427;border:3px solid #000;width:max-content;max-width:1460px;
+  background-image:radial-gradient(#3a3236 1.2px,transparent 1.6px);background-size:9px 9px}
+.cell{position:relative}
+.wcap{font-family:var(--B);letter-spacing:1.5px;font-size:13px;color:#cdbf9f;margin-top:12px}
+.wg{width:240px;height:124px;border:3px solid var(--ink);box-shadow:5px 5px 0 #000;position:relative;color:var(--ink);overflow:hidden}
+.wg.on{border-color:var(--red);box-shadow:0 0 0 3px var(--ink),5px 5px 0 3px #000}
+.wgA{padding:7px 8px 6px 9px;display:grid;grid-template-columns:1fr 64px;grid-template-rows:auto 1fr auto}
+.wgA .ttop{display:flex;align-items:center;gap:6px;grid-column:1}
+.wgA .bwrap{grid-column:2;grid-row:1 / 4;display:flex;align-items:center;justify-content:center;position:relative}
+.wgA .tmr{font-family:var(--B);font-size:28px;letter-spacing:1.5px;line-height:1;padding:4px 13px 0;align-self:center;justify-self:start}
+.wgA .tmr .tail{width:16px;height:13px;bottom:-12px}
+.wgA .meter{height:18px;margin:0}
+.wg .cap{font-size:12px;padding:1px 6px 0;box-shadow:1px 1px 0 var(--ink)}
+.wg .cap .dot{width:8px;height:8px}
+.wg .ib.sm{height:24px;min-width:24px;padding:0 4px}
+.wg .ib.sm svg{width:12px;height:12px}
+.wgA .pz{position:absolute;left:-8px;bottom:0}
+.wgB{display:flex;gap:6px;padding:6px 8px 6px 4px}
+.wgB .bl{width:104px;display:flex;align-items:center;justify-content:center;position:relative}
+.wgB .rt{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between}
+.wgB .row1{display:flex;align-items:center;gap:6px}
+.wgB .tm{font-family:var(--B);font-size:30px;letter-spacing:1.5px;line-height:1;background:#fff;border:2.5px solid var(--ink);padding:3px 8px 0;width:max-content}
+.tip.st{position:absolute}
+/* project menu */
+.pm .it .nmp{font-family:var(--B);font-size:15px;letter-spacing:1px;font-weight:400;flex:1}
+.pm .it.cur2{background:var(--yel);box-shadow:inset 4px 0 0 var(--red)}
+.pm .it.cur2 svg{width:14px;height:14px}
+/* search hits */
+.hits{flex:1;min-height:0;overflow:hidden;padding:5px 7px 5px 6px;display:flex;flex-direction:column;gap:6px}
+.w .hits{padding:24px 10px 8px}
+.hit{display:flex;align-items:center;gap:9px;flex:none}
+.hit .sb{height:auto;min-height:44px;padding:4px 9px 5px 11px;flex-direction:column;align-items:stretch;gap:1px;border-radius:14px}
+.hit .l1{display:flex;align-items:center;gap:7px}
+.hit .l1 b{font-weight:700;font-size:14px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hit .l2{font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hit mark{background:var(--yel);color:var(--ink);border:1.8px solid var(--ink);padding:0 3px}
+.hit.hov .sb{background:#fff4c2}
+.nomatch{font-family:var(--B);font-size:26px;letter-spacing:1px;color:var(--sub);text-align:center;padding:40px 0}
+/* export strip */
+.xstrip{flex:none;height:32px;display:flex;align-items:center;gap:9px;padding:0 10px;border:2.5px solid var(--ink);background:#fff;font-weight:700;font-size:12.5px}
+.xstrip .bar{flex:1;height:14px}
+.xstrip svg{width:15px;height:15px}
+.xstrip code{font-family:var(--B);font-size:14px;letter-spacing:1px}
+/* drop */
+.drop{position:absolute;inset:0;z-index:15;background:rgba(253,244,220,.86)}
+.drop .fr{position:absolute;inset:12px;border:5px solid var(--ink);box-shadow:inset 0 0 0 5px var(--yel),inset 0 0 0 8px var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.drop .fr .cap{font-size:26px;padding:4px 14px 2px;box-shadow:4px 4px 0 var(--ink)}
+.sheetrow{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const STILL = new URLSearchParams(location.search).has('still');
+if (STILL) document.documentElement.classList.add('still');
+const K = '#141010';
+const SS = `fill="none" stroke="${K}" stroke-linecap="round" stroke-linejoin="round"`;
+const I = {
+  gear:`<svg viewBox="0 0 24 24" fill="none" stroke="${K}" stroke-width="2.6" stroke-linejoin="round"><path d="M12 2.5l1.6 2.6 3-.7.6 3 2.7 1.4-1.3 2.7 1.3 2.7-2.7 1.4-.6 3-3-.7L12 21.5l-1.6-2.6-3 .7-.6-3-2.7-1.4L5.4 12 4.1 9.3l2.7-1.4.6-3 3 .7z"/><circle cx="12" cy="12" r="3.2"/></svg>`,
+  min:`<svg viewBox="0 0 24 24"><path d="M5 13h14" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/></svg>`,
+  close:`<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/></svg>`,
+  x:`<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" stroke="${K}" stroke-width="3.4" stroke-linecap="round"/></svg>`,
+  mic:`<svg viewBox="0 0 24 24" ${SS} stroke-width="2.4"><rect x="8.5" y="3" width="7" height="11" rx="3.5"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21M8.5 21h7"/></svg>`,
+  down:`<svg viewBox="0 0 12 12"><path d="M1.5 3.5h9L6 9.5z" fill="${K}"/></svg>`,
+  search:`<svg viewBox="0 0 24 24" ${SS} stroke-width="2.8"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5.5 5.5"/></svg>`,
+  imp:`<svg viewBox="0 0 24 24" ${SS} stroke-width="2.5"><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5M4 15v4.5h16V15"/></svg>`,
+  ask:`<svg viewBox="0 0 24 24" fill="#fff" stroke="${K}" stroke-width="2.4" stroke-linejoin="round"><path d="M4 5.5h16v10H11l-5 4v-4H4z"/><path d="M9 10.5h.01M12 10.5h.01M15 10.5h.01" stroke-width="3" stroke-linecap="round"/></svg>`,
+  wid:`<svg viewBox="0 0 24 24" fill="none" stroke="${K}" stroke-width="2.5" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14"/><path d="M3.5 9h17"/><rect x="12" y="12" width="5.5" height="4" fill="${K}"/></svg>`,
+  play:`<svg viewBox="0 0 10 10"><path d="M1 0.5L9.5 5 1 9.5z" fill="${K}"/></svg>`,
+  pause:`<svg viewBox="0 0 10 10"><rect x="1.2" y="0.8" width="2.8" height="8.4" fill="${K}"/><rect x="6" y="0.8" width="2.8" height="8.4" fill="${K}"/></svg>`,
+  stop:`<svg viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" fill="${K}"/></svg>`,
+  more:`<svg viewBox="0 0 4 16"><circle cx="2" cy="2" r="1.8" fill="${K}"/><circle cx="2" cy="8" r="1.8" fill="${K}"/><circle cx="2" cy="14" r="1.8" fill="${K}"/></svg>`,
+  back:`<svg viewBox="0 0 24 24" ${SS} stroke-width="3.2"><path d="M14.5 5l-7 7 7 7"/></svg>`,
+  chev:`<svg viewBox="0 0 24 24" ${SS} stroke-width="3.2"><path d="M9.5 5l7 7-7 7"/></svg>`,
+  pencil:`<svg viewBox="0 0 24 24" ${SS} stroke-width="2.4"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>`,
+  trash:`<svg viewBox="0 0 24 24" ${SS} stroke-width="2.4"><path d="M4 7h16M10 7V4.5h4V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/></svg>`,
+  rew:`<svg viewBox="0 0 24 24" ${SS} stroke-width="2.5"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"/><path d="M4.5 3.5v4h4"/></svg>`,
+  ff:`<svg viewBox="0 0 24 24" ${SS} stroke-width="2.5"><path d="M19.5 12a7.5 7.5 0 1 1-2.4-5.5"/><path d="M19.5 3.5v4h-4"/></svg>`,
+  lang:`<svg viewBox="0 0 24 24" ${SS} stroke-width="2.3"><path d="M4 5h9M8.5 3v2M6 5c1 3.5 3.5 6 6.5 7.5M11 5c-1 3.8-3.6 6.6-7 8"/><path d="M13 21l4-9 4 9M14.5 18h5"/></svg>`,
+  spark:`<svg viewBox="0 0 24 24" ${SS} stroke-width="2.3"><path d="M10 3l1.8 5.2L17 10l-5.2 1.8L10 17l-1.8-5.2L3 10l5.2-1.8z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg>`,
+  copy:`<svg viewBox="0 0 24 24" ${SS} stroke-width="2.3"><rect x="8" y="8" width="12" height="12"/><path d="M16 8V4H4v12h4"/></svg>`,
+  check:`<svg viewBox="0 0 24 24" ${SS} stroke-width="3.2"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`,
+  up:`<svg viewBox="0 0 24 24" ${SS} stroke-width="3"><path d="M12 19V5M6 11l6-6 6 6"/></svg>`,
+  grip:`<svg viewBox="0 0 14 20" fill="${K}"><rect x="2.5" y="2.5" width="3" height="3"/><rect x="8.5" y="2.5" width="3" height="3"/><rect x="2.5" y="8.5" width="3" height="3"/><rect x="8.5" y="8.5" width="3" height="3"/><rect x="2.5" y="14.5" width="3" height="3"/><rect x="8.5" y="14.5" width="3" height="3"/></svg>`,
+  folder:`<svg viewBox="0 0 24 24" ${SS} stroke-width="2.4"><path d="M3.5 6h6l2 2h9v11h-17z"/></svg>`,
+  plus:`<svg viewBox="0 0 24 24" ${SS} stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>`,
+  box:`<svg viewBox="0 0 24 24" ${SS} stroke-width="2.5"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M4 14v6h16v-6"/></svg>`,
+  expand:`<svg viewBox="0 0 24 24" ${SS} stroke-width="2.8"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>`,
+  msg:`<svg viewBox="0 0 24 24" fill="#fff" stroke="${K}" stroke-width="2.4" stroke-linejoin="round"><path d="M4 5.5h16v10H11l-5 4v-4H4z"/></svg>`
+};
+const CLIPS = [
+  ['clip_001','Sat 05:48',1,'16:53'],['clip_005','Sat 05:48',0,'2:03'],['clip_006','Sat 06:05',0,'0:04'],
+  ['clip_100','Sat 09:34',1,'1:09:26'],['Screen recording','Yesterday 07:20',0,'0:03'],['Meeting','Yesterday 07:20',0,'0:02'],
+  ['Meeting (2)','Today 10:03',0,'0:02'],['Presentasjon','Today 10:25',1,'0:27']];
+const PROJECTS = ['Inbox','Meetings','Podcast','Lectures'];
+
+function rnd(seed){let s=seed;return()=>{s=(s*9301+49297)%233280;return s/233280}}
+function wave(seed,n){const r=rnd(seed*7+3);let b='';const w=n*4;
+  for(let i=0;i<n;i++){const h=3+Math.round(r()*12*(0.5+0.5*Math.sin(i/n*3.14)));b+=`<rect x="${i*4}" y="${9-h/2}" width="2.4" height="${h}" fill="${K}"/>`}
+  return `<svg class="wv" viewBox="0 0 ${w} 18" preserveAspectRatio="none">${b}</svg>`}
+let BID = 0;
+function burst(size,label,o={}){
+  const n=o.n||16,cx=size/2,cy=size/2,R=size/2-4,r=R*0.68,r2=rnd(size+(o.seed||0));let pts=[];
+  for(let i=0;i<n*2;i++){const a=i/(n*2)*Math.PI*2-Math.PI/2;const rr=i%2?r*(0.92+r2()*0.12):R*(0.86+r2()*0.14);pts.push((cx+Math.cos(a)*rr).toFixed(1)+','+(cy+Math.sin(a)*rr).toFixed(1))}
+  const pts2=pts.map(p=>{const[x,y]=p.split(',').map(Number);return (cx+(x-cx)*0.78).toFixed(1)+','+(cy+(y-cy)*0.78).toFixed(1)}).join(' ');
+  const fs=o.fs||size*0.25, ms=size*0.2;
+  const icon = o.icon===false ? '' : o.icon==='stop' ? `<rect x="${cx-ms/2}" y="${cy-ms*1.1}" width="${ms}" height="${ms}" fill="#fff" stroke="${K}" stroke-width="2"/>`
+    : `<g transform="translate(${cx-ms/2},${cy-ms*1.15}) scale(${ms/24})" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><rect x="8.5" y="3" width="7" height="11" rx="3.5" fill="#fff"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21"/></g>`;
+  const ty = o.icon===false ? cy+fs*0.36 : cy+fs*0.95;
+  return `<svg class="burst" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+   <polygon points="${pts.join(' ')}" fill="${o.outer||'#ffd43b'}" stroke="${K}" stroke-width="3" stroke-linejoin="round"/>
+   <polygon points="${pts2}" fill="${o.inner||'#e3342f'}" stroke="${K}" stroke-width="2.5" stroke-linejoin="round"/>
+   ${icon}<text x="${cx}" y="${ty}" text-anchor="middle" font-family="Bangers" font-size="${fs}" fill="#fff" stroke="${K}" stroke-width="1.6" paint-order="stroke" letter-spacing="1" transform="rotate(-6 ${cx} ${cy})">${label}</text></svg>`}
+const MCOLS=['#ffd43b','#ffd43b','#ffd43b','#ffb02e','#ffb02e','#ff8a24','#ff8a24','#f25a26','#e3342f','#e3342f'];
+function meter(base,step,lv,word='BZZZZZZZZT'){let s='';
+  for(let i=0;i<word.length;i++){const on=i<lv;s+=`<span class="${on?'on':''}" style="font-size:${base+i*step}px;transform:rotate(${(i%2?3:-3)}deg);color:${on?MCOLS[Math.min(9,i)]:'var(--paper)'}">${word[i]}</span>`}
+  return `<div class="meter">${s}</div>`}
+const TAILSVG = `<svg class="tail" viewBox="0 0 30 22"><path d="M2 1 L26 20 L16 1" fill="#fff" stroke="${K}" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+
+/* masthead: main has the gear; other pages get a back caption */
+function mast(o={}){
+  const back = o.back ? `<button class="ib y sm" title="${o.backTip||'Back'}">${I.back}${o.back}</button>` : '';
+  return `<div class="mast">${back}<span class="logo${o.back?' s':''}">THRASHER</span>${o.back?'':'<span class="issue">No 1</span>'}<span class="sp"></span>
+  ${o.gear!==false&&!o.back?`<span class="tb gear">${I.gear}</span>`:''}<span class="tb">${I.min}</span><span class="tb">${I.close}</span></div>`}
+function tools(labels,o={}){
+  const s = o.q ? `<div class="search q">${I.search}${o.q}<i class="caret"></i></div>` : `<div class="search">${I.search}Search</div>`;
+  const all = o.q && o.allKey!==false ? `<button class="ib sm${o.all?' on':''}" title="All projects" style="height:36px">ALL PROJECTS</button>` : '';
+  return `<div class="tools"><div class="pick${o.projOpen?' on':''}" style="${o.projOpen?'background:#fff':''}">${o.proj||'Inbox'} ${I.down}</div>${s}${all}
+  ${o.q && !labels ? '' : `<div class="ib">${I.imp}${labels?'IMPORT':''}</div><div class="ib c">${I.ask}${labels?'ASK':''}</div><div class="ib">${I.wid}${labels?'WIDGET':''}</div>`}</div>`}
+function rows(o={}){return CLIPS.map((c,i)=>`<div class="row${i==1?' sel':''}${o.picked&&o.picked.includes(i)?' pk':''}"><div class="play">${I.play}</div>
+  <div class="sb">${wave(i+1,i==1?14:12)}<div class="nm"><b>${c[0]}</b><i>${c[1]}${c[2]?' · <em>transcribed</em>':''}</i></div>
+  <span class="len">${c[3]}</span><span class="more${o.hot&&i==1?' hot':''}">${I.more}</span>${i==1?'<span class="zap">PICKED</span>':''}</div></div>`).join('')}
+function foot(){return `<div class="panel foot dotsY"><div class="play">${I.play}</div><div class="np"><small>NOW SHOWING</small>Nothing playing</div>
+  <div class="prog"></div><span class="time">--:-- / --:--</span></div>`}
+function mainP(o={}){return mast()+`<div class="panel rec dots">
+   <div><span class="cap" style="transform:rotate(-2deg)"><span class="dot"></span>READY</span></div>
+   <div class="bubble timer">00:00.0${TAILSVG}</div>
+   <div>${meter(17,1.5,0)}<div class="dev" style="margin-top:5px">${I.mic}Default microphone</div></div>
+   <div class="burstwrap">${burst(124,'REC')}</div></div>`+tools(false,o)+`<div class="panel list">${o.list||rows(o)}</div>`+(o.xs||'')+foot()}
+function mainW(o={}){return mast()+`<div class="wbody">
+ <div class="panel rec dots"><span class="hdr">MEANWHILE AT THE MIC</span>
+   <div style="margin-top:14px"><span class="cap" style="transform:rotate(-2deg)"><span class="dot"></span>READY</span></div>
+   <div class="bubble timer">00:00.0${TAILSVG}</div>
+   <div class="burstwrap">${burst(196,'REC!')}</div>${meter(26,2.6,0)}
+   <div class="dev">${I.mic}<b>INPUT</b>Default microphone</div></div>
+ <div class="wright">${tools(true,o)}<div class="panel list"><span class="hdr">${o.listHdr||'THE CLIPS SO FAR'}</span>${o.list||rows(o)}</div></div>
+</div>`+(o.xs||'')+foot()}
+
+/* sheet helpers */
+const shot=(cap,cls,inner,style='')=>`<div><div class="lbl">${cap}</div><div class="win ${cls}" style="${style}">${inner}</div></div>`;
+const panelShot=(cap,w,h,inner,cls='')=>`<div><div class="lbl">${cap}</div><div class="sheet ${cls}" style="width:${w}px;height:${h}px">${inner}</div></div>`;
+const head=(tag,title,idea,bullets)=>`<h2><small>${tag}</small>${title}</h2><p class="idea">${idea}</p><ul>${bullets.map(b=>`<li>${b}</li>`).join('')}</ul>`;
+const btn=(t,cls='',icon='',tip)=>`<button class="ib ${cls}" title="${tip||t.replace(/<[^>]+>/g,'')}">${icon?I[icon]:''}${t}</button>`;
+const sw=(on,dis)=>`<i class="sw${on?' on':''}${dis?' dis':''}"></i>`;
+const pick=(v,dis)=>`<div class="pick${dis?' dis':''}"><span>${v}</span>${I.down}</div>`;
+function dialog(title,body,keys,o={}){
+  return `<div class="dlg${o.st?' st':''}" style="${o.w?'width:'+o.w+'px;':''}">${o.hdr?`<span class="hdr">${o.hdr}</span>`:''}<h3>${title}</h3>${body}<div class="keys">${keys}</div></div>`}
+
+/* ---------- widget ---------- */
+function stCap(state){const rec=state!=='ready',p=state==='paused';
+  return `<span class="cap${rec&&!p?'':''}"><span class="dot${state==='ready'?' g':p?' a':' r'}"></span>${state==='ready'?'READY':p?'PAUSED':'RECORDING'}</span>`}
+function widgetA(state){const rec=state!=='ready',p=state==='paused';
+  return `<div class="wg wgA dots${rec?' on':''}"><div class="ttop">${stCap(state)}</div>
+   <div class="bwrap">${burst(66,rec?'STOP':'REC',{icon:false,fs:17,seed:rec?2:0})}${rec?`<span class="pz">${btn('','sm',p?'play':'pause',p?'Resume':'Pause')}</span>`:''}
+     <span style="position:absolute;right:-4px;top:-4px">${btn('','sm','expand','Open the window')}</span></div>
+   <div class="bubble tmr">${state==='ready'?'00:00':'02:03'}${TAILSVG}</div>
+   ${meter(11,1,rec&&!p?6:0)}</div>`}
+function widgetB(state){const rec=state!=='ready',p=state==='paused';
+  return `<div class="wg wgB dotsY${rec?' on':''}"><div class="bl">${burst(100,rec?'STOP':'REC',{seed:rec?2:0,fs:22})}</div>
+   <div class="rt"><div class="row1">${stCap(state)}<span class="sp"></span>${btn('','sm','expand','Open the window')}</div>
+   <div class="row1"><span class="tm">${state==='ready'?'00:00':'02:03'}</span>${rec?btn('','sm',p?'play':'pause',p?'Resume':'Pause'):''}</div>
+   ${meter(10,.9,rec&&!p?7:0)}</div></div>`}
+
+/* ---------- menus ---------- */
+function projMenu(cur,hasClips,hov){
+  const rs=PROJECTS.map((p,i)=>`<div class="it${i===cur?' cur2':''}${i===hov?' hov':''}"><span class="nmp">${p.toUpperCase()}</span>${i===cur?I.check:''}</div>`).join('');
+  const acts=`<div class="it">${I.plus}<span class="t">New project</span></div>`+(cur>0?`<div class="it">${I.pencil}<span class="t">Rename project</span></div>`:'')+
+    `<div class="it${hasClips?'':' off'}">${I.box}<span class="t">Export project</span></div>`+(cur>0?`<div class="it dng${hasClips?' off':''}">${I.trash.replace(/#141010/,'#e3342f')}<span class="t">Delete project</span></div>`:'');
+  return `<div class="menu pm st" style="width:210px">${rs}<div class="rule"></div>${acts}</div>`}
+function clipMain(o={}){
+  let s='';
+  if(o.merge) s+=`<div class="it"><span class="t">Merge ${o.merge} clips</span></div><div class="rule"></div>`;
+  s+=`<div class="it"><span class="t">Manage</span></div><div class="it"><span class="t">Rename</span></div>`;
+  s+=`<div class="it${o.lit===1?' lit':''}"><span class="t">Export</span>${o.left?I.back:I.chev}</div>`;
+  if(o.multiProj!==false) s+=`<div class="it${o.lit===2?' lit':''}"><span class="t">Move to</span>${o.left?I.back:I.chev}</div>`;
+  s+=`<div class="rule"></div><div class="it dng"><span class="t">Delete</span></div>`;
+  return `<div class="menu st" style="width:200px">${s}</div>`}
+function exportSub(tr,hov){
+  const it=(t,tg,h)=>`<div class="it${h?' hov':''}"><span class="t">${t}</span><span class="tg">${tg}</span></div>`;
+  let s=it('All files','FOLDER')+`<div class="rule"></div><div class="grp">AUDIO</div>`+it('FLAC','LOSSLESS',hov)+it('WAV','STANDARD')+it('MP3','SMALL');
+  if(tr) s+=`<div class="rule"></div><div class="grp">TRANSCRIPT</div>`+it('Text with times','TXT')+it('Subtitles SRT','VIDEO')+it('Subtitles VTT','WEB')+it('Word timestamps','JSON');
+  return `<div class="menu st" style="width:240px">${s}</div>`}
+const moveSub=cur=>`<div class="menu st" style="width:180px">${PROJECTS.map((p,i)=>`<div class="it${i===cur?' cur':''}"><span class="t">${p}</span>${i===cur?I.check:''}</div>`).join('')}</div>`;
+const at=(x,y,html,z=20)=>`<div style="position:absolute;left:${x}px;top:${y}px;z-index:${z}">${html}</div>`;
+
+/* ---------- search ---------- */
+const HITS=[['clip_005','Inbox','we moved the','budget','review to Friday after the call',2],['Meeting (2)','Meetings','the travel','budget','is still open for March',0],
+ ['Presentasjon','Lectures','slide four shows the','budget','split by team',1],['clip_100','Inbox','','budget','talk starts around here',0],['Meeting','Meetings','ask Nina about the','budget','before Monday',0]];
+function hitsList(o){
+  if(o.none) return `<div class="nomatch">No matches</div>`;
+  return HITS.filter(h=>o.all||h[1]==='Inbox').map((h,i)=>`<div class="hit${i===0?' hov':''}"><div class="play">${I.play}</div><div class="sb">
+   <div class="l1"><b>${h[0]}</b>${o.all?`<span class="tagB">${h[1].toUpperCase()}</span>`:''}${h[5]?`<span class="tagR">+${h[5]}</span>`:''}</div>
+   <div class="l2">${h[2]?h[2]+' ':''}<mark>${h[3]}</mark> ${h[4]}</div></div></div>`).join('')}
+
+/* ---------- dialogs ---------- */
+const fld=(lb,val)=>`<div class="lb">${lb}</div><div class="field focus${val===''?' ph':''}">${val===''?'':`<span>${val}</span>`}<i class="caret"></i></div>`;
+function dlg(kind,o={}){
+  const st={st:o.st,w:o.w};
+  if(kind===1) return dialog('Rename clip',fld('NEW NAME',o.val??'Budget call'),btn('CANCEL')+btn('RENAME',o.val===''?'y off':'y'),st);
+  if(kind===2) return dialog(o.n?`Delete ${o.n} clips`:'Delete <span class="hn">clip_005</span>',`<p>${o.n?'They go to the Recycle Bin':'Goes to the Recycle Bin'}</p>`,btn('CANCEL')+btn('DELETE','r'),st);
+  if(kind===3) return dialog('Unsaved changes','<p>Leave without saving</p>',btn('CANCEL')+btn('DISCARD CHANGES')+btn('SAVE','y'),Object.assign({},st,{w:o.w||350}));
+  if(kind===4) return dialog('New project',fld('PROJECT NAME',o.val??'Interviews'),btn('CANCEL')+btn('CREATE',o.val===''?'y off':'y'),st);
+  if(kind===5) return dialog('Rename project',fld('NEW NAME',o.val??'Meetings 2026'),btn('CANCEL')+btn('RENAME','y'),st);
+  if(kind===6) return dialog('Rename part',fld('NEW NAME',o.val??'Intro'),btn('CANCEL')+btn('RENAME','y'),st);
+  if(kind===7) return dialog('Speaking new words',`<p>Finding the new words in the generated speech</p><div style="display:flex;align-items:center;gap:10px;margin-top:12px"><div class="bar" style="flex:1;margin:0"><i style="width:62%"></i></div><span class="cap">62%</span></div>`,btn('CANCEL'),st);
+}
+const dropOverlay=()=>`<div class="drop"><div class="fr">${burst(150,'+',{icon:false,fs:84,seed:5})}<span class="cap">DROP TO IMPORT</span></div></div>`;
+
+/* ---------- windows ---------- */
+const winP=(o,over='')=>`<div class="win p">${mainP(o)}${over}</div>`;
+const winW=(o,over='')=>`<div class="win w">${mainW(o)}${over}</div>`;
+const pair=(cp,p,cw,w)=>`<div class="stage"><div><div class="lbl">${cp}</div>${p}</div><div><div class="lbl">${cw}</div>${w}</div></div>`;
+const sheetS=(cap,inner,w)=>`<div><div class="lbl">${cap}</div><div class="sheet st" style="${w?'width:'+w+'px;':''}padding:16px;overflow:visible">${inner}</div></div>`;
+const mdim='<div class="dim" style="background:rgba(20,16,16,.25)"></div>';
+const xs=(done)=>done?`<div class="xstrip">${I.check}<span>Exported clip_005</span></div>`:`<div class="xstrip"><span>Exporting clip_005</span><div class="bar"><i style="width:46%"></i></div><code>46%</code></div>`;
+
+const sec=[];
+sec.push(`<section class="pg">${head('COMPACT 240 X 124','WIDGET','A single comic panel that floats over other windows: the timer speaks, the burst records.',[
+  'A: halftone panel with the timer bubble, a small STOP or REC burst and a tiny BZZZT meter','B: yellow halftone strip with a big burst on the left and the timer in a caption box',
+  'Status caption: grey dot READY, red dot RECORDING, orange dot PAUSED; the panel gets a red frame while recording','Pause shows only while recording, Open the window is a small key top right, the panel drags the window'])}
+ <div class="sub3">A / HALFTONE PANEL</div><div class="desk">${['ready','rec','paused'].map(s=>`<div class="cell">${widgetA(s)}<div class="wcap">${s==='rec'?'RECORDING':s.toUpperCase()}</div></div>`).join('')}
+   <div class="cell">${widgetA('rec')}<div class="tip" style="left:178px;top:104px">Stop</div><div class="wcap" style="margin-top:30px">TIP ON STOP</div></div></div>
+ <div class="sub3">B / BURST STRIP</div><div class="desk">${['ready','rec','paused'].map(s=>`<div class="cell">${widgetB(s)}<div class="wcap">${s==='rec'?'RECORDING':s.toUpperCase()}</div></div>`).join('')}
+   <div class="cell">${widgetB('ready')}<div class="tip" style="left:150px;top:40px">Open window</div><div class="wcap" style="margin-top:30px">TIP ON OPEN</div></div></div>
+ <p class="note">Real size. The widget is its own small window, so nothing else sits over it.</p></section>`);
+
+sec.push(`<section class="pg">${head('YELLOW CAPTION','PROJECT MENU','The project caption opens into a panel of caption names, the current one yellow with a red edge and a check.',[
+  'Projects in Bangers, actions under a thick ink rule: New project, Rename project, Export project, Delete project','Delete project shows only past Inbox and fades while the project has clips',
+  'Export project fades when the project is empty','The menu panel carries the same hard ink shadow as every popup'])}
+ ${pair('PORTRAIT / MEETINGS OPEN',winP({proj:'Meetings',projOpen:1},mdim+at(9,266,projMenu(1,true,2))),'WIDE / MEETINGS OPEN',winW({proj:'Meetings',projOpen:1},mdim+at(409,106,projMenu(1,true,2))))}
+ <div class="states">${sheetS('INBOX CURRENT / NO RENAME OR DELETE',projMenu(0,true,-1))}${sheetS('EMPTY PROJECT / DELETE LIVE / EXPORT FADED',projMenu(3,false,-1))}</div></section>`);
+
+sec.push(`<section class="pg">${head('INK PANEL','CLIP MENU','The three dot key opens a white panel beside the bubble; a submenu is a second panel next to it.',[
+  'Hovered and open rows go yellow with a red edge, Delete in red under a rule','Export groups All files, AUDIO and TRANSCRIPT under black tags, Move to checks the current project',
+  'Portrait has no room side by side, so the export panel lies over the left of the menu','Merge shows on top only with several clips picked, Move to only with two projects or more'])}
+ ${pair('PORTRAIT / EXPORT OPEN',winP({hot:1},mdim+at(150,348,clipMain({lit:1,left:true}))+at(6,296,exportSub(true,true),21)),
+   'WIDE / MOVE TO OPEN',winW({hot:1},mdim+at(757,228,clipMain({lit:2,left:true}))+at(571,322,moveSub(0),21)))}
+ <div class="states">${sheetS('3 PICKED / MERGE ON TOP',clipMain({merge:3}))}${sheetS('ONE PROJECT / NO MOVE TO',clipMain({multiProj:false}))}${sheetS('EXPORT / CLIP NOT TRANSCRIBED',exportSub(false,true))}</div></section>`);
+
+sec.push(`<section class="pg">${head('THOUGHT BUBBLE','SEARCH RESULTS','With a query the list shows hit bubbles: the clip name on top, the found line below with the match boxed in yellow.',[
+  'Project tag in blue only when ALL PROJECTS is on, extra hits as a red +2','ALL PROJECTS sits after the thought bubble only with a query and two projects or more',
+  'No matches is lettered in Bangers in the empty panel','Enter opens the first hit, the hovered hit turns pale yellow'])}
+ ${pair('PORTRAIT / THIS PROJECT',winP({q:'budget',list:hitsList({all:false})}).replace('class="panel list"','class="panel list hits"'),
+   'WIDE / ALL PROJECTS',winW({q:'budget',all:1,listHdr:'WHAT WE FOUND',list:hitsList({all:true})}))}
+ <div class="states"><div><div class="lbl">NO MATCHES</div><div class="win p" style="height:300px">${mast()}${tools(false,{q:'zebra'})}<div class="panel list">${hitsList({none:true})}</div></div></div></div></section>`);
+
+sec.push(`<section class="pg">${head('SPLASH PANEL','DIALOGS','Every question is a white splash panel with a hard ink shadow over the dimmed page.',[
+  'Title in Bangers, a clip name in it is set in Comic Neue on a yellow box','The text field is an inked box, a yellow and ink ring while focused, a red caret',
+  'Cancel and Discard changes are white keys, Rename Create and Save yellow, Delete red','An empty name fades the main key, a click outside cancels, Enter confirms'])}
+ ${pair('PORTRAIT / RENAME CLIP',winP({},'<div class="dim"></div>'+dlg(1,{w:330})),'WIDE / DELETE CLIP',winW({},'<div class="dim"></div>'+dlg(2,{w:360})))}
+ <div class="states">${[['RENAME CLIP / EMPTY NAME',1,{val:''}],['DELETE CLIP',2,{}],['DELETE SEVERAL PICKED',2,{n:3}],['UNSAVED CHANGES',3,{}],['NEW PROJECT',4,{}],['NEW PROJECT / EMPTY',4,{val:''}],['RENAME PROJECT',5,{}],['RENAME PART',6,{}]]
+   .map(([c,k,o])=>`<div><div class="lbl">${c}</div><div class="sheet" style="width:400px;height:220px;background:#5e5852"><div class="dim" style="background:transparent"></div>${dlg(k,Object.assign({w:k===3?350:330},o))}</div></div>`).join('')}</div></section>`);
+
+sec.push(`<section class="pg">${head('FULL COVERS','OVERLAYS','The two covers over the whole window: new words being spoken, and files dragged over it.',[
+  'Speaking new words is a splash panel with the stage line, a red halftone bar, the percent in a caption and one Cancel key','The cover blocks clicks and dims the page darker than a dialog',
+  'Drop to import is a yellow and ink frame inset 12px with a plus burst and the words in a caption','Neither shows in the widget'])}
+ <div class="sub3">SPEAKING NEW WORDS</div>${pair('PORTRAIT',winP({},'<div class="dim" style="background:rgba(20,16,16,.78)"></div>'+dlg(7,{w:330})),'WIDE',winW({},'<div class="dim" style="background:rgba(20,16,16,.78)"></div>'+dlg(7,{w:380})))}
+ <div class="sub3">DROP TO IMPORT</div>${pair('PORTRAIT',winP({},dropOverlay()),'WIDE',winW({},dropOverlay()))}</section>`);
+
+const toastAt=(t,b)=>`<div class="toast" style="bottom:${b}px">${t}</div>`;
+sec.push(`<section class="pg">${head('CAPTION BOXES','MESSAGES AND TIPS','Messages are caption boxes that float over the page, tips are small yellow captions.',[
+  'The status strip keeps its place, centred 8px above the footer, as a white caption with a hard shadow','The export strip is an inked bar over the footer: Exporting name with a red halftone bar, then a check and Exported name',
+  'A tooltip is a yellow caption under the hovered control, or above it near the bottom','The tray menu and file pickers are Windows menus and stay native'])}
+ ${pair('PORTRAIT / EXPORTING / MESSAGE / TIP',winP({hot:1,xs:xs(false)},toastAt('Renamed to Budget call',102)+'<div class="tip" style="left:300px;top:348px">More options</div>'),
+   'WIDE / EXPORTED / MESSAGE / TIP',winW({hot:1,xs:xs(true)},toastAt('Recovered after a crash: clip_007',104)+'<div class="tip" style="left:858px;top:228px">More options</div>'))}
+ <div class="states">${sheetS('STATUS STRIP ALONE',`<div class="toast" style="position:relative;left:auto;transform:none">Ctrl+Alt+R now records from any app</div>`)}${sheetS('TIP NEAR THE BOTTOM GOES ABOVE',`<div style="position:relative;height:70px;width:220px"><div class="tip" style="left:30px;top:0">Export</div><div style="position:absolute;left:40px;top:34px">${btn('EXPORT','r')}</div></div>`)}</div></section>`);
+
+document.getElementById('root').innerHTML=`<header class="top"><h1><small>THRASHER THEME</small>COMIC BOOK CHROME</h1>
+ <p>Everything around the pages: the widget, the menus, search hits, dialogs, covers and messages. Every popup is an inked white panel with a hard shadow, every state a caption.</p></header>${sec.join('')}`;
+
+</script>
+</body>
+</html>

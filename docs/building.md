@@ -97,3 +97,9 @@ cargo run --release -p thrasher-core --features whisper-cuda --example transcrib
   Dialogs would take focus, so in this mode exports save without asking (into the last
   export folder) and Import reads its files from **`THRASHER_TEST_IMPORT`** (paths
   separated by `;`).
+- **Hidden desktop (2026-10-30):** with several agents testing in parallel, windows still
+  reached the user's screen. Run the whole test session (test exe, shots, posted input,
+  any browser) from one script on a second Windows desktop made with `CreateDesktop`
+  (the pattern in Prism's `tools/e2e/HiddenDesktop.cs`). Nothing there can take the
+  user's foreground; the app renders and `PrintWindow` shots work (checked 2026-10-30).
+  Never use `SendKeys`: it types into whatever window has focus.

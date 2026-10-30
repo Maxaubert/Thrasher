@@ -384,10 +384,12 @@ are the classic ones in a white aluminium and orange palette (`Theme.pages` 0).
 - Exe +2.34 MB (65.61 to 67.96 MB): art 0.15 MB, font 7 KB, the rest generated code. Ember, Tape
   Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700 match pixel for
   pixel before and after.
+
 **Built in step 5, Fighter Select main page (2026-10-30):** `ui/skins/x-fighter.slint` (skin 12,
-theme "Fighter Select", index 19 in `Theme.names`, after Pocket Synth), art in `ui/skins/x-fighter/` (12 PNGs, 0.10 MB) from
-`tools/skin-art/x-fighter.html` (`sh tools/skin-art/cut.sh x-fighter OUT`). Its other pages are
-the classic ones in its violet palette (`Theme.pages` 0).
+theme "Fighter Select", index 19 in `Theme.names`, after Pocket Synth), art in
+`ui/skins/x-fighter/` (12 PNGs, 0.10 MB) from `tools/skin-art/x-fighter.html`
+(`sh tools/skin-art/cut.sh x-fighter OUT`). Its other pages are the classic ones in its violet
+palette (`Theme.pages` 0).
 - Settings gallery: its tile is the Fighter Select line in `Gallery.devices` (`ui/gallery.slint`), band #d63a2a.
 - The recorder is P1's HUD: the microphone, the health bar (the live level in gold over a red
   peak that falls behind it, -60 to 0 dB), the round clock and READY (RECORDING, PAUSED), and
@@ -448,6 +450,60 @@ the classic ones in its violet palette (`Theme.pages` 0).
 - Exe +2.33 MB (65.61 to 67.94 MB): fonts 48 KB, art 0.10 MB, the rest generated code. Ember,
   Tape Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700 match
   before and after.
+
+**Built in step 5, Cozy Cabin main page (2026-10-30):** `ui/skins/px-cozy.slint` (skin 13, theme
+"Cozy Cabin", index 20 in `Theme.names`, after Fighter Select; `fill_gallery` skips empty names,
+should a place ever be held for a skin not in yet), art in `ui/skins/px-cozy/` (35 PNGs at 1x, 18 KB)
+from `tools/skin-art/px-cozy.html` (`sh tools/skin-art/cut.sh px-cozy OUT`, only the 1x cut is
+used). Its other pages are the classic ones in a wood and honey palette (`Theme.pages` 0).
+- Settings gallery: its tile is the Cozy Cabin line in `Gallery.devices` (`ui/gallery.slint`), band #c9822e.
+- The recorder is the cabin wall: the little window (dusk pines and fireflies), the hanging lantern
+  with its tag (Record, "Stop and save" while recording; the tag says REC or STOP) and the
+  parchment readout (status, microphone, timer, meter). Wide windows put it on the left with the
+  cabin shelf; under 490 px of body height the left side takes the portrait's smaller window,
+  lantern and readout. While recording, Import in the toolbar is Pause and Resume.
+- The clips are inventory slots; the highlighted one is parchment with a honey frame and a honey
+  nub at the list's edge, other picked ones parchment. Rows show "transcribed" with the scroll
+  icon and "+ system". The waveform drops to 5 bars, then none, as a row narrows.
+- Motion only while recording (`RECORDING_FPS` 8): the window scene is a 24 frame strip (stars and
+  fireflies on whole turns, so it loops), the lit lantern a 4 frame flame strip with the glow's
+  opacity stepping with it, and the status dot blinks. At rest, and paused, nothing moves.
+- Fonts: Jersey 10 and Pixel 95 were already in; Tiny5 400 (the small capitals; the variable
+  font's default instance cut to capitals, so it has no 5) and Cozy Figures (Jersey 10's timer
+  characters with every digit as wide as the widest, 2 KB), built by `tools/skin-art/px-cozy-fonts.py`.
+
+**Lessons from the Cozy Cabin:**
+- **Index gaps:** a skin built beside others can take a later index; while it is on its own the
+  places between get empty names and Ember's palette, and the gallery skips empty names, so
+  nothing shows for them. The merge filled 18 and 19 with Pocket Synth and Fighter Select.
+- **`1phx` is not allowed in a global** (the scale factor is not known there): a whole device
+  pixel art size (`max(1, round(3 * 1px / 1phx)) * 1phx`) lives in the component that draws.
+- **Looping scenes:** give every sine in the mockup's scene a whole number of turns over the
+  strip, so the last frame runs into the first; fill the canvas colour first, or the gap between
+  the sky bands and the hills cuts as transparent.
+- **CSS box shadows as an outline:** the mockup's 3px `.pb` ring is four rectangles outside the
+  box (`Outline`, drawn by the box itself, children may draw outside their parent); inset bevels
+  are four bands with the top left on top, as CSS layers the first shadow over the second.
+- **A layout item needs a height:** a `HorizontalLayout` placed by x and y with no height takes
+  its parent's, so a `VerticalLayout { alignment: center }` inside it put the status dot and the
+  mic icon in the middle of the card.
+- **TextField is 36 px tall by default:** in a 30 px well its text sat 3 px low until it got
+  `height: 30px`.
+- **Hidden measuring copies:** an invisible `AllBox` used to measure the toolbar's room still
+  showed in UI Automation as a second "Search all projects" checkbox, and a press landed on it;
+  measure with a plain silent `Text` instead.
+- **Checks:** the shared scratch clips gain a clip per recording; clean them before the
+  before/after comparison, or the other themes differ by a row (their scrollbar). A long project
+  folder with `.thrasher-project` and a `<name>.system.wav` were staged and removed after.
+
+**Budgets measured on the Cozy Cabin** (test copy, 2.25x display, 10 s samples, 2026-10-30):
+- CPU idle 0.3% at 520x700 and 0.0% at 1100x700 (Ember 0.3% and 0.3%); recording 5.6% and 10.8%
+  (Ember 16.9% and 19.7%).
+- Working set idle 43.6 vs Ember 41.3 MB (+2.3), wide 51.4 vs 49.5 MB (+1.9); recording 46.2 vs
+  44.3 MB, wide 54.2 vs 52.5 MB.
+- Exe +1.77 MB (65.61 to 67.38 MB): art 18 KB, fonts 8 KB, the rest generated code. Ember, Tape
+  Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700 match pixel for
+  pixel before and after.
 
 ### Recipe from the pilot (follow it for the other skins)
 

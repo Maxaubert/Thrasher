@@ -732,12 +732,14 @@ component MachineFront inherits Rectangle {
     property <length> col-w: root.width - 14px - 108px - 10px - 52px - 10px - 14px;
     height: 186px;
     Wood { }
-    StateTag {
+    tag := StateTag {
         x: 14px;
         y: 10px + 1.5px;
     }
+    // Right on the cylinder's column, but never over the tag: past an hour in a narrow
+    // window it reaches into the gap over the governor.
     Odometer {
-        x: 14px + root.col-w - self.width;
+        x: max(14px + root.col-w - self.width, tag.x + tag.width + 8px);
         y: 10px;
     }
     Cylinder {
@@ -1205,8 +1207,10 @@ component Tin inherits Rectangle {
     property <length> len-w: root.big ? 72px : 44px;
     property <length> dots-w: 20px;
     // The waveform gives way to the name in a narrow list: the name keeps at least 150px
-    // (110px in portrait); a wave under 30px goes.
-    property <length> wave-room: root.row-w - root.tx - root.len-w - root.dots-w - (root.big ? 150px : 110px);
+    // (110px in portrait), and wide at least the line under it (the date, the stamp and
+    // "+ SYSTEM"); a wave under 30px goes.
+    property <length> meta-w: when.preferred-width + root.stamp-w + root.sys-w;
+    property <length> wave-room: root.row-w - root.tx - root.len-w - root.dots-w - 8px - (root.big ? max(150px, root.meta-w) : 110px);
     property <length> wave-w: root.wave-room >= 30px ? min(root.big ? 120px : 36px, root.wave-room) : 0;
     property <length> text-w: root.row-w - root.tx - root.wave-w - (root.wave-w > 0 ? 8px : 0) - root.len-w - root.dots-w;
     // The date, the stamp and "+ SYSTEM" after the name on one line (portrait) or under it.
@@ -1287,7 +1291,7 @@ component Tin inherits Rectangle {
     when := Text {
         x: root.line-x;
         y: root.line-y;
-        width: min(self.preferred-width, max(0px, root.tx + root.text-w - self.x));
+        width: min(self.preferred-width, max(0px, root.tx + root.text-w - self.x - root.stamp-w - root.sys-w));
         height: root.line-h;
         text: root.item.when.to-uppercase();
         color: Ph.ink-soft;

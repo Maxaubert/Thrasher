@@ -617,6 +617,10 @@ their 1x cut). Its other pages are the classic ones in a mahogany and brass pale
   works (as in `Digits`). A property named `col` cannot be declared on any element (it is a
   GridLayout property). An `Image` inside a plain Rectangle draws at its source size unless it
   gets a width and a height, so a 2x wheel was drawn twice as big.
+- **Review fixes:** in a wide list near 820 px the line under a tin's name (the date, the
+  TRANSCRIBED stamp and "+ SYSTEM") ran into the waveform; the wave now leaves that line its
+  room and the date elides first. In a portrait window under about 445 px a counter past an
+  hour ("1:02:03.4") ran over the RECORDING tag; it now starts after the tag.
 - **rustc crash:** a release build died once with `STATUS_STACK_BUFFER_OVERRUN` in the huge
   generated `app.rs`; `RUST_MIN_STACK=67108864` built it every time after.
 - **Checks:** the working set of the same build and theme varied by up to 5 MB from one

@@ -392,8 +392,8 @@ export component AppWindow inherits Window {
     property <bool> dialog-shown: root.dialog >= 4 || (root.dialog != 0 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length);
     property <string> dialog-title: root.dialog == 1 ? "Rename clip" : root.dialog == 3 ? "Unsaved changes" : root.dialog == 4 ? "New project"
         : root.dialog == 5 ? "Rename project" : root.dialog == 6 ? "Rename part"
-        : root.delete-count > 1 ? "Delete " + root.delete-count + " clips?"
-        : root.dialog-clip >= 0 && root.dialog-clip < root.clips.length ? "Delete " + root.clips[root.dialog-clip].name + "?" : "";
+        : root.delete-count > 1 ? "Delete " + root.delete-count + " clips"
+        : root.dialog-clip >= 0 && root.dialog-clip < root.clips.length ? "Delete " + root.clips[root.dialog-clip].name : "";
     property <string> dialog-note: root.dialog == 3 ? "Leave without saving"
         : root.dialog == 2 ? (root.delete-count > 1 ? "They go to the Recycle Bin" : "Goes to the Recycle Bin") : "";
     property <string> dialog-field: root.dialog == 4 ? "Project name" : "New name";

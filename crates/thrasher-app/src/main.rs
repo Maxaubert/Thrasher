@@ -2514,11 +2514,14 @@ fn main() -> Result<(), slint::PlatformError> {
         let weak = ui.as_weak();
         move |text| {
             {
-                // Tape Deck types the tags in a darker amber, readable on its cream card.
+                // Tape Deck types the tags in a darker amber, readable on its cream card;
+                // Phosphor in its amber, as its pause tags show outside the editor.
                 let ui = weak.unwrap();
                 let theme = ui.global::<Theme>();
                 let accent = if theme.get_tape() {
                     slint::Color::from_rgb_u8(0xc6, 0x6a, 0x12)
+                } else if theme.get_phos() {
+                    slint::Color::from_rgb_u8(0xff, 0xb8, 0x4d)
                 } else {
                     theme.get_accent()
                 };

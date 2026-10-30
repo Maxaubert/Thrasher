@@ -153,7 +153,7 @@ export struct Palette {
 // settings page switches it.
 export global Theme {
     in-out property <int> current: 0;
-    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass", "Car Dashboard", "Pocket", "Quest Menu", "Brick Phone", "Answering Machine", "Pocket Synth"];
+    out property <[string]> names: ["Ember", "Snow", "Daylight", "Graphite", "Sakura", "Kintsugi", "Lagoon", "Cyberpunk", "Tape Deck", "Phosphor", "Desktop 95", "Comic Book", "Spatial Glass", "Car Dashboard", "Pocket", "Quest Menu", "Brick Phone", "Answering Machine", "Pocket Synth", "Fighter Select"];
     out property <[Palette]> palettes: [
         // Ember
         { bg: #0b0908, card: #150f0b, row: #1a120c, raised: #1f1610, line: #221a15, line-soft: #1c1510, edge: #3a2b20, text: #f1ece8, text2: #d8cfc8, muted: #a39a93, dim: #8a817a, accent: #ff6a1a, accent-hover: #ff8040, on-accent: #160a03, wave: #5a4436, wave-dim: #4a3a2f, track: #2b211a, danger: #ff8f7a, hover: #2a1d14, hover-soft: #261b13, row-hover: #120d0a, picked: #24180f, popup: #1f1610, popup-edge: #4a3626, knob: #7d7168, faint: #6d625a, fainter: #4a3f37, rec-rest: #6d4a33, divider: #221912, border: #2a2019, card-edge: #241b15, footer: #110c09, press: #3a2618, card-line: #00000000 },
@@ -197,6 +197,8 @@ export global Theme {
         // Pocket Synth: white aluminium and orange keys (its main page is
         // ui/skins/dv-synth.slint).
         { bg: #e8e6e0, card: #f6f5f1, row: #f1efea, raised: #efede8, line: #d6d3cb, line-soft: #dedbd3, edge: #c4c0b6, text: #1c1c1b, text2: #2e2d2b, muted: #5f5b53, dim: #7a766d, accent: #e94a12, accent-hover: #d43f0b, on-accent: #ffffff, wave: #a9a59b, wave-dim: #c4c0b6, track: #d6d3cb, danger: #c8402c, hover: #dedbd3, hover-soft: #e3e0d9, row-hover: #e3e1db, picked: #fde3d6, popup: #f6f5f1, popup-edge: #b3afa5, knob: #8f8b81, faint: #a9a59b, fainter: #c4c0b6, rec-rest: #f4b59a, divider: #dedbd3, border: #c4c0b6, card-edge: #d2cfc7, footer: #e2dfd8, press: #f9c8b3, card-line: #d2cfc7 },
+        // Fighter Select: violet night, P1 red and gold (its main page is ui/skins/x-fighter.slint).
+        { bg: #0d0b16, card: #15122a, row: #1d1838, raised: #221c40, line: #2c2650, line-soft: #1f1a3a, edge: #3a3266, text: #f2eefc, text2: #cfc8ea, muted: #9a92bf, dim: #7d76a6, accent: #ff2d4a, accent-hover: #ff5a6e, on-accent: #ffffff, wave: #6d64a3, wave-dim: #3a3266, track: #120a24, danger: #ff6a78, hover: #221c40, hover-soft: #1d1838, row-hover: #15122a, picked: #3a1028, popup: #15122a, popup-edge: #3a3266, knob: #9a92bf, faint: #5e578a, fainter: #3a3266, rec-rest: #6a1a2c, divider: #1f1a3a, border: #2c2650, card-edge: #2c2650, footer: #0b0915, press: #5a0f22, card-line: #2c2650 },
     ];
     out property <color> bg: root.palettes[root.current].bg;
     out property <color> card: root.palettes[root.current].card;
@@ -246,8 +248,9 @@ export global Theme {
     // ui/skins/x-comic.slint; 5 Spatial Glass, ui/skins/x-spatial.slint; 6 Car Dashboard,
     // ui/skins/x-dash.slint; 7 Pocket, ui/skins/px-pocket.slint; 8 Quest Menu,
     // ui/skins/px-quest.slint; 9 Brick Phone, ui/skins/dv-brick.slint; 10 Answering
-    // Machine, ui/skins/dv-answer.slint; 11 Pocket Synth, ui/skins/dv-synth.slint.
-    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    // Machine, ui/skins/dv-answer.slint; 11 Pocket Synth, ui/skins/dv-synth.slint; 12 Fighter
+    // Select, ui/skins/x-fighter.slint.
+    out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
     out property <int> skin: root.skins[root.current];
     // How the other pages are built: 1 Tape Deck's (skins/tape-pages.slint), else 0, the
     // classic pages in the theme's palette (also for skins whose pages are not built yet).
@@ -2145,6 +2148,8 @@ export component TextField inherits Rectangle {
     // The selected text (Brick Phone inverts it on its LCD).
     in property <color> select-fill: Theme.accent.with-alpha(0.4);
     in property <color> select-ink: Theme.tape ? root.ink : Theme.text;
+    // No focus ring or accent edge: the skin shows focus on its own frame (Fighter Select).
+    in property <bool> bare-focus;
     // The cursor is in it (a skin draws its own resting cursor otherwise).
     out property <bool> has-focus: input.has-focus;
     public function grab() {
@@ -2155,10 +2160,10 @@ export component TextField inherits Rectangle {
     border-radius: root.radius;
     background: root.fill;
     border-width: 1px;
-    border-color: invalid ? Theme.danger : input.has-focus ? Theme.accent : root.rest-edge;
+    border-color: invalid ? Theme.danger : input.has-focus && !root.bare-focus ? Theme.accent : root.rest-edge;
     opacity: enabled ? 1 : 0.45;
     Rectangle {
-        visible: input.has-focus && !root.invalid;
+        visible: input.has-focus && !root.invalid && !root.bare-focus;
         x: -3px;
         y: -3px;
         width: parent.width + 6px;
@@ -3829,10 +3834,12 @@ export global Main {
     in-out property <length> list-y;
     // The height of one clip row; the skin shown sets it (54px for the classic look).
     in-out property <length> row-h: 54px;
-    // Clips side by side in one row of the list: 4 for the Pocket Synth's pad bank in a
-    // wide window, else 1. Keyboard scrolling and clamp-list count rows with it.
-    out property <int> cols: Theme.skin == 11 && Win.width >= 820px ? 4 : 1;
     in-out property <length> list-height: 300px;
+    // Clips side by side in one row of the list: 4 for the Pocket Synth's pad bank (skin
+    // 11) in a wide window; Fighter Select (skin 12) lays them out as a grid of `grid-cols`
+    // tiles; every other skin one. Keyboard scrolling and clamp-list count rows with it.
+    in-out property <int> grid-cols: 1;
+    out property <int> list-cols: Theme.skin == 11 && Win.width >= 820px ? 4 : Theme.skin == 12 ? max(1, self.grid-cols) : 1;
 
     // The projects (0 is Inbox) and the one shown.
     in property <[string]> projects: ["Inbox"];
@@ -3888,7 +3895,7 @@ export global Main {
 
     // Keeps the list from staying scrolled past its end after it shrinks (a delete).
     public function clamp-list() {
-        self.list-y = clamp(self.list-y, min(0px, self.list-height - ceil(self.clips.length / self.cols) * self.row-h), 0px);
+        self.list-y = clamp(self.list-y, min(0px, self.list-height - Math.ceil(self.clips.length / self.list-cols) * self.row-h), 0px);
     }
 }
 

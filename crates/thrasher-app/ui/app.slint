@@ -42,6 +42,9 @@ import "./fonts/CourierPrime-400.ttf";
 import "./fonts/CourierPrime-700.ttf";
 import "./fonts/MemoSegments-400.ttf";
 import "./fonts/SynthFigures-700.ttf";
+import "./fonts/Anton-400.ttf";
+import "./fonts/FighterOblique-400.ttf";
+import "./fonts/FighterFigures-400.ttf";
 import {
     ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Tips, Theme, Fx, Main, Pages, Win, Tour, TourPoint, Snow, TrimTouch,
     Icon, Tip, Btn, IconBtn, Toggle, Wave, BackLink, ExportButton, ResizeEdge, TitleBar, OrderList, PageHeader, Select,
@@ -60,6 +63,7 @@ import { MainPage as QuestMain } from "skins/px-quest.slint";
 import { MainPage as BrickMain } from "skins/dv-brick.slint";
 import { MainPage as AnswerMain } from "skins/dv-answer.slint";
 import { MainPage as SynthMain } from "skins/dv-synth.slint";
+import { MainPage as FighterMain } from "skins/x-fighter.slint";
 import {
     ClipPage as TapeClip, SettingsPage as TapeSettings, ModelsPage as TapeModels, MergePage as TapeMerge, AskPage as TapeAsk,
     Widget as TapeWidget, Dialog as TapeDialog, Speaking as TapeSpeaking, Drop as TapeDrop,
@@ -393,8 +397,8 @@ export component AppWindow inherits Window {
     function move-selection(delta: int) {
         if (clips.length == 0) { return; }
         selected = clamp(selected < 0 ? clips.length - 1 : selected + delta, 0, clips.length - 1);
-        // The row it is in (the Pocket Synth's pad bank has four clips to a row).
-        let row = floor(selected / Main.cols);
+        // The row of the list it is in (a grid skin puts several clips in a row).
+        let row = Math.floor(selected / Main.list-cols);
         if (row * Main.row-h < -list-y) {
             list-y = -(row * Main.row-h);
         } else if ((row + 1) * Main.row-h > -list-y + list-height) {
@@ -736,6 +740,15 @@ export component AppWindow inherits Window {
             refocus => { keys.focus(); }
         }
         if !compact && page == 0 && Theme.skin == 11: SynthMain {
+            narrow: root.narrow;
+            wide: root.wide;
+            tall: root.tall;
+            go(p) => { root.go(p); }
+            ask-rename(i) => { root.ask-rename(i); }
+            ask-delete(i) => { root.ask-delete(i); }
+            refocus => { keys.focus(); }
+        }
+        if !compact && page == 0 && Theme.skin == 12: FighterMain {
             narrow: root.narrow;
             wide: root.wide;
             tall: root.tall;

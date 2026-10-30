@@ -91,6 +91,10 @@ import {
     ClipPage as Os95Clip, SettingsPage as Os95Settings, ModelsPage as Os95Models, MergePage as Os95Merge, AskPage as Os95Ask,
     Widget as Os95Widget, Dialog as Os95Dialog, Speaking as Os95Speaking, Drop as Os95Drop,
 } from "skins/dv-os95-pages.slint";
+import {
+    ClipPage as ComicClip, SettingsPage as ComicSettings, ModelsPage as ComicModels, MergePage as ComicMerge, AskPage as ComicAsk,
+    Widget as ComicWidget, Dialog as ComicDialog, Speaking as ComicSpeaking, Drop as ComicDrop,
+} from "skins/x-comic-pages.slint";
 // What the app reaches from Rust.
 export { ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Theme, Fx, Main, Tour, Snow, Gallery, ThemeTile }
 
@@ -662,11 +666,13 @@ export component AppWindow inherits Window {
         if compact && Theme.pages == 1: TapeWidget { }
         if compact && Theme.pages == 2: PhosWidget { }
         if compact && Theme.pages == 3: Os95Widget { }
+        if compact && Theme.pages == 4: ComicWidget { }
 
         // ---------- Clips (main) ----------
         // The theme's skin builds it (ui/skins); the state and actions are in Main.
-        // The other pages by `Theme.pages`: Tape Deck's own (1), Phosphor's (2), and the
-        // classic ones (0) for every other skin until it gets its own.
+        // The other pages by `Theme.pages`: Tape Deck's own (1), Phosphor's (2), Desktop 95's
+        // (3), the Comic Book's (4), and the classic ones (0) for every other skin until it
+        // gets its own.
         if !compact && page == 0 && Theme.skin == 0: ClassicMain {
             narrow: root.narrow;
             wide: root.wide;
@@ -1294,6 +1300,34 @@ export component AppWindow inherits Window {
             edit-markup(t) => { return root.edit-markup(t); }
             plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
         }
+        if !compact && page == 1 && root.selected >= 0 && Theme.pages == 4: ComicClip {
+            narrow: root.narrow;
+            wide: root.wide;
+            go(p) => { root.go(p); }
+            refocus => { keys.focus(); }
+            leave-editor(p) => { root.leave-editor(p); }
+            start-edit => { root.start-edit(); }
+            ask-delete(i) => { root.ask-delete(i); }
+            rename-selected(t) => { root.rename-selected(t); }
+            toggle-play => { root.toggle-play(); }
+            skip(s) => { root.skip(s); }
+            speed-changed(i) => { root.speed-changed(i); }
+            trim-changed(a, b) => { root.trim-changed(a, b); }
+            clean-voice-changed(on) => { root.clean-voice-changed(on); }
+            parts-move(a, b) => { root.parts-move(a, b); }
+            part-take-out(i) => { root.part-take-out(i); }
+            rename-part(i) => { root.ask-rename-part(i); }
+            choose-lang(c) => { root.choose-lang(c); }
+            lang-filter(t) => { root.lang-filter(t); }
+            install-for(k) => { root.install-for(k); }
+            summarise => { root.summarise-selected(); }
+            edit-changed(t) => { root.edit-changed(t); }
+            apply-transcript(t) => { root.apply-transcript(t); }
+            transcribe => { root.transcribe-selected(); }
+            seek-word(i) => { root.seek-word(i); }
+            edit-markup(t) => { return root.edit-markup(t); }
+            plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+        }
 
         if !compact && page == 1 && root.selected >= 0 && Theme.pages == 2: PhosClip {
             narrow: root.narrow;
@@ -1791,6 +1825,54 @@ export component AppWindow inherits Window {
             ask(q, all) => { root.ask(q, all); }
             open-source(i) => { root.open-source(i); }
         }
+        if !compact && page == 3 && Theme.pages == 4: ComicSettings {
+            wide: root.wide;
+            back => { root.go(root.settings-back); }
+            go(p) => { root.go(p); }
+            refocus => { keys.focus(); }
+            theme-changed(i) => { root.theme-changed(i); }
+            mic-changed(i) => { root.mic-changed(i); }
+            system-changed(on) => { root.system-changed(on); }
+            recording-limit-changed(i) => { root.recording-limit-changed(i); }
+            hotkey-captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
+            hotkey-accepted(t) => { root.hotkey-accepted(t); }
+            open-folder => { root.open-folder(); }
+            change-folder => { root.change-folder(); }
+            template-edited(t) => { root.template-edited(t); }
+            template-accepted(t) => { root.template-accepted(t); }
+            export-format-changed(i) => { root.export-format-changed(i); }
+            clean-voice-changed(on) => { root.clean-voice-changed(on); }
+            language-changed(i) => { root.language-changed(i); }
+            auto-transcribe-changed(on) => { root.auto-transcribe-changed(on); }
+            ai-names-changed(on) => { root.ai-names-changed(on); }
+            max-pause-changed(i) => { root.max-pause-changed(i); }
+            ai-model-changed(i) => { root.ai-model-changed(i); }
+            download-ai(k) => { root.download-ai(k); }
+            close-to-tray-changed(on) => { root.close-to-tray-changed(on); }
+            start-with-windows-changed(on) => { root.start-with-windows-changed(on); }
+        }
+        if !compact && page == 4 && Theme.pages == 4: ComicModels {
+            wide: root.wide;
+            back => { root.go(root.models-back); }
+            filter-changed => { root.models-filter-changed(); }
+            use-model(i) => { root.use-model(i); }
+            cancel-download => { root.cancel-download(); }
+            download-model(i) => { root.download-model(i); }
+        }
+        if !compact && page == 5 && Theme.pages == 4: ComicMerge {
+            wide: root.wide;
+            go(p) => { root.go(p); }
+            move(a, b) => { root.merge-move(a, b); }
+            remove(i) => { root.merge-remove(i); }
+            play(i) => { root.merge-play(i); }
+            run(name) => { root.merge-run(name); }
+        }
+        if !compact && page == 6 && Theme.pages == 4: ComicAsk {
+            wide: root.wide;
+            go(p) => { root.go(p); }
+            ask(q, all) => { root.ask(q, all); }
+            open-source(i) => { root.open-source(i); }
+        }
 
         if !compact && page == 3 && Theme.pages == 2: PhosSettings {
             wide: root.wide;
@@ -2275,6 +2357,7 @@ export component AppWindow inherits Window {
     if root.speaking && !root.compact && Theme.pages == 1: TapeSpeaking { cancel => { root.cancel-speaking(); } }
     if root.speaking && !root.compact && Theme.pages == 2: PhosSpeaking { cancel => { root.cancel-speaking(); } }
     if root.speaking && !root.compact && Theme.pages == 3: Os95Speaking { cancel => { root.cancel-speaking(); } }
+    if root.speaking && !root.compact && Theme.pages == 4: ComicSpeaking { cancel => { root.cancel-speaking(); } }
 
     if !compact: Rectangle {
         width: 100%;
@@ -2330,6 +2413,7 @@ export component AppWindow inherits Window {
         confirm => { root.confirm-dialog(); }
         discard => { root.discard-edit(); }
     }
+    if root.dropping && !root.compact && Theme.pages == 4: ComicDrop { }
     if root.dialog-shown && Theme.pages == 1: TapeDialog {
         title: root.dialog-title;
         note: root.dialog-note;
@@ -2342,6 +2426,17 @@ export component AppWindow inherits Window {
         discard => { root.discard-edit(); }
     }
     if root.dialog-shown && Theme.pages == 2: PhosDialog {
+        title: root.dialog-title;
+        note: root.dialog-note;
+        field: root.dialog-field;
+        ok: root.dialog-ok;
+        ok-enabled: root.dialog-ok-enabled;
+        clip-name: root.dialog == 2 && root.delete-count <= 1 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length ? root.clips[root.dialog-clip].name : "";
+        close => { root.close-dialog(); }
+        confirm => { root.confirm-dialog(); }
+        discard => { root.discard-edit(); }
+    }
+    if root.dialog-shown && Theme.pages == 4: ComicDialog {
         title: root.dialog-title;
         note: root.dialog-note;
         field: root.dialog-field;

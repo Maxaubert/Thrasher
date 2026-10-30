@@ -1,0 +1,3154 @@
+// The Comic Book look of every page but the main one (mockups in
+// docs/mockups/device-themes/x-comic-pages/): opening a clip turns the page to its own
+// story (the name speaks in a bubble on a halftone splash panel, the waveform is an inked
+// strip), settings are the letters page in tidy inked boxes, the models are a rack of
+// collector cards, merging is a crossover issue, Ask is a question in a thought bubble
+// answered in a speech bubble, the widget is one small halftone panel, and every
+// question is a white splash panel with a hard ink shadow over the dimmed page.
+//
+// Behaviour is shared: the state is in the Pages and Main globals, the actions are
+// AppWindow's (reached through the callbacks here), and the shared widgets (the
+// transcript card, menus, dropdowns, switches, keys, the theme gallery) draw their comic
+// look themselves for this skin. The fixed art (page titles, the small masthead, the IN
+// USE stamp, the bursts) is in x-comic/, cut by tools/skin-art (x-comic.html).
+
+import { ThemeGallery } from "../gallery.slint";
+import { Theme, Main, Pages, Fx, Tips, Icon, InkShadow, Btn, IconBtn, Toggle, Select, TextField, ShortcutBox, Scroller, OrderList, TranscriptCard, ExportButton, TrimTouch, AskSource } from "../common.slint";
+import { Comic, Dots, Box, Glyph, InkBtn, Caption, Tag, Bubble, Meter } from "x-comic-parts.slint";
+
+// ---------- Small parts ----------
+
+// An ink key: a face with an ink edge on a hard shadow, sinking onto it while pressed
+// (or while `on`). An icon, a word in Bangers, or both. Icon keys name what they do on
+// hover, as the classic icon buttons do.
+component Key inherits Rectangle {
+    in property <string> icon;
+    in property <string> text;
+    in property <string> label: root.text;
+    in property <string> tip: root.text == "" ? root.label : "";
+    in property <brush> face: #ffffff;
+    in property <color> ink: Comic.ink;
+    in property <bool> on;
+    in property <bool> round;
+    in property <bool> enabled: true;
+    in property <length> icon-size: 15px;
+    in property <length> font-size: 13px;
+    in property <length> off: 2px;
+    in property <length> line: 2.5px;
+    callback clicked;
+    property <bool> down: root.on || (t.pressed && t.has-hover && root.enabled);
+    min-width: root.text == "" ? root.height : row.preferred-width;
+    preferred-width: root.text == "" ? root.height : row.preferred-width;
+    horizontal-stretch: 0;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    InkShadow { visible: root.enabled && !root.down; off: root.off; radius: root.round ? root.height / 2 : 0; }
+    Rectangle {
+        x: root.down ? root.off : 0;
+        y: root.down ? root.off : 0;
+        opacity: root.enabled ? 1 : 0.45;
+        border-radius: root.round ? root.height / 2 : 0;
+        background: root.on ? Comic.yellow : root.face;
+        border-width: root.line;
+        border-color: Comic.ink;
+        if t.has-hover && root.enabled && !root.down: Rectangle {
+            x: root.line;
+            y: root.line;
+            width: parent.width - 2 * root.line;
+            height: parent.height - 2 * root.line;
+            border-radius: root.round ? self.height / 2 : 0;
+            background: #ffffff59;
+        }
+        row := HorizontalLayout {
+            padding-left: root.text == "" ? 0 : 8px;
+            padding-right: root.text == "" ? 0 : 8px;
+            spacing: 5px;
+            alignment: center;
+            if root.icon != "": Icon {
+                y: (parent.height - self.height) / 2;
+                name: root.icon;
+                tint: root.ink;
+                stroke-width: 2.4px;
+                width: root.icon-size;
+                height: root.icon-size;
+            }
+            if root.text != "": Text {
+                y: 1px;
+                text: root.text;
+                color: root.ink;
+                font-family: "Bangers";
+                font-size: root.font-size;
+                letter-spacing: 1px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+        @children
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { if (root.tip != "") { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); } }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// A white caption box, plain or on a hard shadow: a count, a status, a note.
+component WhiteCap inherits Rectangle {
+    in property <string> text;
+    in property <bool> bangers;
+    in property <length> font-size: 13px;
+    in property <length> off;
+    in property <color> ink: Comic.ink;
+    width: cap.preferred-width + 18px;
+    height: root.bangers ? 24px : 26px;
+    horizontal-stretch: 0;
+    InkShadow { visible: root.off > 0; off: root.off; }
+    Rectangle {
+        background: #ffffff;
+        border-width: 2.2px;
+        border-color: Comic.ink;
+        cap := Text {
+            y: root.bangers ? 1px : 0;
+            height: parent.height - (root.bangers ? 1px : 0);
+            text: root.text;
+            color: root.ink;
+            font-family: root.bangers ? "Bangers" : "Comic Neue";
+            font-weight: root.bangers ? 400 : 700;
+            font-size: root.font-size;
+            letter-spacing: root.bangers ? 1px : 0;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// An inked panel (white, or cyan halftone when `dots`), with its tag across the top
+// left corner when it has one.
+component Panel inherits Box {
+    in property <string> tag;
+    in property <bool> red-tag;
+    line: 3px;
+    @children
+    if root.tag != "": Rectangle {
+        x: 0;
+        y: 0;
+        width: tg.preferred-width + 16px;
+        height: 19px;
+        background: root.red-tag ? Comic.red : Comic.ink;
+        tg := Text {
+            x: 8px;
+            y: 2px;
+            height: parent.height - 2px;
+            text: root.tag;
+            color: root.red-tag ? #ffffff : Comic.yellow;
+            font-family: "Bangers";
+            font-size: 13px;
+            letter-spacing: 1.5px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// A field on a white strip with a thick ink edge; focused, a yellow and ink ring.
+component Field inherits Rectangle {
+    in-out property <string> text;
+    in property <string> placeholder;
+    in property <string> label;
+    in property <string> icon;
+    in property <length> font-size: 15px;
+    in property <bool> invalid;
+    in property <bool> round;
+    in property <bool> takes-escape;
+    callback edited(string);
+    callback accepted(string);
+    callback escaped();
+    public function grab() { f.grab(); }
+    height: 36px;
+    property <length> r: root.round ? root.height / 2 : 0;
+    if f.has-focus || root.invalid: Rectangle {
+        x: -5px;
+        y: -5px;
+        width: parent.width + 10px;
+        height: parent.height + 10px;
+        border-radius: root.r + 5px;
+        background: root.invalid ? Comic.red : Comic.ink;
+        Rectangle {
+            x: 2.5px;
+            y: 2.5px;
+            width: parent.width - 5px;
+            height: parent.height - 5px;
+            border-radius: root.r + 2.5px;
+            background: root.invalid ? Comic.red : Comic.yellow;
+        }
+    }
+    Rectangle {
+        border-radius: root.r;
+        background: #ffffff;
+        border-width: 2.5px;
+        border-color: root.invalid ? Comic.red : Comic.ink;
+    }
+    f := TextField {
+        x: 2.5px;
+        y: 2.5px;
+        width: parent.width - 5px;
+        height: parent.height - 5px;
+        radius: max(0px, root.r - 2.5px);
+        fill: #ffffff;
+        rest-edge: #ffffff;
+        bare-focus: true;
+        ink: Comic.ink;
+        hint: Comic.faint;
+        font-size: root.font-size;
+        family: "Comic Neue";
+        select-fill: #ffe680;
+        select-ink: Comic.ink;
+        side: 10px;
+        icon: root.icon;
+        placeholder: root.placeholder;
+        label: root.label;
+        takes-escape: root.takes-escape;
+        text <=> root.text;
+        edited(t) => { root.edited(t); }
+        accepted(t) => { root.accepted(t); }
+        escaped => { root.escaped(); }
+    }
+}
+
+// A thought bubble's field: round, with two thought circles rising from its foot.
+component Thought inherits Field {
+    round: true;
+    Rectangle {
+        x: 16px;
+        y: parent.height - 1px;
+        width: 9px;
+        height: 9px;
+        border-radius: 4.5px;
+        background: #ffffff;
+        border-width: 2.2px;
+        border-color: Comic.ink;
+    }
+    Rectangle {
+        x: 9px;
+        y: parent.height + 7px;
+        width: 6px;
+        height: 6px;
+        border-radius: 3px;
+        background: #ffffff;
+        border-width: 2px;
+        border-color: Comic.ink;
+    }
+}
+
+// The masthead of a page: THRASHER and its issue tag (or, on the clip page, the yellow
+// Clips key and THRASHER alone), minimise and close.
+component Mast inherits Rectangle {
+    in property <bool> big;
+    in property <bool> clips-key;
+    callback back();
+    property <bool> hi: 1phx < 0.7px;
+    height: root.big ? 50px : 46px;
+    vertical-stretch: 0;
+    background: Comic.paper;
+    Rectangle { y: parent.height - 3px; height: 3px; background: Comic.ink; }
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    HorizontalLayout {
+        padding-left: root.big ? 11px : 9px;
+        padding-right: root.big ? 11px : 9px;
+        padding-bottom: 3px;
+        spacing: 8px;
+        if root.clips-key: VerticalLayout {
+            alignment: center;
+            Key {
+                height: 28px;
+                icon: "back";
+                icon-size: 13px;
+                text: "CLIPS";
+                font-size: 12.5px;
+                face: Comic.yellow;
+                label: "Back to Clips";
+                tip: "";
+                clicked => { root.back(); }
+            }
+        }
+        if root.clips-key: VerticalLayout {
+            alignment: center;
+            Image {
+                height: 34px;
+                width: self.height * 112 / 34;
+                source: root.hi ? @image-url("x-comic/logo-s@2x.png") : @image-url("x-comic/logo-s.png");
+                image-fit: fill;
+                accessible-role: none;
+            }
+        }
+        if !root.clips-key: VerticalLayout {
+            alignment: center;
+            Image {
+                height: root.big ? 47px : 42px;
+                width: self.height * 214 / 52;
+                source: root.hi ? @image-url("x-comic/logo@2x.png") : @image-url("x-comic/logo.png");
+                image-fit: fill;
+                accessible-role: none;
+            }
+        }
+        Rectangle { horizontal-stretch: 1; }
+        VerticalLayout {
+            alignment: center;
+            InkBtn { width: 30px; height: 30px; icon: "min"; icon-size: 17px; label: "Minimize"; clicked => { Main.minimize-window(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            InkBtn { width: 30px; height: 30px; icon: "close"; icon-size: 17px; label: "Close"; clicked => { Main.close-window(); } }
+        }
+    }
+}
+
+// The page's name under the masthead: a round back key and the title in red letters
+// (art), and a note on the right in a white caption.
+component PageHead inherits HorizontalLayout {
+    // Which title: 3 settings, 4 models, 5 merge, 6 ask (as AppWindow.page).
+    in property <int> page;
+    in property <string> note;
+    in property <bool> note-bangers;
+    callback back();
+    property <bool> hi: 1phx < 0.7px;
+    property <float> art-w: root.page == 3 ? 113 : root.page == 4 ? 96 : root.page == 5 ? 149 : 53;
+    height: 46px;
+    vertical-stretch: 0;
+    spacing: 10px;
+    VerticalLayout {
+        alignment: center;
+        Key {
+            width: 34px;
+            height: 34px;
+            round: true;
+            icon: "back";
+            icon-size: 15px;
+            label: "Back";
+            tip: "";
+            clicked => { root.back(); }
+        }
+    }
+    VerticalLayout {
+        alignment: center;
+        Image {
+            width: root.art-w * 1px;
+            height: 36px;
+            source: root.page == 3 ? (root.hi ? @image-url("x-comic/title-settings@2x.png") : @image-url("x-comic/title-settings.png"))
+                : root.page == 4 ? (root.hi ? @image-url("x-comic/title-models@2x.png") : @image-url("x-comic/title-models.png"))
+                : root.page == 5 ? (root.hi ? @image-url("x-comic/title-merge@2x.png") : @image-url("x-comic/title-merge.png"))
+                : (root.hi ? @image-url("x-comic/title-ask@2x.png") : @image-url("x-comic/title-ask.png"));
+            image-fit: fill;
+            accessible-role: AccessibleRole.text;
+            accessible-label: root.page == 3 ? "Settings" : root.page == 4 ? "Models" : root.page == 5 ? "Merge clips" : "Ask";
+        }
+    }
+    Rectangle { horizontal-stretch: 1; }
+    if root.note != "": VerticalLayout {
+        alignment: center;
+        WhiteCap { text: root.note; bangers: root.note-bangers; font-size: root.note-bangers ? 14px : 13px; off: 2px; }
+    }
+}
+
+// A message floating over the page in a white caption with a hard shadow, `above` the
+// bottom edge of its parent, so nothing moves when it comes and goes.
+component Toast inherits Rectangle {
+    in property <string> text;
+    in property <length> above: 16px;
+    height: 0;
+    if root.text != "": Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: -root.above - self.height;
+        width: min(msg.preferred-width + 26px, parent.width - 32px);
+        height: 28px;
+        InkShadow { off: 4px; }
+        Rectangle { background: #ffffff; border-width: 2.5px; border-color: Comic.ink; }
+        msg := Text {
+            x: 13px;
+            width: parent.width - 26px;
+            height: parent.height;
+            text: root.text;
+            color: Comic.ink;
+            font-family: "Comic Neue";
+            font-weight: 700;
+            font-size: 13px;
+            overflow: elide;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// A red halftone bar on white with an ink edge: downloads, speaking new words.
+component InkBar inherits Rectangle {
+    in property <float> value;
+    height: 16px;
+    background: #ffffff;
+    Rectangle {
+        x: 2.5px;
+        y: 2.5px;
+        width: (parent.width - 5px) * clamp(root.value, 0, 1);
+        height: parent.height - 5px;
+        background: Comic.red;
+        clip: true;
+        Image {
+            width: 100%;
+            height: 100%;
+            source: @image-url("x-comic/dots-red.png");
+            horizontal-tiling: repeat;
+            vertical-tiling: repeat;
+            horizontal-alignment: left;
+            vertical-alignment: top;
+        }
+        Rectangle { x: parent.width - 2.5px; width: 2.5px; background: Comic.ink; }
+    }
+    Rectangle { border-width: 2.5px; border-color: Comic.ink; }
+}
+
+// The halftone footer: the latest message in a white strip, and what is on the right
+// (Export, or Cancel and Merge).
+component Footer inherits Box {
+    in property <bool> big;
+    in property <bool> show-status: true;
+    line: 3px;
+    dots: 1;
+    face: Comic.yellow;
+    height: root.big ? 52px : 50px;
+    vertical-stretch: 0;
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 9px;
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            Rectangle {
+                visible: root.show-status;
+                height: 30px;
+                background: #ffffff;
+                border-width: 2.2px;
+                border-color: Comic.ink;
+                Text {
+                    x: 10px;
+                    width: parent.width - 20px;
+                    text: Main.status;
+                    color: Comic.ink;
+                    font-family: "Comic Neue";
+                    font-weight: 700;
+                    font-size: 12.5px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+        }
+        @children
+    }
+}
+
+// ---------- One clip ----------
+
+// The clip's name in a speech bubble whose tail points back down to the left.
+component NameBubble inherits Bubble {
+    in property <string> text;
+    in property <length> size: 21px;
+    in property <length> most: 1000px;
+    width: min(nm.preferred-width + root.size * 1.8, root.most);
+    height: root.size * 1.65;
+    tail: root.size * 0.62;
+    tail-left: true;
+    nm := Text {
+        x: root.size * 0.9;
+        width: parent.width - root.size * 1.8;
+        y: 1px;
+        height: parent.height;
+        text: root.text;
+        color: Comic.ink;
+        font-family: "Comic Neue";
+        font-weight: 700;
+        font-size: root.size;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// Where the clip is, as a yellow counter caption, and of how long.
+component Counter inherits VerticalLayout {
+    in property <bool> big;
+    in property <bool> right;
+    property <string> at: Main.active-clip == Main.selected ? Main.play-position : "0:00";
+    property <string> total: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].duration : "";
+    spacing: 3px;
+    alignment: end;
+    HorizontalLayout {
+        alignment: root.right ? LayoutAlignment.end : LayoutAlignment.start;
+        spacing: 10px;
+        Rectangle {
+            width: ctr.preferred-width + (root.big ? 24px : 18px);
+            height: root.big ? 50px : 36px;
+            InkShadow { off: 2px; }
+            Rectangle {
+                background: Comic.yellow;
+                border-width: 2.5px;
+                border-color: Comic.ink;
+                ctr := Text {
+                    y: root.big ? 3px : 2px;
+                    height: parent.height - (root.big ? 3px : 2px);
+                    text: root.at;
+                    color: Comic.ink;
+                    font-family: "Bangers";
+                    font-size: root.big ? 44px : 30px;
+                    letter-spacing: 1.5px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+        if root.big: VerticalLayout {
+            alignment: end;
+            Text {
+                text: "OF " + root.total;
+                color: Comic.sub;
+                font-family: "Bangers";
+                font-size: 15px;
+                letter-spacing: 1px;
+            }
+        }
+    }
+    if !root.big: Text {
+        text: "OF " + root.total;
+        color: Comic.sub;
+        font-family: "Bangers";
+        font-size: 12px;
+        letter-spacing: 1px;
+        horizontal-alignment: TextHorizontalAlignment.right;
+    }
+}
+
+// Rename and Delete, the small ink keys beside the counter; spelled out when `words`.
+component ClipKeys inherits HorizontalLayout {
+    in property <bool> words;
+    callback rename();
+    callback delete();
+    spacing: root.words ? 6px : 5px;
+    alignment: end;
+    Key {
+        height: 28px;
+        icon: "pencil";
+        icon-size: 13px;
+        text: root.words ? "RENAME" : "";
+        font-size: 12.5px;
+        label: "Rename clip";
+        tip: "Rename";
+        enabled: !Main.recording;
+        clicked => { root.rename(); }
+    }
+    Key {
+        height: 28px;
+        icon: "trash";
+        icon-size: 13px;
+        text: root.words ? "DELETE" : "";
+        font-size: 12.5px;
+        label: "Delete clip";
+        tip: "Delete";
+        enabled: !Main.recording;
+        clicked => { root.delete(); }
+    }
+}
+
+// The file facts in a small white box: when, how long, the input and the file.
+component Meta inherits Rectangle {
+    in property <bool> big;
+    width: min(m.preferred-width + 14px, self.most);
+    in property <length> most: 1000px;
+    height: root.big ? 22px : 20px;
+    horizontal-stretch: 0;
+    background: #ffffff;
+    border-width: 2px;
+    border-color: Comic.ink;
+    m := Text {
+        x: 7px;
+        width: parent.width - 14px;
+        text: Pages.detail-meta;
+        color: Comic.sub;
+        font-family: "Comic Neue";
+        font-weight: 700;
+        font-size: root.big ? 12px : 11px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// Renaming the clip: its name in a focused field, Cancel and Rename.
+component RenameBox inherits VerticalLayout {
+    callback rename(string);
+    callback cancel();
+    spacing: 10px;
+    field := Field {
+        height: 36px;
+        font-size: 15px;
+        label: "Clip name";
+        takes-escape: true;
+        text: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].name : "";
+        init => { self.grab(); }
+        accepted(t) => { root.rename(t); }
+        escaped => { root.cancel(); }
+    }
+    HorizontalLayout {
+        alignment: end;
+        spacing: 8px;
+        Btn { height: 32px; text: "Cancel"; clicked => { root.cancel(); } }
+        Btn { height: 32px; primary: true; text: "Rename"; clicked => { root.rename(field.text); } }
+    }
+}
+
+// The inked strip of the waveform: the played part red under an ink playhead with a red
+// flag, the trimmed ends under grey halftone, yellow tabs as the trim handles.
+// TrimTouch drags and seeks.
+component Strip inherits Rectangle {
+    callback trimmed(float, float);
+    callback tapped();
+    property <bool> active: Main.active-clip == Main.selected;
+    property <float> played: root.active ? clamp(Main.play-fraction, 0, 1) : 0;
+    property <length> pad: 10px;
+    property <length> inner-w: root.width - 2 * root.pad;
+    property <length> start-x: Pages.trim-start * root.inner-w;
+    property <length> end-x: Pages.trim-end * root.inner-w;
+    property <int> n: max(1, floor(root.inner-w / 4px));
+    background: #ffffff;
+    Rectangle {
+        x: root.pad;
+        y: 2.5px;
+        width: root.inner-w;
+        height: parent.height - 5px;
+        Rectangle { y: (parent.height - self.height) / 2; height: 2px; background: #cfc4aa; }
+        for i in root.n: Rectangle {
+            property <float> v: Pages.detail-wave.length > 0 ? Pages.detail-wave[floor(i * Pages.detail-wave.length / root.n)] : 0.06;
+            x: i * 4px + 1px;
+            width: 2.4px;
+            height: max(3px, self.v * (root.height - 14px));
+            y: (parent.height - self.height) / 2;
+            background: (i + 0.5) / root.n <= root.played ? Comic.red : Comic.ink;
+        }
+        // The trimmed ends.
+        if root.start-x > 0.5px: Rectangle {
+            x: 0;
+            width: root.start-x;
+            clip: true;
+            Dots { width: 100%; height: 100%; kind: 2; }
+        }
+        if root.end-x < root.inner-w - 0.5px: Rectangle {
+            x: root.end-x;
+            width: root.inner-w - root.end-x;
+            clip: true;
+            Dots { width: 100%; height: 100%; kind: 2; }
+        }
+        if root.active: Rectangle {
+            x: root.played * parent.width - 1.5px;
+            width: 3px;
+            background: Comic.ink;
+        }
+        if root.active: Path {
+            x: root.played * parent.width - 7px;
+            y: 0;
+            width: 14px;
+            height: 8px;
+            viewbox-width: 14;
+            viewbox-height: 8;
+            fill: Comic.red;
+            stroke: Comic.ink;
+            stroke-width: 1.5px;
+            commands: "M 1 0.5 L 13 0.5 L 7 7.5 Z";
+        }
+        for k in [0, 1]: Rectangle {
+            property <bool> hot: touch.grab == k + 1 || (touch.has-hover && abs(touch.at - (k == 0 ? root.start-x : root.end-x)) <= 8px);
+            x: k == 0 ? root.start-x : root.end-x - 9px;
+            width: 9px;
+            background: self.hot ? #ffe066 : Comic.yellow;
+            border-width: 2.5px;
+            border-color: Comic.ink;
+            Rectangle {
+                x: k == 0 ? 3px : 3px;
+                y: (parent.height - self.height) / 2;
+                width: 3px;
+                height: 12px;
+                background: Comic.ink;
+            }
+        }
+    }
+    Rectangle { border-width: 2.5px; border-color: Comic.ink; }
+    touch := TrimTouch {
+        pad: root.pad;
+        trimmed(a, b) => { root.trimmed(a, b); }
+        tapped => { root.tapped(); }
+    }
+}
+
+// The big round play key: yellow, red while it plays.
+component BigPlay inherits Rectangle {
+    in property <bool> playing;
+    callback clicked;
+    property <bool> down: t.pressed && t.has-hover;
+    accessible-role: button;
+    accessible-label: root.playing ? "Pause" : "Play";
+    accessible-action-default => { root.clicked(); }
+    InkShadow { visible: !root.down; radius: root.width / 2; }
+    Rectangle {
+        x: root.down ? 3px : 0;
+        y: root.down ? 3px : 0;
+        border-radius: root.width / 2;
+        background: root.playing ? Comic.red : t.has-hover ? #ffe066 : Comic.yellow;
+        border-width: 3px;
+        border-color: Comic.ink;
+        Glyph {
+            x: (parent.width - self.width) / 2 + (root.playing ? 0 : 2px);
+            name: root.playing ? "pause" : "play";
+            tint: root.playing ? #ffffff : Comic.ink;
+            width: root.width * 0.36;
+            height: root.width * 0.36;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// A skip key with its 5 in a small ink circle.
+component SkipKey inherits Key {
+    Rectangle {
+        x: parent.width - 10px;
+        y: -8px;
+        width: 15px;
+        height: 15px;
+        border-radius: 7.5px;
+        background: #ffffff;
+        border-width: 2px;
+        border-color: Comic.ink;
+        Text {
+            y: 1px;
+            height: parent.height - 1px;
+            text: "5";
+            color: Comic.ink;
+            font-family: "Bangers";
+            font-size: 11px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// The five cells of the playback speed, the picked one yellow.
+component Speed inherits VerticalLayout {
+    in property <bool> big;
+    callback picked(int);
+    spacing: 2px;
+    alignment: end;
+    Text {
+        text: "SPEED";
+        color: Comic.sub;
+        font-family: "Bangers";
+        font-size: 11px;
+        letter-spacing: 1.2px;
+    }
+    Rectangle {
+        width: cells.preferred-width;
+        height: root.big ? 33px : 31px;
+        background: #ffffff;
+        accessible-role: list;
+        accessible-label: "Speed";
+        cells := HorizontalLayout {
+            for v[i] in ["0.75", "1.0", "1.25", "1.5", "2.0"]: Rectangle {
+                width: root.big ? 31px : 28px;
+                background: i == Pages.speed-index ? Comic.yellow : st.has-hover ? Comic.pale : transparent;
+                accessible-role: button;
+                accessible-label: v + "×";
+                accessible-checked: i == Pages.speed-index;
+                accessible-action-default => { Pages.speed-index = i; root.picked(i); }
+                if i > 0: Rectangle { x: 0; width: 2px; background: Comic.ink; }
+                Text {
+                    y: 1px;
+                    text: v;
+                    color: Comic.ink;
+                    font-family: "Bangers";
+                    font-size: root.big ? 14px : 13px;
+                    letter-spacing: 0.5px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+                st := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { Pages.speed-index = i; root.picked(i); }
+                }
+            }
+        }
+        Rectangle { border-width: 2.5px; border-color: Comic.ink; }
+    }
+}
+
+// The transport: back 5 seconds, play or pause, forward 5 seconds, the speed and Loop.
+component Transport inherits HorizontalLayout {
+    in property <bool> big;
+    callback toggle-play();
+    callback skip(float);
+    callback speed-changed(int);
+    callback refocus();
+    property <bool> playing: Main.active-clip == Main.selected && Main.playing;
+    vertical-stretch: 0;
+    spacing: root.big ? 9px : 7px;
+    VerticalLayout {
+        alignment: center;
+        SkipKey {
+            width: 34px;
+            height: 34px;
+            icon: "rewind";
+            icon-size: 17px;
+            label: "Back 5 seconds";
+            clicked => { root.skip(-5); root.refocus(); }
+        }
+    }
+    VerticalLayout {
+        alignment: center;
+        BigPlay {
+            width: root.big ? 52px : 44px;
+            height: root.big ? 52px : 44px;
+            playing: root.playing;
+            clicked => { root.toggle-play(); root.refocus(); }
+        }
+    }
+    VerticalLayout {
+        alignment: center;
+        SkipKey {
+            width: 34px;
+            height: 34px;
+            icon: "forward";
+            icon-size: 17px;
+            label: "Forward 5 seconds";
+            clicked => { root.skip(5); root.refocus(); }
+        }
+    }
+    Rectangle { horizontal-stretch: 1; min-width: 4px; }
+    Speed {
+        big: root.big;
+        picked(i) => { root.speed-changed(i); root.refocus(); }
+    }
+    VerticalLayout {
+        alignment: end;
+        Key {
+            height: 28px;
+            text: "LOOP";
+            font-size: 12.5px;
+            label: "Loop";
+            on: Pages.looping;
+            accessible-checked: Pages.looping;
+            clicked => { Pages.looping = !Pages.looping; root.refocus(); }
+        }
+    }
+}
+
+// Clean voice on export, the one option of a clip.
+component CleanVoice inherits HorizontalLayout {
+    callback changed-to(bool);
+    spacing: 9px;
+    VerticalLayout {
+        alignment: center;
+        Toggle {
+            label: "Clean voice on export";
+            checked <=> Pages.clean-voice;
+            toggled(on) => { root.changed-to(on); }
+        }
+    }
+    Text {
+        text: "CLEAN VOICE ON EXPORT";
+        color: Comic.ink;
+        font-family: "Bangers";
+        font-size: 14px;
+        letter-spacing: 1px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    Text {
+        text: "Less noise";
+        color: Comic.sub;
+        font-family: "Comic Neue";
+        font-weight: 700;
+        font-size: 12px;
+        vertical-alignment: center;
+        horizontal-stretch: 1;
+        overflow: elide;
+    }
+}
+
+// A merged clip's parts as numbered bubbles that can be put in another order.
+component Parts inherits Panel {
+    callback moved(int, int);
+    callback take-out(int);
+    callback rename(int);
+    tag: Pages.parts-busy ? "PARTS WORKING" : "PARTS";
+    height: body.preferred-height;
+    vertical-stretch: 0;
+    body := VerticalLayout {
+        padding-left: 8px;
+        padding-right: 8px;
+        padding-top: 24px;
+        padding-bottom: 6px;
+        OrderList {
+            rows: Pages.parts;
+            menu: true;
+            enabled: !Pages.parts-busy && !Main.recording;
+            moved(a, b) => { root.moved(a, b); }
+            act(i) => { root.take-out(i); }
+            rename(i) => { root.rename(i); }
+        }
+    }
+}
+
+// The clip's page. Portrait: NOW SHOWING (the name bubble, the keys, the counter), the
+// strip and the transport, the parts, the transcript, the option and the footer. Wide:
+// the splash panel on the left, the transcript on the right.
+export component ClipPage inherits VerticalLayout {
+    in property <bool> narrow;
+    in property <bool> wide;
+    callback go(int);
+    callback refocus();
+    // Leaving the editor asks about unsaved changes first (AppWindow.leave-editor).
+    callback leave-editor(int);
+    callback start-edit();
+    callback ask-delete(int);
+    callback rename-selected(string);
+    callback toggle-play();
+    callback skip(float);
+    callback speed-changed(int);
+    callback trim-changed(float, float);
+    callback clean-voice-changed(bool);
+    callback parts-move(int, int);
+    callback part-take-out(int);
+    callback rename-part(int);
+    // The transcript card's actions (see TranscriptCard).
+    callback choose-lang(string);
+    callback lang-filter(string);
+    callback install-for(int);
+    callback summarise();
+    callback edit-changed(string);
+    callback apply-transcript(string);
+    callback transcribe();
+    callback seek-word(int);
+    pure callback edit-markup(string) -> styled-text;
+    pure callback plain-selection(string, int, int) -> string;
+
+    property <string> name: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].name : "";
+
+    function rename(t: string) {
+        Pages.renaming = false;
+        root.rename-selected(t);
+        root.refocus();
+    }
+
+    Mast {
+        big: root.wide;
+        clips-key: true;
+        back => { if (Pages.editing) { root.leave-editor(0); } else { root.go(0); } }
+    }
+
+    // Portrait.
+    if !root.wide: VerticalLayout {
+        vertical-stretch: 1;
+        padding-left: 9px;
+        padding-right: 9px;
+        padding-top: 7px;
+        padding-bottom: 9px;
+        spacing: 7px;
+        Panel {
+            dots: 0;
+            tag: "NOW SHOWING";
+            vertical-stretch: 0;
+            height: ttl.preferred-height;
+            ttl := VerticalLayout {
+                padding-left: 12px;
+                padding-right: 10px;
+                padding-top: 22px;
+                padding-bottom: 15px;
+                if !Pages.renaming: HorizontalLayout {
+                    spacing: 10px;
+                    tl := VerticalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 18px;
+                        alignment: space-between;
+                        HorizontalLayout {
+                            alignment: start;
+                            NameBubble { text: root.name; most: root.width - 170px; }
+                        }
+                        HorizontalLayout { alignment: start; Meta { most: root.width - 170px; } }
+                    }
+                    VerticalLayout {
+                        horizontal-stretch: 0;
+                        spacing: 8px;
+                        alignment: space-between;
+                        ClipKeys {
+                            rename => { Pages.renaming = true; }
+                            delete => { root.ask-delete(Main.selected); }
+                        }
+                        Counter { right: true; }
+                    }
+                }
+                if Pages.renaming: VerticalLayout {
+                    spacing: 8px;
+                    RenameBox {
+                        rename(t) => { root.rename(t); }
+                        cancel => { Pages.renaming = false; root.refocus(); }
+                    }
+                    HorizontalLayout { alignment: start; Meta { } }
+                }
+            }
+        }
+        Panel {
+            vertical-stretch: 0;
+            height: wv.preferred-height;
+            wv := VerticalLayout {
+                padding: 8px;
+                padding-bottom: 9px;
+                spacing: 10px;
+                Strip {
+                    height: 46px;
+                    trimmed(a, b) => { root.trim-changed(a, b); }
+                    tapped => { root.refocus(); }
+                }
+                Transport {
+                    toggle-play => { root.toggle-play(); }
+                    skip(s) => { root.skip(s); }
+                    speed-changed(i) => { root.speed-changed(i); }
+                    refocus => { root.refocus(); }
+                }
+            }
+        }
+        if Pages.parts.length >= 2: Parts {
+            moved(a, b) => { root.parts-move(a, b); }
+            take-out(i) => { root.part-take-out(i); }
+            rename(i) => { root.rename-part(i); }
+        }
+        TranscriptCard {
+            vertical-stretch: 1;
+            clip-name: root.name;
+            transcript: Pages.transcript;
+            transcribing: Pages.transcribing;
+            translating: Pages.translating;
+            translation: Pages.translation;
+            shown-lang <=> Pages.shown-lang;
+            langs: Pages.langs;
+            choose-lang(c) => { root.choose-lang(c); }
+            lang-filter(t) => { root.lang-filter(t); }
+            install-for(k) => { root.install-for(k); }
+            summary: Pages.summary;
+            summarising: Pages.summarising;
+            can-ai: Main.can-ai;
+            show-summary <=> Pages.show-summary;
+            summarise => { root.summarise(); }
+            transcribe-progress: Pages.transcribe-progress;
+            words: Pages.words;
+            current-word: Pages.current-word;
+            show-marks <=> Pages.show-marks;
+            can-transcribe: Pages.can-transcribe;
+            recording: Main.recording;
+            editing: Pages.editing;
+            edit-draft <=> Pages.edit-draft;
+            edit-badge: Pages.edit-badge;
+            speaking: Pages.speaking;
+            edit => { root.start-edit(); }
+            edited(t) => { root.edit-changed(t); }
+            cancel => { root.leave-editor(-1); }
+            save => { root.apply-transcript(Pages.edit-draft); }
+            edit-markup(t) => { return root.edit-markup(t); }
+            plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+            transcribe => { root.transcribe(); root.refocus(); }
+            seek-word(i) => { root.seek-word(i); root.refocus(); }
+        }
+        CleanVoice {
+            height: 28px;
+            padding-left: 4px;
+            padding-right: 4px;
+            changed-to(on) => { root.clean-voice-changed(on); }
+        }
+        Footer {
+            VerticalLayout {
+                alignment: center;
+                ExportButton {
+                    width: 126px;
+                    height: 38px;
+                    format: Pages.export-format;
+                    subtitles: Pages.transcript != "";
+                    state: Main.export-state;
+                    progress: Main.export-progress;
+                    export(kind) => { Main.export-as(kind); root.refocus(); }
+                }
+            }
+        }
+    }
+
+    // Wide.
+    if root.wide: VerticalLayout {
+        vertical-stretch: 1;
+        padding-left: 11px;
+        padding-right: 11px;
+        padding-top: 9px;
+        padding-bottom: 11px;
+        spacing: 9px;
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 9px;
+            Panel {
+                width: (root.width - 31px) * 0.44;
+                dots: 0;
+                tag: "NOW SHOWING";
+                lf := VerticalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 26px;
+                    padding-bottom: 14px;
+                    spacing: 10px;
+                    if !Pages.renaming: HorizontalLayout {
+                        vertical-stretch: 0;
+                        spacing: 10px;
+                        nb := VerticalLayout {
+                            horizontal-stretch: 1;
+                            padding-bottom: 18px;
+                            HorizontalLayout { alignment: start; NameBubble { size: 28px; text: root.name; most: (root.width - 31px) * 0.44 - 32px - 190px; } }
+                        }
+                        VerticalLayout {
+                            alignment: start;
+                            ClipKeys {
+                                words: true;
+                                rename => { Pages.renaming = true; }
+                                delete => { root.ask-delete(Main.selected); }
+                            }
+                        }
+                    }
+                    if !Pages.renaming: Counter { big: true; vertical-stretch: 0; }
+                    if Pages.renaming: RenameBox {
+                        vertical-stretch: 0;
+                        rename(t) => { root.rename(t); }
+                        cancel => { Pages.renaming = false; root.refocus(); }
+                    }
+                    HorizontalLayout { vertical-stretch: 0; alignment: start; Meta { big: true; most: (root.width - 31px) * 0.44 - 32px; } }
+                    VerticalLayout {
+                        vertical-stretch: 0;
+                        spacing: 3px;
+                        Strip {
+                            height: 78px;
+                            trimmed(a, b) => { root.trim-changed(a, b); }
+                            tapped => { root.refocus(); }
+                        }
+                        HorizontalLayout {
+                            Text {
+                                text: Main.active-clip == Main.selected ? Main.play-position : "0:00";
+                                color: Comic.ink;
+                                font-family: "Bangers";
+                                font-size: 12.5px;
+                                letter-spacing: 1px;
+                                horizontal-stretch: 1;
+                            }
+                            Text {
+                                text: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].duration : "";
+                                color: Comic.ink;
+                                font-family: "Bangers";
+                                font-size: 12.5px;
+                                letter-spacing: 1px;
+                            }
+                        }
+                    }
+                    Box {
+                        vertical-stretch: 0;
+                        line: 2.5px;
+                        height: tp.preferred-height;
+                        tp := VerticalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            padding-top: 9px;
+                            padding-bottom: 9px;
+                            Transport {
+                                big: true;
+                                toggle-play => { root.toggle-play(); }
+                                skip(s) => { root.skip(s); }
+                                speed-changed(i) => { root.speed-changed(i); }
+                                refocus => { root.refocus(); }
+                            }
+                        }
+                    }
+                    Rectangle { min-height: 0; vertical-stretch: 1; }
+                    Box {
+                        vertical-stretch: 0;
+                        line: 2.5px;
+                        height: op.preferred-height;
+                        op := VerticalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            padding-top: 6px;
+                            padding-bottom: 6px;
+                            spacing: 2px;
+                            Text {
+                                text: "OPTIONS";
+                                color: Comic.sub;
+                                font-family: "Bangers";
+                                font-size: 11px;
+                                letter-spacing: 1.2px;
+                            }
+                            CleanVoice {
+                                height: 28px;
+                                changed-to(on) => { root.clean-voice-changed(on); }
+                            }
+                        }
+                    }
+                }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 9px;
+                if Pages.parts.length >= 2: Parts {
+                    moved(a, b) => { root.parts-move(a, b); }
+                    take-out(i) => { root.part-take-out(i); }
+                    rename(i) => { root.rename-part(i); }
+                }
+                TranscriptCard {
+                    vertical-stretch: 1;
+                    clip-name: root.name;
+                    transcript: Pages.transcript;
+                    transcribing: Pages.transcribing;
+                    translating: Pages.translating;
+                    translation: Pages.translation;
+                    shown-lang <=> Pages.shown-lang;
+                    langs: Pages.langs;
+                    choose-lang(c) => { root.choose-lang(c); }
+                    lang-filter(t) => { root.lang-filter(t); }
+                    install-for(k) => { root.install-for(k); }
+                    summary: Pages.summary;
+                    summarising: Pages.summarising;
+                    can-ai: Main.can-ai;
+                    show-summary <=> Pages.show-summary;
+                    summarise => { root.summarise(); }
+                    transcribe-progress: Pages.transcribe-progress;
+                    words: Pages.words;
+                    current-word: Pages.current-word;
+                    show-marks <=> Pages.show-marks;
+                    can-transcribe: Pages.can-transcribe;
+                    recording: Main.recording;
+                    editing: Pages.editing;
+                    edit-draft <=> Pages.edit-draft;
+                    edit-badge: Pages.edit-badge;
+                    speaking: Pages.speaking;
+                    edit => { root.start-edit(); }
+                    edited(t) => { root.edit-changed(t); }
+                    cancel => { root.leave-editor(-1); }
+                    save => { root.apply-transcript(Pages.edit-draft); }
+                    edit-markup(t) => { return root.edit-markup(t); }
+                    plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+                    transcribe => { root.transcribe(); root.refocus(); }
+                    seek-word(i) => { root.seek-word(i); root.refocus(); }
+                }
+            }
+        }
+        Footer {
+            big: true;
+            VerticalLayout {
+                alignment: center;
+                ExportButton {
+                    width: 126px;
+                    height: 38px;
+                    format: Pages.export-format;
+                    subtitles: Pages.transcript != "";
+                    state: Main.export-state;
+                    progress: Main.export-progress;
+                    export(kind) => { Main.export-as(kind); root.refocus(); }
+                }
+            }
+        }
+    }
+}
+
+// ---------- Settings ----------
+
+// A card of the letters page: an inked white box on a hard shadow with its tag.
+component Card inherits Rectangle {
+    in property <string> title;
+    height: body.preferred-height;
+    InkShadow { }
+    Panel {
+        tag: root.title;
+        body := VerticalLayout {
+            padding-left: 8px;
+            padding-right: 8px;
+            padding-top: 21px;
+            padding-bottom: 4px;
+            @children
+        }
+    }
+}
+
+// One line of a card: its name (and a note in small type) and its controls.
+component Row inherits Rectangle {
+    in property <string> label;
+    in property <string> note;
+    in property <bool> first;
+    min-height: 42px;
+    if !root.first: Rectangle { y: 0; x: 2px; width: parent.width - 4px; height: 2px; background: Comic.rule; }
+    HorizontalLayout {
+        padding-left: 4px;
+        padding-right: 2px;
+        padding-top: 5px;
+        padding-bottom: 5px;
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            Text {
+                text: root.label;
+                color: Comic.ink;
+                font-family: "Comic Neue";
+                font-weight: 700;
+                font-size: 13.5px;
+                overflow: elide;
+            }
+            if root.note != "": Text {
+                text: root.note;
+                color: Comic.sub;
+                font-family: "Comic Neue";
+                font-weight: 700;
+                font-size: 11px;
+                overflow: elide;
+            }
+        }
+        HorizontalLayout {
+            alignment: end;
+            spacing: 6px;
+            @children
+        }
+    }
+}
+
+// A value in blue Bangers: Ready, Downloading 64%.
+component Value inherits Text {
+    color: Comic.blue;
+    font-family: "Bangers";
+    font-size: 14px;
+    letter-spacing: 1px;
+    vertical-alignment: center;
+}
+
+// A read-only value: OmniVoice.
+component Plain inherits Text {
+    color: Comic.sub;
+    font-family: "Comic Neue";
+    font-weight: 700;
+    font-size: 13px;
+    vertical-alignment: center;
+}
+
+// The caption picker of a card row.
+component RowSelect inherits Select {
+    width: min(self.natural, 210px);
+    height: 32px;
+}
+
+export component SettingsPage inherits VerticalLayout {
+    in property <bool> wide;
+    callback back();
+    callback go(int);
+    callback refocus();
+    callback theme-changed(int);
+    callback mic-changed(int);
+    callback system-changed(bool);
+    callback recording-limit-changed(int);
+    callback hotkey-captured(string, bool, bool, bool, bool) -> bool;
+    callback hotkey-accepted(string);
+    callback open-folder();
+    callback change-folder();
+    callback template-edited(string);
+    callback template-accepted(string);
+    callback export-format-changed(int);
+    callback clean-voice-changed(bool);
+    callback language-changed(int);
+    callback auto-transcribe-changed(bool);
+    callback ai-names-changed(bool);
+    callback max-pause-changed(int);
+    callback ai-model-changed(int);
+    callback download-ai(int);
+    callback close-to-tray-changed(bool);
+    callback start-with-windows-changed(bool);
+
+    Mast { big: root.wide; }
+    VerticalLayout {
+        vertical-stretch: 1;
+        padding-left: root.wide ? 11px : 9px;
+        padding-right: root.wide ? 11px : 9px;
+        padding-top: 4px;
+        padding-bottom: 9px;
+        spacing: 2px;
+        PageHead { page: 3; back => { root.back(); } }
+        Rectangle {
+            vertical-stretch: 1;
+            Scroller {
+                ink-rail: true;
+                VerticalLayout {
+                    padding-left: 2px;
+                    padding-right: 16px;
+                    padding-top: 12px;
+                    padding-bottom: 16px;
+                    alignment: start;
+                    spacing: 18px;
+                    // The theme gallery, across the whole page when it is wide.
+                    Card {
+                        title: "APPEARANCE";
+                        ThemeGallery { picked(i) => { root.theme-changed(i); } }
+                    }
+                    FlexboxLayout {
+                        flex-direction: root.wide ? FlexboxLayoutDirection.row : FlexboxLayoutDirection.column;
+                        flex-wrap: no-wrap;
+                        alignment: stretch;
+                        cross-axis-alignment: root.wide ? CrossAxisAlignment.start : CrossAxisAlignment.stretch;
+                        spacing: root.wide ? 16px : 18px;
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 18px;
+                            Card {
+                                title: "RECORDING";
+                                Row {
+                                    first: true;
+                                    label: "Microphone";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        RowSelect {
+                                            label: "Microphone";
+                                            model: Pages.mic-devices;
+                                            current-index <=> Pages.mic-index;
+                                            enabled: !Main.recording;
+                                            selected(i) => { root.mic-changed(i); }
+                                        }
+                                    }
+                                }
+                                Row {
+                                    label: "System audio";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "System audio";
+                                            checked <=> Pages.record-system;
+                                            toggled(on) => { root.system-changed(on); }
+                                        }
+                                    }
+                                }
+                                Row {
+                                    label: "Stop recording after";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        RowSelect {
+                                            label: "Stop recording after";
+                                            model: Pages.recording-limits;
+                                            current-index <=> Pages.recording-limit-index;
+                                            selected(i) => { root.recording-limit-changed(i); }
+                                        }
+                                    }
+                                }
+                                Row {
+                                    label: "Record hotkey";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        ShortcutBox {
+                                            label: "Record hotkey";
+                                            keys: Pages.hotkey-parts;
+                                            captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
+                                            cleared => { root.hotkey-accepted(""); }
+                                            done => { root.refocus(); }
+                                        }
+                                    }
+                                    if Pages.hotkey-parts.length > 0: VerticalLayout {
+                                        alignment: center;
+                                        IconBtn {
+                                            size: 26px;
+                                            icon: "close";
+                                            icon-size: 10px;
+                                            label: "Clear the shortcut";
+                                            tip: "Clear shortcut";
+                                            clicked => { root.hotkey-accepted(""); }
+                                        }
+                                    }
+                                }
+                            }
+                            Card {
+                                title: "WINDOW";
+                                Row {
+                                    first: true;
+                                    label: "Close button hides to tray";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "Close button hides to tray";
+                                            checked <=> Pages.close-to-tray;
+                                            toggled(on) => { root.close-to-tray-changed(on); }
+                                        }
+                                    }
+                                }
+                                Row {
+                                    label: "Start with Windows";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "Start with Windows";
+                                            checked <=> Pages.start-with-windows;
+                                            toggled(on) => { root.start-with-windows-changed(on); }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 18px;
+                            Card {
+                                title: "FILES";
+                                Row {
+                                    first: true;
+                                    label: "Folder";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Rectangle {
+                                            width: min(path.preferred-width + 16px, 160px);
+                                            height: 28px;
+                                            background: Comic.paper2;
+                                            border-width: 2px;
+                                            border-color: Comic.ink;
+                                            opacity: Main.recording ? 0.6 : 1;
+                                            path := Text {
+                                                x: 8px;
+                                                width: parent.width - 16px;
+                                                text: Pages.folder;
+                                                color: Comic.ink;
+                                                font-family: "Comic Neue";
+                                                font-weight: 700;
+                                                font-size: 12px;
+                                                vertical-alignment: center;
+                                                overflow: elide;
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        alignment: center;
+                                        IconBtn {
+                                            size: 28px;
+                                            icon: "folder";
+                                            icon-size: 14px;
+                                            label: "Open the folder";
+                                            tip: "Open folder";
+                                            clicked => { root.open-folder(); }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Btn { text: "Change"; height: 28px; enabled: !Main.recording; clicked => { root.change-folder(); } }
+                                    }
+                                }
+                                Rectangle {
+                                    height: names.preferred-height;
+                                    Rectangle { y: 0; x: 2px; width: parent.width - 4px; height: 2px; background: Comic.rule; }
+                                    names := VerticalLayout {
+                                        padding-left: 4px;
+                                        padding-right: 6px;
+                                        padding-top: 9px;
+                                        padding-bottom: 9px;
+                                        spacing: 6px;
+                                        Text {
+                                            text: "File name";
+                                            color: Comic.ink;
+                                            font-family: "Comic Neue";
+                                            font-weight: 700;
+                                            font-size: 13.5px;
+                                        }
+                                        Field {
+                                            height: 34px;
+                                            font-size: 14px;
+                                            label: "File name";
+                                            text: Pages.name-template;
+                                            invalid: Pages.name-invalid;
+                                            edited(t) => { root.template-edited(t); }
+                                            accepted(t) => { root.template-accepted(t); root.refocus(); }
+                                        }
+                                        HorizontalLayout {
+                                            alignment: start;
+                                            if !Pages.name-invalid: Text {
+                                                text: Pages.name-preview;
+                                                color: Comic.sub;
+                                                font-family: "Comic Neue";
+                                                font-weight: 700;
+                                                font-size: 11.5px;
+                                                overflow: elide;
+                                            }
+                                            if Pages.name-invalid: Rectangle {
+                                                width: bad.preferred-width + 14px;
+                                                height: 18px;
+                                                background: Comic.red;
+                                                border-width: 2px;
+                                                border-color: Comic.ink;
+                                                bad := Text {
+                                                    x: 7px;
+                                                    text: Pages.name-preview;
+                                                    color: #ffffff;
+                                                    font-family: "Comic Neue";
+                                                    font-weight: 700;
+                                                    font-size: 11.5px;
+                                                    vertical-alignment: center;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                Row {
+                                    label: "Export format";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        RowSelect {
+                                            label: "Export format";
+                                            model: ["FLAC", "WAV", "MP3"];
+                                            current-index <=> Pages.export-format;
+                                            selected(i) => { root.export-format-changed(i); }
+                                        }
+                                    }
+                                }
+                                Row {
+                                    label: "Clean voice on export";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "Clean voice on export";
+                                            checked <=> Pages.clean-voice;
+                                            toggled(on) => { root.clean-voice-changed(on); }
+                                        }
+                                    }
+                                }
+                            }
+                            Card {
+                                title: "YOUR VOICE";
+                                Row {
+                                    first: true;
+                                    label: "Voice engine";
+                                    Plain { text: "OmniVoice"; }
+                                }
+                                Row {
+                                    label: "Voice sample";
+                                    Plain { text: "20 s from the clip"; }
+                                }
+                            }
+                        }
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 18px;
+                            Card {
+                                title: "TRANSCRIPTION";
+                                if !Pages.can-transcribe: Row { first: true; label: "Not in this build"; }
+                                if Pages.can-transcribe: Row {
+                                    first: true;
+                                    label: "Language";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        RowSelect {
+                                            label: "Language";
+                                            model: Pages.languages;
+                                            current-index <=> Pages.language-index;
+                                            selected(i) => { root.language-changed(i); }
+                                        }
+                                    }
+                                }
+                                if Pages.can-transcribe: Row {
+                                    label: "Auto transcribe";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "Auto transcribe";
+                                            checked <=> Pages.auto-transcribe;
+                                            toggled(on) => { root.auto-transcribe-changed(on); }
+                                        }
+                                    }
+                                }
+                                if Pages.can-transcribe && Main.can-ai: Row {
+                                    label: "AI names";
+                                    note: Pages.auto-transcribe ? "" : "Auto transcribe off";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "AI names";
+                                            enabled: Pages.auto-transcribe;
+                                            checked <=> Pages.ai-names;
+                                            toggled(on) => { root.ai-names-changed(on); }
+                                        }
+                                    }
+                                }
+                                if Pages.can-transcribe: Row {
+                                    label: "Max pause";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        RowSelect {
+                                            label: "Max pause";
+                                            model: Pages.max-pauses;
+                                            current-index <=> Pages.max-pause-index;
+                                            selected(i) => { root.max-pause-changed(i); }
+                                        }
+                                    }
+                                }
+                                if Pages.can-transcribe: Rectangle {
+                                    height: model-row.preferred-height;
+                                    accessible-role: button;
+                                    accessible-label: "Browse models";
+                                    accessible-action-default => { root.go(4); }
+                                    if model-touch.has-hover: Rectangle { y: 2px; height: parent.height - 2px; background: Comic.pale; }
+                                    model-touch := TouchArea { mouse-cursor: pointer; clicked => { root.go(4); } }
+                                    model-row := Row {
+                                        width: 100%;
+                                        label: "Model";
+                                        note: Pages.model-summary;
+                                        Text {
+                                            y: 1px;
+                                            text: "BROWSE";
+                                            color: Comic.ink;
+                                            font-family: "Bangers";
+                                            font-size: 14px;
+                                            letter-spacing: 1px;
+                                            vertical-alignment: center;
+                                        }
+                                        Icon { name: "chevron"; tint: Comic.ink; stroke-width: 2.6px; width: 12px; height: 12px; y: (parent.height - self.height) / 2; }
+                                    }
+                                }
+                            }
+                            if Main.can-ai: Card {
+                                title: "AI";
+                                Row {
+                                    first: true;
+                                    label: "Model";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        RowSelect {
+                                            label: "AI model";
+                                            model: Pages.ai-models;
+                                            current-index <=> Pages.ai-model-index;
+                                            selected(i) => { root.ai-model-changed(i); }
+                                        }
+                                    }
+                                }
+                                Row {
+                                    label: Pages.ai-ready ? "Ready" : Pages.ai-download >= 0 ? "Downloading " + round(Pages.ai-download * 100) + "%" : "Not downloaded";
+                                    if Pages.ai-ready: VerticalLayout {
+                                        alignment: center;
+                                        Rectangle {
+                                            width: 16px;
+                                            height: 16px;
+                                            background: #ffffff;
+                                            border-width: 2px;
+                                            border-color: Comic.ink;
+                                            Rectangle {
+                                                width: 8px;
+                                                height: 8px;
+                                                border-radius: 4px;
+                                                background: #2fbf4f;
+                                                border-width: 1.5px;
+                                                border-color: Comic.ink;
+                                            }
+                                        }
+                                    }
+                                    if !Pages.ai-ready && Pages.ai-download < 0: VerticalLayout {
+                                        alignment: center;
+                                        Btn { text: "Download"; primary: true; height: 28px; clicked => { root.download-ai(0); } }
+                                    }
+                                }
+                                Row {
+                                    label: "Translation";
+                                    note: "Ministral 3B · 2.1 GB";
+                                    if Pages.translator-ready: Value { text: "READY"; }
+                                    if !Pages.translator-ready && Pages.translator-download >= 0: Value {
+                                        text: "DOWNLOADING " + round(Pages.translator-download * 100) + "%";
+                                    }
+                                    if !Pages.translator-ready && Pages.translator-download < 0: VerticalLayout {
+                                        alignment: center;
+                                        Btn { text: "Download"; primary: true; height: 28px; clicked => { root.download-ai(1); } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Toast { text: Main.status; above: 20px; }
+}
+
+// ---------- Models ----------
+
+// Quality or speed as five ink pips, the filled ones red.
+component Pips inherits HorizontalLayout {
+    in property <string> label;
+    in property <int> value;
+    in property <bool> on-yellow;
+    spacing: 4px;
+    Text {
+        y: 1px;
+        text: root.label;
+        color: Comic.sub;
+        font-family: "Bangers";
+        font-size: 11.5px;
+        letter-spacing: 1px;
+        vertical-alignment: center;
+    }
+    HorizontalLayout {
+        spacing: 2px;
+        alignment: start;
+        for k in 5: Rectangle {
+            width: 9px;
+            height: 9px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 4.5px;
+            background: k < root.value ? Comic.red : root.on-yellow ? Comic.pale : #ffffff;
+            border-width: 1.8px;
+            border-color: Comic.ink;
+        }
+    }
+}
+
+// A shelf of the library as a caption chip, the picked one yellow.
+component Chip inherits Rectangle {
+    in property <string> text;
+    in property <bool> on;
+    callback clicked;
+    width: label.preferred-width + 18px;
+    height: 24px;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-checked: root.on;
+    accessible-action-default => { root.clicked(); }
+    InkShadow { visible: root.on; off: 2px; }
+    Rectangle {
+        background: root.on ? Comic.yellow : t.has-hover ? Comic.pale : #ffffff;
+        border-width: 2.5px;
+        border-color: Comic.ink;
+        label := Text {
+            y: 1px;
+            height: parent.height - 1px;
+            text: root.text.to-uppercase();
+            color: Comic.ink;
+            font-family: "Bangers";
+            font-size: 13.5px;
+            letter-spacing: 1px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+    t := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+}
+
+component Shelves inherits FlexboxLayout {
+    in property <bool> column;
+    callback changed();
+    flex-direction: root.column ? FlexboxLayoutDirection.column : FlexboxLayoutDirection.row;
+    flex-wrap: wrap;
+    alignment: start;
+    cross-axis-alignment: start;
+    spacing: root.column ? 6px : 5px;
+    for f[i] in ["All", "Norwegian", "Swedish", "English", "Downloaded"]: Chip {
+        text: f;
+        on: Pages.model-filter == i;
+        clicked => { Pages.model-filter = i; root.changed(); }
+    }
+}
+
+component ModelSearch inherits Thought {
+    height: 36px;
+    font-size: 13.5px;
+    icon: "search";
+    label: "Search models";
+    placeholder: "Search " + Pages.model-count + " models";
+}
+
+component Compressed inherits HorizontalLayout {
+    callback changed();
+    spacing: 8px;
+    VerticalLayout {
+        alignment: center;
+        Toggle {
+            label: "Show compressed versions too";
+            checked <=> Pages.model-compressed;
+            toggled => { root.changed(); }
+        }
+    }
+    Text {
+        text: "Show compressed";
+        color: Comic.ink;
+        font-family: "Comic Neue";
+        font-weight: 700;
+        font-size: 13px;
+        vertical-alignment: center;
+    }
+}
+
+// The rack of model cards, grouped under ink tags.
+component Rack inherits VerticalLayout {
+    in property <bool> wide;
+    callback use-model(int);
+    callback cancel-download();
+    callback download-model(int);
+    property <bool> hi: 1phx < 0.7px;
+    alignment: start;
+    spacing: 6px;
+    for m in Pages.models: VerticalLayout {
+        if m.header: HorizontalLayout {
+            padding-top: 8px;
+            padding-bottom: 2px;
+            spacing: 8px;
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: gt.preferred-width + 14px;
+                    height: 19px;
+                    background: Comic.ink;
+                    gt := Text {
+                        x: 7px;
+                        y: 1px;
+                        height: parent.height - 1px;
+                        text: m.title.to-uppercase();
+                        color: Comic.yellow;
+                        font-family: "Bangers";
+                        font-size: 14px;
+                        letter-spacing: 1.5px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+            Text {
+                text: m.by;
+                color: Comic.sub;
+                font-family: "Comic Neue";
+                font-weight: 700;
+                font-size: 11px;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+        }
+        if !m.header: Rectangle {
+            height: card.preferred-height + 3px;
+            if m.active: InkShadow { width: parent.width - 3px; height: card.preferred-height; }
+            Rectangle {
+                x: 0;
+                y: 0;
+                height: card.preferred-height;
+                width: parent.width - 3px;
+                background: m.active ? Comic.yellow : #ffffff;
+                border-width: m.active ? 2.8px : 2.5px;
+                border-color: Comic.ink;
+                card := VerticalLayout {
+                    padding-left: 10px;
+                    padding-right: 8px;
+                    padding-top: 6px;
+                    padding-bottom: 8px;
+                    spacing: 6px;
+                    HorizontalLayout {
+                        spacing: 8px;
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            alignment: center;
+                            spacing: 3px;
+                            Text {
+                                text: m.title;
+                                color: Comic.ink;
+                                font-family: "Comic Neue";
+                                font-weight: 700;
+                                font-size: 14px;
+                                overflow: elide;
+                            }
+                            HorizontalLayout {
+                                spacing: 8px;
+                                alignment: start;
+                                Pips { label: "QUALITY"; value: m.quality; on-yellow: m.active; }
+                                Pips { label: "SPEED"; value: m.speed; on-yellow: m.active; }
+                                Text {
+                                    y: 1px;
+                                    text: m.size;
+                                    color: Comic.ink;
+                                    font-family: "Bangers";
+                                    font-size: 13px;
+                                    letter-spacing: 1px;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                        if m.active: VerticalLayout {
+                            alignment: start;
+                            Image {
+                                width: 64px * 0.9;
+                                height: 30px * 0.9;
+                                source: root.hi ? @image-url("x-comic/inuse@2x.png") : @image-url("x-comic/inuse.png");
+                                image-fit: fill;
+                                accessible-role: AccessibleRole.text;
+                                accessible-label: "In use";
+                            }
+                        }
+                        if m.downloaded && !m.active: VerticalLayout {
+                            alignment: start;
+                            Btn { text: "Use"; height: 26px; clicked => { root.use-model(m.index); } }
+                        }
+                        if Pages.downloading == m.index: VerticalLayout {
+                            alignment: start;
+                            Btn { text: "Cancel"; height: 26px; clicked => { root.cancel-download(); } }
+                        }
+                        if !m.downloaded && Pages.downloading != m.index: VerticalLayout {
+                            alignment: start;
+                            Btn {
+                                text: "Download";
+                                primary: true;
+                                height: 26px;
+                                enabled: Pages.downloading < 0;
+                                accessible-label: "Download " + m.title;
+                                clicked => { root.download-model(m.index); }
+                            }
+                        }
+                    }
+                    if Pages.downloading == m.index: HorizontalLayout {
+                        spacing: 8px;
+                        InkBar { height: 14px; horizontal-stretch: 1; value: Pages.download-progress; }
+                        Text {
+                            text: round(Pages.download-progress * 100) + "%";
+                            color: Comic.ink;
+                            font-family: "Bangers";
+                            font-size: 13px;
+                            letter-spacing: 1px;
+                            vertical-alignment: center;
+                            width: 34px;
+                            horizontal-alignment: right;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if Pages.models.length == 0: Text {
+        text: "NO MODELS MATCH";
+        color: Comic.sub;
+        font-family: "Bangers";
+        font-size: 24px;
+        letter-spacing: 1px;
+        horizontal-alignment: center;
+        height: 80px;
+        vertical-alignment: center;
+    }
+}
+
+export component ModelsPage inherits VerticalLayout {
+    in property <bool> wide;
+    callback back();
+    callback filter-changed();
+    callback use-model(int);
+    callback cancel-download();
+    callback download-model(int);
+    Mast { big: root.wide; }
+    VerticalLayout {
+        vertical-stretch: 1;
+        padding-left: root.wide ? 11px : 9px;
+        padding-right: root.wide ? 11px : 9px;
+        padding-top: 4px;
+        padding-bottom: root.wide ? 11px : 9px;
+        spacing: 6px;
+        PageHead {
+            page: 4;
+            note: root.wide ? "" : Pages.models-used.to-uppercase();
+            note-bangers: true;
+            back => { root.back(); }
+        }
+        if !root.wide: Panel {
+            dots: 0;
+            vertical-stretch: 0;
+            height: ctl.preferred-height;
+            ctl := VerticalLayout {
+                padding-left: 10px;
+                padding-right: 10px;
+                padding-top: 10px;
+                padding-bottom: 12px;
+                spacing: 9px;
+                ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+                Rectangle { height: 4px; }
+                Shelves { changed => { root.filter-changed(); } }
+                Compressed { changed => { root.filter-changed(); } }
+            }
+        }
+        if !root.wide: Rectangle {
+            vertical-stretch: 1;
+            Scroller {
+                ink-rail: true;
+                VerticalLayout {
+                    padding-left: 2px;
+                    padding-right: 14px;
+                    padding-top: 6px;
+                    padding-bottom: 10px;
+                    Rack {
+                        use-model(i) => { root.use-model(i); }
+                        cancel-download => { root.cancel-download(); }
+                        download-model(i) => { root.download-model(i); }
+                    }
+                }
+            }
+        }
+        if root.wide: HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 9px;
+            Panel {
+                width: 290px;
+                dots: 0;
+                tag: "FIND A MODEL";
+                VerticalLayout {
+                    padding-left: 14px;
+                    padding-right: 14px;
+                    padding-top: 30px;
+                    padding-bottom: 14px;
+                    spacing: 12px;
+                    ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+                    VerticalLayout {
+                        padding-top: 16px;
+                        spacing: 6px;
+                        vertical-stretch: 0;
+                        alignment: start;
+                        Text {
+                            text: "SHELF";
+                            color: Comic.sub;
+                            font-family: "Bangers";
+                            font-size: 11.5px;
+                            letter-spacing: 1.2px;
+                        }
+                        for f[i] in ["All", "Norwegian", "Swedish", "English", "Downloaded"]: HorizontalLayout {
+                            alignment: start;
+                            Chip {
+                                text: f;
+                                on: Pages.model-filter == i;
+                                clicked => { Pages.model-filter = i; root.filter-changed(); }
+                            }
+                        }
+                    }
+                    Compressed { changed => { root.filter-changed(); } }
+                    Rectangle { vertical-stretch: 1; }
+                    HorizontalLayout {
+                        alignment: start;
+                        Rectangle {
+                            width: used.preferred-width + 24px;
+                            height: 46px;
+                            background: #ffffff;
+                            border-width: 2.5px;
+                            border-color: Comic.ink;
+                            used := Text {
+                                y: 2px;
+                                height: parent.height - 2px;
+                                text: Pages.models-used.to-uppercase();
+                                color: Comic.ink;
+                                font-family: "Bangers";
+                                font-size: 26px;
+                                letter-spacing: 1.5px;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+            Panel {
+                horizontal-stretch: 1;
+                tag: "THE MODEL RACK";
+                Scroller {
+                    x: 3px;
+                    y: 22px;
+                    width: parent.width - 6px;
+                    height: parent.height - 25px;
+                    ink-rail: true;
+                    VerticalLayout {
+                        padding-left: 14px;
+                        padding-right: 22px;
+                        padding-top: 4px;
+                        padding-bottom: 12px;
+                        Rack {
+                            wide: true;
+                            use-model(i) => { root.use-model(i); }
+                            cancel-download => { root.cancel-download(); }
+                            download-model(i) => { root.download-model(i); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Toast { text: Main.status; above: 20px; }
+}
+
+// ---------- Merge ----------
+
+// The name of the merged clip.
+component NameField inherits Field {
+    height: 38px;
+    font-size: 16px;
+    placeholder: "Name";
+    label: "Name of the merged clip";
+}
+
+// Cancel and the red Merge key, in the footer.
+component MergeKeys inherits HorizontalLayout {
+    callback cancel();
+    callback merge();
+    spacing: 8px;
+    VerticalLayout { alignment: center; Btn { height: 34px; text: "Cancel"; clicked => { root.cancel(); } } }
+    VerticalLayout {
+        alignment: center;
+        Btn {
+            height: 38px;
+            min-width: 140px;
+            red: true;
+            text: Pages.merging ? "Merging" : "Merge " + Pages.merge-rows.length + " clips";
+            enabled: !Pages.merging && Pages.merge-name != "";
+            clicked => { root.merge(); }
+        }
+    }
+}
+
+// The crossover cover: one inked cell per clip with its number, name and length, and
+// the plus burst over the middle.
+component Crossover inherits Rectangle {
+    property <bool> hi: 1phx < 0.7px;
+    property <int> n: max(1, Pages.merge-rows.length);
+    property <length> cell-w: (self.width - 16px - (self.n - 1) * 6px) / self.n;
+    height: 190px;
+    background: Comic.paper2;
+    for r[i] in Pages.merge-rows: Rectangle {
+        x: 8px + i * (root.cell-w + 6px);
+        y: 8px;
+        width: root.cell-w;
+        height: parent.height - 16px;
+        background: #ffffff;
+        border-width: 2.5px;
+        border-color: Comic.ink;
+        VerticalLayout {
+            padding: 6px;
+            spacing: 3px;
+            alignment: end;
+            HorizontalLayout {
+                alignment: start;
+                Rectangle {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 12px;
+                    background: Comic.red;
+                    border-width: 2.5px;
+                    border-color: Comic.ink;
+                    Text {
+                        y: 1px;
+                        height: parent.height - 1px;
+                        width: parent.width;
+                        text: i + 1;
+                        color: #ffffff;
+                        font-family: "Bangers";
+                        font-size: 14px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+            Text {
+                text: r.name;
+                color: Comic.ink;
+                font-family: "Comic Neue";
+                font-weight: 700;
+                font-size: 13px;
+                overflow: elide;
+            }
+            Text {
+                text: r.note;
+                color: Comic.ink;
+                font-family: "Bangers";
+                font-size: 13px;
+                letter-spacing: 1px;
+                overflow: elide;
+            }
+        }
+    }
+    Rectangle { border-width: 3px; border-color: Comic.ink; }
+    Tag { x: 0; y: 0; text: "CROSSOVER"; }
+    Image {
+        x: (parent.width - self.width) / 2;
+        y: parent.height * 0.44 - self.height / 2;
+        width: 88px;
+        height: 88px;
+        source: root.hi ? @image-url("x-comic/plus-s@2x.png") : @image-url("x-comic/plus-s.png");
+        image-fit: fill;
+        accessible-role: none;
+    }
+}
+
+export component MergePage inherits VerticalLayout {
+    in property <bool> wide;
+    callback go(int);
+    callback move(int, int);
+    callback remove(int);
+    callback play(int);
+    callback run(string);
+    property <string> playing-name: Main.active-clip >= 0 && Main.active-clip < Main.clips.length && Main.playing ? Main.clips[Main.active-clip].name : "";
+    Mast { big: root.wide; }
+    if !root.wide: VerticalLayout {
+        vertical-stretch: 1;
+        padding-left: 9px;
+        padding-right: 9px;
+        padding-top: 4px;
+        padding-bottom: 9px;
+        spacing: 7px;
+        PageHead {
+            page: 5;
+            note: Pages.merge-rows.length + " clips";
+            back => { root.go(0); }
+        }
+        Panel {
+            vertical-stretch: 1;
+            tag: "ORDER";
+            Scroller {
+                x: 3px;
+                y: 22px;
+                width: parent.width - 6px;
+                height: parent.height - 25px;
+                VerticalLayout {
+                    alignment: start;
+                    padding-left: 6px;
+                    padding-right: 8px;
+                    padding-top: 2px;
+                    OrderList {
+                        rows: Pages.merge-rows;
+                        removable: true;
+                        playable: true;
+                        playing-name: root.playing-name;
+                        enabled: !Pages.merging;
+                        moved(a, b) => { root.move(a, b); }
+                        act(i) => { root.remove(i); }
+                        play(i) => { root.play(i); }
+                    }
+                }
+            }
+        }
+        Panel {
+            dots: 0;
+            tag: "NEW CLIP";
+            vertical-stretch: 0;
+            height: nc.preferred-height;
+            nc := VerticalLayout {
+                padding-left: 12px;
+                padding-right: 12px;
+                padding-top: 28px;
+                padding-bottom: 14px;
+                NameField { text <=> Pages.merge-name; }
+            }
+        }
+        Footer {
+            MergeKeys {
+                cancel => { root.go(0); }
+                merge => { root.run(Pages.merge-name); }
+            }
+        }
+    }
+    if root.wide: VerticalLayout {
+        vertical-stretch: 1;
+        padding-left: 11px;
+        padding-right: 11px;
+        padding-top: 9px;
+        padding-bottom: 11px;
+        spacing: 9px;
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 9px;
+            Panel {
+                width: 400px;
+                dots: 0;
+                VerticalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 12px;
+                    padding-bottom: 14px;
+                    spacing: 14px;
+                    alignment: start;
+                    PageHead {
+                        page: 5;
+                        note: Pages.merge-rows.length + " clips";
+                        back => { root.go(0); }
+                    }
+                    Crossover { }
+                    Panel {
+                        tag: "NEW CLIP";
+                        height: wnc.preferred-height;
+                        wnc := VerticalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            padding-top: 28px;
+                            padding-bottom: 12px;
+                            NameField { font-size: 17px; text <=> Pages.merge-name; }
+                        }
+                    }
+                }
+            }
+            Panel {
+                horizontal-stretch: 1;
+                tag: "ORDER";
+                Scroller {
+                    x: 3px;
+                    y: 24px;
+                    width: parent.width - 6px;
+                    height: parent.height - 27px;
+                    VerticalLayout {
+                        alignment: start;
+                        padding-left: 10px;
+                        padding-right: 14px;
+                        padding-top: 2px;
+                        OrderList {
+                            rows: Pages.merge-rows;
+                            removable: true;
+                            playable: true;
+                            playing-name: root.playing-name;
+                            enabled: !Pages.merging;
+                            moved(a, b) => { root.move(a, b); }
+                            act(i) => { root.remove(i); }
+                            play(i) => { root.play(i); }
+                        }
+                    }
+                }
+            }
+        }
+        Footer {
+            big: true;
+            MergeKeys {
+                cancel => { root.go(0); }
+                merge => { root.run(Pages.merge-name); }
+            }
+        }
+    }
+}
+
+// ---------- Ask ----------
+
+// A passage an answer came from: its number in a red ink circle, the clip, its project
+// in a blue tag when all projects were asked, the time and the words.
+component Source inherits Rectangle {
+    in property <AskSource> source;
+    in property <bool> show-project;
+    in property <string> project;
+    callback clicked;
+    height: 50px;
+    accessible-role: button;
+    accessible-label: root.source.n + " " + root.source.clip + " " + root.source.time;
+    accessible-action-default => { root.clicked(); }
+    background: t.has-hover ? Comic.pale : #ffffff;
+    border-width: 2.5px;
+    border-color: Comic.ink;
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 9px;
+        spacing: 9px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 26px;
+                height: 26px;
+                border-radius: 13px;
+                background: Comic.red;
+                border-width: 2.5px;
+                border-color: Comic.ink;
+                Text {
+                    y: 1px;
+                    height: parent.height - 1px;
+                    width: parent.width;
+                    text: root.source.n;
+                    color: #ffffff;
+                    font-family: "Bangers";
+                    font-size: 15px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            spacing: 1px;
+            HorizontalLayout {
+                spacing: 7px;
+                Text {
+                    text: root.source.clip;
+                    color: Comic.ink;
+                    font-family: "Comic Neue";
+                    font-weight: 700;
+                    font-size: 14px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 1;
+                }
+                if root.show-project && root.project != "": VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: pj.preferred-width + 10px;
+                        height: 15px;
+                        background: Comic.blue;
+                        border-width: 2px;
+                        border-color: Comic.ink;
+                        pj := Text {
+                            y: 1px;
+                            height: parent.height - 1px;
+                            text: root.project.to-uppercase();
+                            color: #ffffff;
+                            font-family: "Bangers";
+                            font-size: 11px;
+                            letter-spacing: 0.8px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+                Text {
+                    y: 1px;
+                    text: root.source.time;
+                    color: Comic.ink;
+                    font-family: "Bangers";
+                    font-size: 14px;
+                    letter-spacing: 1px;
+                    vertical-alignment: center;
+                }
+            }
+            Text {
+                text: root.source.text;
+                color: Comic.sub;
+                font-family: "Comic Neue";
+                font-weight: 700;
+                font-size: 11.5px;
+                overflow: elide;
+            }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The answer in a big speech bubble, its tail low on the left, with the narrator's
+// ANSWER caption on its edge; THINKING and three dots while it comes.
+component Answer inherits Rectangle {
+    in property <length> max-h: 320px;
+    // The bubble, its tail and the caption above it.
+    height: min(body.preferred-height + 6px, root.max-h) + 40px;
+    property <length> bh: self.height - 40px;
+    bubble := Rectangle {
+        x: 4px;
+        y: 16px;
+        width: parent.width - 8px;
+        height: root.bh;
+        border-radius: 22px;
+        background: #ffffff;
+        border-width: 3px;
+        border-color: Comic.ink;
+        Scroller {
+            x: 3px;
+            y: 3px;
+            width: parent.width - 6px;
+            height: parent.height - 6px;
+            body := VerticalLayout {
+                padding-left: 16px;
+                padding-right: 18px;
+                padding-top: 14px;
+                padding-bottom: 12px;
+                if Pages.answer == "": HorizontalLayout {
+                    spacing: 6px;
+                    height: 26px;
+                    Text {
+                        y: 1px;
+                        text: "THINKING";
+                        color: Comic.ink;
+                        font-family: "Bangers";
+                        font-size: 20px;
+                        letter-spacing: 1px;
+                        vertical-alignment: center;
+                    }
+                    for k in 3: VerticalLayout {
+                        alignment: center;
+                        Rectangle { width: 12px; height: 12px; border-radius: 6px; background: Comic.ink; }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                }
+                if Pages.answer != "": Text {
+                    text: Pages.answer;
+                    color: Comic.ink;
+                    font-family: "Comic Neue";
+                    font-weight: 700;
+                    font-size: 14px;
+                    wrap: word-wrap;
+                }
+            }
+        }
+    }
+    // The tail, from the bubble's foot down to the left.
+    Path {
+        x: 38px;
+        y: 16px + root.bh - 4px;
+        width: 30px;
+        height: 24px;
+        viewbox-width: 30;
+        viewbox-height: 24;
+        fill: #ffffff;
+        stroke: Comic.ink;
+        stroke-width: 3px;
+        stroke-line-join: round;
+        commands: "M 2 1.5 L 4 22 L 26 1.5";
+    }
+    Rectangle { x: 38px + 4px; y: 16px + root.bh - 6px; width: 20px; height: 4px; background: #ffffff; }
+    Rectangle {
+        x: 14px;
+        y: 2px;
+        width: an.preferred-width + 18px;
+        height: 22px;
+        InkShadow { off: 2px; }
+        Rectangle {
+            background: Comic.yellow;
+            border-width: 2.5px;
+            border-color: Comic.ink;
+            an := Text {
+                y: 1px;
+                height: parent.height - 1px;
+                text: "ANSWER";
+                color: Comic.ink;
+                font-family: "Bangers";
+                font-size: 13px;
+                letter-spacing: 1.2px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
+
+// The SOURCES tag and the passages under it.
+component Sources inherits VerticalLayout {
+    callback go(int);
+    callback open-source(int);
+    spacing: 8px;
+    if Pages.sources.length > 0: HorizontalLayout {
+        alignment: start;
+        Rectangle {
+            width: st.preferred-width + 14px;
+            height: 19px;
+            background: Comic.ink;
+            st := Text {
+                x: 7px;
+                y: 1px;
+                height: parent.height - 1px;
+                text: "SOURCES";
+                color: Comic.yellow;
+                font-family: "Bangers";
+                font-size: 14px;
+                letter-spacing: 1.5px;
+                vertical-alignment: center;
+            }
+        }
+    }
+    Scroller {
+        vertical-stretch: 1;
+        VerticalLayout {
+            alignment: start;
+            spacing: 6px;
+            padding-right: 4px;
+            for s[i] in Pages.sources: Source {
+                source: s;
+                show-project: Pages.ask-all;
+                project: s.place >= 0 && s.place < Main.projects.length ? Main.projects[s.place] : "";
+                clicked => { root.open-source(i); root.go(1); }
+            }
+        }
+    }
+}
+
+export component AskPage inherits VerticalLayout {
+    in property <bool> wide;
+    callback go(int);
+    callback ask(string, bool);
+    callback open-source(int);
+    Mast { big: root.wide; }
+    VerticalLayout {
+        vertical-stretch: 1;
+        padding-left: root.wide ? 11px : 9px;
+        padding-right: root.wide ? 11px : 9px;
+        padding-top: 4px;
+        padding-bottom: root.wide ? 11px : 9px;
+        spacing: 8px;
+        PageHead { page: 6; back => { root.go(0); } }
+        Panel {
+            dots: 0;
+            vertical-stretch: 0;
+            height: q.preferred-height;
+            q := HorizontalLayout {
+                padding-left: 10px;
+                padding-right: 8px;
+                padding-top: 10px;
+                padding-bottom: 18px;
+                spacing: 6px;
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+                    Thought {
+                        height: 38px;
+                        font-size: 13.5px;
+                        icon: "message";
+                        placeholder: "Ask about your clips";
+                        label: "Question";
+                        text <=> Pages.question;
+                        init => { self.grab(); }
+                        accepted => { if (Pages.question != "" && !Pages.asking) { root.ask(Pages.question, Pages.ask-all); } }
+                    }
+                }
+                if Main.projects.length > 1: VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: scope.preferred-width;
+                        height: 36px;
+                        accessible-role: checkbox;
+                        accessible-label: "Ask all projects";
+                        accessible-checked: Pages.ask-all;
+                        accessible-action-default => { Pages.ask-all = !Pages.ask-all; }
+                        scope := Key {
+                            height: 36px;
+                            text: "ALL PROJECTS";
+                            font-size: 12.5px;
+                            label: "";
+                            accessible-role: none;
+                            on: Pages.ask-all;
+                            clicked => { Pages.ask-all = !Pages.ask-all; }
+                        }
+                    }
+                }
+                VerticalLayout {
+                    alignment: center;
+                    Key {
+                        height: 36px;
+                        icon: "message";
+                        icon-size: 14px;
+                        text: "ASK";
+                        font-size: 14px;
+                        face: Comic.cyan;
+                        label: "Ask";
+                        enabled: Pages.question != "" && !Pages.asking;
+                        clicked => { root.ask(Pages.question, Pages.ask-all); }
+                    }
+                }
+            }
+        }
+        if !root.wide: VerticalLayout {
+            vertical-stretch: 1;
+            spacing: 10px;
+            if Pages.answer != "" || Pages.asking: Answer { }
+            Sources {
+                go(p) => { root.go(p); }
+                open-source(i) => { root.open-source(i); }
+            }
+        }
+        if root.wide: HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 22px;
+            padding-top: 4px;
+            VerticalLayout {
+                horizontal-stretch: 1.1;
+                alignment: start;
+                if Pages.answer != "" || Pages.asking: Answer { max-h: 440px; }
+            }
+            Sources {
+                horizontal-stretch: 1;
+                go(p) => { root.go(p); }
+                open-source(i) => { root.open-source(i); }
+            }
+        }
+    }
+    Toast { text: Main.status; above: 20px; }
+}
+
+// ---------- The widget ----------
+
+// The small always-on-top window as one halftone panel: the status caption, open
+// window, the timer in its bubble, the REC or STOP burst (Pause beside it while
+// recording) and a tiny BZZZT meter. A red frame while recording; the panel moves the
+// window.
+export component Widget inherits Rectangle {
+    property <bool> hi: 1phx < 0.7px;
+    property <int> frame: Main.recording && !Main.paused ? Math.mod(floor(Fx.t * 3), 2) : 0;
+    background: #ffffff;
+    Dots { x: 3px; y: 3px; width: parent.width - 6px; height: parent.height - 6px; kind: 0; }
+    Rectangle { border-width: 3px; border-color: Main.recording ? Comic.red : Comic.ink; }
+    WindowMoveArea {
+        // The status caption.
+        Caption {
+            x: 10px;
+            y: 8px;
+            width: st.preferred-width;
+            height: 20px;
+            off: 1px;
+            st := HorizontalLayout {
+                padding-left: 6px;
+                padding-right: 7px;
+                spacing: 5px;
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 9px;
+                        height: 9px;
+                        border-radius: 4.5px;
+                        background: !Main.recording ? Comic.grey : Main.paused ? #ff9d1c : Comic.red;
+                        border-width: 2px;
+                        border-color: Comic.ink;
+                    }
+                }
+                Text {
+                    y: 1px;
+                    text: Main.recording ? (Main.paused ? "PAUSED" : "RECORDING") : "READY";
+                    color: Comic.ink;
+                    font-family: "Bangers";
+                    font-size: 12px;
+                    letter-spacing: 1px;
+                    vertical-alignment: center;
+                }
+            }
+        }
+        // The timer.
+        Bubble {
+            x: 10px;
+            y: 38px;
+            width: tm.preferred-width + 30px;
+            height: 36px;
+            tail: 12px;
+            accessible-role: AccessibleRole.text;
+            accessible-label: Main.elapsed;
+            tm := Text {
+                y: 3px;
+                height: parent.height - 2px;
+                width: parent.width;
+                text: Main.elapsed;
+                color: Comic.ink;
+                font-family: "Bangers";
+                font-size: 28px;
+                letter-spacing: 1.5px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+        Meter { x: 10px; y: parent.height - self.height - 6px; width: 84px; }
+    }
+    // Open the window, top right.
+    Key {
+        x: parent.width - self.width - 8px;
+        y: 7px;
+        width: 24px;
+        height: 24px;
+        icon: "expand";
+        icon-size: 11px;
+        label: "Open the window";
+        tip: "Open window";
+        clicked => { Main.compact-changed(false); }
+    }
+    // REC, or STOP while recording; its ink boils as the main page's burst does.
+    burst := Rectangle {
+        x: parent.width - 8px - 76px;
+        y: (parent.height - self.height) / 2 + 6px;
+        width: 70px;
+        height: 70px;
+        property <bool> down: bt.pressed && bt.has-hover;
+        accessible-role: button;
+        accessible-label: Main.recording ? "Stop recording" : "Record";
+        accessible-action-default => { Main.toggle-record(); }
+        Image {
+            x: burst.down ? 2px : 0;
+            y: burst.down ? 2px : 0;
+            width: parent.width;
+            height: parent.height;
+            image-fit: fill;
+            source: Main.recording ? (root.hi ? @image-url("x-comic/wstop@2x.png") : @image-url("x-comic/wstop.png"))
+                : (root.hi ? @image-url("x-comic/wrec@2x.png") : @image-url("x-comic/wrec.png"));
+            source-clip-x: Main.recording ? root.frame * 70 * (root.hi ? 2 : 1) : 0;
+            source-clip-y: 0;
+            source-clip-width: 70 * (root.hi ? 2 : 1);
+            source-clip-height: 70 * (root.hi ? 2 : 1);
+        }
+        property <bool> hovering: bt.has-hover;
+        changed hovering => { Tips.hover(self.hovering, Main.recording ? "Stop" : "Record", self.absolute-position, self.width, self.height); }
+        bt := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { Tips.hide(); Main.toggle-record(); }
+        }
+    }
+    // Pause or Resume while recording, at the burst's foot.
+    if Main.recording: Key {
+        x: burst.x - 6px;
+        y: parent.height - self.height - 8px;
+        width: 24px;
+        height: 24px;
+        icon: Main.paused ? "play" : "pause";
+        icon-size: 11px;
+        label: Main.paused ? "Resume" : "Pause";
+        clicked => { Main.toggle-pause(); }
+    }
+}
+
+// ---------- Questions and covers ----------
+
+// A question as a white splash panel over the dimmed page: its tag (UH OH for a delete,
+// WAIT for unsaved changes), the title in Bangers (a single clip's name in a yellow
+// box), a note, a field to write in, and a short row of ink keys. AppWindow works out
+// the words; the keys report back.
+export component Dialog inherits Rectangle {
+    in property <string> title;
+    in property <string> note;
+    in property <string> field;
+    in property <string> ok;
+    in property <bool> ok-enabled;
+    // A single clip's delete question shows its name in a yellow box.
+    in property <string> clip-name;
+    callback close();
+    callback confirm();
+    callback discard();
+    property <int> kind: Main.dialog;
+    property <bool> writes: root.kind == 1 || root.kind >= 4;
+    property <string> tag: root.kind == 2 ? "UH OH" : root.kind == 3 ? "WAIT" : "";
+    background: #1410109e;
+    TouchArea { clicked => { root.close(); } }
+    plate := Rectangle {
+        width: min(parent.width - 48px, root.kind == 3 ? 360px : 340px);
+        height: box.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 - 30px;
+        InkShadow { off: 6px; }
+        Panel {
+            tag: root.tag;
+            TouchArea { }
+            box := VerticalLayout {
+                padding-left: 18px;
+                padding-right: 18px;
+                padding-top: 26px;
+                padding-bottom: 16px;
+                spacing: 7px;
+                // Titles drop their question mark (the copy rule in docs/device-themes.md).
+                if root.clip-name == "": Text {
+                    text: root.kind == 2 && Pages.delete-count > 1 ? "DELETE " + Pages.delete-count + " CLIPS" : root.title.to-uppercase();
+                    color: Comic.ink;
+                    font-family: "Bangers";
+                    font-size: 28px;
+                    letter-spacing: 1.2px;
+                    overflow: elide;
+                }
+                if root.clip-name != "": HorizontalLayout {
+                    spacing: 8px;
+                    alignment: start;
+                    Text {
+                        text: "DELETE";
+                        color: Comic.ink;
+                        font-family: "Bangers";
+                        font-size: 28px;
+                        letter-spacing: 1.2px;
+                        vertical-alignment: center;
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: min(cn.preferred-width + 10px, plate.width - 130px);
+                            height: 30px;
+                            background: Comic.yellow;
+                            border-width: 2px;
+                            border-color: Comic.ink;
+                            cn := Text {
+                                x: 5px;
+                                width: parent.width - 10px;
+                                text: root.clip-name;
+                                color: Comic.ink;
+                                font-family: "Comic Neue";
+                                font-weight: 700;
+                                font-size: 22px;
+                                vertical-alignment: center;
+                                overflow: elide;
+                            }
+                        }
+                    }
+                }
+                if root.note != "": Text {
+                    text: root.note;
+                    color: Comic.sub;
+                    font-family: "Comic Neue";
+                    font-weight: 700;
+                    font-size: 13.5px;
+                    wrap: word-wrap;
+                }
+                if root.writes: VerticalLayout {
+                    padding-top: 5px;
+                    spacing: 6px;
+                    Text {
+                        text: root.field.to-uppercase();
+                        color: Comic.red;
+                        font-family: "Bangers";
+                        font-size: 12px;
+                        letter-spacing: 1.2px;
+                    }
+                    Field {
+                        height: 38px;
+                        font-size: 15px;
+                        label: root.field;
+                        text <=> Main.dialog-text;
+                        init => { self.grab(); }
+                        accepted => { if (root.ok-enabled) { root.confirm(); } }
+                    }
+                }
+                HorizontalLayout {
+                    padding-top: 10px;
+                    alignment: end;
+                    spacing: 8px;
+                    Btn { height: 32px; text: "Cancel"; clicked => { root.close(); } }
+                    if root.kind == 3: Btn { height: 32px; text: "Discard changes"; clicked => { root.discard(); } }
+                    Btn {
+                        height: 32px;
+                        primary: true;
+                        red: root.kind == 2;
+                        text: root.ok;
+                        enabled: root.ok-enabled;
+                        clicked => { root.confirm(); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// New words being spoken: a splash panel (MEANWHILE) with the stage, a red halftone bar,
+// the percent in a caption and Cancel. It blocks clicks and dims the page darker.
+export component Speaking inherits Rectangle {
+    callback cancel();
+    background: #141010c7;
+    TouchArea { }
+    Rectangle {
+        width: min(parent.width - 48px, 340px);
+        height: box.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 - 30px;
+        InkShadow { off: 6px; }
+        Panel {
+            tag: "MEANWHILE";
+            box := VerticalLayout {
+                padding-left: 18px;
+                padding-right: 18px;
+                padding-top: 26px;
+                padding-bottom: 16px;
+                spacing: 7px;
+                Text {
+                    text: "SPEAKING NEW WORDS";
+                    color: Comic.ink;
+                    font-family: "Bangers";
+                    font-size: 28px;
+                    letter-spacing: 1.2px;
+                    wrap: word-wrap;
+                }
+                Text {
+                    text: Pages.speak-stage;
+                    color: Comic.sub;
+                    font-family: "Comic Neue";
+                    font-weight: 700;
+                    font-size: 13.5px;
+                    wrap: word-wrap;
+                }
+                HorizontalLayout {
+                    padding-top: 6px;
+                    spacing: 10px;
+                    VerticalLayout {
+                        alignment: center;
+                        horizontal-stretch: 1;
+                        InkBar { value: Pages.speak-progress; }
+                    }
+                    Caption {
+                        width: pct.preferred-width + 16px;
+                        height: 24px;
+                        pct := Text {
+                            y: 1px;
+                            height: parent.height - 1px;
+                            width: parent.width;
+                            text: round(Pages.speak-progress * 100) + "%";
+                            color: Comic.ink;
+                            font-family: "Bangers";
+                            font-size: 15px;
+                            letter-spacing: 1px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    padding-top: 10px;
+                    alignment: end;
+                    Btn { height: 32px; text: "Cancel"; clicked => { root.cancel(); } }
+                }
+            }
+        }
+    }
+}
+
+// Files dragged over the window: the page fades to paper behind a yellow and ink frame,
+// with the plus burst and DROP TO IMPORT in a caption.
+export component Drop inherits Rectangle {
+    property <bool> hi: 1phx < 0.7px;
+    background: #fdf4dcdb;
+    Rectangle {
+        x: 12px;
+        y: 12px;
+        width: parent.width - 24px;
+        height: parent.height - 24px;
+        border-width: 5px;
+        border-color: Comic.ink;
+        Rectangle { x: 5px; y: 5px; width: parent.width - 10px; height: parent.height - 10px; border-width: 5px; border-color: Comic.yellow; }
+        Rectangle { x: 10px; y: 10px; width: parent.width - 20px; height: parent.height - 20px; border-width: 3px; border-color: Comic.ink; }
+        VerticalLayout {
+            alignment: center;
+            spacing: 14px;
+            HorizontalLayout {
+                alignment: center;
+                Image {
+                    width: 150px;
+                    height: 150px;
+                    source: root.hi ? @image-url("x-comic/plus-l@2x.png") : @image-url("x-comic/plus-l.png");
+                    image-fit: fill;
+                    accessible-role: none;
+                }
+            }
+            HorizontalLayout {
+                alignment: center;
+                Rectangle {
+                    width: dt.preferred-width + 30px;
+                    height: 40px;
+                    InkShadow { off: 4px; }
+                    Rectangle {
+                        background: Comic.yellow;
+                        border-width: 2.5px;
+                        border-color: Comic.ink;
+                        dt := Text {
+                            y: 3px;
+                            height: parent.height - 3px;
+                            width: parent.width;
+                            text: "DROP TO IMPORT";
+                            color: Comic.ink;
+                            font-family: "Bangers";
+                            font-size: 26px;
+                            letter-spacing: 1.2px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -124,8 +124,9 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
 theme "Desktop 95", index 10 in `Theme.names`), art in `ui/skins/dv-os95/`, fonts Pixel 95
 and VT323 (the same `VT323-400.ttf` as Phosphor: its Latin subset covers the ASCII this
 skin needs, with the same outlines and metrics).
-- `Theme.pages` says how the other pages are built: 1 for Tape Deck, 2 for Phosphor (since
-  its pages were built), else 0, the classic pages in the theme's palette. A skin whose other pages are not built yet keeps them
+- `Theme.pages` says how the other pages are built: 1 for Tape Deck, 2 for Phosphor, 3 for
+  Desktop 95 and 4 for the Comic Book (each since its pages were built), else 0, the classic
+  pages in the theme's palette. A skin whose other pages are not built yet keeps them
   classic this way; `app.slint` picks the main page by `Theme.skin` and the rest by
   `Theme.pages`. Desktop 95's palette is grey and navy for those pages.
 - The scope and the LED level follow `Main.live` like the classic meter, so the skin needs
@@ -210,8 +211,8 @@ shared widgets draw the 95 look.
   `Meter`, `InkBars`, `PlayDot`), ready for the other pages. Fonts Bangers 400 and Comic
   Neue 700 (OFL, Latin subset, 92 KB); Bangers' 5 has a flat top and a sharp corner, so it
   does not read as S. Art: 23 PNGs, 459 KB (`sh tools/skin-art/cut.sh x-comic OUT`).
-- The theme is index 11 in `Theme.names`, `Theme.skins` 4. Its other pages are the classic
-  ones in its light palette (`Theme.pages` 0, like every skin without its own pages).
+- The theme is index 11 in `Theme.names`, `Theme.skins` 4. Its other pages have their own
+  look since 2026-10-30 (`Theme.pages` 4, see "Built in step 5, Comic Book other pages").
 - While recording, Pause is a small caption under the burst (the mockup's unused
   `burstlbl` style); Import stays in the toolbar, disabled, as in the classic look. The
   STOP burst boils between two inked frames at `RECORDING_FPS` 6.
@@ -709,6 +710,90 @@ their 1x cut). Its other pages are the classic ones in a mahogany and brass pale
   Ember, Tape Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700
   match before and after.
 
+**Built in step 5, Comic Book other pages (2026-10-30):** mockups in
+`docs/mockups/device-themes/x-comic-pages/` (approved by Max 2026-10-30), built as Tape Deck's
+step 3 was.
+- `ui/skins/x-comic-pages.slint`: `ClipPage`, `SettingsPage`, `ModelsPage`, `MergePage`,
+  `AskPage`, `Widget`, `Dialog`, `Speaking` and `Drop`, picked in `app.slint` with
+  `Theme.pages == 4` (`Theme.pages` is 4 for skin 4; every other value is as before). They
+  reuse the main page's parts (`x-comic-parts.slint`: `Box`, `Caption`, `Tag`, `Bubble`, now
+  with `tail-left`, `Meter`, `Dots`, `InkBtn`) and its logo, fonts and halftone tiles.
+- The clip's name speaks in a bubble on the NOW SHOWING splash panel with the yellow counter
+  caption and the Rename and Delete ink keys; the waveform is an inked strip (played part
+  red, the playhead an ink line with a red flag, trimmed ends under grey halftone, yellow tabs
+  as the trim handles, `TrimTouch` as before); Speed is a five cell strip, Loop a key that
+  sinks while on; Export is the red key in the halftone footer. Settings are tagged white
+  cards on a hard shadow with an inked scroll rail; the models are collector cards (pips for
+  quality and speed, the one in use yellow with the IN USE stamp); merging is a crossover
+  issue (a cell per clip and a plus burst, wide) with the order as numbered speech bubbles;
+  Ask is a thought bubble field and the answer a speech bubble with the ANSWER caption; the
+  widget is the mockup's variant A (one halftone panel: status caption, timer bubble, REC or
+  STOP burst, Pause beside it while recording, a tiny BZZZT meter, red frame while
+  recording); questions are white splash panels (tags UH OH for a delete, WAIT for unsaved
+  changes, MEANWHILE for speaking new words); Drop to import is a yellow and ink frame with
+  a plus burst.
+- The shared widgets draw the comic look when `Theme.comic` is set, next to the deck look:
+  `Btn` (ink key, yellow main action, red for `red` or `danger`), `IconBtn`, `Toggle` (inked
+  pill, yellow and a red knob when on), `Select` (yellow caption picker, a white panel list,
+  the current line yellow with a red edge), `MenuCard`, `MenuRow` (new `caption` for the
+  project names in Bangers capitals), `MenuRule` and `MenuTag` (new: the rule and the ink
+  group tags AUDIO and TRANSCRIPT), `ExportItem`, `ExportButton`, `ProjectMenu`, `ShortcutBox`
+  (ink key caps, PRESS THE KEYS in a yellow caption), `OrderList` (grip, red place circle,
+  play dot, the clip as a bubble), `TranscriptCard` (a tagged panel: TRANSCRIPT, TYPING with a
+  red frame, SUMMARY, TRANSLATION; the spoken word boxed in yellow, tags in blue), `Tip` (a
+  small yellow caption), `Scroller.ink-rail` and the theme gallery strips (`gallery.slint`:
+  ink tags, ink frames, the current tile red framed with the PICKED stamp and its name in a
+  yellow caption, a yellow and ink ring for the keyboard focus). The `Comic` inks moved to
+  `common.slint` (re-exported by the parts file) with `InkShadow`, the hard shadow.
+- Rust: the editor's pause tags are blue for the Comic Book (`edit_markup`), as it shows them.
+- Art (all from `tools/skin-art/x-comic.html`, `sh tools/skin-art/cut.sh x-comic OUT`, 11 new
+  pieces at 1x and 2x, about 0.23 MB): the small masthead `logo-s`, the page titles
+  (`title-settings`, `-models`, `-ask`, `-merge`, red letters with an ink edge and a yellow
+  shadow), the tilted `inuse` stamp, the widget bursts `wrec` and `wstop` (two frames), the
+  plus bursts `plus-s` and `plus-l`, and the `dots-red` tile of the progress bars.
+- The flavour captions stay (NOW SHOWING, MEANWHILE, UH OH, WAIT, CROSSOVER, THE MODEL RACK,
+  FIND A MODEL, ANSWER, SOURCES). Dialog titles drop the question mark (the copy rule): the
+  comic dialog writes "DELETE 3 CLIPS" itself and shows a single clip's name in a yellow box;
+  the classic and Tape Deck dialogs are unchanged.
+
+**Lessons from the Comic Book pages:**
+- **A hard shadow is a child drawn first.** A Rectangle's own background and border are
+  painted under its children, so a shadow child would cover the face: the widget itself is
+  transparent in the comic look and draws `InkShadow` (offset copy) then the face. A popup's
+  children may draw outside it, so `MenuCard`'s 5px shadow sits outside the popup box.
+- **Keep implicit placement when sharing a part.** The menus' hairlines had no `y` and were
+  centred in their 9px row; the shared `MenuRule` keeps `(height - 1px) / 2` for the other
+  looks, or Ember's rules would have moved 4px. A Text without `x`/`width` in a Rectangle is
+  centred too, so the comic's "Not set" is its own Text rather than a changed binding.
+- **A property can shadow an enum value:** in a component with `in property <bool> right`,
+  `horizontal-alignment: right` fails ("Cannot convert bool to TextHorizontalAlignment").
+  Write `TextHorizontalAlignment.right`, and `LayoutAlignment.center` in ternaries.
+- **No widths from a sibling layout:** a bubble bounded by its column's width (`most: tl.width`)
+  loops through the layout; the room comes from the page width instead.
+- **A wrapping column FlexboxLayout wraps** into a second column when its height is short (the
+  wide shelf chips); a plain VerticalLayout per chip holds them in one column.
+- **Checks:** `slint-viewer --check app.slint` (1.18.1, in `~/.cargo/bin`) compiles the whole UI
+  in seconds without a window; run it before the 20 to 40 minute build in the shared target.
+  The shared target has no hashed copy of `thrasher.exe` in `deps/`, so copy
+  `release/thrasher.exe` right after the build. UI Automation does not see list rows scrolled
+  out of view, so drive visible clips (`clip_001`, `clip_109`); the transcription and Ask pages
+  need `thrasher-transcribe.exe` and `thrasher-ask.exe` beside the test copy. Tooltips and file
+  drops cannot be shown headless; the answer came at once, so Ask's THINKING was not seen.
+
+**Budgets measured on the Comic Book pages** (test copy, 2.25x display, 10 s samples, 2026-10-30):
+- CPU idle 0.0 to 0.6% on every page at 520x700 and 1100x700 (Ember 0.0 to 0.8%); a clip
+  playing on its page 25.2% and 28.4% (Ember 27.8% and 30.2%). Nothing on these pages moves
+  on the clock (the widget's STOP burst boils only while recording, as on the main page).
+- Working set within 3 MB of Ember on every page: main 42.9 vs 42.5 MB, one clip 76.2 vs
+  76.9 MB, settings 227.0 vs 226.3 MB after a clip was played (wide 237.1 vs 235.1 MB).
+- Exe +9.89 MB (77.76 to 87.64 MB; Tape Deck's step 3 was +10.35 MB): art 0.23 MB, the rest
+  generated code for the pages and the comic look in the shared widgets. Ember and Tape Deck:
+  every page (main, both clip pages, settings top and end, models, Ask, merge, rename, delete,
+  widget) and the shared menus, dropdowns and order lists (project menu, clip menu with its
+  Export and Move to submenus, the clip's export and translate menus, the editor, a settings
+  dropdown, the hotkey listening, merge and a merge row playing) at 520x700 and 1100x700
+  match before and after, pixel for pixel.
+
 ### Recipe from the pilot (follow it for the other skins)
 
 - **Art:** an element page `tools/skin-art/<skin>.html` draws each fixed piece of the
@@ -1178,6 +1263,7 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      page").
      Desktop 95's other pages: built 2026-10-30 (see "Built in step 5, Desktop 95 on every
      other page").
+     Comic Book built 2026-10-30 (`Theme.pages` 4, widget variant A).
    - Other pages, batch 2 (Pocket, Quest Menu, Brick Phone, Answering Machine, Pocket Synth,
      Fighter Select) and batch 3 (Cozy Cabin, Pinball, Phonograph): mockups next.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

@@ -2519,7 +2519,8 @@ fn main() -> Result<(), slint::PlatformError> {
             {
                 // Tape Deck types the tags in a darker amber, readable on its cream card;
                 // Phosphor in its amber, as its pause tags show outside the editor;
-                // Desktop 95 in the blue of its links, on Notepad's white page.
+                // Desktop 95 in the blue of its links, on Notepad's white page; the Comic
+                // Book letters them in blue, as it shows them.
                 let ui = weak.unwrap();
                 let theme = ui.global::<Theme>();
                 let accent = if theme.get_tape() {
@@ -2528,6 +2529,8 @@ fn main() -> Result<(), slint::PlatformError> {
                     slint::Color::from_rgb_u8(0xff, 0xb8, 0x4d)
                 } else if theme.get_os95() {
                     slint::Color::from_rgb_u8(0x1c, 0x3f, 0xa8)
+                } else if theme.get_comic() {
+                    slint::Color::from_rgb_u8(0x2a, 0x6f, 0xdb)
                 } else {
                     theme.get_accent()
                 };

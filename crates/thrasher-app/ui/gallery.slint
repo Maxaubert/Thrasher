@@ -544,3 +544,24 @@ export component ThemeGallery inherits VerticalLayout {
         up => { classic.focus-in(); }
     }
 }
+
+// Both groups side by side, for a wide page (Phosphor's settings).
+export component ThemeGallerySide inherits HorizontalLayout {
+    callback picked(int);
+    spacing: 22px;
+    classic := Strip {
+        horizontal-stretch: 1;
+        title: "Classic";
+        tiles: Gallery.classic;
+        classic: true;
+        picked(i) => { root.picked(i); }
+        down => { devices.focus-in(); }
+    }
+    devices := Strip {
+        horizontal-stretch: 1;
+        title: "Devices";
+        tiles: Gallery.shown;
+        picked(i) => { root.picked(i); }
+        up => { classic.focus-in(); }
+    }
+}

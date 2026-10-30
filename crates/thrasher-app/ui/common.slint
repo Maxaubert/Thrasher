@@ -1990,6 +1990,17 @@ export component OrderList inherits Rectangle {
             }
         }
     }
+    // Phosphor: a dashed slot where the dragged row would land.
+    if Theme.phos && root.dragging >= 0: Rectangle {
+        x: 0;
+        y: root.target * root.row-h + 2px;
+        width: root.width;
+        height: root.row-h - 4px;
+        PhDash { x: 0; y: 0; width: parent.width; height: 1px; }
+        PhDash { x: 0; y: parent.height - 1px; width: parent.width; height: 1px; }
+        PhDash { x: 0; y: 0; width: 1px; height: parent.height; down: true; }
+        PhDash { x: parent.width - 1px; y: 0; width: 1px; height: parent.height; down: true; }
+    }
     for r[i] in root.rows: Rectangle {
         // The dragged row follows the mouse, raised, buttons and all; the others make
         // room where it would land.
@@ -2834,7 +2845,20 @@ export component ShortcutBox inherits Rectangle {
             vertical-alignment: center;
         }
     }
-    if !root.listening && root.keys.length == 0: Text {
+    // Phosphor: dim and flush right, where the key caps end.
+    if !root.listening && root.keys.length == 0 && Theme.phos: Text {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        text: "not set";
+        color: Theme.dim;
+        font-family: Ph.mono;
+        font-size: 12px;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+    if !root.listening && root.keys.length == 0 && !Theme.phos: Text {
         text: Theme.tape ? "NOT SET" : Theme.phos ? "not set" : "Not set";
         color: Theme.tape ? #8d7d6a : Theme.dim;
         font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : "Inter Tight";

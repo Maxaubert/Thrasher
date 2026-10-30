@@ -10,7 +10,7 @@
 // card, menus, dropdowns, switches, boxed keys) draw their terminal look themselves for this
 // skin (`Theme.phos`).
 
-import { ThemeGallery } from "../gallery.slint";
+import { ThemeGallery, ThemeGallerySide } from "../gallery.slint";
 import { Theme, Main, Pages, Tips, Ph, PhDash, PhShade, Btn, IconBtn, Toggle, Select, TextField, ShortcutBox, Scroller, OrderList, TranscriptCard, ExportButton, TrimTouch, AskSource, PhKey as Kbd } from "../common.slint";
 import { Block, Glyph, Caps, Title, Header, Glass } from "phosphor-parts.slint";
 
@@ -937,10 +937,12 @@ export component SettingsPage inherits Rectangle {
                 padding-bottom: 18px;
                 alignment: start;
                 spacing: 16px;
-                // The theme gallery, across the whole page when it is wide.
+                // The theme gallery; wide puts its two strips side by side, so the page
+                // fits without scrolling.
                 Section {
                     title: "APPEARANCE";
-                    ThemeGallery { picked(i) => { root.theme-changed(i); } }
+                    if !root.wide: ThemeGallery { picked(i) => { root.theme-changed(i); } }
+                    if root.wide: ThemeGallerySide { picked(i) => { root.theme-changed(i); } }
                 }
                 FlexboxLayout {
                     flex-direction: root.wide ? FlexboxLayoutDirection.row : FlexboxLayoutDirection.column;

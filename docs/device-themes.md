@@ -791,6 +791,9 @@ their 1x cut). Its other pages are the classic ones in a mahogany and brass pale
   words bright, the word playing inverted, pause tags amber, "-- INSERT --" and a block
   cursor while typing) and `Tip`. The gallery (`gallery.slint`) has a Phosphor tile: a thin
   frame, its name inverted on the current one.
+- Review fixes (2026-10-30): wide settings use `ThemeGallerySide` (both strips side by
+  side, as the mockup), so the page fits 1100x700 without scrolling; "not set" in the
+  hotkey box sits flush right; a dragged order row leaves a dashed slot where it lands.
 - Rust: the editor's pause tags are Phosphor's amber (`Theme.phos`).
 - No new art or fonts: the pages reuse the main page's PNGs (dash, vdash, dither, halo,
   vignette) and its two fonts.

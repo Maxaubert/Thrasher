@@ -1,0 +1,2939 @@
+// The Brick Phone look of every page but the main one (mockups in
+// docs/mockups/device-themes/dv-brick-pages/): each page is one screen of the handset's
+// amber LCD, and the same keys keep their jobs on every page. The green call key is the
+// page's go key (Export, Merge, Ask), the red end key goes back, the soft keys under the
+// screen do what their LCD labels say and the rocker plays and seeks (the clip) or
+// scrolls (settings, models, Ask). Portrait windows slide the keypad away so the LCD
+// grows; wide ones keep it on the left wing, where its digits only show (no new keyboard
+// behaviour). The widget is the mini handset (variant A); every question is an LCD box
+// with a double ink frame over a dithered screen, its answers on the soft keys.
+//
+// Behaviour is shared: the state is in the Pages and Main globals, the actions are
+// AppWindow's (reached through the callbacks here), and the shared widgets (the
+// transcript card, menus, dropdowns, switches, buttons, the gallery) draw their LCD look
+// themselves for this skin (`Theme.brick`). The parts are dv-brick-parts.slint's.
+
+import { ThemeGallery } from "../gallery.slint";
+import { Theme, Main, Pages, Tips, Brick, BrickPx, BrickNum, Btn, IconBtn, Toggle, Select, TextField, ShortcutBox, Scroller, OrderList, TranscriptCard, TrimTouch, AskSource, MenuCard, ExportChoices, ExportSize } from "../common.slint";
+import { Art, Tile, KeyFace, Key, KeyIcon, KeyWord, Digit, Caps, Grille, Shell, Top, Sig, Timer, Bezel, KeyRow, PadFace, Cap, Hand, LcdGlass, LcdCorners, Battery } from "dv-brick-parts.slint";
+
+// ---------- Small parts of the LCD ----------
+
+// Words on the LCD (VT323).
+component Words inherits Text {
+    color: Brick.ink;
+    font-family: Brick.words;
+    font-size: 17px;
+    vertical-alignment: center;
+    // A label that only shows (the soft key words on the LCD) stays silent: `none` set on
+    // an instance alone still lists it, named by its text.
+    accessible-label: self.accessible-role == AccessibleRole.none ? "" : self.text;
+}
+
+// Figures in Brick Figures with the LCD's ghost 2 px down and right, as the main page's
+// timer; the figures are all one width, so a running time holds still.
+component Fig inherits Rectangle {
+    in property <string> text;
+    in property <length> size: 34px;
+    width: big.preferred-width + 2px;
+    height: round(root.size * 0.74 / 1px) * 1px;
+    accessible-role: AccessibleRole.text;
+    accessible-label: root.text;
+    Text {
+        x: 2px;
+        y: 2px - root.size * 0.24;
+        text: root.text;
+        color: Brick.ghost;
+        font-family: Brick.figures;
+        font-size: root.size;
+        font-weight: 700;
+        accessible-role: none;
+    }
+    big := Text {
+        x: 0;
+        y: -root.size * 0.24;
+        text: root.text;
+        color: Brick.ink;
+        font-family: Brick.figures;
+        font-size: root.size;
+        font-weight: 700;
+        accessible-role: none;
+    }
+}
+
+// A white tile repeated along a rule, in the ink's rule colour (dashed or dotted).
+component Rule inherits Tile {
+    in property <bool> dotted;
+    in property <bool> down;
+    source: root.dotted ? @image-url("dv-brick/t-dot.png") : root.down ? @image-url("dv-brick/t-dashv.png") : @image-url("dv-brick/t-dash.png");
+    tint: Brick.rule;
+}
+
+// An inverted tag in small caps (PLAYING, IN USE, ANSWER).
+component Tag inherits Rectangle {
+    in property <string> text;
+    in property <length> size: 8px;
+    width: tag-text.preferred-width + 8px;
+    height: 11px;
+    background: Brick.ink;
+    tag-text := Text {
+        x: 4px;
+        y: 0;
+        height: parent.height;
+        text: root.text;
+        color: Brick.lcd1;
+        font-family: Brick.caps;
+        font-size: root.size;
+        letter-spacing: 0.4px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+}
+
+// The name of a group: its small caps, then a dashed rule to the end of the row.
+component Grp inherits HorizontalLayout {
+    in property <string> text;
+    height: 14px;
+    spacing: 6px;
+    Caps { text: root.text; horizontal-stretch: 0; }
+    Rectangle {
+        horizontal-stretch: 1;
+        Rule { x: 0; y: (parent.height - 1px) / 2; width: parent.width; height: 1px; }
+    }
+}
+
+// A block bar: segments in an ink frame, as many dark as it has done.
+component Blocks inherits Rectangle {
+    in property <float> value;
+    in property <int> n: 20;
+    height: 8px;
+    border-width: 1px;
+    border-color: Brick.ink;
+    for k in root.n: Rectangle {
+        x: 2px + k * (root.width - 4px) / root.n;
+        y: 2px;
+        width: (root.width - 4px) / root.n - 1px;
+        height: root.height - 4px;
+        background: (k + 0.5) / root.n <= clamp(root.value, 0, 1) ? Brick.ink : Brick.ghost;
+    }
+}
+
+// The line along the foot of a page's LCD: the export running (its name and a block
+// bar), else the latest message.
+component StatusLine inherits Rectangle {
+    in property <bool> big;
+    height: root.big ? 24px : 20px;
+    vertical-stretch: 0;
+    Rectangle { x: 0; y: 0; height: 2px; background: Brick.ink; }
+    HorizontalLayout {
+        y: 2px;
+        height: parent.height - 2px;
+        spacing: 8px;
+        if Main.export-state == 1: Words {
+            text: "Exporting " + Main.export-name;
+            font-size: root.big ? 18px : 16px;
+            overflow: elide;
+            horizontal-stretch: 0;
+            max-width: root.width * 0.55;
+        }
+        if Main.export-state == 1: VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            Blocks { value: Main.export-progress; }
+        }
+        if Main.export-state == 1: Caps { text: round(Main.export-progress * 100) + "%"; }
+        if Main.export-state == 2: VerticalLayout {
+            alignment: center;
+            BrickPx { source: @image-url("dv-brick/x-check.png"); }
+        }
+        if Main.export-state != 1: Words {
+            text: Main.export-state == 2 ? "Exported " + Main.export-name : Main.status;
+            font-size: root.big ? 18px : 16px;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+    }
+}
+
+// Five signal pips: a model's quality or speed.
+component Pips inherits HorizontalLayout {
+    in property <int> value;
+    spacing: 1px;
+    for k in 5: VerticalLayout {
+        alignment: center;
+        Rectangle { width: 5px; height: 7px; background: k < root.value ? Brick.ink : Brick.ghost; }
+    }
+}
+
+// An LCD button with a text, for the places that need a plain one inside a row (the
+// shared Btn draws the same look for this skin).
+component Lb inherits Btn {
+    height: 20px;
+}
+
+// A line of settings: its name (and a note in small caps under it), its controls on the
+// right, a dotted rule under it.
+component SRow inherits Rectangle {
+    in property <string> label;
+    in property <string> note;
+    in property <bool> big;
+    min-height: 24px;
+    vertical-stretch: 0;
+    Rule { dotted: true; x: 0; y: parent.height - 1px; width: parent.width; height: 1px; }
+    HorizontalLayout {
+        padding-top: 2px;
+        padding-bottom: 3px;
+        spacing: 6px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Words {
+                text: root.label;
+                font-size: root.big ? 18px : 17px;
+                height: 15px;
+                overflow: elide;
+            }
+            if root.note != "": Caps {
+                text: root.note.to-uppercase();
+                font-size: 7px;
+                opacity: 0.75;
+                overflow: elide;
+            }
+        }
+        HorizontalLayout {
+            alignment: end;
+            spacing: 4px;
+            @children
+        }
+    }
+}
+
+// The head of a settings section: its number, its name and a 2 px rule.
+component Sec inherits HorizontalLayout {
+    in property <int> n;
+    in property <string> title;
+    height: 26px;
+    padding-top: 8px;
+    padding-bottom: 2px;
+    spacing: 6px;
+    vertical-stretch: 0;
+    VerticalLayout { alignment: center; BrickNum { text: root.n; } }
+    Caps { text: root.title; }
+    Rectangle {
+        horizontal-stretch: 1;
+        Rectangle { x: 0; y: (parent.height - 2px) / 2; height: 2px; background: Brick.ink; }
+    }
+}
+
+// A field on the LCD.
+component Field inherits TextField {
+    height: 24px;
+    side: 6px;
+}
+
+// ---------- The handset ----------
+
+// The keypad of a wide page's left wing: its digits and letters only show.
+component DeadPad inherits Rectangle {
+    width: 146px;
+    height: 230px;
+    for k[i] in [
+        { d: "1", w: "" }, { d: "2", w: "ABC" }, { d: "3", w: "DEF" },
+        { d: "4", w: "GHI" }, { d: "5", w: "JKL" }, { d: "6", w: "MNO" },
+        { d: "7", w: "PQRS" }, { d: "8", w: "TUV" }, { d: "9", w: "WXYZ" },
+        { d: "*", w: "+" }, { d: "0", w: "SPACE" }, { d: "#", w: "SHIFT" },
+    ]: KeyFace {
+        x: Math.mod(i, 3) * 51px;
+        y: floor(i / 3) * 60px;
+        width: 43px;
+        height: 50px;
+        kind: 10;
+        PadFace {
+            width: parent.width;
+            height: parent.height;
+            big: true;
+            digit: k.d;
+            word: k.w;
+        }
+    }
+}
+
+// The nav rocker of a page. `mode` 0 only shows; 1 scrolls the page (up and down); 2 is
+// the clip's: left and right seek 5 seconds, the middle plays or pauses.
+component Rocker inherits Rectangle {
+    in property <bool> big;
+    in property <int> mode;
+    in property <bool> playing;
+    callback up();
+    callback down();
+    callback left();
+    callback right();
+    callback ok();
+    property <length> ok-d: root.big ? 46px : 38px;
+    property <length> arrow-y: root.big ? 8px : 4px;
+    width: root.big ? 112px : 124px;
+    height: root.big ? 112px : 76px;
+    Art {
+        x: -6px;
+        y: -2px;
+        width: root.width + 12px;
+        height: root.height + 10px;
+        lo: root.big ? @image-url("dv-brick/nav-w.png") : @image-url("dv-brick/nav-p.png");
+        hi: root.big ? @image-url("dv-brick/nav-w@2x.png") : @image-url("dv-brick/nav-p@2x.png");
+    }
+    // Up and down: icons, or the scroll keys.
+    if root.mode != 1: KeyIcon {
+        x: (parent.width - self.width) / 2;
+        y: root.arrow-y;
+        width: 12px;
+        height: 12px;
+        lo: @image-url("dv-brick/i-up12.png");
+        hi: @image-url("dv-brick/i-up12@2x.png");
+        tint: Brick.silver;
+        opacity: 0.8;
+    }
+    if root.mode != 1: KeyIcon {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - root.arrow-y - self.height;
+        width: 12px;
+        height: 12px;
+        lo: @image-url("dv-brick/i-down12.png");
+        hi: @image-url("dv-brick/i-down12@2x.png");
+        tint: Brick.silver;
+        opacity: 0.8;
+    }
+    for k in (root.mode == 1 ? 2 : 0): Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: k == 0 ? 0 : (parent.height + root.ok-d) / 2;
+        width: root.big ? 60px : 84px;
+        height: (parent.height - root.ok-d) / 2;
+        accessible-role: button;
+        accessible-label: k == 0 ? "Scroll up" : "Scroll down";
+        accessible-action-default => { if (k == 0) { root.up(); } else { root.down(); } }
+        KeyIcon {
+            x: (parent.width - self.width) / 2;
+            y: (k == 0 ? root.arrow-y : parent.height - root.arrow-y - self.height) + (st.pressed ? 1px : 0);
+            width: 12px;
+            height: 12px;
+            lo: k == 0 ? @image-url("dv-brick/i-up12.png") : @image-url("dv-brick/i-down12.png");
+            hi: k == 0 ? @image-url("dv-brick/i-up12@2x.png") : @image-url("dv-brick/i-down12@2x.png");
+            tint: st.has-hover ? Brick.amber : Brick.silver;
+            opacity: st.has-hover ? 1 : 0.8;
+        }
+        property <bool> hovering: st.has-hover;
+        changed hovering => { Tips.hover(self.hovering, k == 0 ? "Scroll up" : "Scroll down", self.absolute-position, self.width, self.height); }
+        st := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { Tips.hide(); if (k == 0) { root.up(); } else { root.down(); } }
+        }
+    }
+    // Left and right: back and forward 5 seconds, with the 5 over them.
+    for k in (root.mode == 2 ? 2 : 0): Rectangle {
+        x: k == 0 ? 0 : (parent.width + root.ok-d) / 2;
+        y: (parent.height - self.height) / 2;
+        width: (parent.width - root.ok-d) / 2;
+        height: root.big ? 60px : 52px;
+        accessible-role: button;
+        accessible-label: k == 0 ? "Back 5 seconds" : "Forward 5 seconds";
+        accessible-action-default => { if (k == 0) { root.left(); } else { root.right(); } }
+        KeyIcon {
+            x: k == 0 ? (root.big ? 10px : 9px) : parent.width - (root.big ? 10px : 9px) - self.width;
+            y: (parent.height - self.height) / 2 + 3px + (sk.pressed ? 1px : 0);
+            width: 12px;
+            height: 12px;
+            lo: k == 0 ? @image-url("dv-brick/i-left12.png") : @image-url("dv-brick/i-right12.png");
+            hi: k == 0 ? @image-url("dv-brick/i-left12@2x.png") : @image-url("dv-brick/i-right12@2x.png");
+            tint: sk.has-hover ? Brick.amber : Brick.silver;
+            opacity: sk.has-hover ? 1 : 0.8;
+        }
+        Text {
+            x: k == 0 ? (root.big ? 12px : 11px) : parent.width - (root.big ? 12px : 11px) - 8px;
+            y: (parent.height - 12px) / 2 - 8px;
+            width: 8px;
+            text: "5";
+            color: Brick.amber;
+            font-family: Brick.keys;
+            font-size: 8px;
+            font-weight: 700;
+            horizontal-alignment: center;
+            accessible-role: none;
+        }
+        property <bool> hovering: sk.has-hover;
+        changed hovering => { Tips.hover(self.hovering, k == 0 ? "Back 5 seconds" : "Forward 5 seconds", self.absolute-position, self.width, self.height); }
+        sk := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { Tips.hide(); if (k == 0) { root.left(); } else { root.right(); } }
+        }
+    }
+    // The OK key: play or pause on the clip page, else it only shows.
+    Rectangle {
+        x: (parent.width - root.ok-d) / 2;
+        y: (parent.height - root.ok-d) / 2;
+        width: root.ok-d;
+        height: root.ok-d;
+        Art {
+            x: -2px;
+            y: -2px;
+            width: parent.width + 4px;
+            height: parent.height + 4px;
+            lo: root.big ? @image-url("dv-brick/ok-w.png") : @image-url("dv-brick/ok-p.png");
+            hi: root.big ? @image-url("dv-brick/ok-w@2x.png") : @image-url("dv-brick/ok-p@2x.png");
+        }
+        KeyIcon {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            width: root.big ? 16px : 14px;
+            height: self.width;
+            lo: root.playing ? (root.big ? @image-url("dv-brick/i-pause16.png") : @image-url("dv-brick/i-pause14.png"))
+                : (root.big ? @image-url("dv-brick/i-play16.png") : @image-url("dv-brick/i-play14.png"));
+            hi: root.playing ? (root.big ? @image-url("dv-brick/i-pause16@2x.png") : @image-url("dv-brick/i-pause14@2x.png"))
+                : (root.big ? @image-url("dv-brick/i-play16@2x.png") : @image-url("dv-brick/i-play14@2x.png"));
+            tint: Brick.amber;
+        }
+    }
+    if root.mode == 2: Rectangle {
+        x: (parent.width - root.ok-d) / 2;
+        y: (parent.height - root.ok-d) / 2;
+        width: root.ok-d;
+        height: root.ok-d;
+        border-radius: self.width / 2;
+        background: okt.has-hover ? (okt.pressed ? #00000038 : #ffffff0f) : transparent;
+        accessible-role: button;
+        accessible-label: root.playing ? "Pause" : "Play";
+        accessible-action-default => { root.ok(); }
+        property <bool> hovering: okt.has-hover;
+        changed hovering => { Tips.hover(self.hovering, root.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+        okt := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { Tips.hide(); root.ok(); }
+        }
+    }
+}
+
+// What a soft key shows: its word (a blank key shows nothing).
+component SoftFace inherits Rectangle {
+    in property <string> word;
+    KeyWord {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        text: root.word;
+        color: Brick.silver;
+        horizontal-alignment: center;
+    }
+}
+
+// The green key that exports (the clip page): EXPORT, the percent while it runs, DONE
+// for a moment; a click opens the export list on the LCD.
+component SendKey inherits Rectangle {
+    in property <bool> big;
+    // Where the list opens, from the key's corner (over the LCD).
+    in property <length> pop-x;
+    in property <length> pop-y;
+    callback export(int);
+    property <bool> busy: Main.export-state == 1;
+    accessible-role: button;
+    accessible-label: root.busy ? "Exporting " + round(Main.export-progress * 100) + "%" : "Export";
+    accessible-expandable: true;
+    accessible-action-default => { if (!root.busy) { popup.show(); } }
+    accessible-action-expand => { if (!root.busy) { popup.show(); } }
+    KeyFace {
+        kind: root.big ? 11 : 2;
+        hot: t.has-hover && !root.busy;
+        down: t.pressed && t.has-hover && !root.busy;
+        if !root.busy: KeyRow {
+            width: parent.width;
+            height: parent.height;
+            icon: root.big ? 18px : 14px;
+            lo: Main.export-state == 2 ? (root.big ? @image-url("dv-brick/i-check18.png") : @image-url("dv-brick/i-check14.png"))
+                : (root.big ? @image-url("dv-brick/i-send18.png") : @image-url("dv-brick/i-send14.png"));
+            hi: Main.export-state == 2 ? (root.big ? @image-url("dv-brick/i-check18@2x.png") : @image-url("dv-brick/i-check14@2x.png"))
+                : (root.big ? @image-url("dv-brick/i-send18@2x.png") : @image-url("dv-brick/i-send14@2x.png"));
+            word: Main.export-state == 2 ? "DONE" : "EXPORT";
+            tint: Brick.on-green;
+            ink: Brick.on-green;
+            word-size: root.big ? 10px : 8px;
+        }
+        KeyWord {
+            visible: root.busy;
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            text: round(Main.export-progress * 100) + "%";
+            color: Brick.on-green;
+            font-size: root.big ? 10px : 8px;
+            horizontal-alignment: center;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, "Export", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: !root.busy;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); popup.show(); }
+    }
+    popup := PopupWindow {
+        x: root.pop-x;
+        y: root.pop-y;
+        width: 250px;
+        height: 10px + Theme.menu-top + ExportSize.audio + (Pages.transcript != "" ? ExportSize.transcript : 0);
+        close-policy: close-on-click-outside;
+        MenuCard {
+            title: "Export";
+            VerticalLayout {
+                padding: 5px;
+                padding-top: 5px + Theme.menu-top;
+                ExportChoices {
+                    subtitles: Pages.transcript != "";
+                    format: Pages.export-format;
+                    choose(kind) => { popup.close(); root.export(kind); }
+                }
+            }
+        }
+    }
+}
+
+// The handset round a page: the shell, the bezel and the amber LCD with its title row
+// and soft key labels; under it the soft keys, the rocker and the green and red keys
+// (portrait), or the keypad on the left wing and the rocker and the call keys on the
+// right (wide). The page's contents go in the LCD (the children).
+component Phone inherits Rectangle {
+    in property <bool> wide;
+    // The LCD's title row: the page's name, a note in small caps and an inverted tag on
+    // the right.
+    in property <string> title;
+    in property <string> note;
+    in property <string> tag;
+    // The soft keys: their words ("" for a blank key that does nothing), accessible names
+    // and tips; and the LCD's labels for them along its foot (the middle one is the
+    // rocker's: 1 shows up and down arrows round it, 2 left and right).
+    in property <string> soft-l;
+    in property <string> soft-l-label;
+    in property <string> soft-l-tip: root.soft-l-label;
+    in property <bool> soft-l-enabled: true;
+    in property <string> soft-r;
+    in property <string> soft-r-label;
+    in property <string> soft-r-tip: root.soft-r-label;
+    in property <bool> soft-r-enabled: true;
+    in property <string> lcd-l;
+    in property <string> lcd-m;
+    in property <int> lcd-arrows;
+    in property <string> lcd-r;
+    in property <bool> lcd-r-on;
+    // The green key: 0 off (it only shows), 1 a key, 2 Export (with its list).
+    in property <int> green;
+    in property <string> green-word;
+    in property <string> green-label;
+    in property <string> green-tip: root.green-label;
+    in property <bool> green-enabled: true;
+    in property <image> green-icon;
+    in property <image> green-icon2;
+    in property <image> green-big;
+    in property <image> green-big2;
+    // The red key goes back.
+    in property <string> red-label: "Back";
+    in property <string> red-tip: "Back";
+    // The rocker (see Rocker) and the wide wing's captions.
+    in property <int> rocker;
+    in property <bool> playing;
+    in property <string> cap-n;
+    in property <string> cap-g;
+    in property <string> cap-r: "END TO GO BACK";
+    // A message floating over the LCD just above its foot.
+    in property <string> toast;
+    callback soft-left();
+    callback soft-right();
+    callback green-clicked();
+    callback red-clicked();
+    callback up();
+    callback down();
+    callback left();
+    callback right();
+    callback ok();
+    callback export(int);
+
+    property <length> bez-x: Hand.bez-x(root.wide);
+    property <length> bez-w: root.width - 2 * root.bez-x;
+    property <length> bez-h: Hand.bez-h(root.height, root.wide, 0);
+    property <length> bez-bottom: 58px + root.bez-h;
+    property <length> lcd-x: root.bez-x + 10px;
+    property <length> lcd-w: root.bez-w - 20px;
+    property <length> lcd-h: root.bez-h - 24px;
+    property <length> pad-x: root.wide ? 12px : 8px;
+    property <length> pad-top: root.wide ? 8px : 6px;
+    property <length> head-h: root.wide ? 26px : 22px;
+    property <length> soft-h: root.wide ? 20px : 18px;
+    // Portrait: the soft keys and the call keys beside the rocker.
+    property <length> ctrl-y: root.bez-bottom + 12px;
+    property <length> key-w: Hand.soft-w(root.width, false);
+    // Wide: the right wing closes up on a short window.
+    property <float> k: Hand.wing-k(root.height);
+    property <length> wing-y: Hand.wing-y(root.height);
+    property <length> pad-y: 58px + max(30px, (root.bez-h - 252px) / 2 - 55px + 22px);
+    // Where the green key sits.
+    property <length> green-x: root.wide ? root.width - 166px : 20px;
+    property <length> green-y: root.wide ? root.wing-y + 134px + 46px * root.k : root.ctrl-y + 44px;
+    property <length> green-w: root.wide ? 136px : root.key-w;
+    property <length> green-h: root.wide ? 54px : 32px;
+    background: Brick.bg;
+
+    Art {
+        x: root.wide ? 52px : 36px;
+        y: 0;
+        width: 34px;
+        height: 40px;
+        lo: @image-url("dv-brick/antenna.png");
+        hi: @image-url("dv-brick/antenna@2x.png");
+    }
+    Shell {
+        x: 0;
+        y: 12px;
+        width: root.width;
+        height: root.height - 12px;
+        rt: root.wide ? 40px : 34px;
+        rb: root.wide ? 40px : 52px;
+    }
+    Top {
+        x: 0;
+        y: 12px;
+        width: root.width;
+        wide: root.wide;
+    }
+    Art {
+        x: (parent.width - self.width) / 2;
+        y: root.wide ? 34px : 50px;
+        width: root.wide ? 72px : 62px;
+        height: root.wide ? 10px : 7px;
+        lo: root.wide ? @image-url("dv-brick/ear-w.png") : @image-url("dv-brick/ear-p.png");
+        hi: root.wide ? @image-url("dv-brick/ear-w@2x.png") : @image-url("dv-brick/ear-p@2x.png");
+    }
+    Bezel {
+        x: root.bez-x;
+        y: 58px;
+        width: root.bez-w;
+        height: root.bez-h;
+        big: root.wide;
+    }
+    LcdGlass {
+        x: root.lcd-x;
+        y: 72px;
+        width: root.lcd-w;
+        height: root.lcd-h;
+        // The title row: the signal bars (the input level), the name, a note, a tag and
+        // the battery, over a 2 px rule.
+        Rectangle {
+            x: root.pad-x;
+            y: root.pad-top;
+            width: parent.width - 2 * root.pad-x;
+            height: root.head-h;
+            Rectangle { x: 0; y: parent.height - 2px; height: 2px; background: Brick.ink; }
+            HorizontalLayout {
+                height: parent.height - 2px;
+                spacing: 8px;
+                VerticalLayout {
+                    alignment: center;
+                    Sig {
+                        n: 4;
+                        lo: 3px;
+                        top: 10px;
+                        bar: 3px;
+                        gap: 1px;
+                    }
+                }
+                Words {
+                    text: root.title;
+                    font-size: root.wide ? 26px : 22px;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+                if root.note != "": Caps { text: root.note.to-uppercase(); }
+                if root.tag != "": VerticalLayout { alignment: center; Tag { text: root.tag; } }
+                VerticalLayout { alignment: center; Battery { } }
+            }
+        }
+        // The page.
+        Rectangle {
+            x: root.pad-x;
+            y: root.pad-top + root.head-h + 6px;
+            width: parent.width - 2 * root.pad-x;
+            height: parent.height - root.pad-top - root.head-h - 6px - root.soft-h;
+            @children
+        }
+        // The soft key labels along the foot.
+        Rectangle {
+            x: 0;
+            y: parent.height - root.soft-h;
+            width: parent.width;
+            height: root.soft-h;
+            background: #3b1f051f;
+            Rectangle { x: 0; y: 0; height: 1px; background: #3b1f054d; }
+            Words {
+                x: root.wide ? 14px : 10px;
+                y: 0;
+                height: parent.height;
+                text: root.lcd-l;
+                font-size: root.wide ? 17px : 16px;
+                accessible-role: none;
+            }
+            HorizontalLayout {
+                x: (parent.width - self.width) / 2;
+                y: 0;
+                width: self.preferred-width;
+                height: parent.height;
+                spacing: 4px;
+                if root.lcd-arrows > 0: VerticalLayout {
+                    alignment: center;
+                    BrickPx { source: root.lcd-arrows == 1 ? @image-url("dv-brick/x-tri.png") : @image-url("dv-brick/x-lf.png"); }
+                }
+                Words {
+                    text: root.lcd-m;
+                    font-size: root.wide ? 17px : 16px;
+                    accessible-role: none;
+                }
+                if root.lcd-arrows > 0: VerticalLayout {
+                    alignment: center;
+                    BrickPx { source: root.lcd-arrows == 1 ? @image-url("dv-brick/x-trid.png") : @image-url("dv-brick/x-rt.png"); }
+                }
+            }
+            if root.lcd-r != "": Rectangle {
+                x: parent.width - (root.wide ? 14px : 10px) - self.width + (root.lcd-r-on ? 4px : 0);
+                y: root.lcd-r-on ? 1px : 0;
+                width: rlab.preferred-width + (root.lcd-r-on ? 8px : 0);
+                height: parent.height - (root.lcd-r-on ? 1px : 0);
+                background: root.lcd-r-on ? Brick.ink : transparent;
+                rlab := Words {
+                    x: root.lcd-r-on ? 4px : 0;
+                    y: 0;
+                    height: parent.height;
+                    text: root.lcd-r;
+                    color: root.lcd-r-on ? Brick.lcd1 : Brick.ink;
+                    font-size: root.wide ? 17px : 16px;
+                    accessible-role: none;
+                }
+            }
+        }
+        // A message, inverted, just above the foot.
+        if root.toast != "": Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: parent.height - root.soft-h - 12px - self.height;
+            width: min(toast-text.preferred-width + 20px, parent.width - 24px);
+            height: root.wide ? 24px : 22px;
+            background: Brick.ink;
+            Rectangle {
+                x: -2px;
+                y: -2px;
+                width: parent.width + 4px;
+                height: parent.height + 4px;
+                border-width: 2px;
+                border-color: Brick.lcd1;
+            }
+            toast-text := Words {
+                x: 10px;
+                width: parent.width - 20px;
+                height: parent.height;
+                text: root.toast;
+                color: Brick.lcd1;
+                font-size: root.wide ? 18px : 16px;
+                horizontal-alignment: center;
+                overflow: elide;
+            }
+        }
+        LcdCorners { x: 0; y: 0; width: parent.width; height: parent.height; }
+    }
+
+    // ----- Portrait keys -----
+    if !root.wide && root.soft-l == "": KeyFace {
+        x: 20px;
+        y: root.ctrl-y;
+        width: root.key-w;
+        height: 32px;
+        kind: 0;
+    }
+    if !root.wide && root.soft-l != "": Key {
+        x: 20px;
+        y: root.ctrl-y;
+        width: root.key-w;
+        height: 32px;
+        kind: 0;
+        label: root.soft-l-label;
+        tip: root.soft-l-tip;
+        enabled: root.soft-l-enabled;
+        clicked => { root.soft-left(); }
+        SoftFace { width: parent.width; height: parent.height; word: root.soft-l; }
+    }
+    if !root.wide && root.soft-r == "": KeyFace {
+        x: root.width - 20px - root.key-w;
+        y: root.ctrl-y;
+        width: root.key-w;
+        height: 32px;
+        kind: 1;
+    }
+    if !root.wide && root.soft-r != "": Key {
+        x: root.width - 20px - root.key-w;
+        y: root.ctrl-y;
+        width: root.key-w;
+        height: 32px;
+        kind: 1;
+        label: root.soft-r-label;
+        tip: root.soft-r-tip;
+        enabled: root.soft-r-enabled;
+        clicked => { root.soft-right(); }
+        SoftFace { width: parent.width; height: parent.height; word: root.soft-r; }
+    }
+    if !root.wide: Rocker {
+        x: (root.width - self.width) / 2;
+        y: root.ctrl-y;
+        mode: root.rocker;
+        playing: root.playing;
+        up => { root.up(); }
+        down => { root.down(); }
+        left => { root.left(); }
+        right => { root.right(); }
+        ok => { root.ok(); }
+    }
+    if !root.wide: Grille {
+        x: (root.width - self.width) / 2;
+        y: root.ctrl-y + 82px;
+        cols: 7;
+    }
+
+    // ----- Wide: the keypad on the left wing, the soft keys under the LCD -----
+    if root.wide: Cap {
+        x: 28px;
+        y: root.pad-y - 22px;
+        width: 146px;
+        text: "KEYPAD";
+    }
+    if root.wide: DeadPad {
+        x: 28px;
+        y: root.pad-y;
+    }
+    if root.wide && root.soft-l == "": KeyFace {
+        x: root.bez-x + 10px;
+        y: root.bez-bottom + 8px;
+        width: 110px;
+        height: 30px;
+        kind: 13;
+    }
+    if root.wide && root.soft-l != "": Key {
+        x: root.bez-x + 10px;
+        y: root.bez-bottom + 8px;
+        width: 110px;
+        height: 30px;
+        kind: 13;
+        label: root.soft-l-label;
+        tip: root.soft-l-tip;
+        enabled: root.soft-l-enabled;
+        clicked => { root.soft-left(); }
+        SoftFace { width: parent.width; height: parent.height; word: root.soft-l; }
+    }
+    if root.wide && root.soft-r == "": KeyFace {
+        x: root.width - root.bez-x - 10px - 110px;
+        y: root.bez-bottom + 8px;
+        width: 110px;
+        height: 30px;
+        kind: 13;
+    }
+    if root.wide && root.soft-r != "": Key {
+        x: root.width - root.bez-x - 10px - 110px;
+        y: root.bez-bottom + 8px;
+        width: 110px;
+        height: 30px;
+        kind: 13;
+        label: root.soft-r-label;
+        tip: root.soft-r-tip;
+        enabled: root.soft-r-enabled;
+        clicked => { root.soft-right(); }
+        SoftFace { width: parent.width; height: parent.height; word: root.soft-r; }
+    }
+    if root.wide: Grille {
+        x: (root.width - self.width) / 2;
+        y: root.bez-bottom + 14px;
+        cols: 7;
+    }
+    // The right wing: the rocker, the green key and the red key with their captions.
+    if root.wide: Cap {
+        x: root.width - 42px - 112px;
+        y: root.wing-y;
+        width: 112px;
+        text: root.cap-n;
+    }
+    if root.wide: Rocker {
+        big: true;
+        x: root.width - 42px - 112px;
+        y: root.wing-y + 22px;
+        mode: root.rocker;
+        playing: root.playing;
+        up => { root.up(); }
+        down => { root.down(); }
+        left => { root.left(); }
+        right => { root.right(); }
+        ok => { root.ok(); }
+    }
+    if root.wide: Cap {
+        x: root.width - 30px - 136px;
+        y: root.wing-y + 196px + 46px * root.k;
+        width: 136px;
+        text: root.cap-g;
+    }
+    if root.wide: Cap {
+        x: root.width - 30px - 136px;
+        y: root.wing-y + 256px + 74px * root.k;
+        width: 136px;
+        text: root.cap-r;
+    }
+    if root.wide: Grille {
+        x: root.width - 56px - self.width;
+        y: root.wing-y + 266px + 108px * root.k;
+        cols: 6;
+        rows: 2;
+    }
+
+    // ----- The green key and the red key -----
+    if root.green == 0: KeyFace {
+        x: root.green-x;
+        y: root.green-y;
+        width: root.green-w;
+        height: root.green-h;
+        kind: root.wide ? 15 : 5;
+    }
+    if root.green == 1: Key {
+        x: root.green-x;
+        y: root.green-y;
+        width: root.green-w;
+        height: root.green-h;
+        kind: root.wide ? 11 : 2;
+        label: root.green-label;
+        tip: root.green-tip;
+        enabled: root.green-enabled;
+        clicked => { root.green-clicked(); }
+        KeyRow {
+            width: parent.width;
+            height: parent.height;
+            icon: root.wide ? 18px : 14px;
+            lo: root.wide ? root.green-big : root.green-icon;
+            hi: root.wide ? root.green-big2 : root.green-icon2;
+            word: root.green-word;
+            tint: Brick.on-green;
+            ink: Brick.on-green;
+            word-size: root.wide ? 10px : 8px;
+        }
+    }
+    if root.green == 2: SendKey {
+        x: root.green-x;
+        y: root.green-y;
+        width: root.green-w;
+        height: root.green-h;
+        big: root.wide;
+        // The list opens on the LCD, under its title row.
+        pop-x: root.lcd-x + (root.lcd-w - 250px) / 2 - root.green-x;
+        pop-y: 72px + root.pad-top + root.head-h + 4px - root.green-y;
+        export(kind) => { root.export(kind); }
+    }
+    Key {
+        x: root.wide ? root.width - 166px : root.width - 20px - root.key-w;
+        y: root.wide ? root.wing-y + 206px + 74px * root.k : root.ctrl-y + 44px;
+        width: root.wide ? 136px : root.key-w;
+        height: root.wide ? 42px : 32px;
+        kind: root.wide ? 12 : 3;
+        label: root.red-label;
+        tip: root.red-tip;
+        clicked => { root.red-clicked(); }
+        KeyRow {
+            width: parent.width;
+            height: parent.height;
+            lo: @image-url("dv-brick/i-back14.png");
+            hi: @image-url("dv-brick/i-back14@2x.png");
+            word: "BACK";
+            tint: Brick.on-red;
+            ink: Brick.on-red;
+        }
+    }
+}
+
+// ---------- One clip ----------
+
+// The clip's waveform in an ink frame: the kept part dark, what has played solid, the
+// trimmed ends faint, the trim tabs at the ends and the play head with its notch.
+// TrimTouch drags the tabs and seeks.
+component Strip inherits Rectangle {
+    callback trimmed(float, float);
+    callback tapped();
+    property <bool> active: Main.active-clip == Main.selected;
+    property <float> played: root.active ? clamp(Main.play-fraction, 0, 1) : 0;
+    property <length> inner-w: root.width - 4px;
+    property <length> start-x: Pages.trim-start * root.inner-w;
+    property <length> end-x: Pages.trim-end * root.inner-w;
+    property <int> n: max(1, floor(root.inner-w / 3px));
+    border-width: 2px;
+    border-color: Brick.ink;
+    accessible-role: slider;
+    accessible-label: "Seek and trim";
+    Rectangle {
+        x: 2px;
+        y: 2px;
+        width: root.inner-w;
+        height: root.height - 4px;
+        Rectangle { x: 0; y: parent.height / 2; height: 1px; background: Brick.rule; }
+        for i in root.n: Rectangle {
+            property <float> f: (i + 0.5) / root.n;
+            property <float> v: Pages.detail-wave.length > 0 ? Pages.detail-wave[floor(i * Pages.detail-wave.length / root.n)] : 0.06;
+            x: i * 3px;
+            width: 2px;
+            height: max(2px, round(self.v * (parent.height - 8px) / 1px) * 1px);
+            y: round((parent.height - self.height) / 2 / 1px) * 1px;
+            background: self.f < Pages.trim-start || self.f > Pages.trim-end ? #3b1f0540 : self.f <= root.played ? Brick.ink : #3b1f0580;
+        }
+        if root.active: Rectangle {
+            x: root.played * parent.width - 1px;
+            width: 2px;
+            background: Brick.ink;
+        }
+        if root.active: Path {
+            x: root.played * parent.width - 4px;
+            y: 0;
+            width: 8px;
+            height: 4px;
+            viewbox-width: 8;
+            viewbox-height: 4;
+            fill: Brick.ink;
+            commands: "M 0 0 L 8 0 L 4 4 Z";
+        }
+        // The trim tabs.
+        for k in [0, 1]: Rectangle {
+            x: k == 0 ? root.start-x : root.end-x - 6px;
+            width: 6px;
+            background: Brick.ink;
+            Rectangle {
+                x: 2px;
+                y: (parent.height - 8px) / 2;
+                width: 2px;
+                height: 8px;
+                background: Brick.lcd1;
+            }
+        }
+    }
+    TrimTouch {
+        pad: 2px;
+        trimmed(a, b) => { root.trimmed(a, b); }
+        tapped => { root.tapped(); }
+    }
+}
+
+// The playback speed as a five cell strip, the current one inverted.
+component Speed inherits HorizontalLayout {
+    callback picked(int);
+    spacing: 6px;
+    Caps { text: "SPEED"; }
+    VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: cells.preferred-width + 4px;
+            height: 18px;
+            border-width: 2px;
+            border-color: Brick.ink;
+            accessible-role: list;
+            accessible-label: "Speed";
+            cells := HorizontalLayout {
+                x: 2px;
+                y: 2px;
+                height: parent.height - 4px;
+                for v[i] in ["0.75", "1.0", "1.25", "1.5", "2.0"]: Rectangle {
+                    width: cell.preferred-width + 8px + (i > 0 ? 1px : 0);
+                    background: i == Pages.speed-index ? Brick.ink : st.has-hover ? Brick.ghost : transparent;
+                    accessible-role: button;
+                    accessible-label: v + "×";
+                    accessible-checked: i == Pages.speed-index;
+                    accessible-action-default => { Pages.speed-index = i; root.picked(i); }
+                    if i > 0: Rectangle { x: 0; width: 1px; background: Brick.ink; }
+                    cell := Words {
+                        x: (i > 0 ? 1px : 0) + 4px;
+                        y: 0;
+                        height: parent.height;
+                        text: v;
+                        font-size: 15px;
+                        color: i == Pages.speed-index ? Brick.lcd1 : Brick.ink;
+                        accessible-role: none;
+                    }
+                    st := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { Pages.speed-index = i; root.picked(i); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Loop: an LCD button with the loop glyph, inverted while on.
+component LoopKey inherits Rectangle {
+    callback toggled();
+    width: row.preferred-width + 12px;
+    height: 20px;
+    border-width: 2px;
+    border-color: Brick.ink;
+    background: Pages.looping ? Brick.ink : t.has-hover ? Brick.ghost : transparent;
+    accessible-role: button;
+    accessible-label: "Loop";
+    accessible-checked: Pages.looping;
+    accessible-action-default => { Pages.looping = !Pages.looping; root.toggled(); }
+    row := HorizontalLayout {
+        x: 6px;
+        y: 0;
+        width: self.preferred-width;
+        height: parent.height;
+        spacing: 4px;
+        VerticalLayout { alignment: center; BrickPx { source: @image-url("dv-brick/x-loop.png"); tint: Pages.looping ? Brick.lcd1 : Brick.ink; } }
+        Words { text: "Loop"; font-size: 16px; color: Pages.looping ? Brick.lcd1 : Brick.ink; accessible-role: none; }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, "Loop", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); Pages.looping = !Pages.looping; root.toggled(); }
+    }
+}
+
+// Clean voice on export: the OFF ON pair and its words (LESS NOISE beside them, or under
+// them in the narrow wide column).
+component CleanVoice inherits VerticalLayout {
+    in property <bool> under;
+    callback changed-to(bool);
+    spacing: 2px;
+    vertical-stretch: 0;
+    HorizontalLayout {
+        height: 22px;
+        spacing: 7px;
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "Clean voice on export";
+                checked <=> Pages.clean-voice;
+                toggled(on) => { root.changed-to(on); }
+            }
+        }
+        Words { text: "Clean voice on export"; overflow: elide; horizontal-stretch: 0; }
+        if !root.under: Caps { text: "LESS NOISE"; font-size: 7px; opacity: 0.7; }
+        Rectangle { horizontal-stretch: 1; }
+    }
+    if root.under: HorizontalLayout {
+        padding-left: 47px;
+        Caps { text: "LESS NOISE"; font-size: 7px; opacity: 0.7; }
+    }
+}
+
+// A merged clip's parts, in an order list with their menu.
+component Parts inherits VerticalLayout {
+    callback moved(int, int);
+    callback take-out(int);
+    callback rename(int);
+    vertical-stretch: 0;
+    spacing: 2px;
+    HorizontalLayout {
+        height: 14px;
+        spacing: 6px;
+        Caps { text: "PARTS"; horizontal-stretch: 0; }
+        if Pages.parts-busy: VerticalLayout { alignment: center; BrickPx { source: @image-url("dv-brick/x-hour.png"); } }
+        if Pages.parts-busy: Caps { text: "WORKING"; horizontal-stretch: 0; }
+        Rectangle {
+            horizontal-stretch: 1;
+            Rule { x: 0; y: (parent.height - 1px) / 2; width: parent.width; height: 1px; }
+        }
+    }
+    OrderList {
+        rows: Pages.parts;
+        menu: true;
+        enabled: !Pages.parts-busy && !Main.recording;
+        moved(a, b) => { root.moved(a, b); }
+        act(i) => { root.take-out(i); }
+        rename(i) => { root.rename(i); }
+    }
+}
+
+// The time played (or 0:00) in figures, "OF" the length.
+component PlayTime inherits HorizontalLayout {
+    in property <length> size: 34px;
+    property <bool> active: Main.active-clip == Main.selected;
+    spacing: 6px;
+    alignment: start;
+    VerticalLayout {
+        alignment: end;
+        Fig { text: root.active ? Main.play-position : "0:00"; size: root.size; }
+    }
+    VerticalLayout {
+        alignment: end;
+        padding-bottom: 1px;
+        Caps { text: "OF " + (Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].duration : ""); }
+    }
+}
+
+export component ClipPage inherits Rectangle {
+    in property <bool> narrow;
+    in property <bool> wide;
+    callback go(int);
+    callback refocus();
+    // Leaving the editor asks about unsaved changes first (AppWindow.leave-editor).
+    callback leave-editor(int);
+    callback start-edit();
+    callback ask-delete(int);
+    callback rename-selected(string);
+    callback toggle-play();
+    callback skip(float);
+    callback speed-changed(int);
+    callback trim-changed(float, float);
+    callback clean-voice-changed(bool);
+    callback parts-move(int, int);
+    callback part-take-out(int);
+    callback rename-part(int);
+    // The transcript card's actions (see TranscriptCard).
+    callback choose-lang(string);
+    callback lang-filter(string);
+    callback install-for(int);
+    callback summarise();
+    callback edit-changed(string);
+    callback apply-transcript(string);
+    callback transcribe();
+    callback seek-word(int);
+    pure callback edit-markup(string) -> styled-text;
+    pure callback plain-selection(string, int, int) -> string;
+
+    property <string> name: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].name : "";
+    property <bool> active: Main.active-clip == Main.selected;
+    property <bool> playing: root.active && Main.playing;
+    // The rename field's text (an element inside an `if` cannot be read from outside it).
+    property <string> new-name;
+
+    function rename(t: string) {
+        Pages.renaming = false;
+        root.rename-selected(t);
+        root.refocus();
+    }
+
+    Phone {
+        width: root.width;
+        height: root.height;
+        wide: root.wide;
+        title: "Clip";
+        tag: root.wide ? (root.playing ? "PLAYING" : root.active ? "PAUSED" : "STOPPED") : "";
+        soft-l: Pages.renaming ? "CANCEL" : "RENAME";
+        soft-l-label: Pages.renaming ? "Cancel" : "Rename clip";
+        soft-l-tip: Pages.renaming ? "Cancel" : "Rename";
+        soft-l-enabled: !Main.recording;
+        soft-r: Pages.renaming ? "RENAME" : "DELETE";
+        soft-r-label: Pages.renaming ? "Rename" : "Delete clip";
+        soft-r-tip: Pages.renaming ? "Rename" : "Delete";
+        soft-r-enabled: !Main.recording;
+        lcd-l: Pages.renaming ? "Cancel" : "Rename";
+        lcd-m: Pages.renaming ? "" : root.playing ? "Pause" : "Play";
+        lcd-arrows: Pages.renaming ? 0 : 2;
+        lcd-r: Pages.renaming ? "Rename" : "Delete";
+        green: 2;
+        red-label: "Back to Clips";
+        red-tip: "Back";
+        rocker: 2;
+        playing: root.playing;
+        cap-n: "PLAY AND SEEK";
+        cap-g: "SEND TO EXPORT";
+        soft-left => {
+            if (Pages.renaming) { Pages.renaming = false; root.refocus(); } else { Pages.renaming = true; }
+        }
+        soft-right => {
+            if (Pages.renaming) { root.rename(root.new-name); } else { root.ask-delete(Main.selected); }
+        }
+        red-clicked => { if (Pages.editing) { root.leave-editor(0); } else { root.go(0); } }
+        left => { root.skip(-5); root.refocus(); }
+        right => { root.skip(5); root.refocus(); }
+        ok => { root.toggle-play(); root.refocus(); }
+        export(kind) => { Main.export-as(kind); root.refocus(); }
+
+        // Portrait: the name and when it was made, the time, the waveform, speed and Loop,
+        // the parts, the transcript, the option and the latest message.
+        if !root.wide: VerticalLayout {
+            if !Pages.renaming: Words {
+                height: 26px;
+                text: root.name;
+                font-size: 26px;
+                overflow: elide;
+            }
+            if Pages.renaming: VerticalLayout {
+                padding: 2px;
+                Field {
+                    height: 26px;
+                    font-size: 20px;
+                    label: "Clip name";
+                    text: root.name;
+                    init => { self.grab(); root.new-name = self.text; }
+                    edited(t) => { root.new-name = t; }
+                    accepted(t) => { root.rename(t); }
+                    escaped => { Pages.renaming = false; root.refocus(); }
+                    takes-escape: true;
+                }
+            }
+            HorizontalLayout {
+                padding-top: 3px;
+                padding-bottom: 6px;
+                Caps { text: Pages.detail-meta.to-uppercase(); overflow: elide; }
+            }
+            HorizontalLayout {
+                padding-bottom: 6px;
+                PlayTime { }
+                Rectangle { horizontal-stretch: 1; }
+                VerticalLayout { alignment: end; Tag { text: root.playing ? "PLAYING" : root.active ? "PAUSED" : "STOPPED"; } }
+            }
+            Strip {
+                height: 42px;
+                trimmed(a, b) => { root.trim-changed(a, b); }
+                tapped => { root.refocus(); }
+            }
+            HorizontalLayout {
+                padding-top: 6px;
+                padding-bottom: 6px;
+                Speed { picked(i) => { root.speed-changed(i); root.refocus(); } }
+                Rectangle { horizontal-stretch: 1; }
+                VerticalLayout { alignment: center; LoopKey { toggled => { root.refocus(); } } }
+            }
+            if Pages.parts.length >= 2: Parts {
+                moved(a, b) => { root.parts-move(a, b); }
+                take-out(i) => { root.part-take-out(i); }
+                rename(i) => { root.rename-part(i); }
+            }
+            TranscriptCard {
+                vertical-stretch: 1;
+                min-height: 60px;
+                clip-name: root.name;
+                transcript: Pages.transcript;
+                transcribing: Pages.transcribing;
+                translating: Pages.translating;
+                translation: Pages.translation;
+                shown-lang <=> Pages.shown-lang;
+                langs: Pages.langs;
+                choose-lang(c) => { root.choose-lang(c); }
+                lang-filter(t) => { root.lang-filter(t); }
+                install-for(k) => { root.install-for(k); }
+                summary: Pages.summary;
+                summarising: Pages.summarising;
+                can-ai: Main.can-ai;
+                show-summary <=> Pages.show-summary;
+                summarise => { root.summarise(); }
+                transcribe-progress: Pages.transcribe-progress;
+                words: Pages.words;
+                current-word: Pages.current-word;
+                show-marks <=> Pages.show-marks;
+                can-transcribe: Pages.can-transcribe;
+                recording: Main.recording;
+                editing: Pages.editing;
+                edit-draft <=> Pages.edit-draft;
+                edit-badge: Pages.edit-badge;
+                speaking: Pages.speaking;
+                edit => { root.start-edit(); }
+                edited(t) => { root.edit-changed(t); }
+                cancel => { root.leave-editor(-1); }
+                save => { root.apply-transcript(Pages.edit-draft); }
+                edit-markup(t) => { return root.edit-markup(t); }
+                plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+                transcribe => { root.transcribe(); root.refocus(); }
+                seek-word(i) => { root.seek-word(i); root.refocus(); }
+            }
+            HorizontalLayout {
+                padding-top: 4px;
+                CleanVoice { changed-to(on) => { root.clean-voice-changed(on); } }
+            }
+            StatusLine { }
+        }
+
+        // Wide: the clip on the left (name, time, waveform, speed, Loop, the option), the
+        // transcript on the right, the latest message under both.
+        if root.wide: VerticalLayout {
+            HorizontalLayout {
+                vertical-stretch: 1;
+                spacing: 14px;
+                VerticalLayout {
+                    width: 250px;
+                    padding-right: 12px;
+                    if !Pages.renaming: Words {
+                        height: 30px;
+                        text: root.name;
+                        font-size: 32px;
+                        overflow: elide;
+                    }
+                    if Pages.renaming: VerticalLayout {
+                        padding: 2px;
+                        Field {
+                            height: 28px;
+                            font-size: 22px;
+                            label: "Clip name";
+                            text: root.name;
+                            init => { self.grab(); root.new-name = self.text; }
+                            edited(t) => { root.new-name = t; }
+                            accepted(t) => { root.rename(t); }
+                            escaped => { Pages.renaming = false; root.refocus(); }
+                            takes-escape: true;
+                        }
+                    }
+                    HorizontalLayout {
+                        padding-top: 4px;
+                        padding-bottom: 12px;
+                        Caps { text: Pages.detail-meta.to-uppercase(); overflow: elide; }
+                    }
+                    PlayTime { size: clamp((root.height - 520px) / 3, 40px, 52px); }
+                    Rectangle { height: 14px; }
+                    Strip {
+                        height: clamp(root.height - 624px, 48px, 76px);
+                        trimmed(a, b) => { root.trim-changed(a, b); }
+                        tapped => { root.refocus(); }
+                    }
+                    HorizontalLayout {
+                        padding-top: 4px;
+                        Caps { text: root.active ? Main.play-position : "0:00"; horizontal-stretch: 1; }
+                        Caps { text: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].duration : ""; }
+                    }
+                    HorizontalLayout {
+                        padding-top: 12px;
+                        Speed { picked(i) => { root.speed-changed(i); root.refocus(); } }
+                        Rectangle { horizontal-stretch: 1; }
+                    }
+                    HorizontalLayout {
+                        padding-top: 8px;
+                        LoopKey { toggled => { root.refocus(); } }
+                        Rectangle { horizontal-stretch: 1; }
+                    }
+                    Rectangle { vertical-stretch: 1; min-height: 4px; }
+                    Caps { text: "OPTIONS"; opacity: 0.75; height: 12px; }
+                    CleanVoice {
+                        under: true;
+                        changed-to(on) => { root.clean-voice-changed(on); }
+                    }
+                    Rectangle { height: 6px; }
+                }
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    padding-bottom: 6px;
+                    spacing: 6px;
+                    if Pages.parts.length >= 2: Parts {
+                        moved(a, b) => { root.parts-move(a, b); }
+                        take-out(i) => { root.part-take-out(i); }
+                        rename(i) => { root.rename-part(i); }
+                    }
+                    TranscriptCard {
+                        vertical-stretch: 1;
+                        brick-size: 20px;
+                        clip-name: root.name;
+                        transcript: Pages.transcript;
+                        transcribing: Pages.transcribing;
+                        translating: Pages.translating;
+                        translation: Pages.translation;
+                        shown-lang <=> Pages.shown-lang;
+                        langs: Pages.langs;
+                        choose-lang(c) => { root.choose-lang(c); }
+                        lang-filter(t) => { root.lang-filter(t); }
+                        install-for(k) => { root.install-for(k); }
+                        summary: Pages.summary;
+                        summarising: Pages.summarising;
+                        can-ai: Main.can-ai;
+                        show-summary <=> Pages.show-summary;
+                        summarise => { root.summarise(); }
+                        transcribe-progress: Pages.transcribe-progress;
+                        words: Pages.words;
+                        current-word: Pages.current-word;
+                        show-marks <=> Pages.show-marks;
+                        can-transcribe: Pages.can-transcribe;
+                        recording: Main.recording;
+                        editing: Pages.editing;
+                        edit-draft <=> Pages.edit-draft;
+                        edit-badge: Pages.edit-badge;
+                        speaking: Pages.speaking;
+                        edit => { root.start-edit(); }
+                        edited(t) => { root.edit-changed(t); }
+                        cancel => { root.leave-editor(-1); }
+                        save => { root.apply-transcript(Pages.edit-draft); }
+                        edit-markup(t) => { return root.edit-markup(t); }
+                        plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+                        transcribe => { root.transcribe(); root.refocus(); }
+                        seek-word(i) => { root.seek-word(i); root.refocus(); }
+                    }
+                }
+            }
+            StatusLine { big: true; }
+        }
+    }
+    // The dashed rule between the wide columns.
+    if root.wide: Rule {
+        down: true;
+        x: Hand.bez-x(true) + 10px + 12px + 250px;
+        y: 72px + 8px + 26px + 6px;
+        width: 1px;
+        height: Hand.bez-h(root.height, true, 0) - 24px - 8px - 26px - 6px - 20px - 24px;
+    }
+}
+
+// ---------- Settings ----------
+
+// Settings sections 4 to 6: transcription, AI and your voice (beside the others when
+// wide, under them in portrait).
+component TransSection inherits VerticalLayout {
+    in property <bool> wide;
+    callback go(int);
+    callback language-changed(int);
+    callback auto-transcribe-changed(bool);
+    callback ai-names-changed(bool);
+    callback max-pause-changed(int);
+    callback ai-model-changed(int);
+    callback download-ai(int);
+    alignment: start;
+    Sec { n: 4; title: "TRANSCRIPTION"; }
+    if !Pages.can-transcribe: SRow { label: "Not in this build"; big: root.wide; }
+    if Pages.can-transcribe: SRow {
+        label: "Language";
+        big: root.wide;
+        VerticalLayout {
+            alignment: center;
+            Select {
+                width: min(self.natural, 170px);
+                height: 20px;
+                label: "Language";
+                model: Pages.languages;
+                current-index <=> Pages.language-index;
+                selected(i) => { root.language-changed(i); }
+            }
+        }
+    }
+    if Pages.can-transcribe: SRow {
+        label: "Auto transcribe";
+        big: root.wide;
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "Auto transcribe";
+                checked <=> Pages.auto-transcribe;
+                toggled(on) => { root.auto-transcribe-changed(on); }
+            }
+        }
+    }
+    if Pages.can-transcribe && Main.can-ai: SRow {
+        label: "AI names";
+        note: Pages.auto-transcribe ? "" : "Auto transcribe off";
+        big: root.wide;
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "AI names";
+                enabled: Pages.auto-transcribe;
+                checked <=> Pages.ai-names;
+                toggled(on) => { root.ai-names-changed(on); }
+            }
+        }
+    }
+    if Pages.can-transcribe: SRow {
+        label: "Max pause";
+        big: root.wide;
+        VerticalLayout {
+            alignment: center;
+            Select {
+                width: min(self.natural, 170px);
+                height: 20px;
+                label: "Max pause";
+                model: Pages.max-pauses;
+                current-index <=> Pages.max-pause-index;
+                selected(i) => { root.max-pause-changed(i); }
+            }
+        }
+    }
+    if Pages.can-transcribe: SRow {
+        label: "Model";
+        note: Pages.model-summary;
+        big: root.wide;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: browse.preferred-width + 12px;
+                height: 20px;
+                border-width: 2px;
+                border-color: Brick.ink;
+                background: bt.has-hover ? Brick.ghost : transparent;
+                accessible-role: button;
+                accessible-label: "Browse models";
+                accessible-action-default => { root.go(4); }
+                browse := HorizontalLayout {
+                    x: 6px;
+                    y: 0;
+                    width: self.preferred-width;
+                    height: parent.height;
+                    spacing: 4px;
+                    Words { text: "Browse"; font-size: 16px; accessible-role: none; }
+                    VerticalLayout { alignment: center; BrickPx { source: @image-url("dv-brick/x-rt.png"); } }
+                }
+                bt := TouchArea { mouse-cursor: pointer; clicked => { root.go(4); } }
+            }
+        }
+    }
+    if Main.can-ai: Sec { n: 5; title: "AI"; }
+    if Main.can-ai: SRow {
+        label: "AI model";
+        big: root.wide;
+        VerticalLayout {
+            alignment: center;
+            Select {
+                width: min(self.natural, 190px);
+                height: 20px;
+                label: "AI model";
+                model: Pages.ai-models;
+                current-index <=> Pages.ai-model-index;
+                selected(i) => { root.ai-model-changed(i); }
+            }
+        }
+    }
+    if Main.can-ai: SRow {
+        label: Pages.ai-ready ? "Ready" : Pages.ai-download >= 0 ? "Downloading " + round(Pages.ai-download * 100) + "%" : "Not downloaded";
+        big: root.wide;
+        if Pages.ai-ready: VerticalLayout {
+            alignment: center;
+            Rectangle { width: 8px; height: 8px; background: Brick.ink; }
+        }
+        if !Pages.ai-ready && Pages.ai-download >= 0: VerticalLayout {
+            alignment: center;
+            Blocks { width: 90px; value: Pages.ai-download; n: 12; }
+        }
+        if !Pages.ai-ready && Pages.ai-download < 0: VerticalLayout {
+            alignment: center;
+            Lb { text: "Download"; primary: true; clicked => { root.download-ai(0); } }
+        }
+    }
+    if Main.can-ai: SRow {
+        label: "Translation";
+        note: "Ministral 3B · 2.1 GB";
+        big: root.wide;
+        if Pages.translator-ready: Words { text: "Ready"; }
+        if !Pages.translator-ready && Pages.translator-download >= 0: Words { text: "Downloading " + round(Pages.translator-download * 100) + "%"; }
+        if !Pages.translator-ready && Pages.translator-download < 0: VerticalLayout {
+            alignment: center;
+            Lb { text: "Download"; primary: true; clicked => { root.download-ai(1); } }
+        }
+    }
+    Sec { n: 6; title: "YOUR VOICE"; }
+    SRow {
+        label: "Voice engine";
+        big: root.wide;
+        Words { text: "OmniVoice"; }
+    }
+    SRow {
+        label: "Voice sample";
+        big: root.wide;
+        Words { text: "20 s from the clip"; }
+    }
+}
+
+export component SettingsPage inherits Rectangle {
+    in property <bool> wide;
+    callback back();
+    callback go(int);
+    callback refocus();
+    callback theme-changed(int);
+    callback mic-changed(int);
+    callback system-changed(bool);
+    callback recording-limit-changed(int);
+    callback hotkey-captured(string, bool, bool, bool, bool) -> bool;
+    callback hotkey-accepted(string);
+    callback open-folder();
+    callback change-folder();
+    callback template-edited(string);
+    callback template-accepted(string);
+    callback export-format-changed(int);
+    callback clean-voice-changed(bool);
+    callback language-changed(int);
+    callback auto-transcribe-changed(bool);
+    callback ai-names-changed(bool);
+    callback max-pause-changed(int);
+    callback ai-model-changed(int);
+    callback download-ai(int);
+    callback close-to-tray-changed(bool);
+    callback start-with-windows-changed(bool);
+
+    Phone {
+        width: root.width;
+        height: root.height;
+        wide: root.wide;
+        title: "Settings";
+        lcd-m: "Scroll";
+        lcd-arrows: 1;
+        green: 0;
+        rocker: 1;
+        cap-n: "SCROLL";
+        cap-g: "CALL TO RECORD";
+        toast: Main.status;
+        red-clicked => { root.back(); }
+        up => { sc.content-y = min(0px, sc.content-y + 60px); }
+        down => { sc.content-y = max(min(0px, sc.visible-height - sc.content-height), sc.content-y - 60px); }
+
+        sc := Scroller {
+            VerticalLayout {
+                alignment: start;
+                padding-right: 10px;
+                padding-bottom: 30px;
+                Sec { n: 1; title: "APPEARANCE"; }
+                VerticalLayout {
+                    padding-top: 2px;
+                    ThemeGallery { picked(i) => { root.theme-changed(i); } }
+                }
+                // Wide: the gallery on top, the sections in two columns under it.
+                HorizontalLayout {
+                    spacing: 16px;
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        Sec { n: 2; title: "RECORDING"; }
+                        SRow {
+                            label: "Microphone";
+                            big: root.wide;
+                            VerticalLayout {
+                                alignment: center;
+                                Select {
+                                    width: min(self.natural, 170px);
+                                    height: 20px;
+                                    label: "Microphone";
+                                    model: Pages.mic-devices;
+                                    current-index <=> Pages.mic-index;
+                                    enabled: !Main.recording;
+                                    selected(i) => { root.mic-changed(i); }
+                                }
+                            }
+                        }
+                        SRow {
+                            label: "System audio";
+                            big: root.wide;
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "System audio";
+                                    checked <=> Pages.record-system;
+                                    toggled(on) => { root.system-changed(on); }
+                                }
+                            }
+                        }
+                        SRow {
+                            label: "Stop recording after";
+                            big: root.wide;
+                            VerticalLayout {
+                                alignment: center;
+                                Select {
+                                    width: min(self.natural, 170px);
+                                    height: 20px;
+                                    label: "Stop recording after";
+                                    model: Pages.recording-limits;
+                                    current-index <=> Pages.recording-limit-index;
+                                    selected(i) => { root.recording-limit-changed(i); }
+                                }
+                            }
+                        }
+                        SRow {
+                            label: "Record hotkey";
+                            big: root.wide;
+                            VerticalLayout {
+                                alignment: center;
+                                ShortcutBox {
+                                    label: "Record hotkey";
+                                    keys: Pages.hotkey-parts;
+                                    captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
+                                    cleared => { root.hotkey-accepted(""); }
+                                    done => { root.refocus(); }
+                                }
+                            }
+                            if Pages.hotkey-parts.length > 0: VerticalLayout {
+                                alignment: center;
+                                IconBtn {
+                                    size: 18px;
+                                    icon: "close";
+                                    label: "Clear the shortcut";
+                                    tip: "Clear shortcut";
+                                    clicked => { root.hotkey-accepted(""); }
+                                }
+                            }
+                        }
+                        Sec { n: 3; title: "FILES"; }
+                        SRow {
+                            label: "Folder";
+                            big: root.wide;
+                            Words {
+                                text: Pages.folder;
+                                font-size: 16px;
+                                opacity: 0.85;
+                                overflow: elide;
+                                max-width: root.wide ? 150px : 140px;
+                                horizontal-alignment: right;
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                IconBtn {
+                                    size: 20px;
+                                    icon: "folder";
+                                    label: "Open the folder";
+                                    tip: "Open folder";
+                                    clicked => { root.open-folder(); }
+                                }
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                Lb { text: "Change"; enabled: !Main.recording; clicked => { root.change-folder(); } }
+                            }
+                        }
+                        // The file name: its field, then the next name or what is wrong with it.
+                        Rectangle {
+                            height: names.preferred-height;
+                            vertical-stretch: 0;
+                            Rule { dotted: true; x: 0; y: parent.height - 1px; width: parent.width; height: 1px; }
+                            names := VerticalLayout {
+                                padding-top: 4px;
+                                padding-bottom: 6px;
+                                spacing: 4px;
+                                Words { text: "File name"; height: 15px; font-size: root.wide ? 18px : 17px; }
+                                VerticalLayout {
+                                    padding-left: 3px;
+                                    padding-right: 3px;
+                                    Field {
+                                        height: 24px;
+                                        label: "File name";
+                                        text: Pages.name-template;
+                                        invalid: Pages.name-invalid;
+                                        edited(t) => { root.template-edited(t); }
+                                        accepted(t) => { root.template-accepted(t); root.refocus(); }
+                                    }
+                                }
+                                if !Pages.name-invalid: Caps { text: Pages.name-preview.to-uppercase(); opacity: 0.75; overflow: elide; }
+                                if Pages.name-invalid: HorizontalLayout {
+                                    alignment: start;
+                                    Rectangle {
+                                        width: min(bad.preferred-width + 8px, root.width - 80px);
+                                        height: 15px;
+                                        background: Brick.ink;
+                                        // In VT323: the small caps have no braces.
+                                        bad := Words {
+                                            x: 4px;
+                                            width: parent.width - 8px;
+                                            height: parent.height;
+                                            text: Pages.name-preview;
+                                            color: Brick.lcd1;
+                                            font-size: 15px;
+                                            overflow: elide;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        SRow {
+                            label: "Export format";
+                            big: root.wide;
+                            VerticalLayout {
+                                alignment: center;
+                                Select {
+                                    width: min(self.natural, 170px);
+                                    height: 20px;
+                                    label: "Export format";
+                                    model: ["FLAC", "WAV", "MP3"];
+                                    current-index <=> Pages.export-format;
+                                    selected(i) => { root.export-format-changed(i); }
+                                }
+                            }
+                        }
+                        SRow {
+                            label: "Clean voice on export";
+                            big: root.wide;
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Clean voice on export";
+                                    checked <=> Pages.clean-voice;
+                                    toggled(on) => { root.clean-voice-changed(on); }
+                                }
+                            }
+                        }
+                        if root.wide: Sec { n: 7; title: "WINDOW"; }
+                        if root.wide: SRow {
+                            label: "Close button hides to tray";
+                            big: true;
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Close button hides to tray";
+                                    checked <=> Pages.close-to-tray;
+                                    toggled(on) => { root.close-to-tray-changed(on); }
+                                }
+                            }
+                        }
+                        if root.wide: SRow {
+                            label: "Start with Windows";
+                            big: true;
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Start with Windows";
+                                    checked <=> Pages.start-with-windows;
+                                    toggled(on) => { root.start-with-windows-changed(on); }
+                                }
+                            }
+                        }
+                        if !root.wide: TransSection {
+                            wide: false;
+                            go(p) => { root.go(p); }
+                            language-changed(i) => { root.language-changed(i); }
+                            auto-transcribe-changed(on) => { root.auto-transcribe-changed(on); }
+                            ai-names-changed(on) => { root.ai-names-changed(on); }
+                            max-pause-changed(i) => { root.max-pause-changed(i); }
+                            ai-model-changed(i) => { root.ai-model-changed(i); }
+                            download-ai(k) => { root.download-ai(k); }
+                        }
+                        if !root.wide: Sec { n: 7; title: "WINDOW"; }
+                        if !root.wide: SRow {
+                            label: "Close button hides to tray";
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Close button hides to tray";
+                                    checked <=> Pages.close-to-tray;
+                                    toggled(on) => { root.close-to-tray-changed(on); }
+                                }
+                            }
+                        }
+                        if !root.wide: SRow {
+                            label: "Start with Windows";
+                            VerticalLayout {
+                                alignment: center;
+                                Toggle {
+                                    label: "Start with Windows";
+                                    checked <=> Pages.start-with-windows;
+                                    toggled(on) => { root.start-with-windows-changed(on); }
+                                }
+                            }
+                        }
+                    }
+                    if root.wide: TransSection {
+                        horizontal-stretch: 1;
+                        wide: true;
+                        go(p) => { root.go(p); }
+                        language-changed(i) => { root.language-changed(i); }
+                        auto-transcribe-changed(on) => { root.auto-transcribe-changed(on); }
+                        ai-names-changed(on) => { root.ai-names-changed(on); }
+                        max-pause-changed(i) => { root.max-pause-changed(i); }
+                        ai-model-changed(i) => { root.ai-model-changed(i); }
+                        download-ai(k) => { root.download-ai(k); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------- Models ----------
+
+// A shelf chip: small caps in a thin frame, inverted while it is the one shown.
+component Chip inherits Rectangle {
+    in property <string> text;
+    in property <bool> on;
+    in property <bool> big;
+    callback clicked;
+    preferred-width: cap.preferred-width + 10px;
+    max-width: root.big ? 100000px : cap.preferred-width + 10px;
+    height: root.big ? 18px : 14px;
+    horizontal-stretch: root.big ? 1 : 0;
+    background: root.on ? Brick.ink : t.has-hover ? Brick.ghost : transparent;
+    border-width: 1px;
+    border-color: Brick.ink;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-checked: root.on;
+    accessible-action-default => { root.clicked(); }
+    cap := Caps {
+        x: root.big ? 6px : 5px;
+        y: 0;
+        height: parent.height;
+        text: root.text.to-uppercase();
+        color: root.on ? Brick.lcd1 : Brick.ink;
+        font-size: root.big ? 8px : 7px;
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The shelves as chips in small caps, the current one inverted: in a row, or (wide) in
+// a column.
+component ShelfRow inherits HorizontalLayout {
+    callback changed();
+    spacing: 4px;
+    alignment: start;
+    height: 14px;
+    for f[i] in ["All", "Norwegian", "Swedish", "English", "Downloaded"]: Chip {
+        text: f;
+        on: Pages.model-filter == i;
+        clicked => { Pages.model-filter = i; root.changed(); }
+    }
+}
+
+component ShelfColumn inherits VerticalLayout {
+    callback changed();
+    spacing: 2px;
+    for f[i] in ["All", "Norwegian", "Swedish", "English", "Downloaded"]: Chip {
+        big: true;
+        text: f;
+        on: Pages.model-filter == i;
+        clicked => { Pages.model-filter = i; root.changed(); }
+    }
+}
+
+component Compressed inherits HorizontalLayout {
+    callback changed();
+    spacing: 7px;
+    height: 20px;
+    VerticalLayout {
+        alignment: center;
+        Toggle {
+            label: "Show compressed versions too";
+            checked <=> Pages.model-compressed;
+            toggled => { root.changed(); }
+        }
+    }
+    Words { text: "Show compressed"; }
+    Rectangle { horizontal-stretch: 1; }
+}
+
+export component ModelsPage inherits Rectangle {
+    in property <bool> wide;
+    callback back();
+    callback filter-changed();
+    callback use-model(int);
+    callback cancel-download();
+    callback download-model(int);
+
+    Phone {
+        width: root.width;
+        height: root.height;
+        wide: root.wide;
+        title: "Models";
+        note: root.wide ? "" : Pages.models-used;
+        lcd-m: "Scroll";
+        lcd-arrows: 1;
+        green: 0;
+        rocker: 1;
+        cap-n: "SCROLL";
+        cap-g: "CALL TO RECORD";
+        toast: Main.status;
+        red-clicked => { root.back(); }
+        up => { list.content-y = min(0px, list.content-y + 60px); }
+        down => { list.content-y = max(min(0px, list.visible-height - list.content-height), list.content-y - 60px); }
+
+        HorizontalLayout {
+            spacing: 14px;
+            if root.wide: VerticalLayout {
+                width: 190px;
+                padding-right: 12px;
+                padding-bottom: 6px;
+                spacing: 6px;
+                Caps { text: "FIND A MODEL"; opacity: 0.75; height: 10px; }
+                Field {
+                    icon: "search";
+                    label: "Search models";
+                    placeholder: "Search " + Pages.model-count + " models";
+                    font-size: 17px;
+                    text <=> Pages.model-query;
+                    edited => { root.filter-changed(); }
+                }
+                Caps { text: "SHELF"; opacity: 0.75; height: 14px; vertical-alignment: bottom; }
+                ShelfColumn { changed => { root.filter-changed(); } }
+                Compressed { changed => { root.filter-changed(); } }
+                Rectangle { vertical-stretch: 1; }
+                Words { text: Pages.models-used.to-uppercase(); font-size: 30px; height: 28px; overflow: elide; }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 5px;
+                if !root.wide: Field {
+                    icon: "search";
+                    label: "Search models";
+                    placeholder: "Search " + Pages.model-count + " models";
+                    text <=> Pages.model-query;
+                    edited => { root.filter-changed(); }
+                }
+                if !root.wide: ShelfRow { changed => { root.filter-changed(); } }
+                if !root.wide: Compressed { changed => { root.filter-changed(); } }
+                list := Scroller {
+                    VerticalLayout {
+                        alignment: start;
+                        padding-right: 10px;
+                        padding-bottom: 6px;
+                        for m in Pages.models: VerticalLayout {
+                            if m.header: VerticalLayout {
+                                padding-top: 8px;
+                                padding-bottom: 2px;
+                                spacing: 2px;
+                                Caps { text: m.title.to-uppercase(); }
+                                Caps { text: m.by.to-uppercase(); font-size: 7px; opacity: 0.7; overflow: elide; }
+                            }
+                            if !m.header: Rectangle {
+                                height: card.preferred-height;
+                                background: m.active ? #3b1f0524 : transparent;
+                                border-width: m.active ? 1px : 0;
+                                border-color: Brick.ink;
+                                Rule { visible: !m.active; dotted: true; x: 0; y: parent.height - 1px; width: parent.width; height: 1px; }
+                                card := VerticalLayout {
+                                    padding-left: m.active ? 4px : 0;
+                                    padding-right: m.active ? 4px : 0;
+                                    padding-top: 4px;
+                                    padding-bottom: 4px;
+                                    spacing: 3px;
+                                    HorizontalLayout {
+                                        spacing: 6px;
+                                        VerticalLayout {
+                                            horizontal-stretch: 1;
+                                            alignment: center;
+                                            spacing: 3px;
+                                            Words { text: m.title; font-size: root.wide ? 20px : 18px; height: 16px; overflow: elide; }
+                                            HorizontalLayout {
+                                                spacing: 5px;
+                                                alignment: start;
+                                                Caps { text: "QUALITY"; font-size: 7px; }
+                                                Pips { value: m.quality; }
+                                                Caps { text: "SPEED"; font-size: 7px; }
+                                                Pips { value: m.speed; }
+                                                Caps { text: m.size.to-uppercase(); font-size: 7px; opacity: 0.8; }
+                                            }
+                                        }
+                                        if m.active: VerticalLayout {
+                                            alignment: center;
+                                            Tag { text: "IN USE"; size: 7px; height: 14px; }
+                                        }
+                                        if m.downloaded && !m.active: VerticalLayout {
+                                            alignment: center;
+                                            Lb { text: "Use"; clicked => { root.use-model(m.index); } }
+                                        }
+                                        if Pages.downloading == m.index: VerticalLayout {
+                                            alignment: center;
+                                            Lb { text: "Cancel"; clicked => { root.cancel-download(); } }
+                                        }
+                                        if !m.downloaded && Pages.downloading != m.index: VerticalLayout {
+                                            alignment: center;
+                                            Lb {
+                                                text: "Download";
+                                                primary: true;
+                                                enabled: Pages.downloading < 0;
+                                                accessible-label: "Download " + m.title;
+                                                clicked => { root.download-model(m.index); }
+                                            }
+                                        }
+                                    }
+                                    if Pages.downloading == m.index: HorizontalLayout {
+                                        spacing: 6px;
+                                        VerticalLayout {
+                                            alignment: center;
+                                            horizontal-stretch: 1;
+                                            Blocks { value: Pages.download-progress; n: 24; }
+                                        }
+                                        Caps { text: round(Pages.download-progress * 100) + "%"; }
+                                    }
+                                }
+                            }
+                        }
+                        if Pages.models.length == 0: Words {
+                            height: 60px;
+                            text: "No models match";
+                            font-size: 20px;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // The dashed rule beside the wide search column.
+    if root.wide: Rule {
+        down: true;
+        x: Hand.bez-x(true) + 10px + 12px + 190px;
+        y: 72px + 8px + 26px + 6px;
+        width: 1px;
+        height: Hand.bez-h(root.height, true, 0) - 24px - 8px - 26px - 6px - 20px - 6px;
+    }
+}
+
+// ---------- Merge ----------
+
+export component MergePage inherits Rectangle {
+    in property <bool> wide;
+    callback go(int);
+    callback move(int, int);
+    callback remove(int);
+    callback play(int);
+    callback run(string);
+    property <string> playing-name: Main.active-clip >= 0 && Main.active-clip < Main.clips.length && Main.playing ? Main.clips[Main.active-clip].name : "";
+    property <bool> can-merge: !Pages.merging && Pages.merge-name != "";
+
+    Phone {
+        width: root.width;
+        height: root.height;
+        wide: root.wide;
+        title: "Merge clips";
+        note: Pages.merge-rows.length + " clips";
+        soft-l: "CANCEL";
+        soft-l-label: "Cancel";
+        lcd-l: "Cancel";
+        green: 1;
+        green-word: Pages.merging ? "MERGING" : "MERGE " + Pages.merge-rows.length + " CLIPS";
+        green-label: Pages.merging ? "Merging" : "Merge " + Pages.merge-rows.length + " clips";
+        green-tip: "Merge";
+        green-enabled: root.can-merge;
+        green-icon: @image-url("dv-brick/i-merge14.png");
+        green-icon2: @image-url("dv-brick/i-merge14@2x.png");
+        green-big: @image-url("dv-brick/i-merge18.png");
+        green-big2: @image-url("dv-brick/i-merge18@2x.png");
+        rocker: 0;
+        cap-n: "";
+        cap-g: "CALL TO MERGE";
+        soft-left => { root.go(0); }
+        green-clicked => { root.run(Pages.merge-name); }
+        red-clicked => { root.go(0); }
+
+        VerticalLayout {
+            HorizontalLayout {
+                vertical-stretch: 1;
+                spacing: 14px;
+                // Wide: the clips as lines of a conference call joining into the new clip.
+                if root.wide: VerticalLayout {
+                    width: 250px;
+                    padding-right: 12px;
+                    padding-top: 4px;
+                    spacing: 6px;
+                    Caps { text: "CONFERENCE"; opacity: 0.75; height: 10px; }
+                    for r[i] in Pages.merge-rows: HorizontalLayout {
+                        height: 24px;
+                        spacing: 6px;
+                        Caps { text: "LINE " + (i + 1); width: 44px; }
+                        VerticalLayout { alignment: center; BrickPx { source: @image-url("dv-brick/x-speak.png"); } }
+                        Words { text: r.name; font-size: 18px; overflow: elide; horizontal-stretch: 1; }
+                        Words { text: r.note; font-size: 18px; }
+                    }
+                    Rectangle {
+                        height: 34px;
+                        border-width: 2px;
+                        border-color: Brick.ink;
+                        HorizontalLayout {
+                            padding-left: 8px;
+                            padding-right: 8px;
+                            spacing: 8px;
+                            Caps { text: "JOINED"; }
+                            Words { text: Pages.merge-name; overflow: elide; horizontal-stretch: 1; }
+                            VerticalLayout { alignment: center; Fig { text: Pages.merge-total; size: 20px; } }
+                        }
+                    }
+                    Rectangle { vertical-stretch: 1; }
+                    Grp { text: "NEW CLIP"; }
+                    VerticalLayout {
+                        padding: 2px;
+                        padding-bottom: 10px;
+                        Field {
+                            height: 26px;
+                            font-size: 20px;
+                            text <=> Pages.merge-name;
+                            placeholder: "Name";
+                            label: "Name of the merged clip";
+                            accepted => { if (root.can-merge) { root.run(Pages.merge-name); } }
+                        }
+                    }
+                }
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    spacing: 4px;
+                    Grp { text: "ORDER"; }
+                    Scroller {
+                        VerticalLayout {
+                            alignment: start;
+                            padding-right: 10px;
+                            OrderList {
+                                rows: Pages.merge-rows;
+                                removable: true;
+                                playable: true;
+                                playing-name: root.playing-name;
+                                enabled: !Pages.merging;
+                                moved(a, b) => { root.move(a, b); }
+                                act(i) => { root.remove(i); }
+                                play(i) => { root.play(i); }
+                            }
+                        }
+                    }
+                    if !root.wide: Grp { text: "NEW CLIP"; }
+                    if !root.wide: VerticalLayout {
+                        padding: 2px;
+                        padding-bottom: 8px;
+                        Field {
+                            text <=> Pages.merge-name;
+                            placeholder: "Name";
+                            label: "Name of the merged clip";
+                            accepted => { if (root.can-merge) { root.run(Pages.merge-name); } }
+                        }
+                    }
+                }
+            }
+            StatusLine { big: root.wide; }
+        }
+    }
+    if root.wide: Rule {
+        down: true;
+        x: Hand.bez-x(true) + 10px + 12px + 250px;
+        y: 72px + 8px + 26px + 6px;
+        width: 1px;
+        height: Hand.bez-h(root.height, true, 0) - 24px - 8px - 26px - 6px - 20px - 24px;
+    }
+}
+
+// ---------- Ask ----------
+
+// The answer like an SMS: a box with the ANSWER tag on its corner; Thinking with three
+// blocks until it comes.
+component Answer inherits Rectangle {
+    in property <bool> big;
+    height: body.preferred-height + 4px;
+    border-width: 2px;
+    border-color: Brick.ink;
+    body := VerticalLayout {
+        x: 2px;
+        y: 2px;
+        width: parent.width - 4px;
+        padding-left: 6px;
+        padding-right: 6px;
+        padding-top: 14px;
+        padding-bottom: 6px;
+        if Pages.answer == "": HorizontalLayout {
+            spacing: 3px;
+            alignment: start;
+            Words { text: "Thinking"; font-size: root.big ? 20px : 18px; }
+            for k in 3: VerticalLayout { alignment: end; padding-bottom: 4px; Rectangle { width: 4px; height: 4px; background: Brick.ink; } }
+        }
+        if Pages.answer != "": Words {
+            text: Pages.answer;
+            font-size: root.big ? 20px : 18px;
+            wrap: word-wrap;
+            vertical-alignment: top;
+        }
+    }
+    Tag { x: -2px; y: -2px; text: "ANSWER"; size: 7px; height: 12px; }
+}
+
+// A source: its number, the clip (and its project with All projects), the time, and the
+// line it comes from.
+component Source inherits Rectangle {
+    in property <AskSource> source;
+    in property <bool> show-project;
+    in property <string> project;
+    callback clicked;
+    height: 40px;
+    background: t.has-hover ? Brick.ghost : transparent;
+    accessible-role: button;
+    accessible-label: root.source.n + " " + root.source.clip + " " + root.source.time;
+    accessible-action-default => { root.clicked(); }
+    Rule { dotted: true; x: 0; y: parent.height - 1px; width: parent.width; height: 1px; }
+    HorizontalLayout {
+        padding-top: 4px;
+        padding-bottom: 4px;
+        spacing: 6px;
+        VerticalLayout { alignment: start; padding-top: 1px; BrickNum { text: root.source.n; } }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 2px;
+            HorizontalLayout {
+                spacing: 6px;
+                Words { text: root.source.clip; font-size: 18px; height: 16px; overflow: elide; horizontal-stretch: 0; }
+                if root.show-project && root.project != "": VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: ptag.preferred-width + 6px;
+                        height: 10px;
+                        border-width: 1px;
+                        border-color: Brick.ink;
+                        ptag := Caps { x: 3px; height: parent.height; text: root.project.to-uppercase(); font-size: 7px; }
+                    }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                Words { text: root.source.time; font-size: 17px; height: 16px; }
+            }
+            Words { text: root.source.text; font-size: 15px; height: 14px; opacity: 0.75; overflow: elide; }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component AskPage inherits Rectangle {
+    in property <bool> wide;
+    callback go(int);
+    callback ask(string, bool);
+    callback open-source(int);
+    property <bool> can-ask: Pages.question != "" && !Pages.asking;
+
+    Phone {
+        width: root.width;
+        height: root.height;
+        wide: root.wide;
+        title: "Ask";
+        soft-r: Main.projects.length > 1 ? "ALL PROJECTS" : "";
+        soft-r-label: "Ask all projects";
+        soft-r-tip: "All projects";
+        lcd-m: "Scroll";
+        lcd-arrows: 1;
+        lcd-r: Main.projects.length > 1 ? "All projects" : "";
+        lcd-r-on: Pages.ask-all;
+        green: 1;
+        green-word: "ASK";
+        green-label: "Ask";
+        green-enabled: root.can-ask;
+        green-icon: @image-url("dv-brick/i-ask14.png");
+        green-icon2: @image-url("dv-brick/i-ask14@2x.png");
+        green-big: @image-url("dv-brick/i-ask18.png");
+        green-big2: @image-url("dv-brick/i-ask18@2x.png");
+        rocker: 1;
+        cap-n: "SCROLL";
+        cap-g: "CALL TO ASK";
+        toast: Main.status;
+        soft-right => { Pages.ask-all = !Pages.ask-all; }
+        green-clicked => { root.ask(Pages.question, Pages.ask-all); }
+        red-clicked => { root.go(0); }
+        up => { sc.content-y = min(0px, sc.content-y + 60px); }
+        down => { sc.content-y = max(min(0px, sc.visible-height - sc.content-height), sc.content-y - 60px); }
+
+        VerticalLayout {
+            spacing: 8px;
+            Field {
+                height: root.wide ? 26px : 26px;
+                icon: "message";
+                placeholder: "Ask about your clips";
+                label: "Question";
+                text <=> Pages.question;
+                init => { self.grab(); }
+                accepted => { if (root.can-ask) { root.ask(Pages.question, Pages.ask-all); } }
+            }
+            HorizontalLayout {
+                vertical-stretch: 1;
+                spacing: 14px;
+                sc := Scroller {
+                    horizontal-stretch: root.wide ? 1.15 : 1;
+                    VerticalLayout {
+                        alignment: start;
+                        padding-right: 10px;
+                        padding-top: 2px;
+                        padding-bottom: 8px;
+                        spacing: 8px;
+                        if Pages.answer != "" || Pages.asking: Answer { big: root.wide; }
+                        if !root.wide && Pages.sources.length > 0: VerticalLayout {
+                            Grp { text: "SOURCES"; }
+                            for s[i] in Pages.sources: Source {
+                                source: s;
+                                show-project: Pages.ask-all;
+                                project: s.place >= 0 && s.place < Main.projects.length ? Main.projects[s.place] : "";
+                                clicked => { root.open-source(i); root.go(1); }
+                            }
+                        }
+                    }
+                }
+                if root.wide: Scroller {
+                    horizontal-stretch: 1;
+                    VerticalLayout {
+                        alignment: start;
+                        padding-right: 10px;
+                        if Pages.sources.length > 0: Grp { text: "SOURCES"; }
+                        for s[i] in Pages.sources: Source {
+                            source: s;
+                            show-project: Pages.ask-all;
+                            project: s.place >= 0 && s.place < Main.projects.length ? Main.projects[s.place] : "";
+                            clicked => { root.open-source(i); root.go(1); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------- The widget ----------
+
+// The small always-on-top window as a mini handset (variant A): the amber LCD with the
+// state, the timer and the signal bars, the green call key (Record, Pause, Resume) and
+// the red end key (Stop, dim while ready), and a nub that opens the window. The body
+// moves the window.
+export component Widget inherits Rectangle {
+    WindowMoveArea {
+        Shell {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            rt: 22px;
+            rb: 22px;
+        }
+        // The LCD in its bezel.
+        Rectangle {
+            x: 10px;
+            y: 10px;
+            width: 146px;
+            height: parent.height - 20px;
+            border-radius: 10px;
+            background: Brick.bezel;
+            LcdGlass {
+                x: 5px;
+                y: 5px;
+                width: parent.width - 10px;
+                height: parent.height - 10px;
+                VerticalLayout {
+                    padding-left: 7px;
+                    padding-right: 7px;
+                    padding-top: 5px;
+                    padding-bottom: 5px;
+                    HorizontalLayout {
+                        spacing: 5px;
+                        height: 11px;
+                        Tag { text: Main.recording ? (Main.paused ? "PAUSED" : "RECORDING") : "READY"; }
+                        if Main.recording && !Main.paused: VerticalLayout { alignment: center; Rectangle { width: 5px; height: 5px; background: Brick.ink; } }
+                        Rectangle { horizontal-stretch: 1; }
+                        VerticalLayout { alignment: center; Battery { } }
+                    }
+                    Rectangle { height: 9px; }
+                    HorizontalLayout {
+                        alignment: start;
+                        Timer { size: 34px; }
+                    }
+                    Rectangle { vertical-stretch: 1; }
+                    HorizontalLayout {
+                        spacing: 4px;
+                        VerticalLayout {
+                            alignment: end;
+                            Sig {
+                                n: 8;
+                                lo: 3px;
+                                top: 14px;
+                                bar: 4px;
+                                gap: 2px;
+                            }
+                        }
+                        Rectangle { horizontal-stretch: 1; }
+                        VerticalLayout { alignment: end; Caps { text: "IN"; } }
+                    }
+                }
+                LcdCorners { x: 0; y: 0; width: parent.width; height: parent.height; }
+            }
+        }
+        Key {
+            x: parent.width - 12px - 30px;
+            y: 10px;
+            width: 30px;
+            height: 18px;
+            kind: 14;
+            label: "Open the window";
+            tip: "Open window";
+            clicked => { Main.compact-changed(false); }
+            KeyIcon {
+                x: 9px;
+                y: 3px;
+                width: 12px;
+                height: 12px;
+                lo: @image-url("dv-brick/i-expand12.png");
+                hi: @image-url("dv-brick/i-expand12@2x.png");
+                tint: Brick.silver;
+            }
+        }
+        Key {
+            x: parent.width - 10px - 66px;
+            y: 36px;
+            width: 66px;
+            height: 36px;
+            kind: 16;
+            label: !Main.recording ? "Record" : Main.paused ? "Resume" : "Pause";
+            clicked => { if (Main.recording) { Main.toggle-pause(); } else { Main.toggle-record(); } }
+            KeyRow {
+                width: parent.width;
+                height: parent.height;
+                spacing: 5px;
+                lo: !Main.recording ? @image-url("dv-brick/i-mic14.png") : Main.paused ? @image-url("dv-brick/i-play14.png") : @image-url("dv-brick/i-pause14.png");
+                hi: !Main.recording ? @image-url("dv-brick/i-mic14@2x.png") : Main.paused ? @image-url("dv-brick/i-play14@2x.png") : @image-url("dv-brick/i-pause14@2x.png");
+                word: !Main.recording ? "REC" : Main.paused ? "RESUME" : "PAUSE";
+                tint: Brick.on-green;
+                ink: Brick.on-green;
+                word-size: Main.paused ? 7px : 8px;
+            }
+        }
+        Key {
+            x: parent.width - 10px - 66px;
+            y: 80px;
+            width: 66px;
+            height: 30px;
+            kind: Main.recording ? 17 : 18;
+            label: "Stop recording";
+            tip: "Stop";
+            enabled: Main.recording;
+            clicked => { Main.toggle-record(); }
+            KeyRow {
+                width: parent.width;
+                height: parent.height;
+                lo: @image-url("dv-brick/i-stop14.png");
+                hi: @image-url("dv-brick/i-stop14@2x.png");
+                word: "STOP";
+                tint: Brick.on-red;
+                ink: Brick.on-red;
+            }
+        }
+    }
+}
+
+// ---------- Questions and covers ----------
+
+// Where a question or a cover finds the handset under it: the LCD, its soft row, the soft
+// keys and the rocker's middle, on the main page (`main`, with its keypad) or another.
+component Overlay inherits Rectangle {
+    in property <bool> wide;
+    in property <bool> main;
+    property <int> rows: root.wide ? 0 : Hand.pad-rows(root.height, root.main);
+    out property <length> bez-h: Hand.bez-h(root.height, root.wide, root.rows);
+    out property <length> lcd-x: Hand.bez-x(root.wide) + 10px;
+    out property <length> lcd-y: 72px;
+    out property <length> lcd-w: root.width - 2 * Hand.bez-x(root.wide) - 20px;
+    out property <length> lcd-h: root.bez-h - 24px;
+    out property <length> soft-h: root.wide ? 20px : 18px;
+    out property <length> soft-y: Hand.soft-y(root.height, root.wide, root.rows);
+    out property <length> soft-w: Hand.soft-w(root.width, root.wide);
+    out property <length> soft-hk: root.wide ? 30px : 32px;
+    out property <length> left-x: root.wide ? Hand.bez-x(true) + 10px : 20px;
+    out property <length> right-x: root.wide ? root.width - Hand.bez-x(true) - 10px - 110px : root.width - 20px - root.soft-w;
+    // The rocker's middle (the OK key).
+    out property <length> ok-d: root.wide ? 46px : 38px;
+    out property <length> ok-x: root.wide ? root.width - 42px - 56px - root.ok-d / 2 : root.width / 2 - root.ok-d / 2;
+    out property <length> ok-y: root.wide ? Hand.wing-y(root.height) + 22px + 56px - root.ok-d / 2 : root.soft-y + 38px - root.ok-d / 2;
+}
+
+// The dither over the screen behind a popup (darker for the speaking cover).
+component Veil inherits Tile {
+    in property <bool> dark;
+    source: @image-url("dv-brick/t-dither.png");
+    tint: root.dark ? #3b1f05bf : #3b1f0599;
+}
+
+// The LCD's foot drawn again with the question's answers: Cancel, the main answer (dim
+// while it cannot be given) and, for unsaved changes, Discard changes in the middle.
+component SoftOver inherits Rectangle {
+    in property <bool> wide;
+    in property <length> lcd-w;
+    in property <length> lcd-h;
+    in property <string> l;
+    in property <string> m;
+    in property <string> r;
+    in property <bool> r-enabled: true;
+    clip: true;
+    // The backlight under the row, as the LCD draws it (so the page's own labels go).
+    LcdGlass {
+        x: 0;
+        y: root.height - root.lcd-h;
+        width: root.lcd-w;
+        height: root.lcd-h;
+    }
+    Rectangle {
+        background: #3b1f051f;
+        Rectangle { x: 0; y: 0; height: 1px; background: #3b1f054d; }
+    }
+    Words {
+        x: root.wide ? 14px : 10px;
+        y: 0;
+        height: parent.height;
+        text: root.l;
+        font-size: root.wide ? 17px : 16px;
+        accessible-role: none;
+    }
+    Words {
+        x: (parent.width - self.width) / 2;
+        y: 0;
+        height: parent.height;
+        text: root.m;
+        font-size: root.wide ? 17px : 16px;
+        accessible-role: none;
+    }
+    Words {
+        x: parent.width - (root.wide ? 14px : 10px) - self.width;
+        y: 0;
+        height: parent.height;
+        text: root.r;
+        opacity: root.r-enabled ? 1 : 0.4;
+        font-size: root.wide ? 17px : 16px;
+        accessible-role: none;
+    }
+    // The bottom corners of the LCD.
+    LcdCorners { x: 0; y: root.height - root.lcd-h; width: root.lcd-w; height: root.lcd-h; }
+}
+
+// A question over the dithered LCD: an LCD box with a double frame and an inverted title
+// bar (a pixel icon, no question mark), the note or a field; its answers on the soft
+// keys (Cancel left, the main answer right; Discard changes on the rocker's middle for
+// unsaved changes). Enter confirms, a click outside cancels. AppWindow works out the
+// words.
+export component Dialog inherits Rectangle {
+    in property <string> title;
+    in property <string> note;
+    in property <string> field;
+    in property <string> ok;
+    in property <bool> ok-enabled;
+    in property <string> clip-name;
+    in property <bool> wide;
+    // The question is over the main page (its keypad sits under the keys in portrait).
+    in property <bool> main;
+    callback close();
+    callback confirm();
+    callback discard();
+    property <int> kind: Main.dialog;
+    property <bool> writes: root.kind == 1 || root.kind >= 4;
+    property <length> box-w: min(geo.lcd-w - 48px, root.wide ? 320px : 360px);
+    property <length> box-top: root.wide ? 150px : 100px;
+    TouchArea { clicked => { root.close(); } }
+    geo := Overlay { wide: root.wide; main: root.main; }
+    Veil {
+        x: geo.lcd-x;
+        y: geo.lcd-y;
+        width: geo.lcd-w;
+        height: geo.lcd-h - geo.soft-h;
+    }
+    SoftOver {
+        x: geo.lcd-x;
+        y: geo.lcd-y + geo.lcd-h - geo.soft-h;
+        width: geo.lcd-w;
+        height: geo.soft-h;
+        wide: root.wide;
+        lcd-w: geo.lcd-w;
+        lcd-h: geo.lcd-h;
+        l: "Cancel";
+        m: root.kind == 3 ? "Discard changes" : "";
+        r: root.ok;
+        r-enabled: root.ok-enabled;
+    }
+    MenuCard {
+        x: geo.lcd-x + (geo.lcd-w - self.width) / 2;
+        y: geo.lcd-y + min(root.box-top, max(8px, geo.lcd-h - geo.soft-h - self.height - 8px));
+        width: root.box-w;
+        height: box.preferred-height;
+        title: root.title;
+        title-indent: root.kind != 3 ? 14px : 0;
+        TouchArea { }
+        // The title's pixel icon, in the bar's left end.
+        if root.kind != 3: BrickPx {
+            x: 14px;
+            y: 6px + (20px - self.height) / 2;
+            source: root.kind == 2 ? @image-url("dv-brick/x-trash.png") : root.kind == 4 ? @image-url("dv-brick/x-plus.png") : @image-url("dv-brick/x-pencil.png");
+            tint: Brick.lcd1;
+        }
+        box := VerticalLayout {
+            padding-left: 12px;
+            padding-right: 12px;
+            padding-top: 6px + 20px + 8px;
+            padding-bottom: 12px;
+            spacing: 4px;
+            if root.note != "": Words {
+                text: root.note;
+                font-size: 17px;
+                wrap: word-wrap;
+            }
+            if root.writes: VerticalLayout {
+                spacing: 4px;
+                Caps { text: root.field.to-uppercase(); font-size: 7px; }
+                VerticalLayout {
+                    padding-left: 3px;
+                    padding-right: 3px;
+                    padding-top: 2px;
+                    Field {
+                        height: 24px;
+                        label: root.field;
+                        text <=> Main.dialog-text;
+                        init => { self.grab(); }
+                        accepted => { if (root.ok-enabled) { root.confirm(); } }
+                    }
+                }
+            }
+        }
+    }
+    // The answers on the physical soft keys.
+    Key {
+        x: geo.left-x;
+        y: geo.soft-y;
+        width: geo.soft-w;
+        height: geo.soft-hk;
+        kind: root.wide ? 13 : 0;
+        label: "Cancel";
+        clicked => { root.close(); }
+        SoftFace { width: parent.width; height: parent.height; word: "CANCEL"; }
+    }
+    Key {
+        x: geo.right-x;
+        y: geo.soft-y;
+        width: geo.soft-w;
+        height: geo.soft-hk;
+        kind: root.wide ? 13 : 1;
+        label: root.ok;
+        enabled: root.ok-enabled;
+        clicked => { root.confirm(); }
+        SoftFace { width: parent.width; height: parent.height; word: root.ok.to-uppercase(); }
+    }
+    if root.kind == 3: Rectangle {
+        x: geo.ok-x;
+        y: geo.ok-y;
+        width: geo.ok-d;
+        height: geo.ok-d;
+        border-radius: self.width / 2;
+        background: dt.has-hover ? #ffffff14 : transparent;
+        accessible-role: button;
+        accessible-label: "Discard changes";
+        accessible-action-default => { root.discard(); }
+        property <bool> hovering: dt.has-hover;
+        changed hovering => { Tips.hover(self.hovering, "Discard changes", self.absolute-position, self.width, self.height); }
+        dt := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { Tips.hide(); root.discard(); }
+        }
+    }
+}
+
+// New words being spoken: a popup over a darker dither with the stage line, a block bar
+// and the percent; Cancel on the left soft key. It blocks the screen under it.
+export component Speaking inherits Rectangle {
+    in property <bool> wide;
+    in property <bool> main;
+    callback cancel();
+    TouchArea { }
+    geo := Overlay { wide: root.wide; main: root.main; }
+    Veil {
+        dark: true;
+        x: geo.lcd-x;
+        y: geo.lcd-y;
+        width: geo.lcd-w;
+        height: geo.lcd-h - geo.soft-h;
+    }
+    SoftOver {
+        x: geo.lcd-x;
+        y: geo.lcd-y + geo.lcd-h - geo.soft-h;
+        width: geo.lcd-w;
+        height: geo.soft-h;
+        wide: root.wide;
+        lcd-w: geo.lcd-w;
+        lcd-h: geo.lcd-h;
+        l: "Cancel";
+    }
+    MenuCard {
+        x: geo.lcd-x + (geo.lcd-w - self.width) / 2;
+        y: geo.lcd-y + min(root.wide ? 150px : 100px, max(8px, geo.lcd-h - geo.soft-h - self.height - 8px));
+        width: min(geo.lcd-w - 48px, root.wide ? 300px : 340px);
+        height: box.preferred-height;
+        title: "Speaking new words";
+        title-indent: 14px;
+        BrickPx {
+            x: 14px;
+            y: 6px + (20px - self.height) / 2;
+            source: @image-url("dv-brick/x-speak.png");
+            tint: Brick.lcd1;
+        }
+        box := VerticalLayout {
+            padding-left: 12px;
+            padding-right: 12px;
+            padding-top: 6px + 20px + 8px;
+            padding-bottom: 12px;
+            spacing: 8px;
+            Words {
+                text: Pages.speak-stage;
+                font-size: 17px;
+                wrap: word-wrap;
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+                    Blocks { value: Pages.speak-progress; n: 16; }
+                }
+                Words { text: round(Pages.speak-progress * 100) + "%"; }
+            }
+        }
+    }
+    Key {
+        x: geo.left-x;
+        y: geo.soft-y;
+        width: geo.soft-w;
+        height: geo.soft-hk;
+        kind: root.wide ? 13 : 0;
+        label: "Cancel";
+        clicked => { root.cancel(); }
+        SoftFace { width: parent.width; height: parent.height; word: "CANCEL"; }
+    }
+    KeyFace {
+        x: geo.right-x;
+        y: geo.soft-y;
+        width: geo.soft-w;
+        height: geo.soft-hk;
+        kind: root.wide ? 13 : 1;
+    }
+}
+
+// Files dragged over the window: the LCD gives way to a dashed frame 12 px in from its
+// edge, the big pixel import arrow and the words.
+export component Drop inherits Rectangle {
+    in property <bool> wide;
+    in property <bool> main;
+    geo := Overlay { wide: root.wide; main: root.main; }
+    LcdGlass {
+        x: geo.lcd-x;
+        y: geo.lcd-y;
+        width: geo.lcd-w;
+        height: geo.lcd-h;
+        // The dashed frame, 3 px of ink in 6 px dashes, and a fine line inside it.
+        property <int> across: floor((self.width - 24px) / 10px);
+        property <int> down: floor((self.height - 24px) / 10px);
+        for i in self.across: Rectangle {
+            x: 12px + i * (parent.width - 24px - 6px) / max(1, parent.across - 1);
+            y: 12px;
+            width: 6px;
+            height: 3px;
+            background: Brick.ink;
+        }
+        for i in self.across: Rectangle {
+            x: 12px + i * (parent.width - 24px - 6px) / max(1, parent.across - 1);
+            y: parent.height - 15px;
+            width: 6px;
+            height: 3px;
+            background: Brick.ink;
+        }
+        for i in self.down: Rectangle {
+            x: 12px;
+            y: 12px + i * (parent.height - 24px - 6px) / max(1, parent.down - 1);
+            width: 3px;
+            height: 6px;
+            background: Brick.ink;
+        }
+        for i in self.down: Rectangle {
+            x: parent.width - 15px;
+            y: 12px + i * (parent.height - 24px - 6px) / max(1, parent.down - 1);
+            width: 3px;
+            height: 6px;
+            background: Brick.ink;
+        }
+        Rectangle {
+            x: 18px;
+            y: 18px;
+            width: parent.width - 36px;
+            height: parent.height - 36px;
+            border-width: 1px;
+            border-color: Brick.ink;
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 12px;
+            HorizontalLayout {
+                alignment: center;
+                BrickPx { s: 4; source: @image-url("dv-brick/x-bigimp.png"); }
+            }
+            Words {
+                text: "Drop to import";
+                font-size: 26px;
+                horizontal-alignment: center;
+            }
+        }
+        LcdCorners { x: 0; y: 0; width: parent.width; height: parent.height; }
+    }
+}

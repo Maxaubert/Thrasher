@@ -75,7 +75,8 @@ px-quest) PIECES="gear:gear:7:7 min:min:7:7 close:close:7:7 play:play:5:5 pause:
   chest:chest:12:9 wrec:wrec:17:17 wstop:wstop:17:17" ;;
 # Brick Phone: the stretching keys in three slices, the fixed keys whole, the rocker and
 # its OK key, the antenna and the earpieces at 1x and 2x; the white icons for colorize;
-# the LCD's pixel glyphs and tiles (x-, t-) are used at 1x only.
+# the LCD's pixel glyphs and tiles (x-, t-) are used at 1x only. From kp-off on: the
+# other pages' pieces (the keys while off, the widget's keys, more icons and glyphs).
 dv-brick) PIECES="kp-menu-l:kp-menu-l:30:42 kp-menu-m:kp-menu-m:1:42 kp-menu-r:kp-menu-r:30:42
   kp-find-l:kp-find-l:30:42 kp-find-m:kp-find-m:1:42 kp-find-r:kp-find-r:30:42
   kp-rec-l:kp-rec-l:30:42 kp-rec-m:kp-rec-m:1:42 kp-rec-r:kp-rec-r:30:42
@@ -90,7 +91,16 @@ dv-brick) PIECES="kp-menu-l:kp-menu-l:30:42 kp-menu-m:kp-menu-m:1:42 kp-menu-r:k
   x-play:x-play:10:10 x-pause:x-pause:10:10 x-dots:x-dots:4:10 x-fold:x-fold:9:8 x-chev:x-chev:8:8 x-mag:x-mag:9:9
   i-pause14:i-pause14:14:14 i-pause16:i-pause16:16:16 i-pause18:i-pause18:18:18 i-play18:i-play18:18:18
   x-mic:x-mic:12:16 x-micsm:x-micsm:7:8 x-tri:x-tri:8:8 x-trid:x-trid:8:8 t-dot:t-dot:2:1 t-dash:t-dash:6:1 t-dashv:t-dashv:1:6
-  t-rule:t-rule:1:3 t-grid:t-grid:3:3 t-micdots:t-micdots:4:4" ;;
+  t-rule:t-rule:1:3 t-grid:t-grid:3:3 t-micdots:t-micdots:4:4
+  kp-off-l:kp-off-l:30:42 kp-off-m:kp-off-m:1:42 kp-off-r:kp-off-r:30:42 kw-off:kw-off:148:64
+  kg-rec:kg-rec:78:46 kg-stop:kg-stop:78:40 kg-stopoff:kg-stopoff:78:40
+  i-send14:i-send14:14:14 i-send18:i-send18:18:18 i-back14:i-back14:14:14 i-check14:i-check14:14:14 i-check18:i-check18:18:18
+  i-merge14:i-merge14:14:14 i-merge18:i-merge18:18:18 i-ask14:i-ask14:14:14 i-ask18:i-ask18:18:18
+  i-expand12:i-expand12:12:12 i-left12:i-left12:12:12 i-right12:i-right12:12:12
+  x-up:x-up:8:4 x-dn:x-dn:8:4 x-lf:x-lf:4:7 x-rt:x-rt:4:7 x-check:x-check:9:6 x-x:x-x:7:7 x-grip:x-grip:5:8
+  x-lang:x-lang:9:8 x-spark:x-spark:9:7 x-copy:x-copy:8:8 x-pencil:x-pencil:7:7 x-trash:x-trash:7:7 x-folder:x-folder:9:6
+  x-plus:x-plus:7:7 x-box:x-box:7:7 x-loop:x-loop:7:6 x-speak:x-speak:8:8 x-bigimp:x-bigimp:16:16 x-hour:x-hour:7:7
+  t-dither:t-dither:2:2" ;;
 # Answering Machine: parts of variable width in three slices (-l, -m, -r); the grille
 # of the wide window is cut short and built up from its rows (see Grille in dv-answer.slint).
 dv-answer) PIECES="disp-p-l:disp-p-l:14:100 disp-p-m:disp-p-m:2:100 disp-p-r:disp-p-r:14:100

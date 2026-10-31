@@ -8,6 +8,11 @@ cargo run --release -p thrasher-app
 
 Needs only Rust (stable, MSVC). This is what CI builds and tests.
 
+Debug builds of `thrasher-app` carry line tables only (`[profile.dev.package.thrasher-app]`
+in the root `Cargo.toml`): with full debug info the test exe passed the linker's program
+database limit (`LNK1140`) once the generated UI code grew with the Quest Menu and Brick Phone pages
+(2026-10-31).
+
 ## With transcription (whisper.cpp)
 
 Transcription is behind Cargo features so the plain build stays light:

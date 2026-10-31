@@ -53,7 +53,7 @@ x-spatial) PIECES="room-p:room-p:200:310 room-w:room-w:500:310 shadow-pane:shado
   widget-room:widget-room:240:124 orb-w:orb-w:142:142 ring-w:ring-w:96:96" ;;
 dash) PIECES="gauge-p:gauge-p:188:188 gauge-w:gauge-w:270:270 wheel-p:wheel-p:200:192 wheel-w:wheel-w:400:244
   rec:rec:128:128 rec-on:rec-on:128:128 sbtn:sbtn:42:42 chip:chip:20:20 cover:cover:38:38 logo:logo:16:16
-  lamp-ok:lamp-ok:22:22 lamp-rec:lamp-rec:22:22 lamp-pause:lamp-pause:22:22" ;;
+  lamp-ok:lamp-ok:22:22 lamp-rec:lamp-rec:22:22 lamp-pause:lamp-pause:22:22 gauge-c:gauge-c:188:188 ctile:ctile:20:20" ;;
 # Pocket: pixel art and tiles, one css pixel per art pixel; only the 1x cut is used.
 px-pocket) PIECES="mic:mic:9:11 mics:mics:5:7 gear:gear:9:9 min:min:7:7 close:close:7:7 imp:imp:9:9 ask:ask:9:7 wid:wid:9:8
   play:play:6:7 pause:pause:6:7 stop:stop:7:7 dots:dots:2:8 down:down:7:4 find:find:8:8 cur:cur:4:7 check:check:8:6

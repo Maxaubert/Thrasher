@@ -36,6 +36,20 @@ if (el === 'gauge-p' || el === 'gauge-w') {
    <path d="${arcD(cx, cy, 80)}" fill="none" stroke="#1a2027" stroke-width="7" stroke-linecap="round"/>`);
 }
 
+// The other pages' gauge (docs/mockups/device-themes/x-dash-pages/): the same box with
+// all 41 ticks grey and no labels; it is the clip page's trip meter, the merge page's
+// route total and the speaking cover's progress. Its labels are drawn live.
+if (el === 'gauge-c') {
+  const cx = 100, cy = 100; let t = '';
+  for (let i = 0; i <= 40; i++) {
+    const d = 135 + i * 270 / 40, maj = i % 5 == 0, [x1, y1] = pt(cx, cy, maj ? 86 : 89, d), [x2, y2] = pt(cx, cy, 93, d);
+    t += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${maj ? '#7d8894' : '#3a424c'}" stroke-width="${maj ? 1.4 : .8}"/>`;
+  }
+  a.innerHTML = svg('0 0 200 200', `${t}
+   <path d="${arcD(cx, cy, 98)}" fill="none" stroke="rgba(98,210,255,.08)" stroke-width="1"/>
+   <path d="${arcD(cx, cy, 80)}" fill="none" stroke="#1a2027" stroke-width="7" stroke-linecap="round"/>`);
+}
+
 // The steering wheel: rim, spokes, the two button plates and the hub; the record button
 // and the spoke buttons go on top. Portrait 200x192, wide 400x244 (cut off below).
 const wheel = (o) => {
@@ -68,6 +82,9 @@ if (el === 'sbtn') a.innerHTML = disc(34, 'linear-gradient(180deg,#262c34,#171b2
 // The source chip's icon: a folder on the ice gradient.
 if (el === 'chip') a.innerHTML = `<div style="position:absolute;inset:0;border-radius:6px;background:linear-gradient(135deg,#3a8dff,#62d2ff);display:grid;place-items:center">
   <svg width="12" height="12" viewBox="0 0 24 24" fill="#04121c"><path d="M3 7a2 2 0 0 1 2-2h4.2l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>`;
+// The icon tile of a settings card or a dialog: the chip's ice gradient without the
+// folder (the icon is drawn on it in Slint).
+if (el === 'ctile') a.innerHTML = `<div style="position:absolute;inset:0;border-radius:6px;background:linear-gradient(135deg,#3a8dff,#62d2ff)"></div>`;
 // The media card's cover: stripes and a note.
 if (el === 'cover') a.innerHTML = `<div style="position:absolute;inset:0;border-radius:8px;background:repeating-linear-gradient(135deg,#161a1f 0 6px,#12151a 6px 12px);border:1px solid rgba(255,255,255,.07);display:grid;place-items:center;color:#56606c">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg></div>`;

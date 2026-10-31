@@ -125,7 +125,8 @@ component Tile inherits Rectangle {
         Rectangle {
             x: 1px;
             y: 74px;
-            width: min(pk-name.preferred-width + 6px, 108px);
+            // A long name (Answering Machine) runs a little into the gap and sets tighter.
+            width: min(pk-name.preferred-width + 6px, 118px);
             height: 13px;
             background: root.on ? Pk.l3 : root.hover ? Pk.l1 : transparent;
             PkRing { visible: root.focused && !root.on; }
@@ -136,9 +137,17 @@ component Tile inherits Rectangle {
                 color: root.on ? Pk.l0 : Pk.l3;
                 font-family: Pk.small;
                 font-size: 8px;
-                letter-spacing: 0.5px;
+                letter-spacing: pk-fit.preferred-width + 6px > 118px ? 0 : 0.5px;
                 vertical-alignment: center;
                 overflow: elide;
+                accessible-role: none;
+            }
+            pk-fit := Text {
+                visible: false;
+                text: pk-name.text;
+                font-family: Pk.small;
+                font-size: 8px;
+                letter-spacing: 0.5px;
                 accessible-role: none;
             }
         }

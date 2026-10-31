@@ -658,8 +658,15 @@ component CleanVoice inherits HorizontalLayout {
             toggled(on) => { root.changed-to(on); }
         }
     }
-    Small { text: "CLEAN VOICE ON EXPORT"; color: Pk.l3; overflow: elide; accessible-role: none; }
-    Small { text: "LESS NOISE"; horizontal-stretch: 1; overflow: elide; accessible-role: none; }
+    cv-word := Small { text: "CLEAN VOICE ON EXPORT"; color: Pk.l3; overflow: elide; accessible-role: none; }
+    // The hint shows only whole: in the wide clip page's narrow column it would be cut.
+    cv-hint := Small {
+        text: "LESS NOISE";
+        horizontal-stretch: 1;
+        overflow: elide;
+        accessible-role: none;
+        opacity: root.width - root.padding-left - root.padding-right >= 44px + 2 * root.spacing + cv-word.preferred-width + cv-hint.preferred-width ? 1 : 0;
+    }
 }
 
 // An LCD key with the letter of the bezel key that does the same (questions, renaming).
@@ -1833,7 +1840,7 @@ export component MergePage inherits Shell {
                             Splice { }
                             HorizontalLayout {
                                 Small { text: "0:00"; horizontal-stretch: 1; accessible-role: none; }
-                                Small { text: Pages.merge-total; accessible-role: none; }
+                                Small { text: Pages.merge-total; accessible-role: text; accessible-label: "Total " + Pages.merge-total; }
                             }
                             Field { text <=> Pages.merge-name; placeholder: "Name"; label: "Name of the merged clip"; accepted => { if (root.can-run) { root.run(Pages.merge-name); } } }
                         }

@@ -6,7 +6,7 @@
 // Drawn in the Ember look, or the Tape Deck or Phosphor or Desktop 95 or Comic Book look while that theme is on; Spatial Glass
 // tints the Ember look (a white frame and check bead, a cyan focus ring, no fades).
 
-import { Theme, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Glass, Palette, Icon, IconBtn, Win } from "common.slint";
+import { Theme, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Glass, Palette, Icon, IconBtn, Win, Pk, PkRing, PkTile } from "common.slint";
 
 export struct ThemeTile {
     // As in Theme.names.
@@ -91,8 +91,61 @@ component Tile inherits Rectangle {
     accessible-checked: root.on;
     accessible-action-default => { root.picked(); }
 
+    // Pocket: the picture in a dark 2px frame, its name in small caps under it; the
+    // current one double framed with its name on a dark tag and a corner flag, the focused
+    // one double framed in mid green, a mid green name under the pointer.
+    if Theme.pocket: Rectangle {
+        Rectangle {
+            x: 3px;
+            y: 3px;
+            width: 104px;
+            height: 64px;
+            opacity: root.down ? 0.8 : 1;
+            if root.classic: Mini { p: Theme.palettes[root.tile.index]; }
+            if !root.classic: Image {
+                width: 104px;
+                height: 64px;
+                source: root.hi ? root.tile.art2 : root.tile.art;
+                image-fit: fill;
+            }
+        }
+        PkRing { x: 1px; y: 1px; width: 108px; height: 68px; }
+        if root.on || root.focused: PkRing { x: -1px; y: -1px; width: 112px; height: 72px; ink: Pk.l0; }
+        if root.on || root.focused: PkRing { x: -3px; y: -3px; width: 116px; height: 76px; ink: root.on ? Pk.l3 : Pk.l1; }
+        if root.on: Path {
+            x: 110px - 6px - 12px;
+            y: 5px;
+            width: 12px;
+            height: 12px;
+            viewbox-width: 12;
+            viewbox-height: 12;
+            commands: "M 0 0 L 12 0 L 12 12 Z";
+            fill: Pk.l3;
+        }
+        Rectangle {
+            x: 1px;
+            y: 74px;
+            width: min(pk-name.preferred-width + 6px, 108px);
+            height: 13px;
+            background: root.on ? Pk.l3 : root.hover ? Pk.l1 : transparent;
+            PkRing { visible: root.focused && !root.on; }
+            pk-name := Text {
+                x: 3px;
+                width: parent.width - 6px;
+                text: root.tile.name.to-uppercase();
+                color: root.on ? Pk.l0 : Pk.l3;
+                font-family: Pk.small;
+                font-size: 8px;
+                letter-spacing: 0.5px;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+        }
+    }
+
     // Ember: a framed picture, the name under it, a check on the current one.
-    if !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic: Rectangle {
+    if !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket: Rectangle {
         Rectangle {
             y: 0;
             height: 70px;
@@ -393,7 +446,7 @@ component Fade inherits Rectangle {
     // Where it sits in the window; the window size names it to be read again on a resize.
     property <length> at-x: Win.width > 0 && root.width > 0 ? self.absolute-position.x : self.absolute-position.x;
     width: Theme.tape ? 26px : 30px; // As Strip.fade-w.
-    visible: !Theme.os95;
+    visible: !Theme.os95 && !Theme.pocket;
     background: !Theme.tape ? transparent
         : root.to-right ? @linear-gradient(90deg, #b5ad9f00 0%, #b5ad9f 100%)
         : @linear-gradient(270deg, #c5bdb000 0%, #c5bdb0 100%);
@@ -488,9 +541,9 @@ component Strip inherits VerticalLayout {
         // Car Dashboard: small caps, as the cards' names.
         if !Theme.tape && !Theme.comic: Text {
             text: Theme.dash ? root.title.to-uppercase() : root.title;
-            color: Theme.phos ? Ph.hi : Theme.glass ? Glass.ink : Theme.dash ? Theme.muted : Theme.text;
-            font-family: Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.dash ? "Manrope" : "Inter Tight";
-            font-size: Theme.phos ? 12.5px : Theme.os95 ? 12.5px : Theme.dash ? 9px : 12px;
+            color: Theme.pocket ? Pk.l3 : Theme.phos ? Ph.hi : Theme.glass ? Glass.ink : Theme.dash ? Theme.muted : Theme.text;
+            font-family: Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.dash ? "Manrope" : "Inter Tight";
+            font-size: Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.os95 ? 12.5px : Theme.dash ? 9px : 12px;
             font-weight: Theme.phos ? 400 : Theme.os95 ? 700 : Theme.dash ? 800 : 600;
             letter-spacing: Theme.dash ? 2.3px : 0;
             vertical-alignment: center;
@@ -536,9 +589,9 @@ component Strip inherits VerticalLayout {
         }
         Text {
             text: root.n;
-            color: Theme.tape ? #6f665a : Theme.os95 ? Os.note : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.dash ? #56606c : Theme.dim;
-            font-family: Theme.tape || Theme.dash ? Theme.mono : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : "Inter Tight";
-            font-size: Theme.tape ? 10px : Theme.phos ? 11px : Theme.comic ? 14px : Theme.dash ? 10px : 12px;
+            color: Theme.pocket ? Pk.l2 : Theme.tape ? #6f665a : Theme.os95 ? Os.note : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.dash ? #56606c : Theme.dim;
+            font-family: Theme.pocket ? Pk.small : Theme.tape || Theme.dash ? Theme.mono : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : "Inter Tight";
+            font-size: Theme.pocket ? 8px : Theme.tape ? 10px : Theme.phos ? 11px : Theme.comic ? 14px : Theme.dash ? 10px : 12px;
             letter-spacing: Theme.comic ? 1px : 0;
             vertical-alignment: center;
             accessible-role: none;
@@ -551,8 +604,8 @@ component Strip inherits VerticalLayout {
             VerticalLayout {
                 alignment: center;
                 IconBtn {
-                    size: Theme.os95 ? 22px : 26px;
-                    height: Theme.tape ? 22px : Theme.os95 ? 18px : Theme.comic ? 24px : 26px;
+                    size: Theme.os95 ? 22px : Theme.pocket ? 18px : 26px;
+                    height: Theme.tape ? 22px : Theme.os95 || Theme.pocket ? 18px : Theme.comic ? 24px : 26px;
                     round: !Theme.comic;
                     key: "[<]";
                     icon: "back";
@@ -567,8 +620,8 @@ component Strip inherits VerticalLayout {
             VerticalLayout {
                 alignment: center;
                 IconBtn {
-                    size: Theme.os95 ? 22px : 26px;
-                    height: Theme.tape ? 22px : Theme.os95 ? 18px : Theme.comic ? 24px : 26px;
+                    size: Theme.os95 ? 22px : Theme.pocket ? 18px : 26px;
+                    height: Theme.tape ? 22px : Theme.os95 || Theme.pocket ? 18px : Theme.comic ? 24px : 26px;
                     round: !Theme.comic;
                     key: "[>]";
                     icon: "chevron";
@@ -667,9 +720,9 @@ component Strip inherits VerticalLayout {
         padding-bottom: Theme.tape ? 6px : 0;
         Rectangle {
             visible: root.scrolls;
-            height: Theme.tape ? 4px : Theme.os95 ? 16px : Theme.comic ? 5px : 3px;
-            border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic ? 0 : 2px;
-            background: Theme.tape ? #1b1410 : Theme.phos ? Ph.faint : Theme.os95 ? Os.face : Theme.comic ? #ffffff : Theme.glass ? #ffffff1f : Theme.divider;
+            height: Theme.tape ? 4px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.pocket ? 6px : 3px;
+            border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket ? 0 : 2px;
+            background: Theme.pocket ? transparent : Theme.tape ? #1b1410 : Theme.phos ? Ph.faint : Theme.os95 ? Os.face : Theme.comic ? #ffffff : Theme.glass ? #ffffff1f : Theme.divider;
             border-width: Theme.comic ? 1.5px : 0;
             border-color: Comic.ink;
             property <length> thumb-w: max(30px, self.width * root.view-w / max(root.content-w, 1px));
@@ -687,13 +740,14 @@ component Strip inherits VerticalLayout {
                 horizontal-alignment: left;
                 vertical-alignment: top;
             }
+            PkTile { visible: Theme.pocket; x: 0; y: 0; width: parent.width; height: parent.height; source: @image-url("skins/px-pocket/dith.png"); }
             Rectangle {
                 x: root.max-off > 0 ? root.x-off / root.max-off * (parent.width - self.width) : 0;
                 y: Theme.tape ? -1px : 0;
                 width: parent.thumb-w;
-                height: Theme.tape ? 6px : Theme.os95 ? 16px : Theme.comic ? 5px : 3px;
-                border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic ? 0 : 2px;
-                background: Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.phos ? Ph.ph : Theme.os95 ? Os.face : Theme.comic ? Comic.ink : Theme.glass ? #ffffff73 : Theme.edge;
+                height: Theme.tape ? 6px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.pocket ? 6px : 3px;
+                border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket ? 0 : 2px;
+                background: Theme.pocket ? Pk.l3 : Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.phos ? Ph.ph : Theme.os95 ? Os.face : Theme.comic ? Comic.ink : Theme.glass ? #ffffff73 : Theme.edge;
                 OsBevel { visible: Theme.os95; kind: 0; }
             }
         }

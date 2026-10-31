@@ -1,0 +1,2431 @@
+// The Pocket look of every page but the main one (mockups in
+// docs/mockups/device-themes/px-pocket-pages/): opening a page changes the cartridge, not
+// the handheld. The shell, the surround and the keys stay; the LCD shows the page and the
+// keys under it change their words with it. A does the page's main thing (Play, Merge,
+// Ask; the answer in a question), B goes back (cancel in a question), the pills are Rename
+// and Delete on the clip page, and a key a page has no use for is faded and unlabelled.
+// The D pad skips 5 seconds on the clip page, as the arrow keys do there; it does nothing
+// elsewhere. Menus and questions are LCD windows with a hard two shade edge.
+//
+// Behaviour is shared: the state is in the Pages and Main globals, the actions are
+// AppWindow's (reached through the callbacks here), and the shared widgets (the
+// transcript card, menus, dropdowns, switches, keys) draw their LCD look themselves for
+// this skin (`Theme.pocket`).
+
+import { ThemeGallery } from "../gallery.slint";
+import { Theme, Main, Pages, Tips, Btn, IconBtn, Toggle, Select, TextField, ShortcutBox, Scroller, OrderList, TranscriptCard, ExportButton, TrimTouch, AskSource, PkRing, PkTile, PkPx } from "../common.slint";
+import { Pk, Px, Tile, Step4, Step8, Outline, Small, Big, Title, SurTop, KeyLabel, RoundKey, Pill } from "px-pocket-parts.slint";
+
+// ---------- The handheld ----------
+
+// What a bezel key shows and says. `off`: faded, unlabelled, does nothing.
+struct KeySpec {
+    icon: image,
+    word: string,
+    label: string,
+    tip: string,
+    off: bool,
+    lit: bool,
+}
+
+// The D pad of the other pages: its left half and its right half (back and forward 5
+// seconds on the clip page); faded where a page has no use for it.
+component Pad inherits Rectangle {
+    in property <float> s: 4;
+    in property <string> word;
+    in property <bool> off;
+    in property <string> back-label;
+    in property <string> fwd-label;
+    in property <string> tip;
+    callback step(int);
+    property <length> u: max(1, round(root.s * 1px / 1phx)) * 1phx;
+    out property <length> d: art.width;
+    width: max(self.d, lab.width);
+    height: self.d + 8px + lab.height;
+    Px {
+        x: (parent.width - self.width) / 2;
+        y: root.u;
+        source: @image-url("px-pocket/dpad.png");
+        s: root.s;
+        colorize: Pk.shade;
+        opacity: root.off ? 0.2 : 0.45;
+    }
+    art := Px {
+        x: (parent.width - self.width) / 2;
+        y: t.pressed ? root.u / 2 : 0;
+        source: @image-url("px-pocket/dpad.png");
+        s: root.s;
+        opacity: root.off ? 0.45 : 1;
+    }
+    lab := KeyLabel {
+        x: (parent.width - self.width) / 2;
+        y: root.d + 8px;
+        text: root.word;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering && !root.off, root.tip, self.absolute-position, root.d, root.d); }
+    t := TouchArea {
+        enabled: !root.off;
+        mouse-cursor: pointer;
+        x: (parent.width - root.d) / 2;
+        width: root.d;
+        height: root.d;
+        clicked => { Tips.hide(); root.step(self.mouse-x < self.width / 2 ? -1 : 1); }
+    }
+    // The two halves for screen readers: the left arm and the right arm.
+    if !root.off: Rectangle {
+        x: t.x;
+        y: root.d / 3;
+        width: root.d / 3;
+        height: root.d / 3;
+        accessible-role: button;
+        accessible-label: root.back-label;
+        accessible-action-default => { root.step(-1); }
+    }
+    if !root.off: Rectangle {
+        x: t.x + root.d * 2 / 3;
+        y: root.d / 3;
+        width: root.d / 3;
+        height: root.d / 3;
+        accessible-role: button;
+        accessible-label: root.fwd-label;
+        accessible-action-default => { root.step(1); }
+    }
+}
+
+// The keys round the screen, where the main page has them: under it in portrait (the D
+// pad, the two pills, B and A), beside it when wide (the D pad and the pills on the left,
+// A, B and the grille on the right). `cover` paints the shell under them first, for a
+// question or a cover drawn over a page.
+export component Bezel inherits Rectangle {
+    in property <bool> wide;
+    in property <bool> narrow;
+    in property <bool> cover;
+    in property <KeySpec> a;
+    in property <KeySpec> b;
+    in property <KeySpec> p1;
+    in property <KeySpec> p2;
+    in property <string> pad-word;
+    in property <bool> pad-on;
+    callback a-clicked();
+    callback b-clicked();
+    callback p1-clicked();
+    callback p2-clicked();
+    callback pad(int);
+    property <length> ctrl-h: root.height < 600px ? 120px : 142px;
+    property <length> cy: (root.ctrl-h - 142px) / 2;
+    property <length> body-h: root.height - 36px - 8px;
+    property <length> wy: max(-90px, (root.body-h - 576px) / 2);
+
+    if root.cover && !root.wide: Rectangle {
+        x: 4px;
+        y: root.height - root.ctrl-h;
+        width: root.width - 8px;
+        height: root.ctrl-h - 6px;
+        background: Pk.sh1;
+    }
+    if !root.wide: Rectangle {
+        y: root.height - root.ctrl-h;
+        height: root.ctrl-h;
+        Pad {
+            x: 24px + (root.narrow ? 0 : 6px) - (self.width - self.d) / 2;
+            y: max(4px, 22px + root.cy);
+            word: root.pad-word;
+            off: !root.pad-on;
+            back-label: "Back 5 seconds";
+            fwd-label: "Forward 5 seconds";
+            tip: "Skip 5 seconds";
+            step(d) => { root.pad(d); }
+        }
+        pills := HorizontalLayout {
+            x: (100px + root.width - 124px) / 2 - self.width / 2;
+            y: max(4px, 72px + root.cy);
+            width: self.preferred-width;
+            height: self.preferred-height;
+            spacing: 14px;
+            Pill {
+                icon: root.p1.icon;
+                word: root.p1.off ? "" : root.p1.word;
+                label: root.p1.label;
+                tip: root.p1.tip;
+                off: root.p1.off;
+                clicked => { root.p1-clicked(); }
+            }
+            Pill {
+                icon: root.p2.icon;
+                word: root.p2.off ? "" : root.p2.word;
+                label: root.p2.label;
+                tip: root.p2.tip;
+                off: root.p2.off;
+                clicked => { root.p2-clicked(); }
+            }
+        }
+        RoundKey {
+            x: root.width - 102px - self.width / 2;
+            y: max(4px, 50px + root.cy);
+            key: @image-url("px-pocket/key-11.png");
+            icon: root.b.icon;
+            letter: "B";
+            word: root.b.off ? "" : root.b.word;
+            label: root.b.off ? "" : root.b.label;
+            tip: root.b.tip;
+            off: root.b.off;
+            lit: root.b.lit;
+            clicked => { root.b-clicked(); }
+        }
+        RoundKey {
+            x: root.width - 50px - self.width / 2;
+            y: max(4px, 16px + root.cy);
+            key: @image-url("px-pocket/key-12.png");
+            icon: root.a.icon;
+            letter: "A";
+            word: root.a.off ? "" : root.a.word;
+            label: root.a.off ? "" : root.a.label;
+            tip: root.a.tip;
+            off: root.a.off;
+            lit: root.a.lit;
+            clicked => { root.a-clicked(); }
+        }
+    }
+
+    if root.cover && root.wide: Rectangle {
+        x: 4px;
+        y: 36px;
+        width: 156px;
+        height: root.height - 42px;
+        background: Pk.sh1;
+    }
+    if root.cover && root.wide: Rectangle {
+        x: root.width - 160px;
+        y: 36px;
+        width: 156px;
+        height: root.height - 42px;
+        background: Pk.sh1;
+    }
+    if root.wide: Rectangle {
+        x: 0;
+        y: 36px;
+        width: 160px;
+        height: root.body-h;
+        Pad {
+            x: (parent.width - self.width) / 2;
+            y: 150px + root.wy;
+            s: 5;
+            word: root.pad-word;
+            off: !root.pad-on;
+            back-label: "Back 5 seconds";
+            fwd-label: "Forward 5 seconds";
+            tip: "Skip 5 seconds";
+            step(d) => { root.pad(d); }
+        }
+        VerticalLayout {
+            x: (parent.width - self.width) / 2;
+            y: 340px + root.wy;
+            width: self.preferred-width;
+            height: self.preferred-height;
+            spacing: 18px;
+            Pill {
+                pill-w: 116px;
+                icon: root.p1.icon;
+                word: root.p1.off ? "" : root.p1.word;
+                label: root.p1.label;
+                tip: root.p1.tip;
+                off: root.p1.off;
+                clicked => { root.p1-clicked(); }
+            }
+            Pill {
+                pill-w: 116px;
+                icon: root.p2.icon;
+                word: root.p2.off ? "" : root.p2.word;
+                label: root.p2.label;
+                tip: root.p2.tip;
+                off: root.p2.off;
+                clicked => { root.p2-clicked(); }
+            }
+        }
+    }
+    if root.wide: Rectangle {
+        x: root.width - 160px;
+        y: 36px;
+        width: 160px;
+        height: root.body-h;
+        RoundKey {
+            x: 94px - self.width / 2;
+            y: 140px + root.wy;
+            key: @image-url("px-pocket/key-16.png");
+            icon: root.a.icon;
+            letter: "A";
+            word: root.a.off ? "" : root.a.word;
+            label: root.a.off ? "" : root.a.label;
+            tip: root.a.tip;
+            off: root.a.off;
+            lit: root.a.lit;
+            clicked => { root.a-clicked(); }
+        }
+        RoundKey {
+            x: 38px - self.width / 2;
+            y: 232px + root.wy;
+            key: @image-url("px-pocket/key-12.png");
+            icon: root.b.icon;
+            letter: "B";
+            word: root.b.off ? "" : root.b.word;
+            label: root.b.off ? "" : root.b.label;
+            tip: root.b.tip;
+            off: root.b.off;
+            lit: root.b.lit;
+            clicked => { root.b-clicked(); }
+        }
+        // The speaker grille.
+        for i in 30: Rectangle {
+            x: 44px + Math.mod(i, 6) * 8px;
+            y: 410px + root.wy + floor(i / 6) * 8px;
+            width: 4px;
+            height: 4px;
+            background: Pk.sh3;
+            Rectangle { y: -2px; height: 2px; background: Pk.sh2; }
+        }
+    }
+}
+
+// Where the LCD is in the window, as the main page has it.
+global Geo {
+    public pure function lcd-x(wide: bool) -> length { return wide ? 172px : 26px; }
+    public pure function lcd-y() -> length { return 56px; }
+    public pure function lcd-w(w: length, wide: bool) -> length { return wide ? w - 344px : w - 52px; }
+    public pure function lcd-h(w: length, h: length, wide: bool) -> length {
+        return wide ? h - 44px - 32px : h - 36px - (h < 600px ? 120px : 142px) - 32px;
+    }
+}
+
+// The handheld round a page: the shell with its top edge (no Settings key), the screen
+// surround with PWR and LCD over the screen, the page on the LCD and the bezel keys.
+component Shell inherits Rectangle {
+    in property <bool> wide;
+    in property <bool> narrow;
+    in property <KeySpec> a;
+    in property <KeySpec> b;
+    in property <KeySpec> p1: { icon: @image-url("px-pocket/ask.png"), off: true };
+    in property <KeySpec> p2: { icon: @image-url("px-pocket/wid.png"), off: true };
+    in property <string> pad-word;
+    in property <bool> pad-on;
+    callback a-clicked();
+    callback b-clicked();
+    callback p1-clicked();
+    callback p2-clicked();
+    callback pad(int);
+    background: Pk.page;
+    Step8 {
+        fill: Pk.sh1;
+        Rectangle { x: parent.width - 4px; y: 8px; width: 4px; height: parent.height - 16px; background: Pk.sh-right; }
+        Rectangle { x: 0; y: 8px; width: 4px; height: parent.height - 16px; background: Pk.sh-left; }
+        Rectangle { x: 4px; y: parent.height - 6px; width: parent.width - 8px; height: 2px; background: Pk.sh2; }
+        Rectangle { x: 8px; y: parent.height - 4px; width: parent.width - 16px; height: 4px; background: Pk.sh2; }
+        Rectangle { x: 8px; y: 0; width: parent.width - 16px; height: 4px; background: Pk.sh0; }
+    }
+    Title {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        gear: false;
+    }
+    Step8 {
+        x: Geo.lcd-x(root.wide) - 12px;
+        y: 36px;
+        width: Geo.lcd-w(root.width, root.wide) + 24px;
+        height: Geo.lcd-h(root.width, root.height, root.wide) + 32px;
+        fill: Pk.sur;
+        Rectangle { x: 8px; y: 0; width: parent.width - 16px; height: 4px; background: Pk.sur-hi; }
+        Rectangle { x: 8px; y: parent.height - 4px; width: parent.width - 16px; height: 4px; background: Pk.sur-lo; }
+        SurTop {
+            x: 12px;
+            y: 6px;
+            width: parent.width - 24px;
+        }
+        Rectangle {
+            x: 12px;
+            y: 20px;
+            width: parent.width - 24px;
+            height: parent.height - 32px;
+            background: Pk.l0;
+            clip: true;
+            Tile { source: @image-url("px-pocket/grid.png"); }
+            Rectangle { x: 0; y: 0; width: parent.width; height: 2px; background: Pk.l1; }
+            Rectangle { x: 0; y: 0; width: 2px; height: parent.height; background: Pk.l1; }
+            @children
+        }
+    }
+    Bezel {
+        wide: root.wide;
+        narrow: root.narrow;
+        a: root.a;
+        b: root.b;
+        p1: root.p1;
+        p2: root.p2;
+        pad-word: root.pad-word;
+        pad-on: root.pad-on;
+        a-clicked => { root.a-clicked(); }
+        b-clicked => { root.b-clicked(); }
+        p1-clicked => { root.p1-clicked(); }
+        p2-clicked => { root.p2-clicked(); }
+        pad(d) => { root.pad(d); }
+    }
+}
+
+// ---------- LCD parts ----------
+
+// A page's name on the dark band along the top of the LCD, a note on its right.
+component Band inherits Rectangle {
+    in property <string> title;
+    in property <string> note;
+    height: 24px;
+    vertical-stretch: 0;
+    background: Pk.l3;
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 8px;
+        Big { y: -1px; text: root.title; color: Pk.l0; horizontal-stretch: 1; overflow: elide; }
+        if root.note != "": Small { text: root.note.to-uppercase(); color: Pk.l1; accessible-role: none; }
+    }
+}
+
+// Small caps on a dark tag.
+component Tag inherits Rectangle {
+    in property <string> text;
+    in property <color> fill: Pk.l3;
+    width: tag-text.preferred-width + 10px;
+    height: 13px;
+    background: root.fill;
+    horizontal-stretch: 0;
+    tag-text := Small { x: 5px; height: parent.height; text: root.text; color: Pk.l0; }
+}
+
+// The dithered rule between parts of a page (dark and mid green).
+component Hr inherits Tile {
+    height: 4px;
+    vertical-stretch: 0;
+    source: @image-url("px-pocket/sep.png");
+}
+
+// A dotted rule (under rows).
+component Dots inherits Tile {
+    height: 2px;
+    source: @image-url("px-pocket/rule-row.png");
+}
+
+// A box with a dark 2px edge and a dark tag in its top left corner (settings cards, the
+// new clip, the answer).
+component Box inherits Rectangle {
+    in property <string> title;
+    in property <length> pad: 8px;
+    height: lay.preferred-height;
+    PkRing { }
+    Tag { x: 0; y: 0; text: root.title; }
+    lay := VerticalLayout {
+        padding-left: root.pad;
+        padding-right: root.pad;
+        padding-top: 18px;
+        padding-bottom: 4px;
+        @children
+    }
+}
+
+// A text field on the LCD: a dark 2px edge, a second mid green one inside while it has
+// the cursor, Jersey type, the selection dark.
+component Field inherits Rectangle {
+    in-out property <string> text;
+    in property <string> placeholder;
+    in property <string> label;
+    in property <image> icon;
+    in property <bool> invalid;
+    in property <bool> mono;
+    in property <length> font-size: 20px;
+    callback edited(string);
+    callback accepted(string);
+    public function grab() { tf.grab(); }
+    height: 24px;
+    background: Pk.l0;
+    PkRing { }
+    PkRing { visible: tf.has-focus; x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px; ink: Pk.l1; }
+    HorizontalLayout {
+        padding-left: 8px;
+        padding-right: 4px;
+        spacing: 6px;
+        if root.icon.width > 0: VerticalLayout {
+            alignment: center;
+            PkPx { source: root.icon; colorize: Pk.l2; }
+        }
+        tf := TextField {
+            y: 2px;
+            height: parent.height - 4px;
+            radius: 0;
+            fill: transparent;
+            rest-edge: transparent;
+            ink: Pk.l3;
+            hint: Pk.l1;
+            font-size: root.font-size;
+            family: Pk.big;
+            side: 0px;
+            bare-focus: true;
+            select-fill: Pk.l3;
+            select-ink: Pk.l0;
+            invalid: root.invalid;
+            text <=> root.text;
+            placeholder: root.placeholder;
+            label: root.label;
+            edited(t) => { root.edited(t); }
+            accepted(t) => { root.accepted(t); }
+        }
+    }
+}
+
+// A dithered bar with a dark edge, filled dark to `f`.
+component Bar inherits Rectangle {
+    in property <float> f;
+    height: 10px;
+    Tile { source: @image-url("px-pocket/dith.png"); }
+    Rectangle { x: 0; width: round(parent.width * clamp(root.f, 0, 1) / 2px) * 2px; background: Pk.l3; }
+    PkRing { }
+}
+
+// The latest message as a dark tag floating over the LCD, `above` from its bottom.
+component Toast inherits Rectangle {
+    in property <string> text: Main.status;
+    in property <length> above: 14px;
+    if root.text != "": Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - root.above - self.height;
+        width: min(msg.preferred-width + 24px, parent.width - 24px);
+        height: 26px;
+        background: Pk.l0;
+        Rectangle { x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px; background: Pk.l3; }
+        PkRing { }
+        msg := Big {
+            x: 12px;
+            y: -1px;
+            width: parent.width - 24px;
+            height: parent.height;
+            text: root.text;
+            color: Pk.l0;
+            horizontal-alignment: center;
+            overflow: elide;
+        }
+    }
+}
+
+// The footer along the bottom of the LCD: a dark line over it, the message (or what is
+// running) on the left, its keys on the right.
+component Foot inherits Rectangle {
+    in property <string> text: Main.status;
+    height: 32px;
+    vertical-stretch: 0;
+    background: Pk.l0;
+    Rectangle { x: 0; y: 0; width: parent.width; height: 2px; background: Pk.l3; }
+    HorizontalLayout {
+        padding-top: 2px;
+        padding-left: 10px;
+        padding-right: 6px;
+        spacing: 10px;
+        Big { y: -1px; text: root.text; color: Pk.l2; horizontal-stretch: 1; overflow: elide; }
+        @children
+    }
+}
+
+// ---------- One clip ----------
+
+// The clip's waveform as a pixel strip: played part dark, the rest mid green on a pale
+// centre line, the trimmed ends under a pale wash, the trims as dark tabs, the playhead a
+// dark line with a notch. TrimTouch drags the tabs and seeks.
+component Strip inherits Rectangle {
+    callback trimmed(float, float);
+    callback tapped();
+    property <bool> active: Main.active-clip == Main.selected;
+    property <float> played: root.active ? clamp(Main.play-fraction, 0, 1) : 0;
+    property <length> inner-w: root.width - 12px;
+    property <length> start-x: round(Pages.trim-start * root.inner-w / 2px) * 2px;
+    property <length> end-x: round(Pages.trim-end * root.inner-w / 2px) * 2px;
+    property <int> n: max(1, floor(root.inner-w / 4px));
+    property <int> rows: max(1, floor(root.height / 4px) - 1);
+    Rectangle {
+        x: 6px;
+        width: root.inner-w;
+        Rectangle { y: round(parent.height / 4px) * 2px; height: 2px; background: Pk.l1; }
+        for i in root.n: Rectangle {
+            property <float> v: Pages.detail-wave.length > 0 ? Pages.detail-wave[floor(i * Pages.detail-wave.length / root.n)] : 0.06;
+            property <int> h: max(1, round(clamp(self.v, 0, 1) * root.rows));
+            x: i * 4px;
+            width: 2px;
+            height: self.h * 4px;
+            y: round((root.height - self.height) / 4px) * 2px;
+            background: (i + 0.5) / root.n <= root.played ? Pk.l3 : Pk.l2;
+        }
+        Rectangle { x: 0; width: root.start-x; background: #c3ce7bb3; }
+        Rectangle { x: root.end-x; width: parent.width - root.end-x; background: #c3ce7bb3; }
+        if root.active: Rectangle {
+            x: round(root.played * (parent.width - 2px) / 2px) * 2px;
+            width: 2px;
+            background: Pk.l3;
+            Rectangle { x: -4px; y: 0; width: 10px; height: 2px; background: Pk.l3; }
+            Rectangle { x: -2px; y: 2px; width: 6px; height: 2px; background: Pk.l3; }
+        }
+        // The trim tabs: a dark line and a notch pointing in.
+        Rectangle {
+            x: root.start-x;
+            width: 2px;
+            background: Pk.l3;
+            Rectangle { x: 2px; y: (parent.height - 12px) / 2; width: 4px; height: 12px; background: Pk.l3; }
+        }
+        Rectangle {
+            x: root.end-x - 2px;
+            width: 2px;
+            background: Pk.l3;
+            Rectangle { x: -4px; y: (parent.height - 12px) / 2; width: 4px; height: 12px; background: Pk.l3; }
+        }
+    }
+    TrimTouch {
+        pad: 6px;
+        trimmed(a, b) => { root.trimmed(a, b); }
+        tapped => { root.tapped(); }
+    }
+}
+
+// The speed as a five cell strip and Loop as a small key that sinks dark while on.
+component SpeedRow inherits HorizontalLayout {
+    callback picked(int);
+    callback refocus();
+    spacing: 8px;
+    vertical-stretch: 0;
+    Small { text: "SPEED"; accessible-role: none; }
+    VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: cells.preferred-width + 4px;
+            height: 22px;
+            accessible-role: list;
+            accessible-label: "Speed";
+            PkRing { }
+            cells := HorizontalLayout {
+                x: 2px;
+                y: 2px;
+                height: parent.height - 4px;
+                for v[i] in ["0.75", "1.0", "1.25", "1.5", "2.0"]: Rectangle {
+                    width: cell.preferred-width + 12px;
+                    background: i == Pages.speed-index ? Pk.l3 : st.has-hover ? Pk.l1 : transparent;
+                    accessible-role: button;
+                    accessible-label: v + "×";
+                    accessible-checked: i == Pages.speed-index;
+                    accessible-action-default => { Pages.speed-index = i; root.picked(i); }
+                    cell := Text {
+                        y: -1px;
+                        text: v;
+                        color: i == Pages.speed-index ? Pk.l0 : Pk.l2;
+                        font-family: Pk.big;
+                        font-size: 18px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        accessible-role: none;
+                    }
+                    st := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { Pages.speed-index = i; root.picked(i); root.refocus(); }
+                    }
+                }
+            }
+        }
+    }
+    Rectangle { horizontal-stretch: 1; }
+    VerticalLayout {
+        alignment: center;
+        Btn {
+            height: 18px;
+            text: "Loop";
+            on: Pages.looping;
+            clicked => { Pages.looping = !Pages.looping; root.refocus(); }
+        }
+    }
+}
+
+// Clean voice on export, the one option of a clip.
+component CleanVoice inherits HorizontalLayout {
+    callback changed-to(bool);
+    spacing: 8px;
+    vertical-stretch: 0;
+    VerticalLayout {
+        alignment: center;
+        Toggle {
+            label: "Clean voice on export";
+            checked <=> Pages.clean-voice;
+            toggled(on) => { root.changed-to(on); }
+        }
+    }
+    Small { text: "CLEAN VOICE ON EXPORT"; color: Pk.l3; overflow: elide; accessible-role: none; }
+    Small { text: "LESS NOISE"; horizontal-stretch: 1; overflow: elide; accessible-role: none; }
+}
+
+// An LCD key with the letter of the bezel key that does the same (questions, renaming).
+component DKey inherits Rectangle {
+    in property <string> letter;
+    in property <string> text;
+    in property <bool> dark;
+    in property <bool> danger;
+    in property <bool> enabled: true;
+    callback clicked;
+    property <bool> down: t.pressed && t.has-hover && root.enabled;
+    property <bool> inv: root.dark || root.danger;
+    width: row.preferred-width + 14px;
+    height: 22px;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Rectangle {
+        y: root.down ? 2px : 0;
+        height: parent.height - (root.down ? 2px : 0);
+        background: root.inv ? (root.enabled ? Pk.l3 : Pk.l1) : t.has-hover && root.enabled ? #b3bf6a : Pk.l0;
+        Rectangle { visible: !root.inv && !root.down; x: 2px; y: parent.height - 4px; width: parent.width - 4px; height: 2px; background: Pk.l1; }
+        Rectangle { visible: root.inv && !root.down && root.enabled; y: parent.height - 2px; height: 2px; background: Pk.l2; }
+        PkRing { visible: !root.inv; ink: root.enabled ? Pk.l3 : Pk.l1; }
+        PkRing { visible: root.danger && root.enabled; x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px; ink: Pk.l0; }
+        row := HorizontalLayout {
+            x: 7px;
+            width: self.preferred-width;
+            spacing: 6px;
+            if root.letter != "": VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 14px;
+                    height: 14px;
+                    background: root.inv ? Pk.l0 : Pk.l3;
+                    Text {
+                        y: -1px;
+                        text: root.letter;
+                        color: root.inv ? Pk.l3 : Pk.l0;
+                        font-family: Pk.big;
+                        font-size: 14px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        accessible-role: none;
+                    }
+                }
+            }
+            Text {
+                y: -1px;
+                text: root.text;
+                color: root.inv ? Pk.l0 : root.enabled ? Pk.l3 : Pk.l1;
+                font-family: Pk.big;
+                font-size: 20px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// Renaming the clip on the LCD: its name in the field, Cancel and Rename under it, with
+// the letters of the bezel keys that do the same.
+component RenameField inherits VerticalLayout {
+    in property <bool> big;
+    callback rename(string);
+    callback cancel();
+    spacing: 6px;
+    field := Field {
+        height: root.big ? 34px : 30px;
+        font-size: 28px;
+        label: "Clip name";
+        text: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].name : "";
+        init => { self.grab(); }
+        accepted(t) => { root.rename(t); }
+    }
+    Small { text: Pages.detail-meta; letter-spacing: 0.5px; overflow: elide; accessible-role: none; }
+    HorizontalLayout {
+        alignment: end;
+        spacing: 8px;
+        DKey { letter: "B"; text: "Cancel"; clicked => { root.cancel(); } }
+        DKey { letter: "A"; text: "Rename"; dark: true; enabled: field.text != ""; clicked => { root.rename(field.text); } }
+    }
+}
+
+// A merged clip's parts, as numbered rows that can be put in another order.
+component Parts inherits VerticalLayout {
+    callback moved(int, int);
+    callback take-out(int);
+    callback rename(int);
+    spacing: 4px;
+    vertical-stretch: 0;
+    HorizontalLayout {
+        spacing: 6px;
+        padding-left: 2px;
+        Tag { text: "PARTS"; }
+        if Pages.parts-busy: Small { text: "WORKING"; accessible-role: none; }
+        Rectangle { horizontal-stretch: 1; }
+    }
+    OrderList {
+        rows: Pages.parts;
+        menu: true;
+        enabled: !Pages.parts-busy && !Main.recording;
+        moved(a, b) => { root.moved(a, b); }
+        act(i) => { root.take-out(i); }
+        rename(i) => { root.rename(i); }
+    }
+}
+
+// The export key in the footer.
+component ClipExport inherits VerticalLayout {
+    callback refocus();
+    alignment: center;
+    ExportButton {
+        width: Main.export-state == 1 ? 120px : 96px;
+        height: 22px;
+        format: Pages.export-format;
+        subtitles: Pages.transcript != "";
+        state: Main.export-state;
+        progress: Main.export-progress;
+        export(kind) => { Main.export-as(kind); root.refocus(); }
+    }
+}
+
+// The one-clip page: the clip is the game on the screen. Portrait: its name and counter,
+// the strip, the speed, the transcript, the option and the footer. Wide: the clip on the
+// left (a big counter, a tall strip, the option in a box), the transcript on the right.
+export component ClipPage inherits Shell {
+    callback go(int);
+    callback refocus();
+    // Leaving the editor asks about unsaved changes first (AppWindow.leave-editor).
+    callback leave-editor(int);
+    callback start-edit();
+    callback ask-delete(int);
+    callback rename-selected(string);
+    callback toggle-play();
+    callback skip(float);
+    callback speed-changed(int);
+    callback trim-changed(float, float);
+    callback clean-voice-changed(bool);
+    callback parts-move(int, int);
+    callback part-take-out(int);
+    callback rename-part(int);
+    // The transcript card's actions (see TranscriptCard).
+    callback choose-lang(string);
+    callback lang-filter(string);
+    callback install-for(int);
+    callback summarise();
+    callback edit-changed(string);
+    callback apply-transcript(string);
+    callback transcribe();
+    callback seek-word(int);
+    pure callback edit-markup(string) -> styled-text;
+    pure callback plain-selection(string, int, int) -> string;
+
+    property <string> name: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].name : "";
+    property <string> length: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].duration : "";
+    property <bool> playing: Main.active-clip == Main.selected && Main.playing;
+    property <string> at: Main.active-clip == Main.selected ? Main.play-position : "0:00";
+
+    function rename(t: string) {
+        Pages.renaming = false;
+        root.rename-selected(t);
+        root.refocus();
+    }
+    function back() {
+        if (Pages.editing) { root.leave-editor(0); } else { root.go(0); }
+    }
+
+    a: { icon: root.playing ? @image-url("px-pocket/pause.png") : @image-url("px-pocket/play.png"), word: root.playing ? "PAUSE" : "PLAY", label: root.playing ? "Pause" : "Play", tip: root.playing ? "Pause" : "Play" };
+    b: { icon: @image-url("px-pocket/back.png"), word: "BACK", label: "Back to Clips", tip: "Back to Clips" };
+    p1: { icon: @image-url("px-pocket/pencil.png"), word: "RENAME", label: "Rename clip", tip: "Rename", off: Main.recording };
+    p2: { icon: @image-url("px-pocket/trash.png"), word: "DELETE", label: "Delete clip", tip: "Delete", off: Main.recording };
+    pad-word: "5 SEC";
+    pad-on: true;
+    a-clicked => { root.toggle-play(); root.refocus(); }
+    b-clicked => { root.back(); }
+    p1-clicked => { Pages.renaming = true; }
+    p2-clicked => { root.ask-delete(Main.selected); }
+    pad(d) => { root.skip(d * 5); root.refocus(); }
+
+    // Portrait.
+    if !root.wide: VerticalLayout {
+        if !Pages.renaming: HorizontalLayout {
+            vertical-stretch: 0;
+            padding-left: 10px;
+            padding-right: 10px;
+            padding-top: 8px;
+            padding-bottom: 4px;
+            spacing: 10px;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 3px;
+                Text { height: 28px; text: root.name; color: Pk.l3; font-family: Pk.big; font-size: 32px; vertical-alignment: center; overflow: elide; }
+                Small { text: Pages.detail-meta; letter-spacing: 0.5px; overflow: elide; }
+            }
+            VerticalLayout {
+                spacing: 3px;
+                Rectangle {
+                    width: ctr.preferred-width + 2px;
+                    height: 28px;
+                    Text { x: 2px; y: 2px; text: root.at; color: Pk.l1; font-family: Pk.big; font-size: 36px; accessible-role: none; }
+                    ctr := Text { x: 0; y: 0; text: root.at; color: Pk.l3; font-family: Pk.big; font-size: 36px; }
+                }
+                Small { text: "OF " + root.length; horizontal-alignment: right; accessible-role: none; }
+            }
+        }
+        if Pages.renaming: RenameField {
+            vertical-stretch: 0;
+            padding-left: 10px;
+            padding-right: 10px;
+            padding-top: 8px;
+            padding-bottom: 4px;
+            rename(t) => { root.rename(t); }
+            cancel => { Pages.renaming = false; root.refocus(); }
+        }
+        HorizontalLayout {
+            vertical-stretch: 0;
+            padding-left: 4px;
+            padding-right: 4px;
+            Strip {
+                height: 40px;
+                trimmed(a, b) => { root.trim-changed(a, b); }
+                tapped => { root.refocus(); }
+            }
+        }
+        SpeedRow {
+            padding-left: 10px;
+            padding-right: 10px;
+            padding-top: 6px;
+            padding-bottom: 8px;
+            picked(i) => { root.speed-changed(i); }
+            refocus => { root.refocus(); }
+        }
+        Hr { }
+        if Pages.parts.length >= 2: Parts {
+            padding-left: 8px;
+            padding-right: 8px;
+            padding-top: 6px;
+            moved(a, b) => { root.parts-move(a, b); }
+            take-out(i) => { root.part-take-out(i); }
+            rename(i) => { root.rename-part(i); }
+        }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            padding-left: 10px;
+            padding-right: 4px;
+            padding-top: 6px;
+            padding-bottom: 4px;
+            TranscriptCard {
+                clip-name: root.name;
+                transcript: Pages.transcript;
+                transcribing: Pages.transcribing;
+                translating: Pages.translating;
+                translation: Pages.translation;
+                shown-lang <=> Pages.shown-lang;
+                langs: Pages.langs;
+                choose-lang(c) => { root.choose-lang(c); }
+                lang-filter(t) => { root.lang-filter(t); }
+                install-for(k) => { root.install-for(k); }
+                summary: Pages.summary;
+                summarising: Pages.summarising;
+                can-ai: Main.can-ai;
+                show-summary <=> Pages.show-summary;
+                summarise => { root.summarise(); }
+                transcribe-progress: Pages.transcribe-progress;
+                words: Pages.words;
+                current-word: Pages.current-word;
+                show-marks <=> Pages.show-marks;
+                can-transcribe: Pages.can-transcribe;
+                recording: Main.recording;
+                editing: Pages.editing;
+                edit-draft <=> Pages.edit-draft;
+                edit-badge: Pages.edit-badge;
+                speaking: Pages.speaking;
+                edit => { root.start-edit(); }
+                edited(t) => { root.edit-changed(t); }
+                cancel => { root.leave-editor(-1); }
+                save => { root.apply-transcript(Pages.edit-draft); }
+                edit-markup(t) => { return root.edit-markup(t); }
+                plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+                transcribe => { root.transcribe(); root.refocus(); }
+                seek-word(i) => { root.seek-word(i); root.refocus(); }
+            }
+        }
+        CleanVoice {
+            padding-left: 10px;
+            padding-right: 10px;
+            padding-top: 4px;
+            padding-bottom: 6px;
+            changed-to(on) => { root.clean-voice-changed(on); }
+        }
+        Foot {
+            text: Main.export-state == 1 ? "Exporting " + Main.export-name : Main.status;
+            ClipExport { refocus => { root.refocus(); } }
+        }
+    }
+
+    // Wide.
+    if root.wide: VerticalLayout {
+        HorizontalLayout {
+            vertical-stretch: 1;
+            Rectangle {
+                width: 300px;
+                Tile { x: parent.width - 2px; width: 2px; source: @image-url("px-pocket/rule-col.png"); }
+                VerticalLayout {
+                    padding-left: 14px;
+                    padding-right: 14px;
+                    padding-top: 12px;
+                    padding-bottom: 10px;
+                    spacing: 8px;
+                    if !Pages.renaming: VerticalLayout {
+                        vertical-stretch: 0;
+                        spacing: 4px;
+                        Text { height: 36px; text: root.name; color: Pk.l3; font-family: Pk.big; font-size: 44px; vertical-alignment: center; overflow: elide; }
+                        Small { text: Pages.detail-meta; letter-spacing: 0.5px; overflow: elide; }
+                    }
+                    if Pages.renaming: RenameField {
+                        vertical-stretch: 0;
+                        big: true;
+                        rename(t) => { root.rename(t); }
+                        cancel => { Pages.renaming = false; root.refocus(); }
+                    }
+                    HorizontalLayout {
+                        vertical-stretch: 0;
+                        spacing: 10px;
+                        alignment: start;
+                        Rectangle {
+                            width: big-ctr.preferred-width + 4px;
+                            height: 58px;
+                            Text { x: 4px; y: 4px; text: root.at; color: Pk.l1; font-family: Pk.big; font-size: 72px; accessible-role: none; }
+                            big-ctr := Text { x: 0; y: 0; text: root.at; color: Pk.l3; font-family: Pk.big; font-size: 72px; }
+                        }
+                        VerticalLayout {
+                            alignment: end;
+                            padding-bottom: 8px;
+                            Small { text: "OF " + root.length; accessible-role: none; }
+                        }
+                    }
+                    VerticalLayout {
+                        vertical-stretch: 0;
+                        spacing: 3px;
+                        Strip {
+                            height: clamp(root.height - 520px, 60px, 120px);
+                            trimmed(a, b) => { root.trim-changed(a, b); }
+                            tapped => { root.refocus(); }
+                        }
+                        HorizontalLayout {
+                            Small { text: root.at; horizontal-stretch: 1; accessible-role: none; }
+                            Small { text: root.length; accessible-role: none; }
+                        }
+                    }
+                    SpeedRow {
+                        padding-top: 4px;
+                        picked(i) => { root.speed-changed(i); }
+                        refocus => { root.refocus(); }
+                    }
+                    Rectangle { vertical-stretch: 1; min-height: 0; }
+                    Box {
+                        vertical-stretch: 0;
+                        title: "OPTIONS";
+                        CleanVoice {
+                            padding-bottom: 4px;
+                            changed-to(on) => { root.clean-voice-changed(on); }
+                        }
+                    }
+                }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                padding-left: 10px;
+                padding-right: 4px;
+                padding-top: 8px;
+                padding-bottom: 6px;
+                spacing: 8px;
+                if Pages.parts.length >= 2: Parts {
+                    moved(a, b) => { root.parts-move(a, b); }
+                    take-out(i) => { root.part-take-out(i); }
+                    rename(i) => { root.rename-part(i); }
+                }
+                TranscriptCard {
+                    vertical-stretch: 1;
+                    clip-name: root.name;
+                    transcript: Pages.transcript;
+                    transcribing: Pages.transcribing;
+                    translating: Pages.translating;
+                    translation: Pages.translation;
+                    shown-lang <=> Pages.shown-lang;
+                    langs: Pages.langs;
+                    choose-lang(c) => { root.choose-lang(c); }
+                    lang-filter(t) => { root.lang-filter(t); }
+                    install-for(k) => { root.install-for(k); }
+                    summary: Pages.summary;
+                    summarising: Pages.summarising;
+                    can-ai: Main.can-ai;
+                    show-summary <=> Pages.show-summary;
+                    summarise => { root.summarise(); }
+                    transcribe-progress: Pages.transcribe-progress;
+                    words: Pages.words;
+                    current-word: Pages.current-word;
+                    show-marks <=> Pages.show-marks;
+                    can-transcribe: Pages.can-transcribe;
+                    recording: Main.recording;
+                    editing: Pages.editing;
+                    edit-draft <=> Pages.edit-draft;
+                    edit-badge: Pages.edit-badge;
+                    speaking: Pages.speaking;
+                    edit => { root.start-edit(); }
+                    edited(t) => { root.edit-changed(t); }
+                    cancel => { root.leave-editor(-1); }
+                    save => { root.apply-transcript(Pages.edit-draft); }
+                    edit-markup(t) => { return root.edit-markup(t); }
+                    plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+                    transcribe => { root.transcribe(); root.refocus(); }
+                    seek-word(i) => { root.seek-word(i); root.refocus(); }
+                }
+            }
+        }
+        Foot {
+            text: Main.export-state == 1 ? "Exporting " + Main.export-name : Main.status;
+            ClipExport { refocus => { root.refocus(); } }
+        }
+    }
+}
+
+// ---------- Settings ----------
+
+// One line of a card: its name in Jersey (and a note in small caps), its controls on the
+// right, a dotted rule under it.
+component SRow inherits Rectangle {
+    in property <string> label;
+    in property <string> note;
+    in property <bool> last;
+    min-height: 28px;
+    if !root.last: Dots { y: parent.height - 2px; }
+    HorizontalLayout {
+        padding-top: 2px;
+        padding-bottom: 4px;
+        spacing: 8px;
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            spacing: 1px;
+            Big { height: 18px; text: root.label; overflow: elide; }
+            if root.note != "": Small { text: root.note.to-uppercase(); letter-spacing: 0.5px; overflow: elide; }
+        }
+        HorizontalLayout {
+            alignment: end;
+            spacing: 6px;
+            @children
+        }
+    }
+}
+
+// A value on the right of a row: OmniVoice, Downloading 64%.
+component Value inherits Big {
+    color: Pk.l2;
+    vertical-alignment: center;
+}
+
+// The dark picker of a row, as wide as its choice needs.
+component RowSelect inherits Select {
+    width: min(self.natural, 200px);
+    height: 22px;
+}
+
+// A card: a box with a dark tag.
+component Card inherits Box {
+    vertical-stretch: 0;
+}
+
+// The files card's rows: the folder (open, change), the name template, the format and
+// clean voice.
+component FilesRows inherits VerticalLayout {
+    callback open-folder();
+    callback change-folder();
+    callback template-edited(string);
+    callback template-accepted(string);
+    callback export-format-changed(int);
+    callback clean-voice-changed(bool);
+    SRow {
+        label: "Folder";
+        Small {
+            max-width: 150px;
+            text: Pages.folder;
+            letter-spacing: 0.5px;
+            overflow: elide;
+            accessible-role: none;
+        }
+        VerticalLayout {
+            alignment: center;
+            IconBtn {
+                size: 18px;
+                icon: "folder";
+                label: "Open the folder";
+                tip: "Open folder";
+                clicked => { root.open-folder(); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Btn { text: "Change"; height: 18px; enabled: !Main.recording; clicked => { root.change-folder(); } }
+        }
+    }
+    Rectangle {
+        height: names.preferred-height;
+        Dots { y: parent.height - 2px; }
+        names := VerticalLayout {
+            padding-top: 4px;
+            padding-bottom: 8px;
+            spacing: 4px;
+            Big { height: 18px; text: "File name"; }
+            Field {
+                label: "File name";
+                text: Pages.name-template;
+                invalid: Pages.name-invalid;
+                edited(t) => { root.template-edited(t); }
+                accepted(t) => { root.template-accepted(t); }
+            }
+            HorizontalLayout {
+                alignment: start;
+                if Pages.name-invalid: Tag { text: Pages.name-preview.to-uppercase(); }
+                if !Pages.name-invalid: Small { text: Pages.name-preview.to-uppercase(); letter-spacing: 0.5px; overflow: elide; }
+            }
+        }
+    }
+    SRow {
+        label: "Export format";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "Export format";
+                model: ["FLAC", "WAV", "MP3"];
+                current-index <=> Pages.export-format;
+                selected(i) => { root.export-format-changed(i); }
+            }
+        }
+    }
+    SRow {
+        label: "Clean voice on export";
+        last: true;
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "Clean voice on export";
+                checked <=> Pages.clean-voice;
+                toggled(on) => { root.clean-voice-changed(on); }
+            }
+        }
+    }
+}
+
+// The transcription card's rows (or "Not in this build").
+component TranscriptionRows inherits VerticalLayout {
+    callback go(int);
+    callback language-changed(int);
+    callback auto-transcribe-changed(bool);
+    callback ai-names-changed(bool);
+    callback max-pause-changed(int);
+    if !Pages.can-transcribe: SRow { label: "Not in this build"; last: true; }
+    if Pages.can-transcribe: SRow {
+        label: "Language";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "Language";
+                model: Pages.languages;
+                current-index <=> Pages.language-index;
+                selected(i) => { root.language-changed(i); }
+            }
+        }
+    }
+    if Pages.can-transcribe: SRow {
+        label: "Auto transcribe";
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "Auto transcribe";
+                checked <=> Pages.auto-transcribe;
+                toggled(on) => { root.auto-transcribe-changed(on); }
+            }
+        }
+    }
+    if Pages.can-transcribe && Main.can-ai: SRow {
+        label: "AI names";
+        note: Pages.auto-transcribe ? "" : "Auto transcribe off";
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "AI names";
+                enabled: Pages.auto-transcribe;
+                checked <=> Pages.ai-names;
+                toggled(on) => { root.ai-names-changed(on); }
+            }
+        }
+    }
+    if Pages.can-transcribe: SRow {
+        label: "Max pause";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "Max pause";
+                model: Pages.max-pauses;
+                current-index <=> Pages.max-pause-index;
+                selected(i) => { root.max-pause-changed(i); }
+            }
+        }
+    }
+    if Pages.can-transcribe: SRow {
+        label: "Model";
+        note: Pages.model-summary;
+        last: true;
+        VerticalLayout {
+            alignment: center;
+            Btn {
+                height: 18px;
+                primary: true;
+                text: "Browse";
+                accessible-label: "Browse models";
+                clicked => { root.go(4); }
+            }
+        }
+    }
+}
+
+// The AI card's rows: the model, its state, the translator.
+component AiRows inherits VerticalLayout {
+    callback ai-model-changed(int);
+    callback download-ai(int);
+    SRow {
+        label: "AI model";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "AI model";
+                model: Pages.ai-models;
+                current-index <=> Pages.ai-model-index;
+                selected(i) => { root.ai-model-changed(i); }
+            }
+        }
+    }
+    SRow {
+        label: Pages.ai-ready ? "Ready" : Pages.ai-download >= 0 ? "Downloading " + round(Pages.ai-download * 100) + "%" : "Not downloaded";
+        if Pages.ai-ready: VerticalLayout {
+            alignment: center;
+            Rectangle { width: 8px; height: 8px; background: Pk.l3; }
+        }
+        if !Pages.ai-ready && Pages.ai-download >= 0: VerticalLayout {
+            alignment: center;
+            Bar { width: 90px; f: Pages.ai-download; }
+        }
+        if !Pages.ai-ready && Pages.ai-download < 0: VerticalLayout {
+            alignment: center;
+            Btn { text: "Download"; height: 18px; primary: true; clicked => { root.download-ai(0); } }
+        }
+    }
+    SRow {
+        label: "Translation";
+        note: "Ministral 3B · 2.1 GB";
+        last: true;
+        if Pages.translator-ready: Value { text: "Ready"; }
+        if !Pages.translator-ready && Pages.translator-download >= 0: Value { text: "Downloading " + round(Pages.translator-download * 100) + "%"; }
+        if !Pages.translator-ready && Pages.translator-download < 0: VerticalLayout {
+            alignment: center;
+            Btn { text: "Download"; height: 18px; primary: true; clicked => { root.download-ai(1); } }
+        }
+    }
+}
+
+// The voice card's rows.
+component VoiceRows inherits VerticalLayout {
+    SRow { label: "Voice engine"; Value { text: "OmniVoice"; color: Pk.l3; } }
+    SRow { label: "Voice sample"; last: true; Value { text: "20 s from the clip"; color: Pk.l3; } }
+}
+
+export component SettingsPage inherits Shell {
+    callback back();
+    callback go(int);
+    callback refocus();
+    callback theme-changed(int);
+    callback mic-changed(int);
+    callback system-changed(bool);
+    callback recording-limit-changed(int);
+    callback hotkey-captured(string, bool, bool, bool, bool) -> bool;
+    callback hotkey-accepted(string);
+    callback open-folder();
+    callback change-folder();
+    callback template-edited(string);
+    callback template-accepted(string);
+    callback export-format-changed(int);
+    callback clean-voice-changed(bool);
+    callback language-changed(int);
+    callback auto-transcribe-changed(bool);
+    callback ai-names-changed(bool);
+    callback max-pause-changed(int);
+    callback ai-model-changed(int);
+    callback download-ai(int);
+    callback close-to-tray-changed(bool);
+    callback start-with-windows-changed(bool);
+
+    a: { icon: @image-url("px-pocket/check.png"), off: true };
+    b: { icon: @image-url("px-pocket/back.png"), word: "BACK", label: "Back", tip: "Back" };
+    b-clicked => { root.back(); }
+
+    VerticalLayout {
+        Band { title: "Settings"; }
+        Rectangle {
+            vertical-stretch: 1;
+            Scroller {
+                pk-rail: true;
+                VerticalLayout {
+                    padding-left: 10px;
+                    padding-right: 14px;
+                    padding-top: 8px;
+                    padding-bottom: 12px;
+                    spacing: 12px;
+                    alignment: start;
+                    Card {
+                        title: "APPEARANCE";
+                        VerticalLayout {
+                            padding-bottom: 4px;
+                            ThemeGallery { picked(i) => { root.theme-changed(i); } }
+                        }
+                    }
+                    // Wide: two columns under the gallery. Portrait: one, in the order the
+                    // mockup stacks them.
+                    HorizontalLayout {
+                        spacing: 12px;
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 12px;
+                            alignment: start;
+                            recording := Card {
+                                title: "RECORDING";
+                                SRow {
+                                    label: "Microphone";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        RowSelect {
+                                            label: "Microphone";
+                                            model: Pages.mic-devices;
+                                            current-index <=> Pages.mic-index;
+                                            enabled: !Main.recording;
+                                            selected(i) => { root.mic-changed(i); }
+                                        }
+                                    }
+                                }
+                                SRow {
+                                    label: "System audio";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "System audio";
+                                            checked <=> Pages.record-system;
+                                            toggled(on) => { root.system-changed(on); }
+                                        }
+                                    }
+                                }
+                                SRow {
+                                    label: "Stop recording after";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        RowSelect {
+                                            label: "Stop recording after";
+                                            model: Pages.recording-limits;
+                                            current-index <=> Pages.recording-limit-index;
+                                            selected(i) => { root.recording-limit-changed(i); }
+                                        }
+                                    }
+                                }
+                                SRow {
+                                    label: "Record hotkey";
+                                    last: true;
+                                    VerticalLayout {
+                                        alignment: center;
+                                        ShortcutBox {
+                                            label: "Record hotkey";
+                                            keys: Pages.hotkey-parts;
+                                            captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
+                                            cleared => { root.hotkey-accepted(""); }
+                                            done => { root.refocus(); }
+                                        }
+                                    }
+                                    if Pages.hotkey-parts.length > 0: VerticalLayout {
+                                        alignment: center;
+                                        IconBtn {
+                                            size: 18px;
+                                            icon: "close";
+                                            label: "Clear the shortcut";
+                                            tip: "Clear shortcut";
+                                            clicked => { root.hotkey-accepted(""); }
+                                        }
+                                    }
+                                }
+                            }
+                            if !root.wide: files-p := Card {
+                                title: "FILES";
+                                FilesRows {
+                                    open-folder => { root.open-folder(); }
+                                    change-folder => { root.change-folder(); }
+                                    template-edited(t) => { root.template-edited(t); }
+                                    template-accepted(t) => { root.template-accepted(t); root.refocus(); }
+                                    export-format-changed(i) => { root.export-format-changed(i); }
+                                    clean-voice-changed(on) => { root.clean-voice-changed(on); }
+                                }
+                            }
+                            Card {
+                                title: "TRANSCRIPTION";
+                                TranscriptionRows {
+                                    go(p) => { root.go(p); }
+                                    language-changed(i) => { root.language-changed(i); }
+                                    auto-transcribe-changed(on) => { root.auto-transcribe-changed(on); }
+                                    ai-names-changed(on) => { root.ai-names-changed(on); }
+                                    max-pause-changed(i) => { root.max-pause-changed(i); }
+                                }
+                            }
+                            if !root.wide && Main.can-ai: Card {
+                                title: "AI";
+                                AiRows {
+                                    ai-model-changed(i) => { root.ai-model-changed(i); }
+                                    download-ai(k) => { root.download-ai(k); }
+                                }
+                            }
+                            if !root.wide: Card {
+                                title: "YOUR VOICE";
+                                VoiceRows { }
+                            }
+                            Card {
+                                title: "WINDOW";
+                                SRow {
+                                    label: "Close button hides to tray";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "Close button hides to tray";
+                                            checked <=> Pages.close-to-tray;
+                                            toggled(on) => { root.close-to-tray-changed(on); }
+                                        }
+                                    }
+                                }
+                                SRow {
+                                    label: "Start with Windows";
+                                    last: true;
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "Start with Windows";
+                                            checked <=> Pages.start-with-windows;
+                                            toggled(on) => { root.start-with-windows-changed(on); }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if root.wide: VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 12px;
+                            alignment: start;
+                            Card {
+                                title: "FILES";
+                                FilesRows {
+                                    open-folder => { root.open-folder(); }
+                                    change-folder => { root.change-folder(); }
+                                    template-edited(t) => { root.template-edited(t); }
+                                    template-accepted(t) => { root.template-accepted(t); root.refocus(); }
+                                    export-format-changed(i) => { root.export-format-changed(i); }
+                                    clean-voice-changed(on) => { root.clean-voice-changed(on); }
+                                }
+                            }
+                            if Main.can-ai: Card {
+                                title: "AI";
+                                AiRows {
+                                    ai-model-changed(i) => { root.ai-model-changed(i); }
+                                    download-ai(k) => { root.download-ai(k); }
+                                }
+                            }
+                            Card {
+                                title: "YOUR VOICE";
+                                VoiceRows { }
+                            }
+                        }
+                    }
+                }
+            }
+            Toast { }
+        }
+    }
+}
+
+// ---------- Models ----------
+
+// Quality or speed as five pixel pips.
+component Pips inherits HorizontalLayout {
+    in property <string> label;
+    in property <int> value;
+    spacing: 4px;
+    Small { text: root.label; letter-spacing: 0.5px; accessible-role: none; }
+    HorizontalLayout {
+        spacing: 2px;
+        for k in 5: VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 6px;
+                height: 6px;
+                background: k < root.value ? Pk.l3 : transparent;
+                PkRing { visible: k >= root.value; w: 1px; ink: Pk.l2; }
+            }
+        }
+    }
+}
+
+// A shelf chip: framed small caps, the picked one dark.
+component Chip inherits Rectangle {
+    in property <string> text;
+    in property <bool> on;
+    in property <bool> fill;
+    callback clicked;
+    min-width: chip-text.preferred-width + 12px;
+    preferred-width: chip-text.preferred-width + 12px;
+    height: 16px;
+    horizontal-stretch: root.fill ? 1 : 0;
+    background: root.on ? Pk.l3 : t.has-hover ? Pk.l1 : transparent;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-checked: root.on;
+    accessible-action-default => { root.clicked(); }
+    PkRing { }
+    chip-text := Small { x: 6px; height: parent.height; text: root.text.to-uppercase(); color: root.on ? Pk.l0 : Pk.l3; letter-spacing: 0.5px; accessible-role: none; }
+    t := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+}
+
+component ModelSearch inherits Field {
+    icon: @image-url("px-pocket/find.png");
+    label: "Search models";
+    placeholder: "Search " + Pages.model-count + " models";
+}
+
+component Compressed inherits HorizontalLayout {
+    callback changed();
+    spacing: 8px;
+    VerticalLayout {
+        alignment: center;
+        Toggle {
+            label: "Show compressed versions too";
+            checked <=> Pages.model-compressed;
+            toggled => { root.changed(); }
+        }
+    }
+    Small { text: "SHOW COMPRESSED"; color: Pk.l3; accessible-role: none; }
+}
+
+export component ModelsPage inherits Shell {
+    callback back();
+    callback filter-changed();
+    callback use-model(int);
+    callback cancel-download();
+    callback download-model(int);
+
+    a: { icon: @image-url("px-pocket/check.png"), off: true };
+    b: { icon: @image-url("px-pocket/back.png"), word: "BACK", label: "Back", tip: "Back" };
+    b-clicked => { root.back(); }
+
+    VerticalLayout {
+        Band { title: "Models"; note: root.wide ? "" : Pages.models-used; }
+        if !root.wide: VerticalLayout {
+            vertical-stretch: 0;
+            padding: 10px;
+            padding-top: 8px;
+            padding-bottom: 8px;
+            spacing: 8px;
+            ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+            HorizontalLayout {
+                spacing: 4px;
+                alignment: start;
+                for f[i] in ["All", "Norwegian", "Swedish", "English", "Downloaded"]: Chip {
+                    text: f;
+                    on: Pages.model-filter == i;
+                    clicked => { Pages.model-filter = i; root.filter-changed(); }
+                }
+            }
+            Compressed { changed => { root.filter-changed(); } }
+        }
+        if !root.wide: Hr { }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            if root.wide: Rectangle {
+                width: 200px;
+                Tile { x: parent.width - 2px; width: 2px; source: @image-url("px-pocket/rule-col.png"); }
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 12px;
+                    ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+                    Small { text: "SHELF"; accessible-role: none; }
+                    VerticalLayout {
+                        spacing: 4px;
+                        for f[i] in ["All", "Norwegian", "Swedish", "English", "Downloaded"]: Chip {
+                            text: f;
+                            fill: true;
+                            on: Pages.model-filter == i;
+                            clicked => { Pages.model-filter = i; root.filter-changed(); }
+                        }
+                    }
+                    Compressed { changed => { root.filter-changed(); } }
+                    Rectangle { vertical-stretch: 1; }
+                    VerticalLayout {
+                        spacing: 2px;
+                        Text { text: Pages.models-used.to-uppercase(); color: Pk.l3; font-family: Pk.big; font-size: 36px; overflow: elide; }
+                    }
+                }
+            }
+            Rectangle {
+                horizontal-stretch: 1;
+                Scroller {
+                    pk-rail: true;
+                    VerticalLayout {
+                        alignment: start;
+                        padding-left: 10px;
+                        padding-right: 14px;
+                        padding-top: 2px;
+                        padding-bottom: 12px;
+                        for m in Pages.models: VerticalLayout {
+                            if m.header: HorizontalLayout {
+                                padding-top: 10px;
+                                padding-bottom: 4px;
+                                spacing: 8px;
+                                Tag { text: m.title.to-uppercase(); }
+                                Small { text: m.by.to-uppercase(); letter-spacing: 0.5px; horizontal-stretch: 1; overflow: elide; accessible-role: none; }
+                            }
+                            if !m.header: Rectangle {
+                                height: card.preferred-height;
+                                background: m.active ? Pk.l1 : transparent;
+                                if !m.active: Dots { y: parent.height - 2px; }
+                                card := VerticalLayout {
+                                    padding-left: 6px;
+                                    padding-right: 4px;
+                                    padding-top: 5px;
+                                    padding-bottom: 6px;
+                                    spacing: 5px;
+                                    HorizontalLayout {
+                                        spacing: 8px;
+                                        VerticalLayout {
+                                            horizontal-stretch: 1;
+                                            alignment: center;
+                                            spacing: 3px;
+                                            Big { height: 18px; text: m.title; overflow: elide; }
+                                            HorizontalLayout {
+                                                spacing: 8px;
+                                                alignment: start;
+                                                Pips { label: "QUALITY"; value: m.quality; }
+                                                Pips { label: "SPEED"; value: m.speed; }
+                                                Small { text: m.size.to-uppercase(); color: Pk.l3; letter-spacing: 0.5px; accessible-role: none; }
+                                            }
+                                        }
+                                        if m.active: VerticalLayout {
+                                            alignment: center;
+                                            Tag { height: 18px; text: "IN USE"; }
+                                        }
+                                        if m.downloaded && !m.active: VerticalLayout {
+                                            alignment: center;
+                                            Btn { text: "Use"; height: 18px; accessible-label: "Use " + m.title; clicked => { root.use-model(m.index); } }
+                                        }
+                                        if Pages.downloading == m.index: VerticalLayout {
+                                            alignment: center;
+                                            Btn { text: "Cancel"; height: 18px; clicked => { root.cancel-download(); } }
+                                        }
+                                        if !m.downloaded && Pages.downloading != m.index: VerticalLayout {
+                                            alignment: center;
+                                            Btn {
+                                                text: "Download";
+                                                height: 18px;
+                                                primary: true;
+                                                enabled: Pages.downloading < 0;
+                                                accessible-label: "Download " + m.title;
+                                                clicked => { root.download-model(m.index); }
+                                            }
+                                        }
+                                    }
+                                    if Pages.downloading == m.index: HorizontalLayout {
+                                        spacing: 8px;
+                                        VerticalLayout { alignment: center; horizontal-stretch: 1; Bar { f: Pages.download-progress; } }
+                                        Big { text: round(Pages.download-progress * 100) + "%"; }
+                                    }
+                                }
+                            }
+                        }
+                        if Pages.models.length == 0: Text {
+                            height: 110px;
+                            text: "No models match";
+                            color: Pk.l2;
+                            font-family: Pk.big;
+                            font-size: 24px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+                Toast { }
+            }
+        }
+    }
+}
+
+// ---------- Merge ----------
+
+// The new clip as one bar spliced from the parts, numbered, each as long as its share.
+component Splice inherits Rectangle {
+    height: 22px;
+    PkRing { }
+    HorizontalLayout {
+        x: 2px;
+        y: 2px;
+        width: parent.width - 4px;
+        height: parent.height - 4px;
+        for f[i] in Pages.merge-legs: Rectangle {
+            horizontal-stretch: max(0.02, f);
+            min-width: 2px;
+            background: Math.mod(i, 2) == 0 ? Pk.l3 : Pk.l2;
+            Rectangle { visible: i > 0; x: 0; width: 2px; background: Pk.l0; }
+            Small { x: 0; width: parent.width; height: parent.height; text: i + 1; color: Pk.l0; horizontal-alignment: center; accessible-role: none; }
+        }
+    }
+}
+
+export component MergePage inherits Shell {
+    callback go(int);
+    callback move(int, int);
+    callback remove(int);
+    callback play(int);
+    callback run(string);
+    property <string> playing-name: Main.active-clip >= 0 && Main.active-clip < Main.clips.length && Main.playing ? Main.clips[Main.active-clip].name : "";
+    property <bool> can-run: !Pages.merging && Pages.merge-name != "";
+
+    // A merges (dim until the new clip has a name, held down while the clips merge), B goes
+    // back.
+    a: { icon: @image-url("px-pocket/tick.png"), word: Pages.merging ? "MERGING" : "MERGE", label: Pages.merging ? "Merging" : "Merge " + Pages.merge-rows.length + " clips", tip: "Merge", off: !Pages.merging && Pages.merge-name == "", lit: Pages.merging };
+    b: { icon: @image-url("px-pocket/back.png"), word: "BACK", label: "Back", tip: "Back" };
+    a-clicked => { if (root.can-run) { root.run(Pages.merge-name); } }
+    b-clicked => { root.go(0); }
+
+    VerticalLayout {
+        Band { title: "Merge clips"; note: Pages.merge-rows.length + " clips"; }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            if root.wide: Rectangle {
+                width: 280px;
+                Tile { x: parent.width - 2px; width: 2px; source: @image-url("px-pocket/rule-col.png"); }
+                VerticalLayout {
+                    padding: 14px;
+                    alignment: start;
+                    Box {
+                        title: "NEW CLIP";
+                        VerticalLayout {
+                            spacing: 8px;
+                            padding-bottom: 6px;
+                            Rectangle {
+                                height: min(110px, max(0px, root.height - 380px));
+                                clip: true;
+                                Tile { source: @image-url("px-pocket/dith.png"); }
+                                Px {
+                                    x: (parent.width - self.width) / 2;
+                                    y: (parent.height - self.height) / 2;
+                                    source: @image-url("px-pocket/sprite.png");
+                                    s: 3;
+                                }
+                            }
+                            Splice { }
+                            HorizontalLayout {
+                                Small { text: "0:00"; horizontal-stretch: 1; accessible-role: none; }
+                                Small { text: Pages.merge-total; accessible-role: none; }
+                            }
+                            Field { text <=> Pages.merge-name; placeholder: "Name"; label: "Name of the merged clip"; accepted => { if (root.can-run) { root.run(Pages.merge-name); } } }
+                        }
+                    }
+                }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                padding-left: root.wide ? 10px : 6px;
+                padding-right: root.wide ? 4px : 4px;
+                padding-top: root.wide ? 14px : 10px;
+                spacing: 6px;
+                HorizontalLayout { padding-left: 4px; Tag { text: "ORDER"; } Rectangle { horizontal-stretch: 1; } }
+                Scroller {
+                    pk-rail: true;
+                    VerticalLayout {
+                        alignment: start;
+                        padding-right: 14px;
+                        OrderList {
+                            rows: Pages.merge-rows;
+                            removable: true;
+                            playable: true;
+                            playing-name: root.playing-name;
+                            enabled: !Pages.merging;
+                            moved(a, b) => { root.move(a, b); }
+                            act(i) => { root.remove(i); }
+                            play(i) => { root.play(i); }
+                        }
+                    }
+                }
+            }
+        }
+        if !root.wide: VerticalLayout {
+            vertical-stretch: 0;
+            padding-left: 10px;
+            padding-right: 10px;
+            padding-bottom: 12px;
+            Box {
+                title: "NEW CLIP";
+                VerticalLayout {
+                    spacing: 10px;
+                    padding-top: 2px;
+                    padding-bottom: 6px;
+                    Splice { }
+                    Field { text <=> Pages.merge-name; placeholder: "Name"; label: "Name of the merged clip"; accepted => { if (root.can-run) { root.run(Pages.merge-name); } } }
+                }
+            }
+        }
+        Foot {
+            text: Pages.merging ? "Merging " + Pages.merge-rows.length + " clips" : Main.status;
+            VerticalLayout {
+                alignment: center;
+                Btn { height: 22px; text: "Cancel"; clicked => { root.go(0); } }
+            }
+        }
+    }
+}
+
+// ---------- Ask ----------
+
+// A source of an answer: its number on a dark tag, the clip (and its project tag with all
+// projects on), the time and the line it was found in.
+component Source inherits Rectangle {
+    in property <AskSource> source;
+    in property <bool> show-project;
+    in property <string> project;
+    callback clicked;
+    height: lay.preferred-height;
+    background: t.has-hover ? Pk.l1 : transparent;
+    accessible-role: button;
+    accessible-label: root.source.n + " " + root.source.clip + " " + root.source.time;
+    accessible-action-default => { root.clicked(); }
+    if !t.has-hover: Dots { y: parent.height - 2px; }
+    lay := HorizontalLayout {
+        padding-top: 6px;
+        padding-bottom: 6px;
+        spacing: 8px;
+        VerticalLayout {
+            Rectangle {
+                width: 14px;
+                height: 14px;
+                background: Pk.l3;
+                Small { x: 0; width: parent.width; height: parent.height; text: root.source.n; color: Pk.l0; letter-spacing: 0; horizontal-alignment: center; }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 3px;
+            HorizontalLayout {
+                spacing: 6px;
+                Big { height: 16px; text: root.source.clip; overflow: elide; }
+                if root.show-project && root.project != "": VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: pj.preferred-width + 8px;
+                        height: 11px;
+                        PkRing { w: 1px; }
+                        pj := Small { x: 4px; height: parent.height; text: root.project.to-uppercase(); color: Pk.l3; letter-spacing: 0.5px; }
+                    }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                Text { text: root.source.time; color: Pk.l3; font-family: Pk.big; font-size: 18px; vertical-alignment: center; }
+            }
+            Small { text: root.source.text.to-uppercase(); letter-spacing: 0.5px; wrap: word-wrap; }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The answer in its box, or Thinking while it comes.
+component Answer inherits Box {
+    title: "ANSWER";
+    pad: 8px;
+    VerticalLayout {
+        padding-top: 2px;
+        padding-bottom: 6px;
+        if Pages.answer == "": HorizontalLayout {
+            spacing: 6px;
+            Big { text: "Thinking"; font-size: 22px; }
+            for k in 3: VerticalLayout { alignment: center; Rectangle { width: 6px; height: 6px; background: Pk.l3; } }
+            Rectangle { horizontal-stretch: 1; }
+        }
+        if Pages.answer != "": Big { text: Pages.answer; wrap: word-wrap; }
+    }
+}
+
+component Sources inherits VerticalLayout {
+    callback open(int);
+    spacing: 2px;
+    HorizontalLayout { Tag { text: "SOURCES"; } Rectangle { horizontal-stretch: 1; } }
+    for s[i] in Pages.sources: Source {
+        source: s;
+        show-project: Pages.ask-all;
+        project: s.place >= 0 && s.place < Main.projects.length ? Main.projects[s.place] : "";
+        clicked => { root.open(i); }
+    }
+}
+
+export component AskPage inherits Shell {
+    callback go(int);
+    callback ask(string, bool);
+    callback open-source(int);
+    property <bool> can-ask: Pages.question != "" && !Pages.asking;
+
+    // A asks (dim until there is a question), B goes back.
+    a: { icon: @image-url("px-pocket/ask.png"), word: "ASK", label: "Ask", tip: "Ask", off: !root.can-ask, lit: Pages.asking };
+    b: { icon: @image-url("px-pocket/back.png"), word: "BACK", label: "Back", tip: "Back" };
+    a-clicked => { if (root.can-ask) { root.ask(Pages.question, Pages.ask-all); } }
+    b-clicked => { root.go(0); }
+
+    VerticalLayout {
+        Band { title: "Ask"; }
+        HorizontalLayout {
+            vertical-stretch: 0;
+            padding: 8px;
+            padding-left: 10px;
+            padding-right: 10px;
+            spacing: 6px;
+            q := Field {
+                horizontal-stretch: 1;
+                icon: @image-url("px-pocket/ask.png");
+                placeholder: "Ask about your clips";
+                label: "Question";
+                text <=> Pages.question;
+                init => { self.grab(); }
+                accepted => { if (root.can-ask) { root.ask(Pages.question, Pages.ask-all); } }
+            }
+            if Main.projects.length > 1: VerticalLayout {
+                alignment: center;
+                Btn {
+                    height: 18px;
+                    text: "All projects";
+                    accessible-label: "Ask all projects";
+                    on: Pages.ask-all;
+                    clicked => { Pages.ask-all = !Pages.ask-all; }
+                }
+            }
+        }
+        Hr { }
+        Rectangle {
+            vertical-stretch: 1;
+            Scroller {
+                pk-rail: true;
+                VerticalLayout {
+                    alignment: start;
+                    padding-left: 10px;
+                    padding-right: 14px;
+                    padding-top: 12px;
+                    padding-bottom: 12px;
+                    if !root.wide: VerticalLayout {
+                        spacing: 12px;
+                        if Pages.answer != "" || Pages.asking: Answer { }
+                        if Pages.sources.length > 0: Sources { open(i) => { root.open-source(i); root.go(1); } }
+                    }
+                    if root.wide: HorizontalLayout {
+                        spacing: 14px;
+                        VerticalLayout {
+                            horizontal-stretch: 1.15;
+                            alignment: start;
+                            if Pages.answer != "" || Pages.asking: Answer { }
+                        }
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            alignment: start;
+                            if Pages.sources.length > 0: Sources { open(i) => { root.open-source(i); root.go(1); } }
+                        }
+                    }
+                }
+            }
+            Toast { }
+        }
+    }
+}
+
+// ---------- The widget ----------
+
+// The small always-on-top window as a mini handheld (variant A): a little shell with its
+// own LCD (the status tag, the timer, a meter), open window as a key on the top edge, A
+// records and stops, B pauses and resumes and sits dark while ready. The shell moves the
+// window.
+export component Widget inherits Rectangle {
+    property <bool> rec: Main.recording;
+    property <int> count: Main.live.length;
+    property <float> level: root.rec && !Main.paused && root.count > 0 ? Main.live[root.count - 1] : 0;
+    property <int> on: round(clamp(root.level, 0, 1) * 12);
+    background: Pk.page;
+    WindowMoveArea {
+        Step8 {
+            fill: Pk.sh1;
+            Rectangle { x: parent.width - 4px; y: 8px; width: 4px; height: parent.height - 16px; background: Pk.sh-right; }
+            Rectangle { x: 0; y: 8px; width: 4px; height: parent.height - 16px; background: Pk.sh-left; }
+            Rectangle { x: 4px; y: parent.height - 6px; width: parent.width - 8px; height: 2px; background: Pk.sh2; }
+            Rectangle { x: 8px; y: parent.height - 4px; width: parent.width - 16px; height: 4px; background: Pk.sh2; }
+            Rectangle { x: 8px; y: 0; width: parent.width - 16px; height: 4px; background: Pk.sh0; }
+        }
+        Step8 {
+            x: 8px;
+            y: 8px;
+            width: 140px;
+            height: parent.height - 16px;
+            fill: Pk.sur;
+            Rectangle { x: 8px; y: 0; width: parent.width - 16px; height: 4px; background: Pk.sur-hi; }
+            Rectangle { x: 8px; y: parent.height - 4px; width: parent.width - 16px; height: 4px; background: Pk.sur-lo; }
+            Rectangle {
+                x: 6px;
+                y: 6px;
+                width: parent.width - 12px;
+                height: parent.height - 12px;
+                background: Pk.l0;
+                clip: true;
+                accessible-role: AccessibleRole.text;
+                accessible-label: (root.rec ? (Main.paused ? "Paused " : "Recording ") : "Ready ") + Main.elapsed;
+                Tile { source: @image-url("px-pocket/grid.png"); }
+                Rectangle { x: 0; y: 0; width: parent.width; height: 2px; background: Pk.l1; }
+                Rectangle { x: 0; y: 0; width: 2px; height: parent.height; background: Pk.l1; }
+                VerticalLayout {
+                    padding: 6px;
+                    padding-left: 7px;
+                    alignment: space-between;
+                    HorizontalLayout {
+                        alignment: start;
+                        Rectangle {
+                            width: st.preferred-width;
+                            height: 14px;
+                            background: Pk.l3;
+                            st := HorizontalLayout {
+                                padding-left: 6px;
+                                padding-right: 5px;
+                                spacing: 6px;
+                                VerticalLayout {
+                                    alignment: center;
+                                    Rectangle { width: 6px; height: 6px; background: Main.paused ? Pk.l2 : Pk.l0; }
+                                }
+                                Small { text: root.rec ? (Main.paused ? "PAUSED" : "REC") : "READY"; color: Pk.l0; accessible-role: none; }
+                            }
+                        }
+                    }
+                    Rectangle {
+                        height: 36px;
+                        Text { x: 2px; y: 2px; text: Main.elapsed; color: Pk.l1; font-family: Pk.big; font-size: 44px; letter-spacing: 1px; accessible-role: none; }
+                        Text { x: 0; y: 0; text: Main.elapsed; color: Pk.l3; font-family: Pk.big; font-size: 44px; letter-spacing: 1px; accessible-role: none; }
+                    }
+                    Rectangle {
+                        height: 8px;
+                        for i in 12: Rectangle {
+                            property <bool> lit: i < root.on;
+                            x: i * (parent.width + 2px) / 12;
+                            width: (parent.width + 2px) / 12 - 2px;
+                            background: self.lit ? Pk.l3 : transparent;
+                            Tile { visible: !parent.lit; source: @image-url("px-pocket/dith.png"); }
+                        }
+                    }
+                }
+            }
+        }
+        // Open the window: a small key top right.
+        Rectangle {
+            x: parent.width - 34px;
+            y: 8px;
+            width: 24px;
+            height: 18px;
+            accessible-role: button;
+            accessible-label: "Open the window";
+            accessible-action-default => { Main.compact-changed(false); }
+            Step4 {
+                fill: Pk.sh3;
+                hi: ow.pressed ? Pk.hkey-lo : Pk.hkey-hi;
+                lo: Pk.hkey-lo;
+                lo-h: ow.pressed ? 2px : 4px;
+            }
+            Px {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2 - 1px;
+                source: @image-url("px-pocket/expand.png");
+                s: 1;
+                colorize: ow.has-hover ? #e6e8da : Pk.sh0;
+            }
+            property <bool> hovering: ow.has-hover;
+            changed hovering => { Tips.hover(self.hovering, "Open window", self.absolute-position, self.width, self.height); }
+            ow := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Tips.hide(); Main.compact-changed(false); }
+            }
+        }
+        RoundKey {
+            x: 214px - self.width / 2;
+            y: 32px;
+            key: @image-url("px-pocket/key-11.png");
+            icon: root.rec ? @image-url("px-pocket/stop.png") : @image-url("px-pocket/mic.png");
+            letter: "A";
+            word: root.rec ? "STOP" : "REC";
+            label: root.rec ? "Stop recording" : "Record";
+            tip: root.rec ? "Stop" : "Record";
+            clicked => { Main.toggle-record(); }
+        }
+        RoundKey {
+            x: 177px - self.width / 2;
+            y: 64px;
+            key: @image-url("px-pocket/key-8.png");
+            icon: Main.paused ? @image-url("px-pocket/play.png") : @image-url("px-pocket/pause.png");
+            letter: "B";
+            word: !root.rec ? "" : Main.paused ? "RESUME" : "PAUSE";
+            label: !root.rec ? "" : Main.paused ? "Resume" : "Pause";
+            tip: Main.paused ? "Resume" : "Pause";
+            off: !root.rec;
+            clicked => { Main.toggle-pause(); }
+        }
+    }
+}
+
+// ---------- Questions and covers ----------
+
+// The LCD's place over a page, for the questions and covers drawn over it.
+component OverLcd inherits Rectangle {
+    in property <bool> wide;
+    x: Geo.lcd-x(root.wide);
+    y: Geo.lcd-y();
+    width: Geo.lcd-w(self.width-of-window, root.wide);
+    height: Geo.lcd-h(self.width-of-window, self.height-of-window, root.wide);
+    in property <length> width-of-window;
+    in property <length> height-of-window;
+    clip: true;
+}
+
+// A question over the page: the LCD dimmed with a dither, a double framed window with the
+// title in a dark bar (a clip's name in a light box), the note or the field, and the LCD
+// keys with the letters of the bezel keys, which answer it too: A confirms and B cancels.
+// AppWindow works out the words. A click outside cancels.
+export component Dialog inherits Rectangle {
+    in property <string> title;
+    in property <string> note;
+    in property <string> field;
+    in property <string> ok;
+    in property <bool> ok-enabled;
+    // A single clip's delete question shows its name in a light box.
+    in property <string> clip-name;
+    callback close();
+    callback confirm();
+    callback discard();
+    property <int> kind: Main.dialog;
+    property <bool> writes: root.kind == 1 || root.kind >= 4;
+    property <bool> wide: root.width >= 820px;
+    TouchArea { clicked => { root.close(); } }
+    Bezel {
+        wide: root.wide;
+        narrow: root.width < 470px;
+        cover: true;
+        a: { icon: root.kind == 2 ? @image-url("px-pocket/trash.png") : @image-url("px-pocket/tick.png"), word: root.ok.to-uppercase(), label: root.ok, tip: root.ok, off: !root.ok-enabled };
+        b: { icon: @image-url("px-pocket/x.png"), word: "CANCEL", label: "Cancel", tip: "Cancel" };
+        p1: { icon: @image-url("px-pocket/ask.png"), off: true };
+        p2: { icon: @image-url("px-pocket/wid.png"), off: true };
+        a-clicked => { if (root.ok-enabled) { root.confirm(); } }
+        b-clicked => { root.close(); }
+    }
+    OverLcd {
+        wide: root.wide;
+        width-of-window: root.width;
+        height-of-window: root.height;
+        Tile { source: @image-url("px-pocket/dimL.png"); }
+        win := Rectangle {
+            width: min(parent.width - 36px, root.kind == 3 ? 340px : 310px);
+            height: box.preferred-height;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            TouchArea { }
+            // The hard shadow, then the window: dark, light, dark rings.
+            Rectangle { x: 6px; y: 6px; width: parent.width + 6px; height: parent.height + 6px; background: Pk.l2; }
+            Rectangle { x: -6px; y: -6px; width: parent.width + 12px; height: parent.height + 12px; background: Pk.l3; }
+            Rectangle { x: -4px; y: -4px; width: parent.width + 8px; height: parent.height + 8px; background: Pk.l0; }
+            Rectangle { x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px; background: Pk.l3; }
+            Rectangle { background: Pk.l0; }
+            box := VerticalLayout {
+                Rectangle {
+                    height: 26px;
+                    background: Pk.l3;
+                    HorizontalLayout {
+                        padding-left: 10px;
+                        padding-right: 10px;
+                        spacing: 8px;
+                        Text {
+                            text: root.clip-name != "" ? "Delete" : root.title;
+                            color: Pk.l0;
+                            font-family: Pk.big;
+                            font-size: 22px;
+                            vertical-alignment: center;
+                            horizontal-stretch: root.clip-name != "" ? 0 : 1;
+                            overflow: elide;
+                        }
+                        if root.clip-name != "": VerticalLayout {
+                            alignment: center;
+                            horizontal-stretch: 1;
+                            HorizontalLayout {
+                                alignment: start;
+                                Rectangle {
+                                    width: min(cn.preferred-width + 8px, win.width - 100px);
+                                    height: 20px;
+                                    background: Pk.l0;
+                                    cn := Text {
+                                        x: 4px;
+                                        width: parent.width - 8px;
+                                        text: root.clip-name;
+                                        color: Pk.l3;
+                                        font-family: Pk.big;
+                                        font-size: 22px;
+                                        vertical-alignment: center;
+                                        overflow: elide;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                VerticalLayout {
+                    padding-left: 12px;
+                    padding-right: 12px;
+                    padding-top: 10px;
+                    padding-bottom: 4px;
+                    spacing: 5px;
+                    if root.note != "": Text {
+                        text: root.note;
+                        color: Pk.l2;
+                        font-family: Pk.big;
+                        font-size: 20px;
+                        wrap: word-wrap;
+                    }
+                    if root.writes: Small { text: root.field.to-uppercase(); }
+                    if root.writes: Field {
+                        label: root.field;
+                        text <=> Main.dialog-text;
+                        init => { self.grab(); }
+                        accepted => { if (root.ok-enabled) { root.confirm(); } }
+                    }
+                }
+                HorizontalLayout {
+                    padding: 12px;
+                    padding-top: 10px;
+                    alignment: end;
+                    spacing: 8px;
+                    DKey { letter: "B"; text: "Cancel"; clicked => { root.close(); } }
+                    if root.kind == 3: DKey { text: "Discard changes"; clicked => { root.discard(); } }
+                    DKey {
+                        letter: "A";
+                        text: root.ok;
+                        dark: true;
+                        danger: root.kind == 2;
+                        enabled: root.ok-enabled;
+                        clicked => { root.confirm(); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// New words being spoken: the LCD under a dark dither, a window with the stage line, a
+// dithered bar with the percent, and Cancel (B too). It blocks clicks.
+export component Speaking inherits Rectangle {
+    callback cancel();
+    property <bool> wide: root.width >= 820px;
+    TouchArea { }
+    Bezel {
+        wide: root.wide;
+        narrow: root.width < 470px;
+        cover: true;
+        a: { icon: @image-url("px-pocket/tick.png"), off: true };
+        b: { icon: @image-url("px-pocket/x.png"), word: "CANCEL", label: "Cancel", tip: "Cancel" };
+        p1: { icon: @image-url("px-pocket/ask.png"), off: true };
+        p2: { icon: @image-url("px-pocket/wid.png"), off: true };
+        b-clicked => { root.cancel(); }
+    }
+    OverLcd {
+        wide: root.wide;
+        width-of-window: root.width;
+        height-of-window: root.height;
+        Tile { source: @image-url("px-pocket/dimD.png"); }
+        Rectangle {
+            width: min(parent.width - 36px, root.wide ? 360px : 310px);
+            height: box.preferred-height;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            Rectangle { x: 6px; y: 6px; width: parent.width + 6px; height: parent.height + 6px; background: Pk.l2; }
+            Rectangle { x: -6px; y: -6px; width: parent.width + 12px; height: parent.height + 12px; background: Pk.l3; }
+            Rectangle { x: -4px; y: -4px; width: parent.width + 8px; height: parent.height + 8px; background: Pk.l0; }
+            Rectangle { x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px; background: Pk.l3; }
+            Rectangle { background: Pk.l0; }
+            box := VerticalLayout {
+                Rectangle {
+                    height: 26px;
+                    background: Pk.l3;
+                    Text { x: 10px; text: "Speaking new words"; color: Pk.l0; font-family: Pk.big; font-size: 22px; vertical-alignment: center; }
+                }
+                VerticalLayout {
+                    padding-left: 12px;
+                    padding-right: 12px;
+                    padding-top: 10px;
+                    spacing: 10px;
+                    Text { text: Pages.speak-stage; color: Pk.l2; font-family: Pk.big; font-size: 20px; wrap: word-wrap; }
+                    HorizontalLayout {
+                        spacing: 10px;
+                        VerticalLayout { alignment: center; horizontal-stretch: 1; Bar { f: Pages.speak-progress; } }
+                        Big { text: round(Pages.speak-progress * 100) + "%"; }
+                    }
+                }
+                HorizontalLayout {
+                    padding: 12px;
+                    padding-top: 10px;
+                    alignment: end;
+                    DKey { letter: "B"; text: "Cancel"; clicked => { root.cancel(); } }
+                }
+            }
+        }
+    }
+}
+
+// Files dragged over the window: a dither field inset 10px in the LCD with a dashed dark
+// edge, the big import sprite and the words on a dark tag.
+export component Drop inherits Rectangle {
+    property <bool> wide: root.width >= 820px;
+    OverLcd {
+        wide: root.wide;
+        width-of-window: root.width;
+        height-of-window: root.height;
+        Rectangle { background: Pk.l0; }
+        Rectangle {
+            x: 10px;
+            y: 10px;
+            width: parent.width - 20px;
+            height: parent.height - 20px;
+            Tile { source: @image-url("px-pocket/dith.png"); }
+            PkRing { w: 4px; }
+            // The dashes, 6px on and 6px off, 8px in.
+            for k in floor((parent.width - 16px) / 12px): Rectangle { x: 8px + k * 12px; y: 8px; width: 6px; height: 2px; background: Pk.l3; }
+            for k in floor((parent.width - 16px) / 12px): Rectangle { x: 8px + k * 12px; y: parent.height - 10px; width: 6px; height: 2px; background: Pk.l3; }
+            for k in floor((parent.height - 16px) / 12px): Rectangle { x: 8px; y: 8px + k * 12px; width: 2px; height: 6px; background: Pk.l3; }
+            for k in floor((parent.height - 16px) / 12px): Rectangle { x: parent.width - 10px; y: 8px + k * 12px; width: 2px; height: 6px; background: Pk.l3; }
+            VerticalLayout {
+                alignment: center;
+                spacing: 16px;
+                HorizontalLayout { alignment: center; Px { source: @image-url("px-pocket/drop.png"); s: 5; } }
+                HorizontalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: dl.preferred-width + 24px;
+                        height: 32px;
+                        background: Pk.l3;
+                        dl := Text { y: -1px; text: "Drop to import"; color: Pk.l0; font-family: Pk.big; font-size: 30px; vertical-alignment: center; horizontal-alignment: center; }
+                    }
+                }
+            }
+        }
+    }
+}

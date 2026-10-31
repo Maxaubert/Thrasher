@@ -58,7 +58,10 @@ dash) PIECES="gauge-p:gauge-p:188:188 gauge-w:gauge-w:270:270 wheel-p:wheel-p:20
 px-pocket) PIECES="mic:mic:9:11 mics:mics:5:7 gear:gear:9:9 min:min:7:7 close:close:7:7 imp:imp:9:9 ask:ask:9:7 wid:wid:9:8
   play:play:6:7 pause:pause:6:7 stop:stop:7:7 dots:dots:2:8 down:down:7:4 find:find:8:8 cur:cur:4:7 check:check:8:6
   sprite:sprite:16:24 key-12:key-12:12:12 key-11:key-11:11:11 key-16:key-16:16:16 dpad:dpad:19:19
-  dith:dith:4:4 sep:sep:4:4 rule-row:rule-row:4:2 rule-col:rule-col:2:4 rule-sur:rule-sur:4:1 grid:grid:2:2" ;;
+  dith:dith:4:4 sep:sep:4:4 rule-row:rule-row:4:2 rule-col:rule-col:2:4 rule-sur:rule-sur:4:1 grid:grid:2:2
+  back:back:4:7 pencil:pencil:8:8 trash:trash:8:9 lang:lang:7:7 spark:spark:7:7 copy:copy:7:7 up:up:7:7
+  grip:grip:5:8 folder:folder:7:6 plus:plus:5:5 x:x:5:5 expand:expand:7:7 chev:chev:4:7 loop:loop:7:6 tick:tick:7:6
+  drop:drop:16:17 key-8:key-8:8:8 dimL:dimL:4:4 dimD:dimD:4:4" ;;
 # Quest Menu: pixel art (only the 1x cut is used, scaled up pixelated in Slint) and the
 # wide command menu's upright title (1x and 2x).
 px-quest) PIECES="gear:gear:7:7 min:min:7:7 close:close:7:7 play:play:5:5 pause:pause:5:5 dots:dots:1:5

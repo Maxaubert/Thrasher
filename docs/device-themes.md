@@ -125,10 +125,10 @@ theme "Desktop 95", index 10 in `Theme.names`), art in `ui/skins/dv-os95/`, font
 and VT323 (the same `VT323-400.ttf` as Phosphor: its Latin subset covers the ASCII this
 skin needs, with the same outlines and metrics).
 - `Theme.pages` says how the other pages are built: 1 for Tape Deck, 2 for Phosphor, 3 for
-  Desktop 95, 4 for the Comic Book, 5 for Spatial Glass, 6 for the Car Dashboard and 7 for
-  Pocket (each
-  since its pages were built), else 0, the classic pages in the theme's palette. A skin
-  whose other pages are not built yet keeps them classic this way; `app.slint` picks the main page by `Theme.skin` and the rest by
+  Desktop 95, 4 for the Comic Book, 5 for Spatial Glass, 6 for the Car Dashboard, 7 for
+  Pocket and 8 for the Quest Menu (each since its pages were built), else 0, the classic
+  pages in the theme's palette. A skin whose other pages are not built yet keeps them
+  classic this way; `app.slint` picks the main page by `Theme.skin` and the rest by
   `Theme.pages`. Desktop 95's palette is grey and navy for those pages.
 - The scope and the LED level follow `Main.live` like the classic meter, so the skin needs
   no clock (`EFFECT_FPS` and `RECORDING_FPS` 0). Nothing else moves.
@@ -1285,7 +1285,8 @@ above its picker (the ornament sits at the window's foot).
 **Built in step 5, Quest Menu main page (2026-10-29):** `ui/skins/px-quest.slint` (skin 8,
 theme "Quest Menu", index 15 in `Theme.names`), art in `ui/skins/px-quest/` (23 PNGs, 4 KB)
 from `tools/skin-art/px-quest.html` (`sh tools/skin-art/cut.sh px-quest OUT`). Its other
-pages are the classic ones in its blue and gold palette (`Theme.pages` 0).
+pages are its own since 2026-10-31 (`Theme.pages` 8, see "Built in step 5, Quest Menu on every
+other page" below).
 - Settings gallery: its tile is the Quest Menu line in `Gallery.devices` (`ui/gallery.slint`), band #2f5fd0.
 - Every panel is a menu window; the recorder is a character card (mic sprite, status lamp,
   timer, IN bar, round REC); Import, Ask and the widget are a command menu, beside the
@@ -1335,6 +1336,97 @@ pages are the classic ones in its blue and gold palette (`Theme.pages` 0).
 - Exe +2.22 MB (55.54 to 57.76 MB): fonts 56 KB, art 4 KB, the rest generated code. Ember,
   Tape Deck, Phosphor and Desktop 95 main pages at 520x700 and 1100x700 match before and
   after.
+
+**Built in step 5, Quest Menu on every other page (2026-10-31):** mockups in
+`docs/mockups/device-themes/px-quest-pages/` (approved by Max 2026-10-31: widget variant A,
+toggles as the ON OFF pair), built as the batch 1 pages were.
+- `Theme.pages` is 8 for the skin (`Theme.quest`); every other value is as before.
+  `app.slint` has a `Theme.pages == 8` block next to each Car Dashboard one, with the same
+  bindings, and picks `ui/skins/px-quest-pages.slint` (`ClipPage`, `SettingsPage`,
+  `ModelsPage`, `MergePage`, `AskPage`, `Widget`, `Dialog`, `Speaking`, `Drop`).
+- `ui/skins/px-quest-parts.slint`: the parts the main page and the other pages share, moved
+  out of `px-quest.slint` unchanged (`Px`, `Label`, `Win`, `Notches`, `Ring`, `PBtn`,
+  `TitleKey`, `Title`, `Sprite`, `Status`, `Timer`, `Meter`, `RecKey`; the blink is `QFx`).
+  `Title` takes `gear` (the other pages leave Settings out, as the classic pages do) and a
+  back key (`back-text`, the clip page's "Clips"). New: `Key`, the pixel key with an icon.
+  The colours and fonts moved to `common.slint` as `Quest` (the parts file re-exports it as
+  `Q`), with `QFace` (a key's face), `QFrame` (a floating menu window), `QLit` (the lit row
+  with the glove), `QPx` and `QIcons` (pixel icons by the shared widgets' names).
+- The pages: the clip is an item card (tape sprite, ITEM, name and meta, Rename and Delete
+  keys, the counter in gold Quest Figures), the waveform a pixel strip in its own window
+  (played part gold, gold trim posts, white play head; `TrimTouch` as before) with the
+  transport (the big play key, back and forward 5, SPEED as a choice row with the cursor,
+  Loop as a lamp box), the transcript the dialogue box (gold frame and an EDITING tag while
+  typed on), OPTIONS and the footer with Export. Settings is the config screen: cards as menu
+  windows, rows split by dark rules, selects a gold value with the down arrow, toggles the ON
+  OFF pair, the gallery on top and three columns when wide, a gold scroll rail. Models is the
+  item shop (green and blue pip bars, In use lit with a gold check, filter chips or a command
+  list with the glove when wide). Merge forms a party (slots, and a formation window of tapes
+  joining into one gold framed tape when wide). Ask talks to the sage (owl sprite, numbered
+  sources with gold times, a blue project tag when every project is asked). The widget is the
+  tiny character card (variant A). Questions are menu windows with a CONFIRM or WAIT tag and
+  the glove on the default key; speaking is the same window with a gold bar; dropping files
+  shows the chest in a gold double frame.
+- The shared widgets draw the pixel look when `Theme.quest` is set, so the main page's menus
+  take it too: `Btn` and `IconBtn` (keys with cut corners, pixel icons from `QIcons`),
+  `Toggle` (the ON OFF pair; `lamp` for the check box of Marks, Clean voice and Show
+  compressed), `Select`, `MenuCard`, `MenuRow`, `MenuRule`, `MenuGroup`, `ExportItem`,
+  `ExportButton` (gold bar while exporting), `OrderList` (party slots), `ShortcutBox` (pixel
+  key caps), `TranscriptCard`, `Tip` (ink with a gold rim), `TextField.edge-width` (the 3px
+  rim), `Scroller.quest-rail` and the gallery tiles (`gallery.slint`). `Theme.menu-h` is 27px
+  and the new `Theme.menu-pad` 9px for its menus (5px for every other look).
+- Rust: the editor's pause tags are the Quest blue (#56a8ff).
+- Art: 25 new pieces at 1x in `ui/skins/px-quest/` (keys, rails, the tape, owl and chest
+  sprites, the widget's REC and STOP), `ONLY="back chev ..." sh tools/skin-art/cut.sh px-quest
+  OUT` (the list is in `cut.sh`).
+
+**Mockup faults fixed, not copied (Quest Menu pages):** the widget's Pause or Resume key sat
+over the PAUSED word (now beside the timer); the merge footer had no room for the message
+beside its keys at 400px (portrait floats it above the footer, as the Car Dashboard does);
+the settings rows with a note under the name were cut by the next rule (rows with a note are
+42px). The merge page shows no gear: the classic pages show none on any other page.
+
+**Lessons from the Quest Menu pages:**
+- **A window used as a background must not lend its size.** `Win { width: parent.width;
+  height: parent.height; }` behind the transcript card had no `x` or `y`, so its (empty)
+  layout's maximum height became its parent's: the dialogue box shrank to its minimum and the
+  other windows took the room. Give such a background `x: 0; y: 0`.
+- **Children of a component with `@children` in a layout go into that layout:** a tag drawn
+  on a window's frame, a `TouchArea` or a ring must be a sibling of the `Win`, not a child.
+- **A `Text` with `y` and no `height`** sits at the top of its box: give centred labels
+  `height: parent.height - 1px` when they are nudged down a pixel.
+- **`slint-viewer --screenshot` with a preview wrapper** (state set in its `init`, `--load-data`
+  for the page and size) shows each page in seconds; it caught the layout faults above before
+  the next 2 hour wait on the shared target's lock.
+- **Checks:** with many agents running, posted presses land late more often; a fresh start
+  per page and state (`seg2.sh` in the step's scratch kit) and re-shooting a page until before
+  and after match (`parity.py`, up to four tries) separate flaky presses from real changes.
+  A merge moves its source clips out of the scratch folder, and restored clips get new
+  creation times, so they sort to the end of the list and drop out of view: drive clips that
+  are on screen, and restore the sources after a test merge.
+- **The test binary outgrew the linker's program database:** `cargo test -p thrasher-app`
+  failed to link (`LNK1140: limit exceeded for program database`) with this step's code.
+  the workspace `Cargo.toml` now gives only `thrasher-app` line tables in the dev and test
+  profiles (`[profile.dev.package.thrasher-app] debug = "line-tables-only"`), so plain
+  `cargo test` links again, in CI too, and dependencies keep their full debug build (only
+  the app crate rebuilds once).
+
+**Budgets measured on the Quest Menu pages** (test copy, 2.25x display, 10 s samples,
+2026-10-31; Ember on the same exe in brackets):
+- CPU idle 0.0 to 0.6% on every page at 520x700 and 1100x700 (Ember 0.0 to 0.6%). Nothing
+  moves on a clock (the widget's lamp blinks only while recording, as on the main page).
+- Working set at 520x700: main 37.8 (38.6), one clip 155.1 (166.2, after a long clip was
+  loaded), settings 54.4 (55.1), models 55.8 (56.3), Ask 67.7 (68.3), merge 69.7 (70.5),
+  widget 63.7 (64.9) MB; at 1100x700: 45.7 (46.5), 166.6 (169.2), 62.9 (64.6), 64.1 (65.6),
+  75.8 (77.4), 77.6 (79.1), 63.8 (65.5) MB. Never above Ember.
+- Exe +19.35 MB (136.41 to 155.76 MB): art 3 KB, the rest generated code, more than batch 1
+  (+8 to +13 MB): the pixel look is drawn from many small rectangles (frames, cut corners,
+  key faces) inlined into every use of the shared widgets, and the clip page carries two
+  transcript cards (portrait and wide). For the size pass.
+- Ember, Tape Deck and Phosphor: main, project menu, clip menu and its Export submenu,
+  rename, delete and new project questions, one clip (plain, Export menu, editing, renaming,
+  no transcript), settings (top, middle, end), models, Ask, merge and the widget at 520x700
+  and 1100x700, 114 shots, match before and after pixel for pixel.
 
 **Built in step 5, Brick Phone main page (2026-10-29):** `ui/skins/dv-brick.slint` (skin 9,
 theme "Brick Phone", index 16 in `Theme.names`, after Pocket and Quest Menu), art in `ui/skins/dv-brick/`
@@ -1514,6 +1606,8 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      (built page says ABC), Pinball wide Export position and portrait main-page overlaps.
      Pocket built 2026-10-31 (`Theme.pages` 7, see "Built in step 5, Pocket on every other
      page").
+     Quest Menu built 2026-10-31 (`Theme.pages` 8, see "Built in step 5, Quest Menu on every
+     other page").
    - Size (Max, 2026-10-31): the nine would bring the exe to about 235 MB. Build all nine,
      then one size pass (palette PNGs, shared frames deduped) to pull it back toward 200 MB.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

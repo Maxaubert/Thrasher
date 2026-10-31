@@ -1,0 +1,421 @@
+// The Quest Menu's parts, shared by the main page (px-quest.slint) and the other pages
+// (px-quest-pages.slint): the pixel art at a whole scale, the gold labels, the menu
+// window and its corners, the small pixel keys, the title bar, the mic sprite, the status
+// lamp, the timer, the IN bar and the round REC button. The colours and fonts are the
+// Quest global in common.slint, so the shared widgets can draw the look too.
+
+import { Main, Tips, Fx, Quest as Q, QFace } from "../common.slint";
+export { Quest as Q } from "../common.slint";
+
+// Off every other half second while recording (the Fx clock steps four times a second
+// and runs twice as fast then): the glove and the status lamp blink. Lit otherwise.
+export global QFx {
+    out property <bool> blink: !Main.recording || Main.paused || Math.mod(Math.floor(Fx.t), 2) == 0;
+}
+
+// Pixel art at a whole scale, without smoothing.
+export component Px inherits Image {
+    in property <float> s: 3;
+    width: self.source.width * root.s * 1px;
+    height: self.source.height * root.s * 1px;
+    image-fit: fill;
+    image-rendering: pixelated;
+}
+
+// A label in the pixel capitals.
+export component Label inherits Text {
+    color: Q.gold;
+    font-family: Q.label;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    vertical-alignment: center;
+}
+
+// A menu window: a white and a grey pixel ring (the outer ink ring is the page itself)
+// round a blue face that is lighter at the top and darker at the bottom. Its content is
+// laid out inside the 9px frame.
+export component Win inherits Rectangle {
+    in property <length> pad-x: 0;
+    in property <length> pad-y: 0;
+    Rectangle { x: 3px; y: 3px; width: parent.width - 6px; height: 3px; background: Q.white; }
+    Rectangle { x: 3px; y: parent.height - 6px; width: parent.width - 6px; height: 3px; background: Q.white; }
+    Rectangle { x: 3px; y: 6px; width: 3px; height: parent.height - 12px; background: Q.white; }
+    Rectangle { x: parent.width - 6px; y: 6px; width: 3px; height: parent.height - 12px; background: Q.white; }
+    Rectangle { x: 6px; y: 6px; width: parent.width - 12px; height: 3px; background: Q.grey; }
+    Rectangle { x: 6px; y: parent.height - 9px; width: parent.width - 12px; height: 3px; background: Q.grey; }
+    Rectangle { x: 6px; y: 9px; width: 3px; height: parent.height - 18px; background: Q.grey; }
+    Rectangle { x: parent.width - 9px; y: 9px; width: 3px; height: parent.height - 18px; background: Q.grey; }
+    Rectangle { x: 9px; y: 9px; width: parent.width - 18px; height: 6px; background: Q.win-hi; }
+    Rectangle { x: 9px; y: 15px; width: parent.width - 18px; height: 6px; background: Q.win-mid; }
+    Rectangle { x: 9px; y: 21px; width: parent.width - 18px; height: max(0px, parent.height - 39px); background: Q.win; }
+    Rectangle { x: 9px; y: max(21px, parent.height - 18px); width: parent.width - 18px; height: min(9px, max(0px, parent.height - 30px)); background: Q.win-lo; }
+    VerticalLayout {
+        padding-left: 9px + root.pad-x;
+        padding-right: 9px + root.pad-x;
+        padding-top: 9px + root.pad-y;
+        padding-bottom: 9px + root.pad-y;
+        @children
+    }
+}
+
+// The 3px corner notches of a pixel box, in the colour behind it.
+export component Notches inherits Rectangle {
+    in property <color> behind;
+    Rectangle { x: 0; y: 0; width: 3px; height: 3px; background: root.behind; }
+    Rectangle { x: parent.width - 3px; y: 0; width: 3px; height: 3px; background: root.behind; }
+    Rectangle { x: 0; y: parent.height - 3px; width: 3px; height: 3px; background: root.behind; }
+    Rectangle { x: parent.width - 3px; y: parent.height - 3px; width: 3px; height: 3px; background: root.behind; }
+}
+
+// A 3px ring inside a box.
+export component Ring inherits Rectangle {
+    in property <color> tint;
+    in property <length> at: 0;
+    Rectangle { x: root.at; y: root.at; width: parent.width - 2 * root.at; height: 3px; background: root.tint; }
+    Rectangle { x: root.at; y: parent.height - root.at - 3px; width: parent.width - 2 * root.at; height: 3px; background: root.tint; }
+    Rectangle { x: root.at; y: root.at + 3px; width: 3px; height: parent.height - 2 * root.at - 6px; background: root.tint; }
+    Rectangle { x: parent.width - root.at - 3px; y: root.at + 3px; width: 3px; height: parent.height - 2 * root.at - 6px; background: root.tint; }
+}
+
+// The small square pixel button (play, the player): dark blue with an ink rim and cut
+// corners.
+export component PBtn inherits Rectangle {
+    in property <image> icon;
+    in property <color> tint: Q.white;
+    in property <color> behind: Q.win;
+    in property <string> label;
+    in property <string> tip: root.label;
+    in property <bool> enabled: true;
+    callback clicked;
+    width: 27px;
+    height: 27px;
+    background: t.has-hover && root.enabled ? Q.sel : Q.win-lo;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Ring { tint: Q.ink; }
+    Notches { behind: root.behind; }
+    Px {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 + (t.pressed && t.has-hover ? 1px : 0);
+        source: root.icon;
+        colorize: root.tint;
+        opacity: root.enabled ? 1 : 0.4;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// Settings, minimise and close in the title bar: a grey glyph, white when hovered; close
+// turns red.
+export component TitleKey inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> danger;
+    in property <bool> hand;
+    callback clicked;
+    width: 27px;
+    height: 27px;
+    background: t.has-hover && root.danger ? Q.red : transparent;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Px {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        source: root.icon;
+        colorize: t.has-hover ? Q.white : Q.grey;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: root.hand ? pointer : default;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// A key of the other pages: the pixel key face (common.slint's QFace) with an optional
+// pixel icon before its words. `primary` lights it with gold words, `red` with it makes
+// it the red Delete key, `on` holds it lit; an off key is dark with dim words.
+export component Key inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    // The icon's colour; by default as the words.
+    in property <color> icon-tint: root.ink;
+    in property <string> label: root.text;
+    // Keys without words show a tip.
+    in property <string> tip;
+    in property <bool> primary;
+    in property <bool> red;
+    in property <bool> on;
+    in property <bool> enabled: true;
+    // 24px with 13px words, or 33px with 15px words.
+    in property <bool> small;
+    in property <bool> large;
+    callback clicked;
+    property <color> ink: !root.enabled ? Q.dim : root.primary && root.red ? Q.white : root.primary || root.on ? Q.gold : root.red ? Q.lred : Q.white;
+    height: root.small ? 24px : root.large ? 33px : 27px;
+    min-width: max(root.height, row.preferred-width + (root.text == "" ? 6px : root.large ? 28px : root.small ? 16px : 20px));
+    horizontal-stretch: 0;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    QFace {
+        x: 0;
+        y: 0;
+        kind: !root.enabled ? 3 : root.primary && root.red ? 2 : root.primary ? 1 : root.on ? 4 : 0;
+        hover: t.has-hover && root.enabled;
+    }
+    row := HorizontalLayout {
+        x: (parent.width - self.preferred-width) / 2;
+        y: t.pressed && t.has-hover && root.enabled ? 1px : 0;
+        width: self.preferred-width;
+        height: parent.height;
+        spacing: 7px;
+        if root.icon.width > 0: Px {
+            y: (parent.height - self.height) / 2;
+            source: root.icon;
+            s: root.text == "" && !root.small ? 3 : 2;
+            colorize: root.enabled ? root.icon-tint : Q.dim;
+        }
+        if root.text != "": Text {
+            text: root.text;
+            color: root.ink;
+            font-family: Q.font;
+            font-size: root.large ? 15px : root.small ? 13px : 14px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { if (root.tip != "") { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); } }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The title bar: a gold note, the name and its level, Settings, minimise and close. The
+// other pages leave Settings out (as the classic pages do), and the clip page puts a small
+// back key before the name instead of the note.
+export component Title inherits Rectangle {
+    in property <bool> gear: true;
+    in property <string> back-text;
+    in property <string> back-label: "Back to " + root.back-text;
+    callback go(int);
+    callback back();
+    height: 36px;
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    HorizontalLayout {
+        padding-left: 3px;
+        padding-right: 3px;
+        spacing: 9px;
+        if root.back-text == "": VerticalLayout {
+            alignment: center;
+            Px { source: @image-url("px-quest/note.png"); colorize: Q.gold; }
+        }
+        if root.back-text != "": VerticalLayout {
+            alignment: center;
+            Key {
+                small: true;
+                icon: @image-url("px-quest/back.png");
+                icon-tint: Q.gold;
+                text: root.back-text;
+                label: root.back-label;
+                clicked => { root.back(); }
+            }
+        }
+        HorizontalLayout {
+            horizontal-stretch: 1;
+            spacing: 11px;
+            Text {
+                text: "Thrasher";
+                color: Q.white;
+                font-family: Q.title;
+                font-weight: 700;
+                font-size: 16px;
+                letter-spacing: 1px;
+                vertical-alignment: center;
+            }
+            Label {
+                text: "LV 1";
+                color: Q.dim;
+                horizontal-stretch: 1;
+            }
+        }
+        if root.gear: VerticalLayout {
+            alignment: center;
+            TitleKey { icon: @image-url("px-quest/gear.png"); label: "Settings"; hand: true; clicked => { root.go(3); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            TitleKey { icon: @image-url("px-quest/min.png"); label: "Minimize"; clicked => { Main.minimize-window(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            TitleKey { icon: @image-url("px-quest/close.png"); label: "Close"; danger: true; clicked => { Main.close-window(); } }
+        }
+    }
+}
+
+// The character sprite: the mic in a frame of ink and grey with cut corners.
+export component Sprite inherits Rectangle {
+    in property <float> s: 3;
+    background: Q.win-lo;
+    Ring { tint: Q.ink; }
+    Ring { tint: Q.grey; at: 3px; }
+    Notches { behind: Q.win; }
+    Px {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        source: @image-url("px-quest/mic.png");
+        s: root.s;
+    }
+}
+
+// The status lamp and word: READY in green, REC in red (blinking), PAUSED in gold.
+export component Status inherits HorizontalLayout {
+    in property <bool> keyed;
+    alignment: start;
+    property <color> tint: Main.recording ? (Main.paused ? Q.gold : Q.red) : Q.hp;
+    property <color> halo: Main.recording ? (Main.paused ? #3d330f : #3d1410) : #0f3d1e;
+    spacing: 3px;
+    VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: 12px;
+            height: 12px;
+            background: root.halo;
+            Rectangle {
+                x: 3px;
+                y: 3px;
+                width: 6px;
+                height: 6px;
+                background: root.tint;
+                visible: QFx.blink;
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: 6px;
+        if root.keyed: Label {
+            text: "STATUS";
+            color: Q.grey;
+            font-size: 12px;
+        }
+        Label {
+            text: Main.recording ? (Main.paused ? "PAUSED" : "RECORDING") : "READY";
+            color: root.tint;
+            font-size: 12px;
+        }
+    }
+}
+
+// The timer in the pixel figures with a hard ink shadow. The two texts are as wide as
+// the time (the figures are tabular, so the width holds while it runs) and start on a
+// whole pixel when centred.
+export component Timer inherits Rectangle {
+    in property <length> size: 28px;
+    in property <bool> centered;
+    property <string> value: Main.elapsed + Main.elapsed-tenth;
+    property <length> tw: min(face.preferred-width, root.width - 3px);
+    property <length> tx: root.centered ? round((root.width - 3px - root.tw) / 2 / 1px) * 1px : 0;
+    height: root.size + 3px;
+    Text {
+        x: root.tx + 3px;
+        y: 3px;
+        width: root.tw;
+        height: root.size;
+        text: root.value;
+        color: Q.ink;
+        font-family: Q.figures;
+        font-size: root.size;
+        letter-spacing: root.size > 40px ? 2px : 1px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    face := Text {
+        x: root.tx;
+        y: 0;
+        width: root.tw;
+        height: root.size;
+        text: root.value;
+        color: Q.white;
+        font-family: Q.figures;
+        font-size: root.size;
+        letter-spacing: root.size > 40px ? 2px : 1px;
+        vertical-alignment: center;
+    }
+}
+
+// The IN bar: segments in an ink well with a grey rim, green then gold, the last two red.
+// It follows the live level while recording.
+export component Meter inherits Rectangle {
+    in property <int> segs: 14;
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;
+    property <int> on: round(root.segs * min(1, clamp((root.level - 0.06) / 0.94, 0, 1) * 1.15));
+    // Inside the rim and the ink padding, plus one gap, shared by the segments.
+    property <length> span: self.width - 12px + 3px;
+    height: 21px;
+    background: Q.ink;
+    Ring { tint: Q.grey; }
+    for i in root.segs: Rectangle {
+        property <bool> hot: i >= root.segs - 2;
+        property <bool> warm: !self.hot && i >= root.segs - 6;
+        x: 6px + round(i * root.span / root.segs / 1px) * 1px;
+        y: 6px;
+        width: round((i + 1) * root.span / root.segs / 1px) * 1px - round(i * root.span / root.segs / 1px) * 1px - 3px;
+        height: 9px;
+        background: i < root.on ? (self.hot ? Q.red : self.warm ? Q.gold : Q.hp) : Q.seg;
+    }
+}
+
+// The round REC button (Stop while recording) and its word under it.
+export component RecKey inherits VerticalLayout {
+    in property <bool> big;
+    callback refocus();
+    spacing: root.big ? 9px : 6px;
+    alignment: center;
+    HorizontalLayout {
+        alignment: center;
+        Rectangle {
+            width: key.width;
+            height: key.height;
+            accessible-role: button;
+            accessible-label: Main.recording ? "Stop and save" : "Record";
+            accessible-action-default => { Main.toggle-record(); root.refocus(); }
+            key := Px {
+                y: t.pressed && t.has-hover ? 3px : 0;
+                source: Main.recording
+                    ? (root.big ? @image-url("px-quest/stop-l.png") : @image-url("px-quest/stop-s.png"))
+                    : (root.big ? @image-url("px-quest/rec-l.png") : @image-url("px-quest/rec-s.png"));
+            }
+            property <bool> hovering: t.has-hover;
+            changed hovering => { Tips.hover(self.hovering, Main.recording ? "Stop" : "Record", self.absolute-position, self.width, self.height); }
+            t := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Tips.hide(); Main.toggle-record(); root.refocus(); }
+            }
+        }
+    }
+    Text {
+        text: Main.recording ? "STOP" : "REC";
+        color: Q.white;
+        font-family: Q.label;
+        font-size: root.big ? 12px : 11px;
+        letter-spacing: 0.5px;
+        horizontal-alignment: center;
+        accessible-role: none;
+    }
+}

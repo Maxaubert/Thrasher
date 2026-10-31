@@ -20,7 +20,7 @@ a.style.width = W + 'px'; a.style.height = H + 'px';
 const COL = {
   K:'#0a0b1a', W:'#f4f1e6', G:'#8d93b8', D:'#5f679e', d:'#3a4280',
   Y:'#ffd23f', y:'#b8860b', R:'#e5432f', r:'#8f1f1a', L:'#ff8a6a',
-  g:'#4cd66b', B:'#56a8ff', S:'#c9cdf0', '#':'#ffffff'
+  g:'#4cd66b', B:'#56a8ff', S:'#c9cdf0', b:'#15206f', n:'#2335a6', o:'#a0602a', O:'#d9893f', '#':'#ffffff'
 };
 function px(map) {
   const h = map.length, w = map[0].length;
@@ -58,6 +58,30 @@ const I = {
   cplay:['.#.....','.##....','.###...','.####..','.###...','.##....','.#.....'],
   check:['....#','...##','#.##.','###..','.#...'],
   hand:['.KKK....','KWWWKKKK','KWWWWWWK','KWWWKKK.','KWWWWK..','.KKKK...'],
+  // The other pages (docs/mockups/device-themes/px-quest-pages/): keys, rails and sprites.
+  back:['...#','..##','.###','####','.###','..##','...#'],
+  chev:['#...','##..','###.','####','###.','##..','#...'],
+  pencil:['.....##','....###','...###.','..###..','.###...','###....','##.....'],
+  trash:['..###..','#######','.......','.#.#.#.','.#.#.#.','.#.#.#.','.#####.'],
+  rew:['...#..#','..##.##','.######','#######','.######','..##.##','...#..#'],
+  ff:['#..#...','##.##..','######.','#######','######.','##.##..','#..#...'],
+  lang:['..###..','.#.#.#.','#..#..#','#######','#..#..#','.#.#.#.','..###..'],
+  spark:['...#...','..###..','#######','.#####.','..###..','.##.##.','.#...#.'],
+  copy:['####...','#..#...','#.####.','#.#..#.','###..#.','..#..#.','..####.'],
+  tick:['......#','.....##','#...##.','##.##..','.###...','..#....'],
+  up:['...#...','..###..','.#####.','#######','..###..','..###..','..###..'],
+  x:['#...#','.#.#.','..#..','.#.#.','#...#'],
+  grip:['#.#','...','#.#','...','#.#'],
+  folder:['###....','#######','#.....#','#.....#','#.....#','#######'],
+  plus:['..#..','..#..','#####','..#..','..#..'],
+  box:['...#...','..###..','.#.#.#.','...#...','#..#..#','#.....#','#######'],
+  expand:['###.###','##...##','#.....#','.......','#.....#','##...##','###.###'],
+  tri:['#..','##.','###','##.','#..'],
+  upt:['..#..','.###.','#####'],
+  stop:['#####','#####','#####','#####','#####'],
+  tape:['.KKKKKKKKKKKK.','KGGGGGGGGGGGGK','KGKKKKKKKKKKGK','KGKWWKYYKWWKGK','KGKWKKYYKKWKGK','KGKWWKYYKWWKGK','KGKKKKKKKKKKGK','KGGGGGGGGGGGGK','KGGKKKKKKKKGGK','KGKDDDDDDDDKGK','.KKKKKKKKKKKK.'],
+  owl:['..K......K..','.KGK....KGK.','.KGGKKKKGGK.','KGGGGGGGGGGK','KGWWWGGWWWGK','KGWKWGGWKWGK','KGWWWYYWWWGK','KGGGGYYGGGGK','.KGDGGGGDGK.','.KGDDGGDDGK.','..KGGGGGGK..','..KYK..KYK..','...KKKKKK...'],
+  chest:['..KKKKKKKK..','.KOOOOOOOOK.','KOooooooooOK','KKKKKYYKKKKK','KOooKYYKooOK','KOooKKKKooOK','KOooooooooOK','KOOOOOOOOOOK','KKKKKKKKKKKK'],
   mic:[
     '...KKKK...',
     '..KWWGGK..',
@@ -111,6 +135,9 @@ I['rec-s'] = recButton(19, false);
 I['rec-l'] = recButton(33, false);
 I['stop-s'] = recButton(19, true);
 I['stop-l'] = recButton(33, true);
+// The widget's round REC and STOP (the other pages' mockup, chrome).
+I['wrec'] = recButton(17, false);
+I['wstop'] = recButton(17, true);
 
 if (I[el]) a.innerHTML = px(I[el]);
 if (el === 'cmd') {

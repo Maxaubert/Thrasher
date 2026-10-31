@@ -3,9 +3,9 @@
 // group, Classic and Devices, with page arrows, a thin scroll bar and a fade. A click
 // switches the theme at once. The classic tiles are the main page drawn live from the
 // palette; the device tiles are pictures in skins/thumbs (tools/skin-art/thumbs.py).
-// Drawn in the Ember look, or the Tape Deck look while that theme is on.
+// Drawn in the Ember look, or the Tape Deck or Phosphor look while that theme is on.
 
-import { Theme, Deck, Palette, Icon, IconBtn, Win } from "common.slint";
+import { Theme, Deck, Ph, Palette, Icon, IconBtn, Win } from "common.slint";
 
 export struct ThemeTile {
     // As in Theme.names.
@@ -91,7 +91,7 @@ component Tile inherits Rectangle {
     accessible-action-default => { root.picked(); }
 
     // Ember: a framed picture, the name under it, a check on the current one.
-    if !Theme.tape: Rectangle {
+    if !Theme.tape && !Theme.phos: Rectangle {
         Rectangle {
             y: 0;
             height: 70px;
@@ -206,6 +206,51 @@ component Tile inherits Rectangle {
         }
     }
 
+    // Phosphor: the picture in a thin frame, the name under it; the current one in a bright
+    // frame with its name in inverted video, the focused one in a light frame.
+    if Theme.phos: Rectangle {
+        Rectangle {
+            y: 0;
+            height: 70px;
+            border-width: root.on || root.focused ? 2px : 1px;
+            border-color: root.focused ? Ph.hi : root.on ? Ph.ph : root.hover ? Ph.mid : Ph.line;
+            background: Ph.bg;
+        }
+        Rectangle {
+            x: 3px;
+            y: 3px;
+            width: 104px;
+            height: 64px;
+            opacity: root.down ? 0.8 : 1;
+            if root.classic: Mini { p: Theme.palettes[root.tile.index]; }
+            if !root.classic: Image {
+                width: 104px;
+                height: 64px;
+                source: root.hi ? root.tile.art2 : root.tile.art;
+                image-fit: fill;
+            }
+        }
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: 74px;
+            width: min(name.preferred-width + 8px, parent.width);
+            height: 16px;
+            background: root.on ? Ph.ph : transparent;
+            name := Text {
+                x: 4px;
+                width: parent.width - 8px;
+                text: root.tile.name;
+                color: root.on ? Ph.bg : root.hover ? Ph.hi : Ph.mid;
+                font-family: Ph.mono;
+                font-size: 11px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+        }
+    }
+
     t := TouchArea {
         mouse-cursor: pointer;
         clicked => { root.picked(); }
@@ -230,7 +275,8 @@ component Fade inherits Rectangle {
         property <length> to: round((root.at-x + (i + 1) * root.width / root.strips) / 1phx) * 1phx - root.at-x;
         x: self.from;
         width: self.to - self.from;
-        background: Theme.card.with-alpha(root.to-right ? (i + 0.5) / root.strips : 1 - (i + 0.5) / root.strips);
+        // Phosphor's strips sit on the window's black, not on a card.
+        background: (Theme.phos ? Theme.bg : Theme.card).with-alpha(root.to-right ? (i + 0.5) / root.strips : 1 - (i + 0.5) / root.strips);
     }
 }
 
@@ -299,20 +345,22 @@ component Strip inherits VerticalLayout {
     }
 
     // Its head.
-    if root.divided && !Theme.tape: Rectangle { height: 6px; }
-    if root.divided && !Theme.tape: Rectangle { height: 1px; background: Theme.divider; }
+    if root.divided && !Theme.tape && !Theme.phos: Rectangle { height: 6px; }
+    if root.divided && !Theme.tape && !Theme.phos: Rectangle { height: 1px; background: Theme.divider; }
+    if root.divided && Theme.phos: Rectangle { height: 8px; }
     if Theme.tape: Rectangle { height: 4px; }
     HorizontalLayout {
         height: Theme.tape ? 26px : 30px;
         padding-left: Theme.tape ? 2px : 4px;
         padding-right: Theme.tape ? 2px : 0;
-        padding-top: root.divided && !Theme.tape ? 6px : 0;
+        padding-top: root.divided && !Theme.tape && !Theme.phos ? 6px : 0;
         spacing: 8px;
         if !Theme.tape: Text {
             text: root.title;
-            color: Theme.text;
-            font-size: 12px;
-            font-weight: 600;
+            color: Theme.phos ? Ph.hi : Theme.text;
+            font-family: Theme.phos ? Ph.mono : "Inter Tight";
+            font-size: Theme.phos ? 12.5px : 12px;
+            font-weight: Theme.phos ? 400 : 600;
             vertical-alignment: center;
         }
         if Theme.tape: VerticalLayout {
@@ -338,8 +386,8 @@ component Strip inherits VerticalLayout {
         Text {
             text: root.n;
             color: Theme.tape ? #6f665a : Theme.dim;
-            font-family: Theme.tape ? Theme.mono : "Inter Tight";
-            font-size: Theme.tape ? 10px : 12px;
+            font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : "Inter Tight";
+            font-size: Theme.tape ? 10px : Theme.phos ? 11px : 12px;
             vertical-alignment: center;
             accessible-role: none;
         }
@@ -354,6 +402,7 @@ component Strip inherits VerticalLayout {
                     size: 26px;
                     height: Theme.tape ? 22px : 26px;
                     round: true;
+                    key: "[<]";
                     icon: "back";
                     icon-size: Theme.tape ? 11px : 13px;
                     tint: Theme.muted;
@@ -369,6 +418,7 @@ component Strip inherits VerticalLayout {
                     size: 26px;
                     height: Theme.tape ? 22px : 26px;
                     round: true;
+                    key: "[>]";
                     icon: "chevron";
                     icon-size: Theme.tape ? 11px : 13px;
                     tint: Theme.muted;
@@ -461,16 +511,16 @@ component Strip inherits VerticalLayout {
         Rectangle {
             visible: root.scrolls;
             height: Theme.tape ? 4px : 3px;
-            border-radius: Theme.tape ? 0 : 2px;
-            background: Theme.tape ? #1b1410 : Theme.divider;
+            border-radius: Theme.tape || Theme.phos ? 0 : 2px;
+            background: Theme.tape ? #1b1410 : Theme.phos ? Ph.faint : Theme.divider;
             property <length> thumb-w: max(30px, self.width * root.view-w / max(root.content-w, 1px));
             Rectangle {
                 x: root.max-off > 0 ? root.x-off / root.max-off * (parent.width - self.width) : 0;
                 y: Theme.tape ? -1px : 0;
                 width: parent.thumb-w;
                 height: Theme.tape ? 6px : 3px;
-                border-radius: Theme.tape ? 0 : 2px;
-                background: Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.edge;
+                border-radius: Theme.tape || Theme.phos ? 0 : 2px;
+                background: Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.phos ? Ph.ph : Theme.edge;
             }
         }
     }
@@ -490,6 +540,27 @@ export component ThemeGallery inherits VerticalLayout {
         title: "Devices";
         tiles: Gallery.shown;
         divided: true;
+        picked(i) => { root.picked(i); }
+        up => { classic.focus-in(); }
+    }
+}
+
+// Both groups side by side, for a wide page (Phosphor's settings).
+export component ThemeGallerySide inherits HorizontalLayout {
+    callback picked(int);
+    spacing: 22px;
+    classic := Strip {
+        horizontal-stretch: 1;
+        title: "Classic";
+        tiles: Gallery.classic;
+        classic: true;
+        picked(i) => { root.picked(i); }
+        down => { devices.focus-in(); }
+    }
+    devices := Strip {
+        horizontal-stretch: 1;
+        title: "Devices";
+        tiles: Gallery.shown;
         picked(i) => { root.picked(i); }
         up => { classic.focus-in(); }
     }

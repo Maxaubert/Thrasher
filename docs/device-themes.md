@@ -124,8 +124,8 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
 theme "Desktop 95", index 10 in `Theme.names`), art in `ui/skins/dv-os95/`, fonts Pixel 95
 and VT323 (the same `VT323-400.ttf` as Phosphor: its Latin subset covers the ASCII this
 skin needs, with the same outlines and metrics).
-- `Theme.pages` says how the other pages are built: 1 for Tape Deck, else 0, the classic
-  pages in the theme's palette. A skin whose other pages are not built yet keeps them
+- `Theme.pages` says how the other pages are built: 1 for Tape Deck, 2 for Phosphor (since
+  its pages were built), else 0, the classic pages in the theme's palette. A skin whose other pages are not built yet keeps them
   classic this way; `app.slint` picks the main page by `Theme.skin` and the rest by
   `Theme.pages`. Desktop 95's palette is grey and navy for those pages.
 - The scope and the LED level follow `Main.live` like the classic meter, so the skin needs
@@ -761,6 +761,75 @@ their 1x cut). Its other pages are the classic ones in a mahogany and brass pale
 - Working set idle 43.6 vs Ember 40.2 MB (+3.4); wide 53.0 vs 48.2 MB (+4.8).
 - Exe +2.28 MB (44.83 to 47.11 MB): fonts 0.21 MB, art 0.04 MB, the rest generated code.
 
+**Built in step 5, Phosphor on every other page (2026-10-30):** mockups in
+`docs/mockups/device-themes/phosphor-pages/` (Max approved them 2026-10-30).
+- `Theme.pages` is 2 for Phosphor (`Theme.phos`); Tape Deck keeps 1, every other theme 0.
+  `app.slint` picks `ui/skins/phosphor-pages.slint` (`ClipPage`, `SettingsPage`,
+  `ModelsPage`, `MergePage`, `AskPage`, `Widget`, `Dialog`, `Speaking`, `Drop`) with
+  `Theme.pages == 2`, in the same blocks and with the same callbacks as Tape Deck's.
+- `ui/skins/phosphor-parts.slint`: the parts the main page and the other pages share (the
+  lit block, the pixel glyphs, the caps labels, the "-- WORD ----" rules, the title bar,
+  now with an optional `[<]back` key and its tty, and the glass: scanlines and vignette).
+  The tube's colours (`Ph`), the dashed rule (`PhDash`), the light shade (`PhShade`) and
+  the bracketed key (`PhKey`) moved to `common.slint`, so the shared widgets can draw the
+  terminal look. The main page imports them; it looks as before.
+- Each page is a tty: `[<]clips` or `[<]back`, the page's name in VT323 (SETUP, MODELS,
+  MERGE CLIPS, ASK), sections under dashed rules, settings as lines with a dotted leader
+  to their value, keys in brackets (`[r]ename`, `[t]r`, `--all`) or boxed (PLAY, EXPORT,
+  every text button), the highlight in inverted video, the latest message as a `> ` line
+  in the bar at the bottom.
+- The shared widgets draw the terminal look when `Theme.phos` is set: `Btn` (a boxed key
+  in VT323, lit for the main action, amber for `red` and `danger`; or a bracketed key when
+  `key` is set), `IconBtn` and `Toggle` (`key` and `tail` turn them into `[c]opy` and
+  `[m]arks`; a plain `Toggle` is `on` / `off` in a box), `Select` (a boxed value with a
+  "v"; its list grows leftwards from the box's right edge, so it stays in the window),
+  `MenuCard`, `MenuRow` (inverted hover, a star by the current choice, `prefix` draws
+  "~/" before a project without changing its name), `ExportItem`, `ExportButton`
+  ("EXPORT ^ flac", a shade bar while exporting, then "[ok] DONE"), `OrderList`
+  (":: 01 [>] clip_005 2:03 [x]", the dragged line inverted), `ShortcutBox` (boxed keys
+  joined by "+"), `TranscriptCard` ("$ cat clip_005.txt" over a dashed rule, the played
+  words bright, the word playing inverted, pause tags amber, "-- INSERT --" and a block
+  cursor while typing) and `Tip`. The gallery (`gallery.slint`) has a Phosphor tile: a thin
+  frame, its name inverted on the current one.
+- Review fixes (2026-10-30): wide settings use `ThemeGallerySide` (both strips side by
+  side, as the mockup), so the page fits 1100x700 without scrolling; "not set" in the
+  hotkey box sits flush right; a dragged order row leaves a dashed slot where it lands.
+- Rust: the editor's pause tags are Phosphor's amber (`Theme.phos`).
+- No new art or fonts: the pages reuse the main page's PNGs (dash, vdash, dither, halo,
+  vignette) and its two fonts.
+
+**Lessons from Phosphor's other pages:**
+- **A child without x and y lends its size to its parent.** Slint adds the preferred size
+  of every child that has neither `x` nor `y` set to its parent's own (that is how a
+  Rectangle sizes to a layout in it), visible or not. A Phosphor-only word in `Btn` (VT323,
+  `width: parent.width`) made Ember's Merge key 16 px wider. Every look-only child of a
+  shared widget gets `x: 0; y: 0` (Tape Deck's had a `y` by chance), and Ember and Tape
+  Deck are compared pixel for pixel after each change.
+- **Keys in brackets on shared widgets:** `key` and `tail` on `Btn`, `IconBtn` and
+  `Toggle` keep the widget, so the accessible name, the role and the tooltip stay those
+  of the classic button ("Translate", "Show marks" as a checkbox), while it draws as
+  `[t]r`. The width follows the text only while the key is shown.
+- **A popup's list must fit the window:** a dropdown wider than its box at the right edge
+  went past the window; Phosphor's opens from the box's right edge.
+- **Checks:** `setval.ps1` (UI Automation ValuePattern) types into the transcript editor
+  and the Ask field, so the unsaved-changes dialog and a real answer can be shot headless.
+  The cargo lock of the shared target dir made each release build wait up to 30 minutes
+  behind the other skin agents: batch fixes between builds.
+
+**Budgets measured on Phosphor's other pages** (test copy, 2.25x display, 10 s samples,
+2026-10-30):
+- CPU idle 0.0 to 0.9% on every page at 520x700 and 1100x700 (Ember 0.0 to 0.5%). Playing
+  a clip on its page: 22.2% at 520x700 and 31.3% at 1100x700 (Ember 26.9% and 22.0%; the
+  wide waveform is about 90 block bars that follow the playhead).
+- Working set over Ember: +1.3 to +3.6 MB per page (main 45.1 vs 42.1 MB, one clip 78.3 vs
+  77.0 MB, settings 229.8 vs 226.2 MB at 520x700).
+- Exe +10.54 MB (77.76 to 88.30 MB): generated code only, no new art or fonts. Ember and
+  Tape Deck: every page, the dialogs, both menus, the export and translate menus and a
+  dropdown at 520x700 and 1100x700 match the build before pixel for pixel (50 shots).
+- Not verified headless: dropping files (the Drop cover needs a real drag), speaking new
+  words (needs OmniVoice), a merged clip's parts (the scratch clips have none with two
+  parts), a model download, and tooltips (posted mouse moves raise no hover).
+
 **Budgets measured on Desktop 95** (main page, test copy, 2.25x display, 10 s samples,
 2026-10-29):
 - CPU idle 0.3% at 520x700 and 0.6% at 1100x700 (Ember 0.2% and 0.0%); recording 8.4%
@@ -1035,6 +1104,8 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      widget variant A for Desktop 95 (mini Sound Recorder) and Spatial Glass; flavour labels
      that are not app text stay (Comic Book captions such as UH OH and MEANWHILE, Car Dashboard
      modes such as PLAY MODE, the merged total on the Dash gauge, the Dash Disk heading).
+     Phosphor's are built (`Theme.pages` 2, see "Built in step 5, Phosphor on every other
+     page").
    - Other pages, batch 2 (Pocket, Quest Menu, Brick Phone, Answering Machine, Pocket Synth,
      Fighter Select) and batch 3 (Cozy Cabin, Pinball, Phonograph): mockups next.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

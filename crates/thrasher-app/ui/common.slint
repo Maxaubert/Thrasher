@@ -261,13 +261,119 @@ export global Theme {
     out property <[int]> skins: [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
     out property <int> skin: root.skins[root.current];
     // How the other pages are built: 1 Tape Deck's (skins/tape-pages.slint), 2 Phosphor's
-    // (skins/phosphor-pages.slint), else 0, the classic pages in the theme's palette (also
-    // for skins whose pages are not built yet).
-    out property <int> pages: root.skin == 1 ? 1 : root.skin == 2 ? 2 : 0;
+    // (skins/phosphor-pages.slint), 3 Desktop 95's (skins/dv-os95-pages.slint), else 0, the
+    // classic pages in the theme's palette (also for skins whose pages are not built yet).
+    out property <int> pages: root.skin == 1 ? 1 : root.skin == 2 ? 2 : root.skin == 3 ? 3 : 0;
     // The Tape Deck skin: the shared widgets below draw their deck look for it.
     out property <bool> tape: root.skin == 1;
     // The Phosphor skin: the shared widgets below draw their terminal look for it.
     out property <bool> phos: root.skin == 2;
+    // Desktop 95's pages: the shared widgets draw grey 95 bevels, checkboxes and menus.
+    out property <bool> os95: root.pages == 3;
+    // The height of a menu row: Desktop 95's menus are tighter.
+    out property <length> menu-h: root.os95 ? 22px : 34px;
+}
+
+// Desktop 95's colours (docs/mockups/device-themes/dv-os95.html and dv-os95-pages/), here so
+// the shared widgets can draw its look too.
+export global Os {
+    out property <color> face: #c0c0c0;
+    out property <color> hi: #ffffff;
+    out property <color> lt: #dfdfdf;
+    out property <color> sh: #808080;
+    out property <color> dk: #0a0a0a;
+    out property <color> navy: #0a1f7a;
+    out property <color> desk: #127170;
+    out property <color> scope: #3cff6a;
+    out property <color> ink2: #333333;
+    out property <color> note: #555555;
+    out property <color> red: #e0201b;
+    out property <color> tag: #1c3fa8;
+    out property <color> tip: #ffffe1;
+    out property <brush> active: @linear-gradient(90deg, #0a1f7a 0%, #2f8fd6 100%);
+    out property <brush> inactive: @linear-gradient(90deg, #7b7b7b 0%, #b4b4b4 100%);
+    out property <string> font: "Pixel 95";
+}
+
+// The two pixel lines round a 95 box. Kind 0 raised (a window or a key), 1 pressed, 2 sunken
+// (a field), 3 thinly sunken (a status bar cell), 4 etched (a group box), 5 thinly raised,
+// 6 the default button (a black ring round the raised key).
+export component OsBevel inherits Rectangle {
+    in property <int> kind;
+    property <int> k: root.kind == 6 ? 0 : root.kind;
+    property <length> o: root.kind == 6 ? 1px : 0;
+    property <color> o-tl: root.k == 0 ? Os.hi : root.k == 1 ? Os.dk : root.k == 5 ? Os.hi : Os.sh;
+    property <color> o-br: root.k == 0 ? Os.dk : root.k == 5 ? Os.sh : Os.hi;
+    property <color> i-tl: root.k == 0 ? Os.lt : root.k == 1 ? Os.sh : root.k == 2 ? Os.dk : Os.hi;
+    property <color> i-br: root.k == 0 ? Os.sh : root.k == 4 ? Os.sh : Os.lt;
+    property <bool> one: root.k == 3 || root.k == 5;
+    Rectangle {
+        visible: root.kind == 6;
+        border-width: 1px;
+        border-color: Os.dk;
+    }
+    Rectangle {
+        x: root.o;
+        y: root.o;
+        width: parent.width - 2 * root.o;
+        height: parent.height - 2 * root.o;
+        Rectangle { visible: !root.one; x: 1px; y: 1px; width: parent.width - 2px; height: 1px; background: root.i-tl; }
+        Rectangle { visible: !root.one; x: 1px; y: 1px; width: 1px; height: parent.height - 2px; background: root.i-tl; }
+        Rectangle { visible: !root.one; x: 1px; y: parent.height - 2px; width: parent.width - 2px; height: 1px; background: root.i-br; }
+        Rectangle { visible: !root.one; x: parent.width - 2px; y: 1px; width: 1px; height: parent.height - 2px; background: root.i-br; }
+        Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: root.o-tl; }
+        Rectangle { x: 0; y: 0; width: 1px; height: parent.height; background: root.o-tl; }
+        Rectangle { x: 0; y: parent.height - 1px; width: parent.width; height: 1px; background: root.o-br; }
+        Rectangle { x: parent.width - 1px; y: 0; width: 1px; height: parent.height; background: root.o-br; }
+    }
+}
+
+// A 95 pixel icon at a whole scale of its art, without smoothing.
+export component OsPx inherits Image {
+    in property <float> s: 1;
+    width: self.source.width * root.s * 1px;
+    height: self.source.height * root.s * 1px;
+    image-fit: fill;
+    image-rendering: pixelated;
+}
+
+// The dotted focus line round a 95 control or a highlighted row: a checker tile in one colour.
+export component OsDotted inherits Rectangle {
+    // Pure black did not colorize in the off-screen preview (the image stayed white).
+    in property <color> tint: #010101;
+    property <bool> hi: 1phx < 0.7px;
+    property <image> tile: root.hi ? @image-url("skins/dv-os95/checker@2x.png") : @image-url("skins/dv-os95/checker.png");
+    Image { x: 0; y: 0; width: parent.width; height: 1px; source: root.tile; colorize: root.tint; horizontal-tiling: repeat; vertical-tiling: repeat; horizontal-alignment: left; vertical-alignment: top; }
+    Image { x: 0; y: parent.height - 1px; width: parent.width; height: 1px; source: root.tile; colorize: root.tint; horizontal-tiling: repeat; vertical-tiling: repeat; horizontal-alignment: left; vertical-alignment: top; }
+    Image { x: 0; y: 0; width: 1px; height: parent.height; source: root.tile; colorize: root.tint; horizontal-tiling: repeat; vertical-tiling: repeat; horizontal-alignment: left; vertical-alignment: top; }
+    Image { x: parent.width - 1px; y: 0; width: 1px; height: parent.height; source: root.tile; colorize: root.tint; horizontal-tiling: repeat; vertical-tiling: repeat; horizontal-alignment: left; vertical-alignment: top; }
+}
+
+// A 95 pixel icon for one of the shared icon names, for the buttons and menus that take an
+// icon by name; empty for a name it has no picture for.
+export global OsIcons {
+    public pure function pick(name: string) -> image {
+        return name == "plus" ? @image-url("skins/dv-os95/plus.png")
+            : name == "pencil" ? @image-url("skins/dv-os95/pen.png")
+            : name == "export" ? @image-url("skins/dv-os95/up.png")
+            : name == "trash" ? @image-url("skins/dv-os95/bin.png")
+            : name == "folder" ? @image-url("skins/dv-os95/fopen.png")
+            : name == "languages" ? @image-url("skins/dv-os95/globe.png")
+            : name == "sparkles" ? @image-url("skins/dv-os95/spark.png")
+            : name == "copy" ? @image-url("skins/dv-os95/copy.png")
+            : name == "check" ? @image-url("skins/dv-os95/tick.png")
+            : name == "close" ? @image-url("skins/dv-os95/x7.png")
+            : name == "back" ? @image-url("skins/dv-os95/playl.png")
+            : name == "chevron" ? @image-url("skins/dv-os95/play.png")
+            : name == "play" ? @image-url("skins/dv-os95/play.png")
+            : name == "pause" ? @image-url("skins/dv-os95/pause.png")
+            : name == "dots" ? @image-url("skins/dv-os95/dots.png")
+            : name == "expand" ? @image-url("skins/dv-os95/expand.png")
+            : name == "search" ? @image-url("skins/dv-os95/mag.png")
+            : name == "rewind" ? @image-url("skins/dv-os95/rew.png")
+            : name == "forward" ? @image-url("skins/dv-os95/ff.png")
+            : @image-url("");
+    }
 }
 
 // The Tape Deck's colours and key faces, from its mockups (docs/mockups/device-themes/
@@ -407,11 +513,15 @@ export component MenuCard inherits Rectangle {
     in property <bool> sub;
     in property <length> shadow-y: 6px;
     // Phosphor: a box in the second black with a bright edge, no shadow.
-    background: Theme.tape ? transparent : Theme.phos ? Ph.bg2 : root.sub ? Theme.raised : Theme.popup;
-    border-radius: Theme.tape || Theme.phos ? 0 : 10px;
-    border-width: Theme.tape ? 0 : 1px;
-    border-color: Theme.phos ? Ph.ph : Theme.edge;
-    drop-shadow-blur: Theme.tape || Theme.phos ? 0 : 20px;
+    // Desktop 95: a white drop down list with a black line instead of a grey menu.
+    in property <bool> list;
+    background: Theme.tape ? transparent : Theme.phos ? Ph.bg2 : Theme.os95 ? (root.list ? #ffffff : Os.face) : root.sub ? Theme.raised : Theme.popup;
+    border-radius: Theme.tape || Theme.phos || Theme.os95 ? 0 : 10px;
+    border-width: Theme.tape ? 0 : Theme.os95 ? (root.list ? 1px : 0) : 1px;
+    border-color: Theme.os95 ? #000000 : Theme.phos ? Ph.ph : Theme.edge;
+    drop-shadow-blur: Theme.tape || Theme.phos || Theme.os95 ? 0 : 20px;
+    // Desktop 95: a grey raised menu.
+    OsBevel { visible: Theme.os95 && !root.list; kind: 0; }
     drop-shadow-offset-y: root.shadow-y;
     drop-shadow-color: #00000099;
     if Theme.tape: Rectangle {
@@ -530,26 +640,27 @@ export component Tip inherits Rectangle {
         Rectangle { x: 0; width: 3px; background: Deck.red; }
     }
     // Phosphor: a small box with a bright edge.
-    background: Theme.tape ? transparent : Theme.phos ? Ph.bg2 : Theme.popup.with-alpha(0.95);
-    border-radius: Theme.tape || Theme.phos ? 0 : 7px;
+    // Desktop 95: the yellow tip with a black line.
+    background: Theme.tape ? transparent : Theme.phos ? Ph.bg2 : Theme.os95 ? Os.tip : Theme.popup.with-alpha(0.95);
+    border-radius: Theme.tape || Theme.phos || Theme.os95 ? 0 : 7px;
     border-width: Theme.tape ? 0 : 1px;
-    border-color: Theme.phos ? Ph.ph : Theme.popup-edge;
-    drop-shadow-blur: Theme.tape || Theme.phos ? 0 : 14px;
+    border-color: Theme.phos ? Ph.ph : Theme.os95 ? #000000 : Theme.popup-edge;
+    drop-shadow-blur: Theme.tape || Theme.phos || Theme.os95 ? 0 : 14px;
     drop-shadow-offset-y: 4px;
     drop-shadow-color: #00000099;
     width: bubble.preferred-width;
     height: bubble.preferred-height;
     bubble := HorizontalLayout {
-        padding-left: 9px;
-        padding-right: 9px;
-        padding-top: 5px;
-        padding-bottom: 5px;
+        padding-left: Theme.os95 ? 6px : 9px;
+        padding-right: Theme.os95 ? 6px : 9px;
+        padding-top: Theme.os95 ? 2px : 5px;
+        padding-bottom: Theme.os95 ? 2px : 5px;
         Text {
             text: root.text;
-            color: Theme.tape ? Deck.ink : Theme.phos ? Ph.hi : Theme.text2;
-            font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : "Inter Tight";
+            color: Theme.tape ? Deck.ink : Theme.phos ? Ph.hi : Theme.os95 ? #000000 : Theme.text2;
+            font-family: Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : "Inter Tight";
             font-size: Theme.tape || Theme.phos ? 11.5px : 12px;
-            font-weight: 500;
+            font-weight: Theme.os95 ? 400 : 500;
             letter-spacing: Theme.tape ? 0.6px : 0;
         }
     }
@@ -573,12 +684,51 @@ export component Btn inherits Rectangle {
     property <bool> ph-amber: root.red || root.danger;
     callback clicked;
     height: 36px;
-    min-width: Theme.phos ? (root.key != "" ? ph-key.preferred-width + 6px : ph-word.preferred-width + 22px) : label.preferred-width + (Theme.tape ? 24px : 26px);
-    border-radius: Theme.tape || Theme.phos ? 0 : 9px;
-    background: Theme.tape || Theme.phos ? transparent : primary ? (t.has-hover && enabled ? Theme.accent-hover : Theme.accent) : (t.has-hover && enabled ? Theme.raised : transparent);
-    border-width: primary || Theme.tape || Theme.phos ? 0 : 1px;
+    // At least this wide (the 95 message box keys are 74px).
+    in property <length> least;
+    min-width: Theme.phos ? (root.key != "" ? ph-key.preferred-width + 6px : ph-word.preferred-width + 22px) : max(root.least, Theme.os95 ? os-label.preferred-width + 16px : label.preferred-width + (Theme.tape ? 24px : 26px));
+    border-radius: Theme.tape || Theme.os95 || Theme.phos ? 0 : 9px;
+    background: Theme.tape || Theme.phos ? transparent : Theme.os95 ? Os.face : primary ? (t.has-hover && enabled ? Theme.accent-hover : Theme.accent) : (t.has-hover && enabled ? Theme.raised : transparent);
+    border-width: primary || Theme.tape || Theme.phos || Theme.os95 ? 0 : 1px;
     border-color: on ? Theme.accent : Theme.edge;
-    opacity: enabled || Theme.tape ? 1 : 0.4;
+    opacity: enabled || Theme.tape || Theme.os95 ? 1 : 0.4;
+    // Desktop 95: a grey push button, the main action the default button with its black
+    // ring, the words a pixel down and right while it is held; grey etched words when off.
+    property <bool> os-down: (t.pressed && t.has-hover && root.enabled) || root.on;
+    OsBevel {
+        visible: Theme.os95;
+        kind: root.os-down ? 1 : root.primary ? 6 : 0;
+    }
+    Text {
+        visible: Theme.os95 && !root.enabled;
+        x: 1px;
+        y: 1px;
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        color: Os.hi;
+        font-family: Os.font;
+        font-size: 12.5px;
+        font-weight: root.primary ? 700 : 400;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    os-label := Text {
+        visible: Theme.os95;
+        x: root.os-down ? 1px : 0;
+        y: root.os-down ? 1px : 0;
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        color: root.enabled ? #000000 : Os.sh;
+        font-family: Os.font;
+        font-size: 12.5px;
+        font-weight: root.primary ? 700 : 400;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
     accessible-role: button;
     accessible-label: text;
     accessible-action-default => { if (enabled) { root.clicked(); } }
@@ -666,10 +816,10 @@ export component Btn inherits Rectangle {
         }
     }
     label := Text {
-        visible: !Theme.tape && !Theme.phos;
+        visible: !Theme.tape && !Theme.phos && !Theme.os95;
         text: Theme.tape ? root.text.to-uppercase() : root.text;
         color: primary ? Theme.on-accent : danger ? Theme.danger : on ? Theme.accent : Theme.text;
-        font-family: Theme.tape ? "Oswald" : "Inter Tight";
+        font-family: Theme.tape ? "Oswald" : Theme.os95 ? Os.font : "Inter Tight";
         font-size: Theme.tape ? 10px : root.font-size;
         font-weight: Theme.tape ? 600 : primary ? 800 : 500;
         letter-spacing: Theme.tape ? 2.2px : 0;
@@ -707,11 +857,42 @@ export component IconBtn inherits Rectangle {
     callback clicked;
     width: root.ph-keyed ? ph-key.preferred-width + 6px : size;
     height: size;
-    border-radius: Theme.tape || Theme.phos ? 0 : radius;
-    background: Theme.tape ? transparent : Theme.phos ? (root.ph-lit ? Ph.ph : transparent) : filled ? (t.has-hover ? Theme.accent-hover : Theme.accent) : t.has-hover && enabled ? Theme.raised : transparent;
-    border-width: outlined && !Theme.tape && !Theme.phos ? 1px : 0;
+    border-radius: Theme.tape || Theme.phos || Theme.os95 ? 0 : radius;
+    background: Theme.tape ? transparent : Theme.phos ? (root.ph-lit ? Ph.ph : transparent) : Theme.os95 ? Os.face : filled ? (t.has-hover ? Theme.accent-hover : Theme.accent) : t.has-hover && enabled ? Theme.raised : transparent;
+    border-width: outlined && !Theme.tape && !Theme.phos && !Theme.os95 ? 1px : 0;
     border-color: Theme.edge;
-    opacity: enabled || Theme.tape ? 1 : 0.4;
+    opacity: enabled || Theme.tape || Theme.os95 ? 1 : 0.4;
+    // Desktop 95: a small grey key with a pixel icon; pushed in (on a checker) while on.
+    property <bool> os-down: (t.pressed && t.has-hover && root.enabled) || root.active;
+    property <image> os-icon: Theme.os95 ? OsIcons.pick(root.icon) : @image-url("");
+    Image {
+        visible: Theme.os95 && root.active;
+        x: 2px;
+        y: 2px;
+        width: parent.width - 4px;
+        height: parent.height - 4px;
+        source: 1phx < 0.7px ? @image-url("skins/dv-os95/checker@2x.png") : @image-url("skins/dv-os95/checker.png");
+        horizontal-tiling: repeat;
+        vertical-tiling: repeat;
+        horizontal-alignment: left;
+        vertical-alignment: top;
+    }
+    OsBevel { visible: Theme.os95; kind: root.os-down ? 1 : 0; }
+    OsPx {
+        visible: Theme.os95 && root.os-icon.width > 0;
+        x: (parent.width - self.width) / 2 + (root.os-down ? 1px : 0);
+        y: (parent.height - self.height) / 2 + (root.os-down ? 1px : 0);
+        source: root.os-icon;
+        opacity: root.enabled ? 1 : 0.4;
+    }
+    Icon {
+        visible: Theme.os95 && root.os-icon.width == 0;
+        name: root.icon;
+        tint: #000000;
+        opacity: root.enabled ? 1 : 0.4;
+        width: root.icon-size;
+        height: root.icon-size;
+    }
     accessible-role: button;
     accessible-label: label;
     accessible-action-default => { if (enabled) { root.clicked(); } }
@@ -733,7 +914,7 @@ export component IconBtn inherits Rectangle {
         height: root.icon-size;
     }
     Icon {
-        visible: !Theme.tape && !root.ph-keyed;
+        visible: !Theme.tape && !root.ph-keyed && !Theme.os95;
         name: root.icon;
         tint: Theme.phos ? (root.ph-lit ? Ph.bg : Ph.hi) : t.has-hover && !root.filled && !root.active ? Theme.text : root.tint;
         width: root.icon-size;
@@ -776,6 +957,8 @@ export component Toggle inherits Rectangle {
     in property <string> label;
     // Off: dimmed, and shown as off whatever `checked` holds.
     in property <bool> enabled: true;
+    // Desktop 95 only: the words beside the box, which take the click too.
+    in property <string> caption;
     callback toggled(bool);
     // Phosphor: "[on ]" or "[off]" in a box; or, when `key` is set, a key in brackets
     // ("[m]arks") held in inverted video while it is on.
@@ -784,13 +967,41 @@ export component Toggle inherits Rectangle {
     property <bool> on: root.checked && root.enabled;
     property <bool> ph-keyed: Theme.phos && root.key != "";
     property <bool> ph-key-lit: root.on || (ph-t.has-hover && root.enabled);
-    width: Theme.tape ? 53px : root.ph-keyed ? ph-key.preferred-width + 6px : Theme.phos ? 44px : 38px;
-    height: Theme.tape ? 18px : Theme.phos ? 20px : 22px;
-    border-radius: Theme.tape || Theme.phos ? 0 : 11px;
-    background: Theme.tape ? transparent : Theme.phos ? (on || (root.ph-keyed && ph-t.has-hover && root.enabled) ? Ph.ph : transparent) : on ? Theme.accent : Theme.track;
+    width: Theme.os95 ? 13px + (root.caption != "" ? 6px + cap.preferred-width : 0) : Theme.tape ? 53px : root.ph-keyed ? ph-key.preferred-width + 6px : Theme.phos ? 44px : 38px;
+    height: Theme.os95 ? 16px : Theme.tape ? 18px : Theme.phos ? 20px : 22px;
+    border-radius: Theme.tape || Theme.phos || Theme.os95 ? 0 : 11px;
+    background: Theme.tape || Theme.os95 ? transparent : Theme.phos ? (on || (root.ph-keyed && ph-t.has-hover && root.enabled) ? Ph.ph : transparent) : on ? Theme.accent : Theme.track;
     border-width: Theme.phos && !root.ph-keyed && !root.on ? 1px : 0;
     border-color: Ph.dim;
-    opacity: root.enabled ? 1 : 0.45;
+    opacity: root.enabled || Theme.os95 ? 1 : 0.45;
+    // Desktop 95: a checkbox, grey when off, with its words beside it.
+    Rectangle {
+        visible: Theme.os95;
+        x: 0;
+        y: (parent.height - 13px) / 2;
+        width: 13px;
+        height: 13px;
+        background: root.enabled ? #ffffff : Os.face;
+        OsBevel { kind: 2; }
+        OsPx {
+            visible: root.on;
+            x: 2px;
+            y: 3px;
+            source: @image-url("skins/dv-os95/tick.png");
+            colorize: root.enabled ? #000000 : Os.sh;
+        }
+    }
+    cap := Text {
+        visible: Theme.os95 && root.caption != "";
+        x: 19px;
+        height: parent.height;
+        text: root.caption;
+        color: root.enabled ? #000000 : Os.sh;
+        font-family: Os.font;
+        font-size: 12.5px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
     accessible-role: checkbox;
     accessible-checkable: true;
     accessible-checked: on;
@@ -859,7 +1070,7 @@ export component Toggle inherits Rectangle {
         }
     }
     Rectangle {
-        visible: !Theme.tape && !Theme.phos;
+        visible: !Theme.tape && !Theme.phos && !Theme.os95;
         x: root.on ? root.width - self.width - 3px : 3px;
         y: 3px;
         width: 16px;
@@ -902,12 +1113,14 @@ export component ExportItem inherits Rectangle {
     in property <string> text;
     in property <string> tag;
     in property <bool> current;
+    // Desktop 95: the picture before the words.
+    in property <image> os-icon;
     callback clicked;
-    height: 34px;
-    border-radius: Theme.tape || Theme.phos ? 0 : 6px;
+    height: Theme.menu-h;
+    border-radius: Theme.tape || Theme.phos || Theme.os95 ? 0 : 6px;
     // Tape Deck: an amber highlighter stroke under the hovered line. Phosphor: the line in
-    // inverted video, a star by the current format.
-    background: Theme.tape ? transparent : Theme.phos ? (t.has-hover ? Ph.ph : transparent) : t.has-hover ? Theme.hover : transparent;
+    // inverted video, a star by the current format. Desktop 95: navy.
+    background: Theme.tape ? transparent : Theme.phos ? (t.has-hover ? Ph.ph : transparent) : Theme.os95 ? (t.has-hover ? Os.navy : transparent) : t.has-hover ? Theme.hover : transparent;
     accessible-role: button;
     accessible-label: "Export " + text;
     accessible-action-default => { root.clicked(); }
@@ -931,14 +1144,44 @@ export component ExportItem inherits Rectangle {
         font-size: 12.5px;
         vertical-alignment: center;
     }
-    HorizontalLayout {
+    if Theme.os95: HorizontalLayout {
+        padding-left: 6px;
+        padding-right: 10px;
+        spacing: 8px;
+        Rectangle {
+            width: 16px;
+            OsPx {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                source: root.current ? @image-url("skins/dv-os95/tick.png") : root.os-icon;
+                colorize: root.current && t.has-hover ? #ffffff : transparent;
+            }
+        }
+        Text {
+            text: root.text;
+            color: t.has-hover ? #ffffff : #000000;
+            font-family: Os.font;
+            font-size: 12.5px;
+            font-weight: root.current ? 700 : 400;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+        Text {
+            text: root.tag;
+            color: t.has-hover ? #d8e2ff : Os.note;
+            font-family: Os.font;
+            font-size: 11.5px;
+            vertical-alignment: center;
+        }
+    }
+    if !Theme.os95: HorizontalLayout {
         padding-left: Theme.tape ? 12px : Theme.phos ? 22px : 10px;
         padding-right: Theme.tape ? 12px : 10px;
         spacing: 10px;
         Text {
             text: root.text;
             color: Theme.tape ? Deck.ink : Theme.phos ? (t.has-hover ? Ph.bg : Ph.hi) : t.has-hover || root.current ? Theme.text : Theme.text2;
-            font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : "Inter Tight";
+            font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
             font-size: Theme.phos ? 12.5px : 13px;
             font-weight: root.current && !Theme.phos ? 600 : 400;
             letter-spacing: Theme.tape ? 0.5px : 0;
@@ -959,6 +1202,29 @@ export component ExportItem inherits Rectangle {
     }
 }
 
+// A line between the groups of a menu: an etched pair of lines for Desktop 95.
+export component MenuRule inherits Rectangle {
+    height: 9px;
+    Rectangle { visible: !Theme.os95; x: 10px; width: parent.width - 20px; height: 1px; background: Theme.tape ? #2a1c1240 : Theme.edge; }
+    Rectangle { visible: Theme.os95; x: 1px; y: 3px; width: parent.width - 2px; height: 1px; background: Os.sh; }
+    Rectangle { visible: Theme.os95; x: 1px; y: 4px; width: parent.width - 2px; height: 1px; background: Os.hi; }
+}
+
+// The name of a group of choices in a menu.
+component MenuGroup inherits HorizontalLayout {
+    in property <string> text;
+    padding-left: Theme.os95 ? 30px : 10px;
+    height: 24px;
+    Text {
+        text: root.text;
+        color: Theme.tape ? Deck.ink-soft : Theme.os95 ? Os.note : Theme.dim;
+        font-family: Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.mono;
+        font-size: Theme.tape ? 9.5px : Theme.os95 ? 11px : 10px;
+        letter-spacing: Theme.tape ? 1.7px : Theme.phos ? 2px : Theme.os95 ? 1px : 0;
+        vertical-alignment: center;
+    }
+}
+
 // Every export, grouped: the full project, the audio formats, and the transcript
 // files. `choose` gets 7 for the full project, 0 to 2 for FLAC, WAV and MP3, and 3 to 6
 // for SRT, VTT, word timestamps and the timed text.
@@ -966,46 +1232,18 @@ export component ExportChoices inherits VerticalLayout {
     in property <bool> subtitles;
     in property <int> format: -1;
     callback choose(int);
-    ExportItem { text: "All files"; tag: "folder"; clicked => { root.choose(7); } }
-    Rectangle {
-        height: 9px;
-        Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.tape ? #2a1c1240 : Theme.edge; }
-    }
-    HorizontalLayout {
-        padding-left: 10px;
-        height: 24px;
-        Text {
-            text: "AUDIO";
-            color: Theme.tape ? Deck.ink-soft : Theme.dim;
-            font-family: Theme.phos ? Ph.mono : Theme.mono;
-            font-size: Theme.tape ? 9.5px : 10px;
-            letter-spacing: Theme.tape ? 1.7px : Theme.phos ? 2px : 0;
-            vertical-alignment: center;
-        }
-    }
-    ExportItem { text: "FLAC"; tag: "lossless"; current: root.format == 0; clicked => { root.choose(0); } }
-    ExportItem { text: "WAV"; tag: "standard"; current: root.format == 1; clicked => { root.choose(1); } }
-    ExportItem { text: "MP3"; tag: "small"; current: root.format == 2; clicked => { root.choose(2); } }
-    if root.subtitles: Rectangle {
-        height: 9px;
-        Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.tape ? #2a1c1240 : Theme.edge; }
-    }
-    if root.subtitles: HorizontalLayout {
-        padding-left: 10px;
-        height: 24px;
-        Text {
-            text: "TRANSCRIPT";
-            color: Theme.tape ? Deck.ink-soft : Theme.dim;
-            font-family: Theme.phos ? Ph.mono : Theme.mono;
-            font-size: Theme.tape ? 9.5px : 10px;
-            letter-spacing: Theme.tape ? 1.7px : Theme.phos ? 2px : 0;
-            vertical-alignment: center;
-        }
-    }
-    if root.subtitles: ExportItem { text: "Text with times"; tag: "txt"; clicked => { root.choose(6); } }
-    if root.subtitles: ExportItem { text: "Subtitles SRT"; tag: "video"; clicked => { root.choose(3); } }
-    if root.subtitles: ExportItem { text: "Subtitles VTT"; tag: "web"; clicked => { root.choose(4); } }
-    if root.subtitles: ExportItem { text: "Word timestamps"; tag: "json"; clicked => { root.choose(5); } }
+    ExportItem { text: "All files"; tag: "folder"; os-icon: @image-url("skins/dv-os95/fopen.png"); clicked => { root.choose(7); } }
+    MenuRule { }
+    MenuGroup { text: "AUDIO"; }
+    ExportItem { text: "FLAC"; tag: "lossless"; os-icon: @image-url("skins/dv-os95/wave.png"); current: root.format == 0; clicked => { root.choose(0); } }
+    ExportItem { text: "WAV"; tag: "standard"; os-icon: @image-url("skins/dv-os95/wave.png"); current: root.format == 1; clicked => { root.choose(1); } }
+    ExportItem { text: "MP3"; tag: "small"; os-icon: @image-url("skins/dv-os95/wave.png"); current: root.format == 2; clicked => { root.choose(2); } }
+    if root.subtitles: MenuRule { }
+    if root.subtitles: MenuGroup { text: "TRANSCRIPT"; }
+    if root.subtitles: ExportItem { text: "Text with times"; tag: "txt"; os-icon: @image-url("skins/dv-os95/notepad.png"); clicked => { root.choose(6); } }
+    if root.subtitles: ExportItem { text: "Subtitles SRT"; tag: "video"; os-icon: @image-url("skins/dv-os95/notepad.png"); clicked => { root.choose(3); } }
+    if root.subtitles: ExportItem { text: "Subtitles VTT"; tag: "web"; os-icon: @image-url("skins/dv-os95/notepad.png"); clicked => { root.choose(4); } }
+    if root.subtitles: ExportItem { text: "Word timestamps"; tag: "json"; os-icon: @image-url("skins/dv-os95/notepad.png"); clicked => { root.choose(5); } }
 }
 
 // Height of ExportChoices.
@@ -1016,8 +1254,8 @@ export global Win {
 }
 
 export global ExportSize {
-    out property <length> audio: 34px + 9px + 24px + 3 * 34px;
-    out property <length> transcript: 9px + 24px + 4 * 34px;
+    out property <length> audio: Theme.menu-h + 9px + 24px + 3 * Theme.menu-h;
+    out property <length> transcript: 9px + 24px + 4 * Theme.menu-h;
 }
 
 // One row in a menu.
@@ -1037,13 +1275,17 @@ export component MenuRow inherits Rectangle {
     in property <string> prefix;
     out property <bool> hovered: t.has-hover;
     callback clicked;
-    height: 34px;
-    border-radius: Theme.tape || Theme.phos ? 0 : 6px;
+    // Desktop 95 only: a picture before the words (else the one for `icon`).
+    in property <image> os-icon: Theme.os95 ? OsIcons.pick(root.icon) : @image-url("");
+    property <bool> os-hot: (t.has-hover || root.lit) && root.enabled;
+    height: Theme.menu-h;
+    border-radius: Theme.tape || Theme.os95 || Theme.phos ? 0 : 6px;
     // Phosphor: the hovered line in inverted video (amber for Delete), the line of an open
     // submenu lit faintly, a star by the current choice.
     background: Theme.tape ? transparent : Theme.phos ? (t.has-hover && root.enabled ? (root.danger ? Ph.amber : Ph.ph) : root.lit ? Ph.faint : transparent)
+        : Theme.os95 ? (root.os-hot ? Os.navy : transparent)
         : (t.has-hover || root.lit) && root.enabled ? Theme.hover : transparent;
-    opacity: root.enabled ? 1 : 0.4;
+    opacity: root.enabled || Theme.os95 ? 1 : 0.4;
     accessible-role: button;
     accessible-label: text;
     accessible-checked: root.checked;
@@ -1051,7 +1293,61 @@ export component MenuRow inherits Rectangle {
     // Tape Deck: an amber highlighter stroke under the hovered line.
     Rectangle { visible: Theme.tape && !root.drawer && (t.has-hover || root.lit) && root.enabled; y: 7px; height: 20px; background: Deck.amber.with-alpha(0.5); }
     Rectangle { visible: Theme.tape && root.drawer && t.has-hover && root.enabled; background: #00000014; }
-    HorizontalLayout {
+    // Desktop 95: navy while hovered; grey etched words when it is off.
+    if Theme.os95: HorizontalLayout {
+        padding-left: 6px;
+        padding-right: 8px;
+        spacing: 6px;
+        Rectangle {
+            width: 16px;
+            OsPx {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                source: root.os-icon;
+                colorize: root.os-hot && root.os-icon.width < 12 ? #ffffff : transparent;
+                opacity: root.enabled ? 1 : 0.45;
+            }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            Text {
+                visible: !root.enabled;
+                x: 1px;
+                y: 1px;
+                width: parent.width;
+                height: parent.height;
+                text: root.text;
+                color: Os.hi;
+                font-family: Os.font;
+                font-size: 12.5px;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+            Text {
+                width: parent.width;
+                height: parent.height;
+                text: root.text;
+                color: !root.enabled ? Os.sh : root.os-hot ? #ffffff : #000000;
+                font-family: Os.font;
+                font-size: 12.5px;
+                font-weight: root.checked ? 700 : 400;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+        }
+        if root.more || root.checked: Rectangle {
+            width: 10px;
+            OsPx {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                source: root.more ? @image-url("skins/dv-os95/play.png") : @image-url("skins/dv-os95/tick.png");
+                colorize: root.os-hot ? #ffffff : transparent;
+            }
+        }
+    }
+    if !Theme.os95: HorizontalLayout {
         padding-left: Theme.phos ? 8px : 10px;
         padding-right: 8px;
         spacing: Theme.tape && root.icon != "" ? 9px : Theme.phos ? 6px : 10px;
@@ -1075,7 +1371,7 @@ export component MenuRow inherits Rectangle {
             text: Theme.phos ? root.prefix + root.text : root.text;
             color: Theme.tape ? (root.danger ? Deck.red : Deck.ink) : Theme.phos ? (t.has-hover && root.enabled ? Ph.bg : root.danger ? Ph.amber : Ph.hi)
                 : root.danger ? Theme.danger : t.has-hover ? Theme.text : Theme.text2;
-            font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : "Inter Tight";
+            font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
             font-size: Theme.phos ? 12.5px : 13px;
             font-weight: Theme.tape && root.checked ? 600 : 400;
             letter-spacing: Theme.tape ? 0.5px : 0;
@@ -1124,7 +1420,7 @@ export component ProjectMenu inherits Rectangle {
         x: 0;
         y: root.up ? -self.height - 4px : root.height + 4px;
         width: 220px;
-        height: root.shown-rows * 34px + 9px + (root.current > 0 ? 4 : 2) * 34px + 10px;
+        height: root.shown-rows * Theme.menu-h + 9px + (root.current > 0 ? 4 : 2) * Theme.menu-h + 10px;
         close-policy: close-on-click-outside;
         // Tape Deck: an aluminium drawer of label tapes, the current project on red tape.
         if Theme.tape: Rectangle {
@@ -1202,29 +1498,29 @@ export component ProjectMenu inherits Rectangle {
                 if root.current > 0: MenuRow { drawer: true; icon: "trash"; text: "Delete project"; danger: true; enabled: !root.has-clips; clicked => { root.delete(); popup.close(); } }
             }
         }
+        // Desktop 95: a white drop down list with folders.
         if !Theme.tape: MenuCard {
+            list: true;
             VerticalLayout {
                 padding: 5px;
                 Flickable {
-                    height: root.shown-rows * 34px;
-                    content-height: root.projects.length * 34px;
+                    height: root.shown-rows * Theme.menu-h;
+                    content-height: root.projects.length * Theme.menu-h;
                     for p[i] in root.projects: MenuRow {
-                        y: i * 34px;
+                        y: i * Theme.menu-h;
                         width: parent.width;
                         prefix: "~/";
                         text: p;
+                        os-icon: Theme.os95 ? @image-url("skins/dv-os95/folder.png") : @image-url("");
                         checked: i == root.current;
                         clicked => { root.choose(i); popup.close(); }
                     }
                 }
-                Rectangle {
-                    height: 9px;
-                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.tape ? #2a1c1240 : Theme.edge; }
-                }
-                MenuRow { text: "New project"; clicked => { root.create(); popup.close(); } }
-                if root.current > 0: MenuRow { text: "Rename project"; clicked => { root.rename(); popup.close(); } }
-                MenuRow { text: "Export project"; enabled: root.has-clips; clicked => { root.export(); popup.close(); } }
-                if root.current > 0: MenuRow { text: "Delete project"; danger: true; enabled: !root.has-clips; clicked => { root.delete(); popup.close(); } }
+                MenuRule { }
+                MenuRow { icon: "plus"; text: "New project"; clicked => { root.create(); popup.close(); } }
+                if root.current > 0: MenuRow { icon: "pencil"; text: "Rename project"; clicked => { root.rename(); popup.close(); } }
+                MenuRow { icon: "export"; text: "Export project"; enabled: root.has-clips; clicked => { root.export(); popup.close(); } }
+                if root.current > 0: MenuRow { icon: "trash"; text: "Delete project"; danger: true; enabled: !root.has-clips; clicked => { root.delete(); popup.close(); } }
             }
         }
     }
@@ -1327,12 +1623,12 @@ export component ClipMenu inherits Rectangle {
     // Sizes of the menu and its submenus.
     property <length> main-w: 210px;
     property <length> sub-w: root.sub == 1 ? 250px : 210px;
-    property <length> merge-h: root.merge-count >= 2 ? 34px + 9px : 0;
-    property <length> main-h: (root.projects.length > 1 ? 5 : 4) * 34px + 9px + 10px + self.merge-h;
+    property <length> merge-h: root.merge-count >= 2 ? Theme.menu-h + 9px : 0;
+    property <length> main-h: (root.projects.length > 1 ? 5 : 4) * Theme.menu-h + 9px + 10px + self.merge-h;
     property <length> sub-h: root.sub == 1 ? 10px + ExportSize.audio + (root.item.transcribed ? ExportSize.transcript : 0)
-        : 10px + min(root.projects.length, 8) * 34px;
+        : 10px + min(root.projects.length, 8) * Theme.menu-h;
     // Where the submenu's row sits in the menu.
-    property <length> sub-row-y: 5px + self.merge-h + (root.sub == 2 ? 3 : 2) * 34px;
+    property <length> sub-row-y: 5px + self.merge-h + (root.sub == 2 ? 3 : 2) * Theme.menu-h;
     // The submenu opens to the right when there is room, else to the left.
     property <bool> sub-left: root.menu-x + self.main-w + 4px + self.sub-w > root.width;
     property <length> left-x: min(root.menu-x, root.width - self.main-w);
@@ -1363,10 +1659,7 @@ export component ClipMenu inherits Rectangle {
                     changed hovered => { if (self.hovered) { root.sub = 0; } }
                     clicked => { root.merge(); menu.close(); }
                 }
-                if root.merge-count >= 2: Rectangle {
-                    height: 9px;
-                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.tape ? #2a1c1240 : Theme.edge; }
-                }
+                if root.merge-count >= 2: MenuRule { }
                 MenuRow {
                     text: "Manage";
                     changed hovered => { if (self.hovered) { root.sub = 0; } }
@@ -1391,10 +1684,7 @@ export component ClipMenu inherits Rectangle {
                     changed hovered => { if (self.hovered) { root.sub = 2; } }
                     clicked => { root.sub = 2; }
                 }
-                Rectangle {
-                    height: 9px;
-                    Rectangle { x: 10px; width: parent.width - 20px; height: 1px; background: Theme.tape ? #2a1c1240 : Theme.edge; }
-                }
+                MenuRule { }
                 MenuRow {
                     text: "Delete";
                     danger: true;
@@ -1420,10 +1710,10 @@ export component ClipMenu inherits Rectangle {
             if root.sub == 2: VerticalLayout {
                 padding: 5px;
                 Flickable {
-                    height: min(root.projects.length, 8) * 34px;
-                    content-height: root.projects.length * 34px;
+                    height: min(root.projects.length, 8) * Theme.menu-h;
+                    content-height: root.projects.length * Theme.menu-h;
                     for p[i] in root.projects: MenuRow {
-                        y: i * 34px;
+                        y: i * Theme.menu-h;
                         width: parent.width;
                         text: p;
                         checked: i == root.project;
@@ -1698,10 +1988,10 @@ export component ExportButton inherits Rectangle {
         root.export(kind);
     }
     height: 36px;
-    width: max(label.preferred-width + 60px, 128px);
-    border-radius: Theme.tape || Theme.phos ? 0 : 9px;
-    clip: !Theme.tape;
-    background: Theme.tape || Theme.phos ? transparent : root.state == 1 ? Theme.raised : t.has-hover ? Theme.accent-hover : Theme.accent;
+    width: Theme.os95 ? os-row.preferred-width : max(label.preferred-width + 60px, 128px);
+    border-radius: Theme.tape || Theme.phos || Theme.os95 ? 0 : 9px;
+    clip: !Theme.tape && !Theme.os95;
+    background: Theme.tape || Theme.phos ? transparent : Theme.os95 ? Os.face : root.state == 1 ? Theme.raised : t.has-hover ? Theme.accent-hover : Theme.accent;
     // Phosphor: a boxed key, "EXPORT ^ flac"; while exporting a light shade bar filling
     // inside it with the percent; then "[ok] DONE" in inverted video.
     property <bool> ph-lit: root.state == 2 || (root.state == 0 && t.has-hover);
@@ -1762,6 +2052,54 @@ export component ExportButton inherits Rectangle {
             }
         }
     }
+    // Desktop 95: the Start button of the taskbar, pushed in while its menu is open or an
+    // export runs: the logo and Export, an hourglass and a blocky bar, or a tick and Done.
+    property <bool> os-down: (t.pressed && t.has-hover) || root.state == 1;
+    OsBevel { visible: Theme.os95; kind: root.os-down ? 1 : 0; }
+    Rectangle {
+        visible: Theme.os95;
+        x: root.os-down ? 1px : 0;
+        y: root.os-down ? 1px : 0;
+        width: parent.width;
+        height: parent.height;
+    os-row := HorizontalLayout {
+        padding-left: 5px;
+        padding-right: 8px;
+        spacing: 6px;
+        VerticalLayout {
+            alignment: center;
+            OsPx {
+                source: root.state == 1 ? @image-url("skins/dv-os95/hour.png") : root.state == 2 ? @image-url("skins/dv-os95/tick.png") : @image-url("skins/dv-os95/logo.png");
+            }
+        }
+        if root.state == 1: VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 52px;
+                height: 14px;
+                background: #ffffff;
+                OsBevel { kind: 2; }
+                property <int> blocks: floor(clamp(root.progress, 0, 1) * 5);
+                for i in self.blocks: Rectangle {
+                    x: 2px + i * 10px;
+                    y: 2px;
+                    width: 8px;
+                    height: parent.height - 4px;
+                    background: Os.navy;
+                }
+            }
+        }
+        Text {
+            text: root.state == 1 ? round(root.progress * 100) + "%" : root.state == 2 ? "Done" : "Export";
+            color: #000000;
+            font-family: Os.font;
+            font-size: root.state == 1 ? 12.5px : 14px;
+            font-weight: root.state == 1 ? 400 : 700;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+    }
     // Tape Deck: the amber key; while exporting a dark key that fills with amber.
     DeckKey {
         visible: Theme.tape;
@@ -1815,7 +2153,7 @@ export component ExportButton inherits Rectangle {
     accessible-expandable: true;
     accessible-action-default => { popup.show(); }
     accessible-action-expand => { popup.show(); }
-    if root.state == 1 && !Theme.tape && !Theme.phos: Rectangle {
+    if root.state == 1 && !Theme.tape && !Theme.phos && !Theme.os95: Rectangle {
         x: 0;
         width: parent.width * clamp(root.progress, 0, 1);
         background: Theme.accent.with-alpha(0.35);
@@ -1828,7 +2166,7 @@ export component ExportButton inherits Rectangle {
         alignment: root.state == 0 ? LayoutAlignment.stretch : LayoutAlignment.center;
         if root.state == 2: Icon {
             name: "check";
-            tint: Theme.tape || Theme.phos ? transparent : Theme.on-accent;
+            tint: Theme.tape || Theme.phos || Theme.os95 ? transparent : Theme.on-accent;
             width: 13px;
             height: 13px;
             y: (parent.height - self.height) / 2;
@@ -1836,7 +2174,7 @@ export component ExportButton inherits Rectangle {
         }
         label := Text {
             text: root.state == 1 ? round(root.progress * 100) + "%" : root.state == 2 ? "Done" : "Export";
-            color: Theme.tape || Theme.phos ? transparent : root.state == 1 ? Theme.text : Theme.on-accent;
+            color: Theme.tape || Theme.phos || Theme.os95 ? transparent : root.state == 1 ? Theme.text : Theme.on-accent;
             font-family: root.state == 1 ? Theme.mono : "Inter Tight";
             font-size: 13px;
             font-weight: 800;
@@ -1844,7 +2182,7 @@ export component ExportButton inherits Rectangle {
         }
         if root.state == 0: Icon {
             name: "up";
-            tint: Theme.tape || Theme.phos ? transparent : Theme.on-accent;
+            tint: Theme.tape || Theme.phos || Theme.os95 ? transparent : Theme.on-accent;
             width: 13px;
             height: 13px;
             y: (parent.height - self.height) / 2;
@@ -1858,15 +2196,34 @@ export component ExportButton inherits Rectangle {
     }
     // Opens above the button and closes on a choice or a click anywhere else.
     // The button sits on the right, so the menu lines up with its right edge.
+    // Desktop 95: the Start menu, above the button and level with its left edge, with the
+    // blue band and its upright words on the left.
     popup := PopupWindow {
-        x: root.width - self.width;
-        y: -self.height - 6px;
-        width: 250px;
+        x: Theme.os95 ? 0 : root.width - self.width;
+        y: -self.height - (Theme.os95 ? 2px : 6px);
+        width: Theme.os95 ? 276px : 250px;
         height: 10px + ExportSize.audio + (root.subtitles ? ExportSize.transcript : 0);
         close-policy: close-on-click-outside;
         MenuCard {
+            if Theme.os95: Rectangle {
+                x: 3px;
+                y: 3px;
+                width: 24px;
+                height: parent.height - 6px;
+                background: @linear-gradient(0deg, #0a1f7a 0%, #2f8fd6 100%);
+                clip: true;
+                Image {
+                    x: 0;
+                    y: parent.height - self.height;
+                    width: 24px;
+                    height: 160px;
+                    source: 1phx < 0.7px ? @image-url("skins/dv-os95/ban@2x.png") : @image-url("skins/dv-os95/ban.png");
+                    image-fit: fill;
+                }
+            }
             VerticalLayout {
                 padding: 5px;
+                padding-left: Theme.os95 ? 29px : 5px;
                 ExportChoices {
                     subtitles: root.subtitles;
                     format: root.format;
@@ -1959,7 +2316,7 @@ export component OrderList inherits Rectangle {
     callback moved(int, int);
     callback act(int);
     callback play(int);
-    property <length> row-h: Theme.tape ? 48px : Theme.phos ? 36px : 50px;
+    property <length> row-h: Theme.tape ? 48px : Theme.phos ? 36px : Theme.os95 ? 34px : 50px;
     property <bool> hi: 1phx < 0.7px;
     property <int> dragging: -1;
     property <length> drag-dy;
@@ -2013,12 +2370,12 @@ export component OrderList inherits Rectangle {
         animate y { duration: root.dragging >= 0 && i != root.dragging ? 150ms : 0ms; easing: ease-out; }
         height: root.row-h;
         z: i == root.dragging ? 1 : 0;
-        border-radius: Theme.tape || Theme.phos ? 0 : 10px;
+        border-radius: Theme.tape || Theme.phos || Theme.os95 ? 0 : 10px;
         // Phosphor: the dragged row lifts as inverted video.
-        background: i == root.dragging && !Theme.tape ? (Theme.phos ? Ph.ph : Theme.raised) : transparent;
-        border-width: i == root.dragging && !Theme.tape && !Theme.phos ? 1px : 0;
+        background: i == root.dragging && !Theme.tape && !Theme.os95 ? (Theme.phos ? Ph.ph : Theme.raised) : transparent;
+        border-width: i == root.dragging && !Theme.tape && !Theme.phos && !Theme.os95 ? 1px : 0;
         border-color: Theme.edge;
-        drop-shadow-blur: i == root.dragging && !Theme.tape && !Theme.phos ? 16px : 0;
+        drop-shadow-blur: i == root.dragging && !Theme.tape && !Theme.phos && !Theme.os95 ? 16px : 0;
         drop-shadow-offset-y: i == root.dragging && !Theme.tape && !Theme.phos ? 6px : 0;
         drop-shadow-color: #00000099;
         // Tape Deck: a tape spine with a grip, its place in amber and a play knob.
@@ -2240,7 +2597,77 @@ export component OrderList inherits Rectangle {
             }
         }
         }
-        if !Theme.tape && !Theme.phos: HorizontalLayout {
+        if Theme.os95: os-row := Rectangle {
+            property <bool> lifted: i == root.dragging;
+            property <bool> playing: r.name == root.playing-name;
+            property <int> place: (i == root.dragging ? root.target : root.dragging >= 0 && i > root.dragging && i <= root.target ? i - 1 : root.dragging >= 0 && i < root.dragging && i >= root.target ? i + 1 : i) + 1;
+            // Lifted: a raised button with a dotted line, a little right and up.
+            if os-row.lifted: Rectangle {
+                x: 10px;
+                y: -6px;
+                background: Os.face;
+                OsBevel { kind: 0; }
+                OsDotted { x: 4px; y: 4px; width: parent.width - 8px; height: parent.height - 8px; }
+            }
+            HorizontalLayout {
+                x: os-row.lifted ? 10px : 0;
+                y: os-row.lifted ? -6px : 0;
+                padding-left: 4px;
+                padding-right: 6px;
+                spacing: 6px;
+                VerticalLayout { alignment: center; OsPx { source: @image-url("skins/dv-os95/grip.png"); } }
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 18px;
+                        height: 18px;
+                        background: Os.navy;
+                        Text { text: os-row.place; color: #ffffff; font-family: Os.font; font-size: 11.5px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    }
+                }
+                if root.playable: VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        size: 21px;
+                        icon: os-row.playing ? "pause" : "play";
+                        active: os-row.playing;
+                        label: (os-row.playing ? "Pause " : "Play ") + r.name;
+                        tip: os-row.playing ? "Pause" : "Play";
+                        clicked => { root.play(i); }
+                    }
+                }
+                VerticalLayout { alignment: center; OsPx { source: @image-url("skins/dv-os95/wave.png"); } }
+                Text { text: r.name; color: #000000; font-family: Os.font; font-size: 13px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                if r.note != "": Text { text: r.note; color: Os.ink2; font-family: Os.font; font-size: 12.5px; vertical-alignment: center; horizontal-stretch: 0; }
+                if root.removable: VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        size: 18px;
+                        icon: "close";
+                        label: "Remove " + r.name;
+                        tip: "Remove";
+                        enabled: root.enabled;
+                        clicked => { root.act(i); }
+                    }
+                }
+                if root.menu: VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        width: 14px;
+                        height: 18px;
+                        icon: "dots";
+                        label: "Options for " + r.name;
+                        tip: "Options";
+                        enabled: root.enabled;
+                        clicked => {
+                            root.menu-row = i;
+                            row-menu.show();
+                        }
+                    }
+                }
+            }
+        }
+        if !Theme.tape && !Theme.phos && !Theme.os95: HorizontalLayout {
             padding-left: 10px;
             padding-right: 8px;
             spacing: 10px;
@@ -2324,7 +2751,7 @@ export component OrderList inherits Rectangle {
                 }
             }
         }
-        if i < root.rows.length - 1 && root.dragging < 0 && !Theme.tape && !Theme.phos: Rectangle {
+        if i < root.rows.length - 1 && root.dragging < 0 && !Theme.tape && !Theme.phos && !Theme.os95: Rectangle {
             x: 10px;
             y: parent.height - 1px;
             width: parent.width - 20px;
@@ -2337,7 +2764,7 @@ export component OrderList inherits Rectangle {
         x: root.width - 8px - 160px;
         y: (root.menu-row + 1) * root.row-h - 8px;
         width: 160px;
-        height: 2 * 34px + 10px;
+        height: 2 * Theme.menu-h + 10px;
         close-policy: close-on-click-outside;
         MenuCard {
             VerticalLayout {
@@ -2412,18 +2839,57 @@ export component Select inherits Rectangle {
         popup.show();
     }
     // The width the current choice needs, for skins that size the box to it.
-    out property <length> natural: shown.preferred-width + (Theme.tape ? 46px : Theme.phos ? 40px : 42px);
-    property <length> row-h: Theme.tape || Theme.phos ? 26px : 32px;
+    out property <length> natural: Theme.os95 ? os-shown.preferred-width + 30px : shown.preferred-width + (Theme.tape ? 46px : Theme.phos ? 40px : 42px);
+    property <length> row-h: Theme.tape || Theme.phos ? 26px : Theme.os95 ? 18px : 32px;
+    property <int> os-hot: -1;
     width: 200px;
     height: 32px;
-    border-radius: Theme.tape ? 2px : Theme.phos ? 0 : 8px;
+    border-radius: Theme.tape ? 2px : Theme.phos ? 0 : Theme.os95 ? 0 : 8px;
     // Phosphor: a boxed value with a "v", the edge bright while hovered or focused.
-    border-width: keys.has-focus || Theme.phos ? 1px : 0;
+    border-width: (keys.has-focus || Theme.phos) && !Theme.os95 ? 1px : 0;
     border-color: Theme.tape ? Deck.amber : Theme.phos ? (keys.has-focus || (t.has-hover && enabled) ? Ph.ph : Ph.dim) : Theme.edge;
-    // Tape Deck: a black Dymo label strip.
+    // Tape Deck: a black Dymo label strip. Desktop 95: a sunken white drop down box, the
+    // choice navy while it has the focus.
     background: Theme.tape ? (t.has-hover && enabled ? @linear-gradient(180deg, #2a2a2d 0%, #141416 100%) : Deck.dymo)
+        : Theme.os95 ? (root.enabled ? #ffffff : Os.face)
         : Theme.phos ? transparent : t.has-hover && enabled ? Theme.hover-soft : Theme.raised;
-    opacity: enabled ? 1 : 0.45;
+    opacity: enabled || Theme.os95 ? 1 : 0.45;
+    OsBevel { visible: Theme.os95; kind: 2; }
+    Rectangle {
+        visible: Theme.os95;
+        x: 4px;
+        y: 3px;
+        width: parent.width - 26px;
+        height: parent.height - 6px;
+        background: keys.has-focus ? Os.navy : transparent;
+        os-shown := Text {
+            x: 2px;
+            width: parent.width - 4px;
+            height: parent.height;
+            text: root.current-index >= 0 && root.current-index < root.model.length ? root.model[root.current-index] : "";
+            color: !root.enabled ? Os.sh : keys.has-focus ? #ffffff : #000000;
+            font-family: Os.font;
+            font-size: 12.5px;
+            vertical-alignment: center;
+            overflow: elide;
+            accessible-role: none;
+        }
+    }
+    Rectangle {
+        visible: Theme.os95;
+        x: parent.width - self.width - 2px;
+        y: 2px;
+        width: 16px;
+        height: parent.height - 4px;
+        background: Os.face;
+        OsBevel { kind: t.pressed && t.has-hover ? 1 : 0; }
+        OsPx {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            source: @image-url("skins/dv-os95/arrow.png");
+            opacity: root.enabled ? 1 : 0.45;
+        }
+    }
     Rectangle { visible: Theme.tape; y: 0; x: 1px; width: parent.width - 2px; height: 1px; background: #3a3a3e; }
     accessible-role: combobox;
     accessible-label: label;
@@ -2447,7 +2913,7 @@ export component Select inherits Rectangle {
         shown := Text {
             text: root.current-index >= 0 && root.current-index < root.model.length
                 ? (Theme.tape ? root.model[root.current-index].to-uppercase() : root.model[root.current-index]) : "";
-            color: Theme.tape ? #f5f1e8 : Theme.phos ? Ph.hi : Theme.text;
+            color: Theme.tape ? #f5f1e8 : Theme.phos ? Ph.hi : Theme.os95 ? transparent : Theme.text;
             font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : "Inter Tight";
             font-size: Theme.tape ? 11px : Theme.phos ? 12px : 13px;
             font-weight: Theme.tape ? 700 : 400;
@@ -2457,6 +2923,7 @@ export component Select inherits Rectangle {
             overflow: elide;
         }
         Icon {
+            visible: !Theme.os95;
             name: Theme.tape || Theme.phos ? "down" : "updown";
             tint: Theme.tape ? #f5f1e8 : Theme.phos ? Ph.dim : Theme.muted;
             width: Theme.phos ? 10px : 12px;
@@ -2470,7 +2937,7 @@ export component Select inherits Rectangle {
         clicked => { root.open(); }
     }
     // Opens below the box, or above it when it would not fit below; never over it.
-    property <length> list-height: min(root.model.length * root.row-h + (Theme.tape ? 6px : Theme.phos ? 8px : 10px), 298px);
+    property <length> list-height: min(root.model.length * root.row-h + (Theme.tape ? 6px : Theme.phos ? 8px : Theme.os95 ? 2px : 10px), 298px);
     property <bool> upwards: root.absolute-position.y + root.height + 4px + self.list-height > Win.height
         && root.absolute-position.y - 4px - self.list-height >= 0;
     popup := PopupWindow {
@@ -2481,12 +2948,13 @@ export component Select inherits Rectangle {
         close-policy: close-on-click-outside;
         Rectangle {
             // Tape Deck: a strip of black label tape, the current choice amber. Phosphor: a box
-            // with a bright edge, the hovered line inverted, a star by the current one.
-            background: Theme.tape ? #0b0b0c : Theme.phos ? Ph.bg2 : Theme.popup;
-            border-radius: Theme.tape || Theme.phos ? 0 : 10px;
+            // with a bright edge, the hovered line inverted, a star by the current one. Desktop 95: a
+            // white list with a black line, the current choice navy.
+            background: Theme.tape ? #0b0b0c : Theme.phos ? Ph.bg2 : Theme.os95 ? #ffffff : Theme.popup;
+            border-radius: Theme.tape || Theme.phos || Theme.os95 ? 0 : 10px;
             border-width: 1px;
-            border-color: Theme.tape ? #000000 : Theme.phos ? Ph.ph : Theme.edge;
-            drop-shadow-blur: Theme.tape || Theme.phos ? 0 : 20px;
+            border-color: Theme.tape || Theme.os95 ? #000000 : Theme.phos ? Ph.ph : Theme.edge;
+            drop-shadow-blur: Theme.tape || Theme.phos || Theme.os95 ? 0 : 20px;
             drop-shadow-offset-y: 8px;
             drop-shadow-color: #00000099;
             FocusScope {
@@ -2509,19 +2977,36 @@ export component Select inherits Rectangle {
                 }
             }
             list := Flickable {
-                x: Theme.tape ? 0 : Theme.phos ? 1px : 5px;
-                y: Theme.tape ? 3px : Theme.phos ? 4px : 5px;
-                width: parent.width - (Theme.tape ? 0 : Theme.phos ? 2px : 10px);
-                height: parent.height - (Theme.tape ? 6px : Theme.phos ? 8px : 10px);
+                x: Theme.tape ? 0 : Theme.phos ? 1px : Theme.os95 ? 1px : 5px;
+                y: Theme.tape ? 3px : Theme.phos ? 4px : Theme.os95 ? 1px : 5px;
+                width: parent.width - (Theme.tape ? 0 : Theme.phos ? 2px : Theme.os95 ? 2px : 10px);
+                height: parent.height - (Theme.tape ? 6px : Theme.phos ? 8px : Theme.os95 ? 2px : 10px);
                 content-height: root.model.length * root.row-h;
                 for item[i] in root.model: Rectangle {
+                    // Desktop 95: the row under the mouse is navy, else the current one.
+                    property <bool> os-lit: root.os-hot >= 0 ? root.os-hot == i : i == root.current-index;
+                    property <bool> hovering: it.has-hover;
+                    changed hovering => {
+                        if (self.hovering) { root.os-hot = i; } else if (root.os-hot == i) { root.os-hot = -1; }
+                    }
                     y: i * root.row-h;
                     height: root.row-h;
-                    border-radius: Theme.tape || Theme.phos ? 0 : 6px;
+                    border-radius: Theme.tape || Theme.phos || Theme.os95 ? 0 : 6px;
                     background: Theme.tape ? (i == root.current-index ? Deck.amber : it.has-hover ? #2a2a2d : transparent)
                         : Theme.phos ? (it.has-hover ? Ph.ph : transparent)
+                        : Theme.os95 ? (self.os-lit ? Os.navy : transparent)
                         : i == root.current-index ? Theme.hover : it.has-hover ? Theme.hover-soft : transparent;
-                    HorizontalLayout {
+                    if Theme.os95: Text {
+                        x: 4px;
+                        width: parent.width - 8px;
+                        text: item;
+                        color: parent.os-lit ? #ffffff : #000000;
+                        font-family: Os.font;
+                        font-size: 12.5px;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    if !Theme.os95: HorizontalLayout {
                         padding-left: Theme.phos ? 8px : 10px;
                         padding-right: 10px;
                         spacing: Theme.phos ? 6px : 8px;
@@ -2796,14 +3281,46 @@ export component ShortcutBox inherits Rectangle {
     callback cleared();
     callback done();
     property <bool> listening: fs.has-focus;
-    width: Theme.tape ? 140px : Theme.phos ? 150px : 200px;
-    height: Theme.tape ? 28px : Theme.phos ? 24px : 32px;
-    border-radius: Theme.tape || Theme.phos ? 0 : 8px;
+    width: Theme.tape ? 140px : Theme.phos ? 150px : Theme.os95 ? 104px : 200px;
+    height: Theme.tape ? 28px : Theme.phos ? 24px : Theme.os95 ? 21px : 32px;
+    border-radius: Theme.tape || Theme.phos || Theme.os95 ? 0 : 8px;
     // Tape Deck: a sunk well with real key caps. Phosphor: boxed keys joined by "+", and
-    // "press the keys" in inverted video while it listens.
-    background: Theme.tape ? #1b1410 : Theme.phos ? (listening ? Ph.ph : transparent) : listening ? Theme.accent.with-alpha(0.08) : t.has-hover ? Theme.hover-soft : Theme.raised;
-    border-width: 1px;
+    // "press the keys" in inverted video while it listens. Desktop 95: a white hot key field.
+    background: Theme.tape ? #1b1410 : Theme.phos ? (listening ? Ph.ph : transparent) : Theme.os95 ? #ffffff : listening ? Theme.accent.with-alpha(0.08) : t.has-hover ? Theme.hover-soft : Theme.raised;
+    border-width: Theme.os95 ? 0 : 1px;
     border-color: listening ? Theme.accent : transparent;
+    OsBevel { visible: Theme.os95; kind: 2; }
+    if Theme.os95: HorizontalLayout {
+        padding-left: 6px;
+        padding-right: 4px;
+        spacing: 0;
+        if root.listening: Text {
+            text: "Press the keys";
+            color: Os.sh;
+            font-family: Os.font;
+            font-size: 12.5px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        if !root.listening && root.keys.length == 0: Text {
+            text: "Not set";
+            color: Os.sh;
+            font-family: Os.font;
+            font-size: 12.5px;
+            vertical-alignment: center;
+        }
+        if !root.listening: HorizontalLayout {
+            alignment: start;
+            for k[i] in root.keys: Text {
+                text: (i > 0 ? " + " : "") + k;
+                color: #000000;
+                font-family: Os.font;
+                font-size: 12.5px;
+                vertical-alignment: center;
+            }
+        }
+        Rectangle { horizontal-stretch: 1; }
+    }
     Rectangle { visible: Theme.tape; y: 0; height: 2px; background: #00000080; }
     Rectangle { visible: Theme.tape; y: parent.height; height: 1px; background: #ffffff99; }
     accessible-role: button;
@@ -2824,7 +3341,7 @@ export component ShortcutBox inherits Rectangle {
             accept
         }
     }
-    if root.listening: HorizontalLayout {
+    if root.listening && !Theme.os95: HorizontalLayout {
         alignment: center;
         spacing: 8px;
         Rectangle {
@@ -2838,7 +3355,7 @@ export component ShortcutBox inherits Rectangle {
         Text {
             text: Theme.tape ? "PRESS THE KEYS" : Theme.phos ? "press the keys" : "Press the keys";
             color: Theme.phos ? Ph.bg : Theme.accent;
-            font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : "Inter Tight";
+            font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
             font-size: Theme.tape ? 11px : Theme.phos ? 12px : 13px;
             font-weight: Theme.tape ? 500 : 600;
             letter-spacing: Theme.tape ? 2px : 0;
@@ -2858,10 +3375,10 @@ export component ShortcutBox inherits Rectangle {
         horizontal-alignment: right;
         vertical-alignment: center;
     }
-    if !root.listening && root.keys.length == 0 && !Theme.phos: Text {
+    if !root.listening && root.keys.length == 0 && !Theme.phos && !Theme.os95: Text {
         text: Theme.tape ? "NOT SET" : Theme.phos ? "not set" : "Not set";
         color: Theme.tape ? #8d7d6a : Theme.dim;
-        font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : "Inter Tight";
+        font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
         font-size: Theme.tape ? 11px : Theme.phos ? 12px : 13px;
         letter-spacing: Theme.tape ? 2px : 0;
     }
@@ -2911,7 +3428,7 @@ export component ShortcutBox inherits Rectangle {
             }
         }
     }
-    if !root.listening && root.keys.length > 0 && !Theme.tape && !Theme.phos: HorizontalLayout {
+    if !root.listening && root.keys.length > 0 && !Theme.tape && !Theme.phos && !Theme.os95: HorizontalLayout {
         alignment: center;
         spacing: 4px;
         for k in root.keys: Rectangle {
@@ -3204,7 +3721,62 @@ export component Scroller inherits Rectangle {
             WindowFx { }
         }
     }
-    if root.bar && root.range > 1px: Rectangle {
+    // Desktop 95: a grey scroll bar over its right 16px (the content leaves that room), with
+    // arrow keys and a raised thumb on a checker track.
+    in property <bool> bar95;
+    property <length> track-h: fl.height - 32px;
+    property <length> thumb95: max(14px, root.track-h * fl.height / max(fl.content-height, 1px));
+    if root.bar95: Rectangle {
+        x: parent.width - 16px;
+        width: 16px;
+        height: parent.height;
+        background: Os.face;
+        Image {
+            y: 16px;
+            width: 16px;
+            height: root.track-h;
+            source: 1phx < 0.7px ? @image-url("skins/dv-os95/checker@2x.png") : @image-url("skins/dv-os95/checker.png");
+            horizontal-tiling: repeat;
+            vertical-tiling: repeat;
+            horizontal-alignment: left;
+            vertical-alignment: top;
+            colorize: #ffffff;
+        }
+        for k in 2: Rectangle {
+            y: k == 0 ? 0 : parent.height - 16px;
+            width: 16px;
+            height: 16px;
+            background: Os.face;
+            accessible-role: button;
+            accessible-label: k == 0 ? "Scroll up" : "Scroll down";
+            accessible-action-default => { fl.content-y = clamp(fl.content-y + (k == 0 ? 40px : -40px), -max(0px, root.range), 0); }
+            OsBevel { kind: arrow.pressed && arrow.has-hover ? 1 : 0; }
+            OsPx {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                source: k == 0 ? @image-url("skins/dv-os95/up.png") : @image-url("skins/dv-os95/arrow.png");
+                opacity: root.range > 1px ? 1 : 0.45;
+            }
+            arrow := TouchArea {
+                clicked => { fl.content-y = clamp(fl.content-y + (k == 0 ? 40px : -40px), -max(0px, root.range), 0); }
+            }
+        }
+        if root.range > 1px: Rectangle {
+            y: 16px + (-fl.content-y / root.range) * (root.track-h - root.thumb95);
+            width: 16px;
+            height: root.thumb95;
+            background: Os.face;
+            OsBevel { kind: 0; }
+            drag95 := TouchArea {
+                moved => {
+                    if (self.pressed) {
+                        fl.content-y = clamp(-(parent.y - 16px + self.mouse-y - self.pressed-y) / (root.track-h - root.thumb95) * root.range, -root.range, 0);
+                    }
+                }
+            }
+        }
+    }
+    if root.bar && !root.bar95 && root.range > 1px: Rectangle {
         x: parent.width - self.width - 2px;
         y: (-fl.content-y / root.range) * (fl.height - root.thumb-h);
         width: drag.has-hover || drag.pressed ? 6px : 3px;
@@ -3685,7 +4257,7 @@ export component TranscriptCard inherits Rectangle {
     property <bool> copied;
     // Where the editor's cursor is, and how tall it is.
     property <Point> caret;
-    property <length> caret-h: Theme.tape ? measure.preferred-height : Theme.phos ? measure-ph.preferred-height : 20px;
+    property <length> caret-h: Theme.tape || Theme.os95 ? measure.preferred-height : Theme.phos ? measure-ph.preferred-height : 20px;
     // Tape Deck: the clip's name on the insert card, and the ruled lines of the card,
     // which scroll with the text (the shown view reports how far it is scrolled).
     in property <string> clip-name;
@@ -3693,36 +4265,42 @@ export component TranscriptCard inherits Rectangle {
     property <length> line-h: measure.preferred-height;
     property <length> rule-pitch: root.original-view && !root.editing ? root.line-h + 5px : root.line-h;
     property <length> rule-off: root.scroll-y - root.rule-pitch * floor(root.scroll-y / root.rule-pitch);
-    measure := Text { visible: false; text: "Xg"; font-family: Theme.mono; font-size: 12px; }
+    measure := Text { visible: false; text: "Xg"; font-family: Theme.os95 ? "VT323" : Theme.mono; font-size: Theme.os95 ? 19px : 12px; }
     // Phosphor: the line height of its text, for the block cursor.
     measure-ph := Text { visible: false; x: 0; y: 0; text: "Xg"; font-family: Ph.mono; font-size: 12.5px; }
     // Phosphor: what the box's head line prints, as on a terminal.
     property <string> ph-command: root.editing ? "-- INSERT --" : root.transcribing ? "$ transcribe " + root.clip-name
         : root.summary-view ? "$ summary " + root.clip-name : root.lang-view ? "$ cat " + root.clip-name + "." + root.shown-lang + ".txt"
         : "$ cat " + root.clip-name + ".txt";
-        border-radius: Theme.tape || Theme.phos ? 0 : 14px;
-        border-width: Theme.tape || Theme.phos ? 0 : 1px;
+        border-radius: Theme.tape || Theme.phos || Theme.os95 ? 0 : 14px;
+        border-width: Theme.tape || Theme.phos || Theme.os95 ? 0 : 1px;
         border-color: root.editing ? Theme.accent : Theme.card-edge;
         VerticalLayout {
-            padding: Theme.tape || Theme.phos ? 0 : 18px;
-            padding-top: Theme.tape || Theme.phos ? 0 : 12px;
-            padding-bottom: Theme.tape || Theme.phos ? 0 : 12px;
-            spacing: Theme.tape || Theme.phos ? 6px : 8px;
+            padding: Theme.tape || Theme.phos || Theme.os95 ? 0 : 18px;
+            padding-top: Theme.tape || Theme.phos || Theme.os95 ? 0 : 12px;
+            padding-bottom: Theme.tape || Theme.phos || Theme.os95 ? 0 : 12px;
+            spacing: Theme.tape || Theme.phos ? 6px : Theme.os95 ? 4px : 8px;
+            // Desktop 95: Notepad's toolbar; the window round it (skins/dv-os95-pages.slint)
+            // carries the title, and the change count sits in its status bar.
+            // Desktop 95 drops the empty bar while there is no text yet (mockup 1B).
             HorizontalLayout {
-                height: Theme.phos ? 24px : 28px;
-                spacing: Theme.tape ? 5px : Theme.phos ? 6px : 0;
+                property <bool> os-bare: Theme.os95 && !root.editing && (root.transcript == "" || root.transcribing);
+                height: Theme.phos ? 24px : Theme.os95 ? (self.os-bare ? 0 : 27px) : 28px;
+                spacing: Theme.tape ? 5px : Theme.phos ? 6px : Theme.os95 ? 4px : 0;
+                padding-top: Theme.os95 && !self.os-bare ? 2px : 0;
+                padding-bottom: Theme.os95 && !self.os-bare ? 2px : 0;
                 Text {
-                    text: "TRANSCRIPT";
+                    text: Theme.os95 ? "" : "TRANSCRIPT";
+                    horizontal-stretch: Theme.os95 ? 0 : 1;
                     color: Theme.tape ? Deck.rail : Theme.phos ? Ph.dim : Theme.muted;
-                    font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : "Inter Tight";
+                    font-family: Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : "Inter Tight";
                     font-size: Theme.tape ? 10px : Theme.phos ? 10px : 12px;
                     font-weight: Theme.tape ? 500 : Theme.phos ? 400 : 800;
                     letter-spacing: Theme.tape ? 2.8px : Theme.phos ? 2px : 0.7px;
                     vertical-alignment: center;
-                    horizontal-stretch: 1;
                 }
                 // Tape Deck: the change count is a red rubber stamp.
-                if root.editing && root.edit-badge != "": Rectangle {
+                if root.editing && root.edit-badge != "" && !Theme.os95: Rectangle {
                     width: badge.preferred-width + (Theme.tape ? 12px : Theme.phos ? 10px : 16px);
                     height: Theme.tape || Theme.phos ? 17px : 20px;
                     y: (parent.height - self.height) / 2;
@@ -3733,23 +4311,24 @@ export component TranscriptCard inherits Rectangle {
                     badge := Text {
                         text: Theme.tape || Theme.phos ? root.edit-badge.to-uppercase() : root.edit-badge;
                         color: Theme.tape ? Deck.red : Theme.phos ? Ph.bg : Theme.on-accent;
-                        font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : "Inter Tight";
+                        font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
                         font-size: Theme.tape ? 9px : Theme.phos ? 10.5px : 11px;
                         font-weight: Theme.tape ? 600 : Theme.phos ? 400 : 800;
                         letter-spacing: Theme.tape ? 1.3px : Theme.phos ? 0.5px : 0;
                     }
                 }
+                if Theme.os95 && root.editing: Rectangle { horizontal-stretch: 1; }
                 if root.editing: HorizontalLayout {
                     horizontal-stretch: 0;
-                    spacing: 6px;
-                    padding-left: 8px;
+                    spacing: Theme.os95 ? 4px : 6px;
+                    padding-left: Theme.os95 ? 0 : 8px;
                     VerticalLayout {
                         alignment: center;
                         Btn {
                             text: "Cancel";
                             key: "[esc]";
                             tail: "cancel";
-                            height: Theme.phos ? 20px : 28px;
+                            height: Theme.phos ? 20px : Theme.os95 ? 23px : 28px;
                             font-size: 12px;
                             clicked => { root.cancel(); }
                         }
@@ -3761,7 +4340,7 @@ export component TranscriptCard inherits Rectangle {
                             text: "Save";
                             key: "[s]";
                             tail: "ave";
-                            height: Theme.phos ? 20px : 28px;
+                            height: Theme.phos ? 20px : Theme.os95 ? 23px : 28px;
                             font-size: 12px;
                             enabled: root.edit-draft != root.transcript && !root.speaking;
                             clicked => { root.save(); }
@@ -3773,7 +4352,7 @@ export component TranscriptCard inherits Rectangle {
                 if root.transcript != "" && !root.transcribing && !root.editing && root.langs.length > 0: VerticalLayout {
                     alignment: center;
                     lang-btn := IconBtn {
-                        size: Theme.phos ? 20px : 28px;
+                        size: Theme.phos ? 20px : Theme.os95 ? 23px : 28px;
                         key: "[t]";
                         tail: "r";
                         icon: "languages";
@@ -3789,10 +4368,10 @@ export component TranscriptCard inherits Rectangle {
                     // A searchable list of languages, Original first.
                     lang-menu := PopupWindow {
                         // Tape Deck: it drops from under the key (mockup 1E). The others open leftwards.
-                        x: Theme.tape || Theme.phos ? 0 : lang-btn.width - self.width;
+                        x: Theme.tape || Theme.phos || Theme.os95 ? 0 : lang-btn.width - self.width;
                         y: lang-btn.height + 6px;
                         width: 250px;
-                        height: 5px + 40px + 34px + min(root.langs.length, 7) * 34px + 5px;
+                        height: 5px + 40px + Theme.menu-h + min(root.langs.length, 7) * Theme.menu-h + 5px;
                         close-policy: close-on-click-outside;
                         MenuCard {
                             VerticalLayout {
@@ -3800,15 +4379,15 @@ export component TranscriptCard inherits Rectangle {
                                 VerticalLayout {
                                     padding-bottom: 6px;
                                     TextField {
-                                        height: Theme.tape || Theme.phos ? 28px : 34px;
-                                        radius: Theme.tape ? 2px : Theme.phos ? 0 : 8px;
-                                        fill: Theme.tape ? #fffaf0 : Theme.phos ? Ph.bg : Theme.field;
-                                        rest-edge: Theme.tape ? #8f8778 : Theme.phos ? Ph.dim : Theme.edge;
+                                        height: Theme.tape || Theme.phos ? 28px : Theme.os95 ? 22px : 34px;
+                                        radius: Theme.tape ? 2px : Theme.phos ? 0 : Theme.os95 ? 0 : 8px;
+                                        fill: Theme.tape ? #fffaf0 : Theme.phos ? Ph.bg : Theme.os95 ? #ffffff : Theme.field;
+                                        rest-edge: Theme.tape ? #8f8778 : Theme.os95 ? Os.sh : Theme.phos ? Ph.dim : Theme.edge;
                                         ink: Theme.tape ? Deck.ink : Theme.phos ? Ph.hi : Theme.text;
-                                        hint: Theme.tape ? Deck.ink-soft : Theme.dim;
-                                        font-size: Theme.tape || Theme.phos ? 12px : 13px;
-                                        family: Theme.phos ? Ph.mono : "Inter Tight";
-                                        bare-focus: Theme.phos;
+                                        hint: Theme.tape ? Deck.ink-soft : Theme.os95 ? #7a7a7a : Theme.dim;
+                                        font-size: Theme.tape || Theme.phos ? 12px : Theme.os95 ? 12.5px : 13px;
+                                        family: Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
+                                        bare-focus: Theme.phos || Theme.os95;
                                         icon: "search";
                                         placeholder: "Search";
                                         label: "Search languages";
@@ -3822,14 +4401,14 @@ export component TranscriptCard inherits Rectangle {
                                     clicked => { root.shown-lang = ""; root.show-summary = false; lang-menu.close(); }
                                 }
                                 Flickable {
-                                    height: min(root.langs.length, 7) * 34px;
-                                    content-height: root.langs.length * 34px;
+                                    height: min(root.langs.length, 7) * Theme.menu-h;
+                                    content-height: root.langs.length * Theme.menu-h;
                                     for l[i] in root.langs: Rectangle {
-                                        y: i * 34px;
+                                        y: i * Theme.menu-h;
                                         width: parent.width;
-                                        height: 34px;
-                                        border-radius: Theme.phos ? 0 : 6px;
-                                        background: row-t.has-hover && l.ready ? (Theme.tape ? Deck.amber.with-alpha(0.3) : Theme.phos ? Ph.ph : Theme.hover) : transparent;
+                                        height: Theme.menu-h;
+                                        border-radius: Theme.phos ? 0 : Theme.os95 ? 0 : 6px;
+                                        background: row-t.has-hover && l.ready ? (Theme.tape ? Deck.amber.with-alpha(0.3) : Theme.phos ? Ph.ph : Theme.os95 ? Os.navy : Theme.hover) : transparent;
                                         accessible-role: button;
                                         accessible-label: l.ready ? l.name : l.name + ", install";
                                         accessible-action-default => { if (l.ready) { root.choose-lang(l.code); root.show-summary = false; lang-menu.close(); } else { root.install-for(l.install); lang-menu.close(); } }
@@ -3844,16 +4423,16 @@ export component TranscriptCard inherits Rectangle {
                                             spacing: 8px;
                                             Text {
                                                 text: l.name;
-                                                color: Theme.tape ? (l.ready ? Deck.ink : #a99880) : Theme.phos ? (!l.ready ? Ph.dim : row-t.has-hover ? Ph.bg : Ph.hi)
+                                                color: Theme.tape ? (l.ready ? Deck.ink : #a99880) : Theme.os95 ? (!l.ready ? Os.sh : row-t.has-hover ? #ffffff : #000000) : Theme.phos ? (!l.ready ? Ph.dim : row-t.has-hover ? Ph.bg : Ph.hi)
                                                     : l.ready ? Theme.text2 : Theme.dim;
-                                                font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : "Inter Tight";
+                                                font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
                                                 font-size: Theme.phos ? 12.5px : 13px;
                                                 vertical-alignment: center;
                                             }
                                             Text {
                                                 text: l.native != l.name ? l.native : "";
-                                                color: Theme.tape ? Deck.ink-soft : Theme.phos && row-t.has-hover && l.ready ? Ph.bg2 : Theme.dim;
-                                                font-family: Theme.phos ? Ph.mono : "Inter Tight";
+                                                color: Theme.tape ? Deck.ink-soft : Theme.phos && row-t.has-hover && l.ready ? Ph.bg2 : Theme.os95 ? (row-t.has-hover && l.ready ? #d8e2ff : Os.note) : Theme.dim;
+                                                font-family: Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
                                                 opacity: l.ready ? 1 : 0.6;
                                                 font-size: 11px;
                                                 vertical-alignment: center;
@@ -3879,16 +4458,17 @@ export component TranscriptCard inherits Rectangle {
                                                 width: install-text.preferred-width + 12px;
                                                 height: 22px;
                                                 y: (parent.height - self.height) / 2;
-                                                border-radius: Theme.tape ? 2px : Theme.phos ? 0 : 5px;
+                                                border-radius: Theme.tape ? 2px : Theme.phos ? 0 : Theme.os95 ? 0 : 5px;
                                                 border-width: Theme.tape ? 1px : 0;
                                                 border-color: Deck.red;
-                                                background: install-t.has-hover ? (Theme.tape ? Deck.red.with-alpha(0.12) : Theme.phos ? Ph.ph : Theme.accent.with-alpha(0.14)) : transparent;
+                                                background: Theme.os95 ? Os.face : install-t.has-hover ? (Theme.tape ? Deck.red.with-alpha(0.12) : Theme.phos ? Ph.ph : Theme.accent.with-alpha(0.14)) : transparent;
+                                                OsBevel { visible: Theme.os95; kind: install-t.pressed && install-t.has-hover ? 1 : 0; }
                                                 install-text := Text {
                                                     x: 6px;
                                                     y: (parent.height - self.height) / 2;
                                                     text: Theme.tape ? "INSTALL" : Theme.phos ? "[install]" : "Install";
-                                                    color: Theme.tape ? Deck.red : Theme.phos ? (install-t.has-hover ? Ph.bg : Ph.hi) : Theme.accent;
-                                                    font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : "Inter Tight";
+                                                    color: Theme.tape ? Deck.red : Theme.phos ? (install-t.has-hover ? Ph.bg : Ph.hi) : Theme.os95 ? #000000 : Theme.accent;
+                                                    font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
                                                     font-size: Theme.tape ? 10px : 12px;
                                                     font-weight: Theme.phos ? 400 : 600;
                                                     letter-spacing: Theme.tape ? 1.6px : 0;
@@ -3908,7 +4488,7 @@ export component TranscriptCard inherits Rectangle {
                 if root.transcript != "" && !root.transcribing && !root.editing && root.can-ai: VerticalLayout {
                     alignment: center;
                     IconBtn {
-                        size: Theme.phos ? 20px : 28px;
+                        size: Theme.phos ? 20px : Theme.os95 ? 23px : 28px;
                         key: "[s]";
                         tail: "um";
                         icon: "sparkles";
@@ -3928,9 +4508,9 @@ export component TranscriptCard inherits Rectangle {
                 }
                 if root.transcript != "" && !root.transcribing && !root.editing: VerticalLayout {
                     alignment: center;
-                    padding-right: Theme.phos ? 0 : 6px;
+                    padding-right: Theme.phos ? 0 : Theme.os95 ? 0 : 6px;
                     IconBtn {
-                        size: Theme.phos ? 20px : 28px;
+                        size: Theme.phos ? 20px : Theme.os95 ? 23px : 28px;
                         key: root.copied ? "[ok]" : "[c]";
                         tail: root.copied ? "" : "opy";
                         icon: root.copied ? "check" : "copy";
@@ -3950,16 +4530,22 @@ export component TranscriptCard inherits Rectangle {
                         }
                     }
                 }
+                // Desktop 95: an etched line, then the Show marks checkbox.
+                if Theme.os95 && root.transcript != "" && !root.transcribing && !root.editing: Rectangle {
+                    width: 6px;
+                    Rectangle { x: 2px; y: 2px; width: 1px; height: parent.height - 4px; background: Os.sh; }
+                    Rectangle { x: 3px; y: 2px; width: 1px; height: parent.height - 4px; background: Os.hi; }
+                }
                 if root.transcript != "" && !root.transcribing && !root.editing: HorizontalLayout {
                     horizontal-stretch: 0;
-                    spacing: Theme.tape ? 6px : 8px;
+                    spacing: Theme.tape ? 6px : Theme.os95 ? 0 : 8px;
                     padding-right: Theme.tape ? 4px : Theme.phos ? 0 : 10px;
                     padding-left: Theme.tape ? 4px : 0;
-                    opacity: root.original-view ? 1 : 0.45;
+                    opacity: root.original-view || Theme.os95 ? 1 : 0.45;
                     if !Theme.phos: Text {
-                        text: Theme.tape ? "SHOW MARKS" : "Show marks";
+                        text: Theme.tape ? "SHOW MARKS" : Theme.os95 ? "" : "Show marks";
                         color: Theme.tape ? Deck.rail : Theme.muted;
-                        font-family: Theme.tape ? "Oswald" : "Inter Tight";
+                        font-family: Theme.tape ? "Oswald" : Theme.os95 ? Os.font : "Inter Tight";
                         font-size: Theme.tape ? 8.5px : 12px;
                         letter-spacing: Theme.tape ? 1.5px : 0;
                         vertical-alignment: center;
@@ -3970,19 +4556,22 @@ export component TranscriptCard inherits Rectangle {
                             label: "Show marks";
                             key: "[m]";
                             tail: "arks";
+                            caption: Theme.os95 ? "Show marks" : "";
                             enabled: root.original-view;
                             checked <=> root.show-marks;
                         }
                     }
                 }
+                if Theme.os95 && !root.editing: Rectangle { horizontal-stretch: 1; }
                 if root.transcript != "" && !root.transcribing && !root.editing: Rectangle {
-                    width: Theme.phos ? ph-edit.preferred-width + 6px : edit-row.preferred-width + 20px;
-                    height: Theme.tape ? 28px : Theme.phos ? 20px : 26px;
-                    y: Theme.tape ? 0 : Theme.phos ? (parent.height - self.height) / 2 : 1px;
-                    border-radius: Theme.tape || Theme.phos ? 0 : 7px;
+                    width: Theme.phos ? ph-edit.preferred-width + 6px : edit-row.preferred-width + (Theme.os95 ? 16px : 20px);
+                    height: Theme.tape ? 28px : Theme.os95 ? 23px : Theme.phos ? 20px : 26px;
+                    y: Theme.tape ? 0 : Theme.phos ? (parent.height - self.height) / 2 : Theme.os95 ? (parent.height - self.height) / 2 : 1px;
+                    border-radius: Theme.tape || Theme.phos || Theme.os95 ? 0 : 7px;
                     opacity: root.original-view ? 1 : 0.45;
-                    background: Theme.tape ? transparent : Theme.phos ? (edit-touch.has-hover && root.original-view ? Ph.ph : transparent)
+                    background: Theme.tape ? transparent : Theme.os95 ? Os.face : Theme.phos ? (edit-touch.has-hover && root.original-view ? Ph.ph : transparent)
                         : edit-touch.has-hover && root.original-view ? Theme.hover : Theme.raised;
+                    OsBevel { visible: Theme.os95; kind: edit-touch.pressed && edit-touch.has-hover ? 1 : 0; }
                     accessible-role: button;
                     accessible-label: "Edit transcript";
                     accessible-action-default => { if (root.original-view) { root.edit(); } }
@@ -4015,15 +4604,15 @@ export component TranscriptCard inherits Rectangle {
                     }
                     edit-row := HorizontalLayout {
                         visible: !Theme.phos;
-                        x: 10px;
-                        y: Theme.tape ? (edit-touch.pressed && edit-touch.has-hover ? 1px : 0) : 0;
+                        x: Theme.os95 ? (edit-touch.pressed && edit-touch.has-hover ? 9px : 8px) : 10px;
+                        y: Theme.tape || Theme.os95 ? (edit-touch.pressed && edit-touch.has-hover ? 1px : 0) : 0;
                         height: Theme.tape ? parent.height * 0.82 : parent.height;
                         spacing: Theme.tape ? 5px : 6px;
                         Icon { name: "pencil"; tint: Theme.tape ? Deck.key-ink : Theme.text; width: 12px; height: 12px; y: (parent.height - self.height) / 2; }
                         Text {
                             text: Theme.tape ? "EDIT" : "Edit";
                             color: Theme.tape ? Deck.key-ink : Theme.text;
-                            font-family: Theme.tape ? "Oswald" : "Inter Tight";
+                            font-family: Theme.tape ? "Oswald" : Theme.os95 ? Os.font : "Inter Tight";
                             font-size: Theme.tape ? 8.5px : 12px;
                             font-weight: Theme.tape ? 500 : 600;
                             letter-spacing: Theme.tape ? 1.5px : 0;
@@ -4042,6 +4631,11 @@ export component TranscriptCard inherits Rectangle {
                 // Tape Deck: the typed J-card insert from the cassette case, ruled, with its
                 // red margin; an amber frame while it is typed on.
                 if Theme.tape && root.editing: Rectangle { x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px; background: Deck.amber; }
+                // Desktop 95: Notepad's white sunken page.
+                if Theme.os95: Rectangle {
+                    background: #ffffff;
+                    OsBevel { kind: 2; }
+                }
                 if Theme.tape: Rectangle {
                     background: #0d0805;
                     Rectangle {
@@ -4128,22 +4722,24 @@ export component TranscriptCard inherits Rectangle {
                     PhDash { x: 1px; y: 24px; width: parent.width - 2px; height: 1px; }
                 }
                 VerticalLayout {
-                    padding-left: Theme.tape ? 34px : Theme.phos ? 10px : 0;
-                    padding-right: Theme.tape ? 10px : Theme.phos ? 4px : 0;
-                    padding-top: Theme.tape ? 31px : Theme.phos ? 32px : 0;
-                    padding-bottom: Theme.tape || Theme.phos ? 8px : 0;
+                    padding-left: Theme.tape ? 34px : Theme.phos ? 10px : Theme.os95 ? 8px : 0;
+                    padding-right: Theme.tape ? 10px : Theme.phos ? 4px : Theme.os95 ? 2px : 0;
+                    padding-top: Theme.tape ? 31px : Theme.os95 ? 4px : Theme.phos ? 32px : 0;
+                    padding-bottom: Theme.tape || Theme.phos ? 8px : Theme.os95 ? 2px : 0;
                     spacing: 8px;
             if root.transcribing: VerticalLayout {
                 spacing: 10px;
-                alignment: start;
+                alignment: Theme.os95 ? LayoutAlignment.center : LayoutAlignment.start;
+                if Theme.os95: HorizontalLayout { alignment: center; OsPx { source: @image-url("skins/dv-os95/hour.png"); s: 2; } }
                 Text {
                     text: (root.translating ? "Translating " : "Transcribing ") + round(root.transcribe-progress * 100) + "%";
                     color: Theme.tape ? Deck.ink-soft : Theme.phos ? Ph.ph : Theme.text2;
-                    font-family: Theme.tape ? "Caveat" : Theme.phos ? Ph.mono : "Inter Tight";
+                    font-family: Theme.tape ? "Caveat" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
                     font-size: Theme.tape ? 22px : Theme.phos ? 12.5px : 14px;
                     font-weight: Theme.tape ? 700 : 400;
+                    horizontal-alignment: Theme.os95 ? TextHorizontalAlignment.center : TextHorizontalAlignment.left;
                 }
-                Rectangle {
+                if !Theme.os95: Rectangle {
                     height: Theme.tape ? 8px : Theme.phos ? 12px : 4px;
                     border-radius: Theme.tape || Theme.phos ? 0 : 2px;
                     background: Theme.tape ? #1b1410 : Theme.phos ? transparent : Theme.track;
@@ -4155,22 +4751,36 @@ export component TranscriptCard inherits Rectangle {
                         background: Theme.accent;
                     }
                 }
+                // Desktop 95: a blocky progress bar.
+                if Theme.os95: HorizontalLayout {
+                    alignment: center;
+                    Rectangle {
+                        preferred-width: 240px;
+                        min-width: 60px;
+                        height: 16px;
+                        background: Os.face;
+                        OsBevel { kind: 2; }
+                        property <int> blocks: floor(clamp(root.transcribe-progress, 0, 1) * (self.width - 4px) / 10px);
+                        for k in self.blocks: Rectangle { x: 2px + k * 10px; y: 2px; width: 8px; height: 12px; background: Os.navy; }
+                    }
+                }
             }
             if root.transcript == "" && !root.transcribing: VerticalLayout {
-                alignment: start;
+                alignment: Theme.os95 ? LayoutAlignment.center : LayoutAlignment.start;
                 spacing: 12px;
                 Text {
                     text: "No transcript yet";
                     color: Theme.tape ? Deck.ink-soft : Theme.dim;
-                    font-family: Theme.tape ? "Caveat" : Theme.phos ? Ph.mono : "Inter Tight";
+                    font-family: Theme.tape ? "Caveat" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
                     font-size: Theme.tape ? 22px : Theme.phos ? 12.5px : 14px;
                     font-weight: Theme.tape ? 700 : 400;
+                    horizontal-alignment: Theme.os95 ? TextHorizontalAlignment.center : TextHorizontalAlignment.left;
                 }
                 if root.can-transcribe: HorizontalLayout {
-                    alignment: start;
+                    alignment: Theme.os95 ? LayoutAlignment.center : LayoutAlignment.start;
                     Btn {
-                        primary: Theme.tape;
-                        height: Theme.tape ? 32px : Theme.phos ? 30px : 36px;
+                        primary: Theme.tape || Theme.os95;
+                        height: Theme.tape ? 32px : Theme.phos ? 30px : Theme.os95 ? 23px : 36px;
                         text: "Transcribe";
                         enabled: !root.recording;
                         clicked => { root.transcribe(); }
@@ -4181,11 +4791,12 @@ export component TranscriptCard inherits Rectangle {
                 vertical-stretch: 1;
                 clip: true;
             ed-scroll := Scroller {
+                bar95: Theme.os95;
                 changed content-y => { root.scroll-y = self.content-y; }
                 init => { root.scroll-y = self.content-y; }
                 VerticalLayout {
                     padding-left: 0;
-                    padding-right: 10px;
+                    padding-right: Theme.os95 ? 22px : 10px;
                     padding-top: 2px;
                     padding-bottom: 6px;
                     Rectangle {
@@ -4195,15 +4806,15 @@ export component TranscriptCard inherits Rectangle {
                             y: 0;
                             text: root.edit-markup(editor.text);
                             default-color: Theme.tape ? #2f2117 : Theme.phos ? Ph.hi : Theme.text2;
-                            default-font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : "Inter Tight";
-                            default-font-size: Theme.tape ? 12px : Theme.phos ? 12.5px : 15px;
+                            default-font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : "Inter Tight";
+                            default-font-size: Theme.tape ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : 15px;
                         }
                         editor := TextInput {
                             width: parent.width;
                             height: max(self.preferred-height, ed-scroll.visible-height - 8px);
                             text <=> root.edit-draft;
-                            font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : "Inter Tight";
-                            font-size: Theme.tape ? 12px : Theme.phos ? 12.5px : 15px;
+                            font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : "Inter Tight";
+                            font-size: Theme.tape ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : 15px;
                             single-line: false;
                             wrap: word-wrap;
                             color: transparent;
@@ -4259,44 +4870,47 @@ export component TranscriptCard inherits Rectangle {
             }
             if root.summary-view && !root.transcribing && !root.editing: Scroller {
                 vertical-stretch: 1;
+                bar95: Theme.os95;
                 changed content-y => { root.scroll-y = self.content-y; }
                 init => { root.scroll-y = self.content-y; }
                 VerticalLayout {
-                    padding-right: 10px;
+                    padding-right: Theme.os95 ? 22px : 10px;
                     spacing: 8px;
                     if root.summarising && root.summary == "": Text {
                         text: "Summarising";
                         color: Theme.tape ? Deck.ink-soft : Theme.dim;
-                        font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : "Inter Tight";
-                        font-size: Theme.tape ? 12px : Theme.phos ? 12.5px : 14px;
+                        font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : "Inter Tight";
+                        font-size: Theme.tape ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : 14px;
                     }
                     Text {
                         text: root.summary;
                         color: Theme.tape ? #2f2117 : Theme.phos ? Ph.ph : Theme.text2;
-                        font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : "Inter Tight";
-                        font-size: Theme.tape ? 12px : Theme.phos ? 12.5px : 15px;
+                        font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : "Inter Tight";
+                        font-size: Theme.tape ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : 15px;
                         wrap: word-wrap;
                     }
                 }
             }
             if root.lang-view && !root.transcribing && !root.editing: Scroller {
                 vertical-stretch: 1;
+                bar95: Theme.os95;
                 changed content-y => { root.scroll-y = self.content-y; }
                 init => { root.scroll-y = self.content-y; }
                 VerticalLayout {
-                    padding-right: 10px;
+                    padding-right: Theme.os95 ? 22px : 10px;
                     Text {
                         text: root.translation != "" ? root.translation : "Translating";
                         color: Theme.tape ? (root.translation != "" ? #2f2117 : Deck.ink-soft) : Theme.phos ? (root.translation != "" ? Ph.ph : Ph.dim)
                             : root.translation != "" ? Theme.text2 : Theme.dim;
-                        font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : "Inter Tight";
-                        font-size: Theme.tape ? 12px : Theme.phos ? 12.5px : 15px;
+                        font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : "Inter Tight";
+                        font-size: Theme.tape ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : 15px;
                         wrap: word-wrap;
                     }
                 }
             }
             if root.transcript != "" && !root.transcribing && !root.editing && !root.lang-view && !root.summary-view: Scroller {
                 vertical-stretch: 1;
+                bar95: Theme.os95;
                 // A new transcript starts at the top; Slint would keep the old offset.
                 property <string> shown: root.transcript;
                 init => { self.content-y = 0; root.scroll-y = 0; }
@@ -4304,6 +4918,7 @@ export component TranscriptCard inherits Rectangle {
                 changed content-y => { root.scroll-y = self.content-y; }
                 FlexboxLayout {
                     spacing: 1px;
+                    padding-right: Theme.os95 ? 20px : 0;
                     flex-wrap: wrap;
                     alignment: start;
                     // Lines sit at the top; the default spreads them over the card.
@@ -4314,8 +4929,8 @@ export component TranscriptCard inherits Rectangle {
                         property <bool> marks: root.show-marks;
                         visible: !hidden;
                         horizontal-stretch: 0;
-                        border-radius: Theme.phos ? 0 : 3px;
-                        background: i == root.current-word ? Theme.accent : wt.has-hover ? (Theme.tape ? #00000014 : Theme.phos ? Ph.faint : Theme.raised) : transparent;
+                        border-radius: Theme.phos ? 0 : Theme.os95 ? 0 : 3px;
+                        background: i == root.current-word ? Theme.accent : wt.has-hover ? (Theme.tape ? #00000014 : Theme.phos ? Ph.faint : Theme.os95 ? #e4e8f6 : Theme.raised) : transparent;
                         width: hidden ? 0 : label.preferred-width + 6px;
                         height: hidden ? 0 : label.preferred-height + 4px;
                         label := Text {
@@ -4342,9 +4957,9 @@ export component TranscriptCard inherits Rectangle {
                                 : w.pending ? Theme.faint
                                 : w.spoken ? Theme.accent
                                 : Theme.text2;
-                            font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : "Inter Tight";
+                            font-family: Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : "Inter Tight";
                             font-weight: Theme.tape && w.is-silence ? 700 : 400;
-                            font-size: Theme.tape ? 12px : Theme.phos ? 12.5px : 15px;
+                            font-size: Theme.tape ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : 15px;
                             font-italic: w.spoken && marks;
                         }
                         wt := TouchArea {
@@ -4484,6 +5099,9 @@ export global Pages {
     in-out property <float> trim-start: 0;
     in-out property <float> trim-end: 1;
     in property <string> detail-meta;
+    // The same without its file name, and the file name alone (Desktop 95's two lines).
+    in property <string> detail-head;
+    in property <string> detail-file;
     in-out property <bool> renaming;
     in property <[OrderRow]> parts;
     in property <bool> parts-busy;

@@ -977,7 +977,10 @@ impl App {
                 .file_name()
                 .map(|f| f.to_string_lossy().into_owned())
                 .unwrap_or_default();
-            ui.set_detail_meta(format!("{} · {shown} · {tracks} · {file}", when(c.created)).into());
+            let head = format!("{} · {shown} · {tracks}", when(c.created));
+            ui.set_detail_meta(format!("{head} · {file}").into());
+            ui.set_detail_head(head.into());
+            ui.set_detail_file(file.into());
         }
         self.show_detail_wave(ui);
         // Also reads the `transkript` folder Max's older tooling writes to.
@@ -2515,13 +2518,16 @@ fn main() -> Result<(), slint::PlatformError> {
         move |text| {
             {
                 // Tape Deck types the tags in a darker amber, readable on its cream card;
-                // Phosphor in its amber, as its pause tags show outside the editor.
+                // Phosphor in its amber, as its pause tags show outside the editor;
+                // Desktop 95 in the blue of its links, on Notepad's white page.
                 let ui = weak.unwrap();
                 let theme = ui.global::<Theme>();
                 let accent = if theme.get_tape() {
                     slint::Color::from_rgb_u8(0xc6, 0x6a, 0x12)
                 } else if theme.get_phos() {
                     slint::Color::from_rgb_u8(0xff, 0xb8, 0x4d)
+                } else if theme.get_os95() {
+                    slint::Color::from_rgb_u8(0x1c, 0x3f, 0xa8)
                 } else {
                     theme.get_accent()
                 };

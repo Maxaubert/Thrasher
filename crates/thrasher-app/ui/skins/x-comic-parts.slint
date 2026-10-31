@@ -3,21 +3,10 @@
 // the speech bubble. The fixed art is in x-comic/, cut by tools/skin-art (x-comic.html).
 // Kept apart from the main page so the other pages can use them when they get the look.
 
-import { Theme, Fx, Main, Tips } from "../common.slint";
+import { Theme, Fx, Main, Tips, Comic } from "../common.slint";
 
-// The inks and papers of the page.
-export global Comic {
-    out property <color> ink: #141010;
-    out property <color> paper: #fdf4dc;
-    out property <color> paper2: #f6e8c3;
-    out property <color> red: #e3342f;
-    out property <color> yellow: #ffd43b;
-    out property <color> blue: #2a6fdb;
-    out property <color> cyan: #7cc6ee;
-    out property <color> grey: #b9ad93;
-    out property <color> sub: #6d6452;
-    out property <color> sub-on-yellow: #5a4400;
-}
+// The inks and papers of the page (in common.slint, so the shared widgets use them too).
+export { Comic }
 
 // A halftone tile, repeated: 0 cyan dots on white (the recorder), 1 orange dots on
 // yellow (the footer), 2 grey dots on white (the empty progress bar).
@@ -225,14 +214,17 @@ export component Tag inherits Rectangle {
 // path is in pixels, so the outline keeps its width at every size.
 export component Bubble inherits Rectangle {
     in property <length> tail: 22px;
+    // The tail low on the left, pointing left (the clip's name on its page).
+    in property <bool> tail-left;
     property <float> w: root.width / 1px;
     property <float> h: root.height / 1px;
     property <float> rx: root.w / 2 - 1.5;
     property <float> ry: root.h / 2 - 1.5;
     // The tail's roots and tip, a little inside the outline so the white covers it.
     property <float> t: root.tail / 1px;
-    property <float> x1: root.w * 0.84 - root.t;
+    property <float> x1: root.tail-left ? root.w * 0.26 : root.w * 0.84 - root.t;
     property <float> x2: root.x1 + root.t * 0.6;
+    property <float> tip: root.tail-left ? root.x1 - root.t * 0.5 : root.x1 + root.t * 1.1;
     pure function edge(x: float) -> float {
         return root.h / 2 + root.ry * Math.sqrt(Math.max(0, 1 - Math.pow((x - root.w / 2) / root.rx, 2))) - 3;
     }
@@ -258,7 +250,7 @@ export component Bubble inherits Rectangle {
         stroke: Comic.ink;
         stroke-width: 2.5px;
         stroke-line-join: round;
-        commands: "M " + root.x1 + " " + root.edge(root.x1) + " L " + (root.x1 + root.t * 1.1) + " " + (root.h + root.t * 0.78)
+        commands: "M " + root.x1 + " " + root.edge(root.x1) + " L " + root.tip + " " + (root.h + root.t * 0.78)
             + " L " + root.x2 + " " + root.edge(root.x2);
     }
     @children

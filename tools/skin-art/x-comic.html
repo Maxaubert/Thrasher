@@ -11,6 +11,8 @@ svg{display:block}
 .issue{position:absolute;font-family:Bangers;letter-spacing:1px;border:2px solid var(--ink);background:var(--yel);padding:1px 5px 0;line-height:1.2;transform:rotate(3deg);color:var(--ink);white-space:nowrap}
 .meter{position:absolute;left:0;bottom:4px;display:flex;align-items:flex-end;gap:1px;font-family:Bangers;line-height:.85}
 .meter span{display:inline-block}
+.ptitle{position:absolute;font-family:Bangers;font-size:30px;letter-spacing:1.5px;line-height:1;color:var(--red);-webkit-text-stroke:1.2px var(--ink);text-shadow:2px 2px 0 var(--yel);white-space:nowrap}
+.inuse{position:absolute;font-family:Bangers;font-size:13px;letter-spacing:1px;background:var(--red);color:#fff;border:2.5px solid var(--ink);padding:2px 8px 0;line-height:1.25;transform:rotate(4deg);white-space:nowrap}
 .zap{position:absolute;font-family:Bangers;letter-spacing:.5px;background:var(--red);color:#fff;border:2px solid var(--ink);padding:0 4px;transform:rotate(8deg);line-height:1.25;white-space:nowrap}
 </style></head><body><div id="a"></div>
 <script>
@@ -72,6 +74,43 @@ if (el === 'meter-on-p') meter(17, 1.5, true);
 if (el === 'meter-off-w') meter(26, 2.6, false);
 if (el === 'meter-on-w') meter(26, 2.6, true);
 
+// ---------- The other pages (docs/mockups/device-themes/x-comic-pages/) ----------
+// A burst with only a word in it (the widget's REC and STOP, the plus of Drop to import
+// and of the merge crossover), as the pages mockups draw it: seeded by size + seed.
+function wordBurst(size, label, fs, seed){
+  const n=16,cx=size/2,cy=size/2,R=size/2-4,r=R*0.68,r2=rnd(size+seed);let pts=[];
+  for(let i=0;i<n*2;i++){const a=i/(n*2)*Math.PI*2-Math.PI/2;const rr=i%2?r*(0.92+r2()*0.12):R*(0.86+r2()*0.14);pts.push((cx+Math.cos(a)*rr).toFixed(1)+','+(cy+Math.sin(a)*rr).toFixed(1))}
+  const pts2=pts.map(p=>{const[x,y]=p.split(',').map(Number);return (cx+(x-cx)*0.78).toFixed(1)+','+(cy+(y-cy)*0.78).toFixed(1)}).join(' ');
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="position:absolute;left:0;top:0;overflow:visible;filter:drop-shadow(3px 3px 0 #000)">
+   <polygon points="${pts.join(' ')}" fill="#ffd43b" stroke="#141010" stroke-width="3" stroke-linejoin="round"/>
+   <polygon points="${pts2}" fill="#e3342f" stroke="#141010" stroke-width="2.5" stroke-linejoin="round"/>
+   <text x="${cx}" y="${cy+fs*0.36}" text-anchor="middle" font-family="Bangers" font-size="${fs}" fill="#fff" stroke="#141010" stroke-width="1.6" paint-order="stroke" letter-spacing="1" transform="rotate(-6 ${cx} ${cy})">${label}</text>
+  </svg>`}
+function wordStrip(size, label, fs, seeds){
+  const f = size + 4;
+  a.innerHTML = seeds.map((s,k)=>`<div style="position:absolute;left:${k*f}px;top:0;width:${f}px;height:${f}px">${wordBurst(size,label,fs,s)}</div>`).join('');
+}
+// The widget: REC, and STOP whose ink boils (two frames) while recording.
+if (el === 'wrec') wordStrip(66, 'REC', 17, [0]);
+if (el === 'wstop') wordStrip(66, 'STOP', 17, [2, 8]);
+// The plus: Drop to import, and the crossover of the merge page.
+if (el === 'plus-l') wordStrip(146, '+', 82, [5]);
+if (el === 'plus-s') wordStrip(84, '+', 44, [3]);
+// The masthead of the clip page: THRASHER alone, smaller, beside the Clips key.
+if (el === 'logo-s') {
+  a.innerHTML = `<span class="logo" style="left:3px;top:6px;font-size:24px">THRASHER</span>`;
+}
+// The page titles, red with an ink edge and a yellow shadow.
+const title = t => { a.innerHTML = `<span class="ptitle" style="left:1px;top:3px">${t}</span>`; };
+if (el === 'title-settings') title('SETTINGS');
+if (el === 'title-models') title('MODELS');
+if (el === 'title-ask') title('ASK');
+if (el === 'title-merge') title('MERGE CLIPS');
+// The model in use: a red stamp slapped on its card.
+if (el === 'inuse') {
+  a.innerHTML = `<span class="inuse" style="left:5px;top:5px">IN USE</span>`;
+}
+
 // Halftone tiles, one period each.
 function tile(bg, dot, r1, r2){
   a.style.backgroundColor = bg;
@@ -81,4 +120,6 @@ function tile(bg, dot, r1, r2){
 if (el === 'dots') tile('#fff', '#7cc6ee', 1.6, 1.9);
 if (el === 'dots-yellow') tile('#ffd43b', '#f39b1d', 1.5, 1.8);
 if (el === 'dots-grey') tile('#fff', '#cfc4aa', 1.2, 1.5);
+// Red halftone: the progress bars of the other pages.
+if (el === 'dots-red') tile('#e3342f', '#b81f1b', 1.4, 1.7);
 </script></body></html>

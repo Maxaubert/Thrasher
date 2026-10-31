@@ -1,0 +1,2648 @@
+// The Pocket Synth look of every page but the main one (mockups in
+// docs/mockups/device-themes/dv-synth-pages/): the clip page loads the clip into the
+// sampler like a sample (the mono screen shows its name, the dot matrix counter and a
+// pixel waveform; the keys play it; the transcript scrolls on a second screen), settings
+// are panels of small screens and LED keys, the models a sample library of long keys with
+// LED ladders, merging chains the clips like patterns, Ask types on a screen strip and
+// answers on the mono screen, the widget is a mini screen with key 09, and every question
+// a small aluminium plate.
+//
+// Behaviour is shared: the state is in the Pages and Main globals, the actions are
+// AppWindow's (reached through the callbacks here), and the shared widgets (the
+// transcript card, menus, dropdowns, LED keys, keys) draw their sampler look themselves
+// for this skin (`Theme.synth`).
+
+import { ThemeGallery } from "../gallery.slint";
+import { Theme, Main, Pages, Tips, Icon, Btn, IconBtn, Toggle, Select, TextField, ShortcutBox, Scroller, OrderList, TranscriptCard, ExportButton, TrimTouch, AskSource, SynKey, SynScreen, Fx } from "../common.slint";
+import { Ps, Art, Silk, Title, Grille, Led, Caps, Key, IKey, Latch, Oled, State, Chip, PageStrip, Segments } from "dv-synth-parts.slint";
+
+// ---------- Small parts ----------
+
+// The brushed aluminium of a page: the faceplate gradient and a light line every 3px.
+component Alu inherits Rectangle {
+    background: Ps.body;
+    Image {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        source: @image-url("dv-synth/brush.png");
+        horizontal-tiling: repeat;
+        vertical-tiling: repeat;
+        horizontal-alignment: left;
+        vertical-alignment: top;
+        accessible-role: none;
+    }
+}
+
+// A field on a screen strip: white mono letters on black, an orange edge with the cursor.
+component Field inherits TextField {
+    height: 34px;
+    radius: 6px;
+    fill: Ps.oled;
+    rest-edge: #262625;
+    ink: Ps.px;
+    hint: Ps.hint;
+    font-size: 11.5px;
+    family: "JetBrains Mono";
+    side: 11px;
+    select-fill: #ff5a1e66;
+    select-ink: Ps.px;
+    focus-edge: Ps.or;
+    focus-ring: #ff5a1e4d;
+    Rectangle {
+        visible: !root.has-focus;
+        x: -1px;
+        y: -1px;
+        width: parent.width + 2px;
+        height: parent.height + 2px;
+        border-radius: root.radius + 1px;
+        border-width: 1px;
+        border-color: #a19d93;
+    }
+}
+
+// The latest message on a screen strip, by its LED: lit while there is one.
+component Status inherits Rectangle {
+    in property <string> text: Main.status;
+    height: 28px;
+    Oled { width: parent.width; height: parent.height; radius: 6px; bezel: 2px; }
+    HorizontalLayout {
+        padding-left: 11px;
+        padding-right: 11px;
+        spacing: 8px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 6px;
+                height: 6px;
+                border-radius: 3px;
+                background: root.text != "" ? Ps.or : #3a3e3c;
+            }
+        }
+        Text {
+            text: root.text != "" ? root.text : "No messages";
+            color: root.text != "" ? Ps.px : #5f6662;
+            font-family: "JetBrains Mono";
+            font-size: 11px;
+            font-weight: 500;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+    }
+}
+
+// A message floating as a screen strip just above the bottom of a page.
+component Toast inherits Rectangle {
+    in property <string> text;
+    in property <length> above: 10px;
+    height: 0;
+    if root.text != "": Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: -root.above - self.height;
+        width: min(msg.preferred-width + 40px, parent.width - 32px);
+        height: 28px;
+        Oled { width: parent.width; height: parent.height; radius: 6px; bezel: 2px; }
+        Rectangle {
+            x: 12px;
+            y: (parent.height - self.height) / 2;
+            width: 6px;
+            height: 6px;
+            border-radius: 3px;
+            background: Ps.or;
+        }
+        msg := Text {
+            x: 26px;
+            width: parent.width - 38px;
+            height: parent.height;
+            text: root.text;
+            color: Ps.px;
+            font-family: "JetBrains Mono";
+            font-size: 11px;
+            font-weight: 500;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+}
+
+// The footer of a page: a line above it, its contents in a row, a screw in each corner.
+component Footer inherits Rectangle {
+    in property <bool> big;
+    height: root.big ? 62px : 58px;
+    vertical-stretch: 0;
+    Rectangle { background: @linear-gradient(180deg, #00000005 0%, #0000000d 100%); }
+    Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: Ps.edge; }
+    HorizontalLayout {
+        padding-left: root.big ? 20px : 16px;
+        padding-right: root.big ? 20px : 16px;
+        spacing: 10px;
+        @children
+    }
+    Art {
+        x: root.big ? 8px : 7px;
+        y: root.height - (root.big ? 17px : 16px);
+        width: 9px;
+        height: 9px;
+        lo: @image-url("dv-synth/screw.png");
+        hi: @image-url("dv-synth/screw@2x.png");
+    }
+    Art {
+        x: root.width - (root.big ? 17px : 16px);
+        y: root.height - (root.big ? 17px : 16px);
+        width: 9px;
+        height: 9px;
+        lo: @image-url("dv-synth/screw.png");
+        hi: @image-url("dv-synth/screw@2x.png");
+    }
+}
+
+// A screw in a lower corner of a page without a footer.
+component Screws inherits Rectangle {
+    height: 0;
+    Art {
+        x: 7px;
+        y: -16px;
+        width: 9px;
+        height: 9px;
+        lo: @image-url("dv-synth/screw.png");
+        hi: @image-url("dv-synth/screw@2x.png");
+    }
+    Art {
+        x: root.width - 16px;
+        y: -16px;
+        width: 9px;
+        height: 9px;
+        lo: @image-url("dv-synth/screw.png");
+        hi: @image-url("dv-synth/screw@2x.png");
+    }
+}
+
+// The speaker grille in the room left (wide pages), cut to fit.
+component Speaker inherits Rectangle {
+    min-height: 0;
+    if root.height >= 30px: Grille {
+        x: root.width - 277px;
+        y: 0;
+        width: 277px;
+        height: root.height;
+    }
+}
+
+// ---------- One clip ----------
+
+// The clip's waveform in pixel blocks on the screen: what has played white, the rest dim,
+// the trimmed ends darker, the trim handles as orange brackets and the playhead an
+// orange line. TrimTouch drags the handles and seeks.
+component PxWave inherits Rectangle {
+    callback trimmed(float, float);
+    callback tapped();
+    property <bool> active: Main.active-clip == Main.selected;
+    property <float> played: root.active ? clamp(Main.play-fraction, 0, 1) : 0;
+    property <length> pad: 8px;
+    property <length> inner-w: root.width - 2 * root.pad;
+    property <int> n: max(1, floor(root.inner-w / 4px));
+    property <int> rows: max(2, floor(root.height / 4px));
+    property <length> start-x: Pages.trim-start * root.inner-w;
+    property <length> end-x: Pages.trim-end * root.inner-w;
+    accessible-role: none;
+    Rectangle {
+        x: root.pad;
+        y: 0;
+        width: root.inner-w;
+        height: root.height;
+        for i in root.n: Rectangle {
+            property <float> f: (i + 0.5) / root.n;
+            property <float> v: Pages.detail-wave.length > 0 ? Pages.detail-wave[floor(i * Pages.detail-wave.length / root.n)] : 0.06;
+            property <int> on: max(1, round(self.v * root.rows / 2)) * 2;
+            x: i * 4px;
+            y: floor((root.rows - min(root.rows, self.on)) / 2) * 4px;
+            width: 3px;
+            height: min(root.rows, self.on) * 4px - 1px;
+            background: self.f < Pages.trim-start || self.f > Pages.trim-end ? #26292a : self.f <= root.played ? Ps.px : #6a716d;
+        }
+        // The gaps between the blocks, one dark row every 4px.
+        for r in root.rows: Rectangle {
+            x: 0;
+            y: r * 4px + 3px;
+            width: parent.width;
+            height: 1px;
+            background: Ps.oled;
+        }
+        // The trim brackets.
+        for k in [0, 1]: Rectangle {
+            property <length> at: k == 0 ? max(1px, root.start-x) : min(root.inner-w - 1px, root.end-x);
+            property <bool> hot: touch.grab == k + 1 || (touch.has-hover && abs(touch.at - (k == 0 ? root.start-x : root.end-x)) <= 8px);
+            x: self.at - 1px - (k == 0 ? 0 : 6px);
+            y: 0;
+            width: 8px;
+            height: root.height;
+            Rectangle { x: k == 0 ? 0 : 6px; y: 0; width: 2px; height: parent.height; background: parent.hot ? #ff8a5a : Ps.or; }
+            Rectangle { x: 0; y: 0; width: 8px; height: 3px; background: parent.hot ? #ff8a5a : Ps.or; }
+            Rectangle { x: 0; y: parent.height - 3px; width: 8px; height: 3px; background: parent.hot ? #ff8a5a : Ps.or; }
+        }
+        if root.active: Rectangle {
+            x: root.played * root.inner-w - 1px;
+            y: -2px;
+            width: 2px;
+            height: root.height + 4px;
+            background: Ps.or;
+        }
+    }
+    touch := TrimTouch {
+        pad: root.pad;
+        trimmed(a, b) => { root.trimmed(a, b); }
+        tapped => { root.tapped(); }
+    }
+}
+
+// The mono screen of the clip: its name and the player's state, the dot matrix counter
+// and the length, the pixel waveform (and the time at each end when wide). While the clip
+// is renamed it holds the name field instead.
+component ClipScreen inherits Rectangle {
+    in property <bool> big;
+    callback trimmed(float, float);
+    callback tapped();
+    callback rename(string);
+    callback cancel-rename();
+    property <bool> active: Main.active-clip == Main.selected;
+    property <string> name: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].name : "";
+    property <string> total: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].duration : "";
+    property <string> pos: root.active ? Main.play-position : "0:00";
+    property <length> pad-x: root.big ? 18px : 14px;
+    property <length> fig: root.big ? (root.pos.character-count > 5 ? 40px : 52px) : (root.pos.character-count > 5 ? 28px : 34px);
+    Oled { width: parent.width; height: parent.height; hot: Pages.renaming; }
+    // Faint scanlines, one dark device pixel row every 3px.
+    property <int> lines: floor(root.height / 3px);
+    for i in root.lines: Rectangle {
+        x: 3px;
+        y: round((root.height - 1px - i * 3px) / 1phx) * 1phx;
+        width: root.width - 6px;
+        height: max(1phx, round(1px / 1phx) * 1phx);
+        background: #00000047;
+    }
+    if !Pages.renaming: Rectangle {
+        accessible-role: AccessibleRole.text;
+        accessible-label: (root.active && Main.playing ? "Playing " : root.active ? "Paused " : "Stopped ") + root.pos + " of " + root.total;
+        Text {
+            x: root.pad-x;
+            y: root.big ? 16px : 12px;
+            width: parent.width - 2 * root.pad-x - 70px;
+            height: 15px;
+            text: root.name;
+            color: Ps.px;
+            font-family: "JetBrains Mono";
+            font-size: root.big ? 14px : 13px;
+            font-weight: 700;
+            vertical-alignment: center;
+            overflow: elide;
+            accessible-role: none;
+        }
+        State {
+            x: parent.width - root.pad-x - self.preferred-width;
+            y: root.big ? 17px : 13px;
+            width: self.preferred-width;
+            height: 13px;
+            text: root.active && Main.playing ? "PLAY" : root.active ? "PAUSE" : "STOP";
+            square: root.active && Main.playing ? Ps.px : Ps.lcd-silk;
+            ink: root.active && Main.playing ? Ps.px : Ps.lcd-silk;
+        }
+        HorizontalLayout {
+            x: root.pad-x;
+            y: root.big ? 40px : 32px;
+            height: root.big ? 56px : 36px;
+            spacing: 10px;
+            alignment: start;
+            Text {
+                text: root.pos;
+                color: Ps.px;
+                font-family: "Synth Figures";
+                font-size: root.fig;
+                font-weight: 700;
+                letter-spacing: root.fig * 0.02;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            VerticalLayout {
+                alignment: end;
+                padding-bottom: root.big ? 8px : 5px;
+                Text {
+                    text: "of " + root.total;
+                    color: Ps.hint;
+                    font-family: "JetBrains Mono";
+                    font-size: 11px;
+                    font-weight: 500;
+                    accessible-role: none;
+                }
+            }
+        }
+        PxWave {
+            x: root.pad-x - 8px;
+            y: root.big ? 104px : 74px;
+            width: parent.width - 2 * root.pad-x + 16px;
+            height: root.big ? max(24px, parent.height - 104px - 36px) : max(20px, parent.height - 74px - 12px);
+            trimmed(a, b) => { root.trimmed(a, b); }
+            tapped => { root.tapped(); }
+        }
+        if root.big: Text {
+            x: root.pad-x;
+            y: parent.height - 26px;
+            height: 14px;
+            text: root.pos;
+            color: Ps.hint;
+            font-family: "JetBrains Mono";
+            font-size: 10.5px;
+            font-weight: 500;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        if root.big: Text {
+            x: parent.width - root.pad-x - self.width;
+            y: parent.height - 26px;
+            height: 14px;
+            text: root.total;
+            color: Ps.hint;
+            font-family: "JetBrains Mono";
+            font-size: 10.5px;
+            font-weight: 500;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+    if Pages.renaming: Rectangle {
+        State {
+            x: root.pad-x;
+            y: root.big ? 17px : 13px;
+            width: self.preferred-width;
+            height: 13px;
+            text: "RENAME";
+            square: Ps.or;
+            ink: Ps.px;
+        }
+        field := TextField {
+            x: root.pad-x - 4px;
+            y: root.big ? 40px : 32px;
+            width: parent.width - 2 * root.pad-x + 8px;
+            height: 30px;
+            radius: 4px;
+            fill: Ps.oled;
+            rest-edge: Ps.oled;
+            ink: Ps.px;
+            hint: Ps.hint;
+            font-size: 15px;
+            family: "JetBrains Mono";
+            side: 4px;
+            select-fill: Ps.px;
+            select-ink: Ps.oled;
+            bare-focus: true;
+            label: "Clip name";
+            text: root.name;
+            takes-escape: true;
+            init => { self.grab(); }
+            accepted(t) => { root.rename(t); }
+            escaped => { root.cancel-rename(); }
+            edited(t) => { root.draft = t; }
+        }
+    }
+    // What the name field holds, for the Rename key under the screen; it starts again from
+    // the name each time renaming begins.
+    property <string> draft: root.name;
+    property <bool> renaming: Pages.renaming;
+    changed renaming => { root.draft = root.name; }
+    public function draft-text() -> string { return root.draft; }
+}
+
+// The speed: five LEDs with their values under them, the picked one lit.
+component Speed inherits VerticalLayout {
+    // Narrower steps, for the wide page's left column.
+    in property <bool> narrow;
+    callback picked(int);
+    spacing: 5px;
+    alignment: end;
+    Silk { text: "SPEED"; height: 8px; }
+    HorizontalLayout {
+        accessible-role: list;
+        accessible-label: "Speed";
+        for v[i] in ["0.75", "1.0", "1.25", "1.5", "2.0"]: Rectangle {
+            width: root.narrow ? 25px : 27px;
+            height: 22px;
+            accessible-role: button;
+            accessible-label: v + "×";
+            accessible-checked: i == Pages.speed-index;
+            accessible-action-default => { Pages.speed-index = i; root.picked(i); }
+            Led {
+                x: (parent.width - 5px) / 2;
+                y: 0;
+                small: true;
+                lamp: i == Pages.speed-index ? 1 : 0;
+            }
+            Text {
+                x: 0;
+                y: 9px;
+                width: parent.width;
+                height: 12px;
+                text: v;
+                color: i == Pages.speed-index ? Ps.or2 : st.has-hover ? Ps.ink : Ps.mute;
+                font-family: "JetBrains Mono";
+                font-size: 8.5px;
+                font-weight: 700;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            st := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Pages.speed-index = i; root.picked(i); }
+            }
+        }
+    }
+}
+
+// The transport: back 5 seconds, key 13 (play or pause), forward 5 seconds, the speed
+// and Loop.
+component Transport inherits HorizontalLayout {
+    in property <bool> big;
+    callback toggle-play();
+    callback skip(float);
+    callback speed-changed(int);
+    callback refocus();
+    property <bool> playing: Main.active-clip == Main.selected && Main.playing;
+    vertical-stretch: 0;
+    spacing: root.big ? 8px : 10px;
+    HorizontalLayout {
+        spacing: root.big ? 6px : 8px;
+        IKey {
+            width: root.big ? 40px : 36px;
+            height: root.big ? 40px : 36px;
+            icon: "rewind";
+            icon-size: 14px;
+            num: "5";
+            num-right: true;
+            label: "Back 5 seconds";
+            clicked => { root.skip(-5); root.refocus(); }
+        }
+        IKey {
+            width: root.big ? 56px : 52px;
+            height: root.big ? 40px : 36px;
+            kind: 1;
+            icon: root.playing ? "pause" : "play";
+            icon-size: 13px;
+            num: "13";
+            label: root.playing ? "Pause" : "Play";
+            clicked => { root.toggle-play(); root.refocus(); }
+        }
+        IKey {
+            width: root.big ? 40px : 36px;
+            height: root.big ? 40px : 36px;
+            icon: "forward";
+            icon-size: 14px;
+            num: "5";
+            num-right: true;
+            label: "Forward 5 seconds";
+            tip: "Forward 5 seconds";
+            clicked => { root.skip(5); root.refocus(); }
+        }
+    }
+    Speed { narrow: root.big; picked(i) => { root.speed-changed(i); root.refocus(); } }
+    Rectangle { horizontal-stretch: 1; }
+    VerticalLayout {
+        alignment: center;
+        Latch {
+            text: "LOOP";
+            label: "Loop";
+            on: Pages.looping;
+            clicked => { Pages.looping = !Pages.looping; root.refocus(); }
+        }
+    }
+}
+
+// Clean voice on export: a latching key, and what it does.
+component CleanVoice inherits HorizontalLayout {
+    callback changed-to(bool);
+    spacing: 10px;
+    alignment: start;
+    VerticalLayout {
+        alignment: center;
+        Toggle {
+            label: "Clean voice on export";
+            caption: "Clean voice on export";
+            checked <=> Pages.clean-voice;
+            toggled(on) => { root.changed-to(on); }
+        }
+    }
+    Text {
+        text: "Less noise";
+        color: Ps.mute;
+        font-family: "Inter Tight";
+        font-size: 11.5px;
+        font-weight: 500;
+        vertical-alignment: center;
+    }
+}
+
+// A merged clip's parts, as a chain of long keys that can be put in another order.
+component Parts inherits VerticalLayout {
+    callback moved(int, int);
+    callback take-out(int);
+    callback rename(int);
+    spacing: 6px;
+    HorizontalLayout {
+        height: 12px;
+        padding-left: 2px;
+        Silk { text: "PARTS"; horizontal-stretch: 1; }
+        if Pages.parts-busy: HorizontalLayout {
+            spacing: 6px;
+            VerticalLayout { alignment: center; Rectangle { width: 7px; height: 7px; background: Ps.or; } }
+            Silk { text: "WORKING"; color: Ps.or2; }
+        }
+    }
+    OrderList {
+        rows: Pages.parts;
+        menu: true;
+        enabled: !Pages.parts-busy && !Main.recording;
+        moved(a, b) => { root.moved(a, b); }
+        act(i) => { root.take-out(i); }
+        rename(i) => { root.rename(i); }
+    }
+}
+
+// The rename keys under the screen while the clip is renamed.
+component RenameKeys inherits HorizontalLayout {
+    callback rename();
+    callback cancel();
+    alignment: end;
+    spacing: 8px;
+    Key { height: 32px; text: "CANCEL"; label: "Cancel"; clicked => { root.cancel(); } }
+    Key { height: 32px; kind: 1; text: "RENAME"; label: "Rename"; clicked => { root.rename(); } }
+}
+
+// The clip's transcript card, with the page's state.
+component Transcript inherits TranscriptCard {
+    in property <string> name;
+    clip-name: root.name;
+    transcript: Pages.transcript;
+    transcribing: Pages.transcribing;
+    translating: Pages.translating;
+    translation: Pages.translation;
+    shown-lang <=> Pages.shown-lang;
+    langs: Pages.langs;
+    summary: Pages.summary;
+    summarising: Pages.summarising;
+    can-ai: Main.can-ai;
+    show-summary <=> Pages.show-summary;
+    transcribe-progress: Pages.transcribe-progress;
+    words: Pages.words;
+    current-word: Pages.current-word;
+    show-marks <=> Pages.show-marks;
+    can-transcribe: Pages.can-transcribe;
+    recording: Main.recording;
+    editing: Pages.editing;
+    edit-draft <=> Pages.edit-draft;
+    edit-badge: Pages.edit-badge;
+    speaking: Pages.speaking;
+}
+
+// The footer of the clip page: the latest message (or the export running) on its screen
+// strip, and the orange Export key.
+component ClipFooter inherits Footer {
+    callback refocus();
+    VerticalLayout {
+        alignment: center;
+        horizontal-stretch: 1;
+        Status {
+            text: Main.export-state == 1 ? "Exporting " + Main.export-name : Main.status;
+        }
+    }
+    VerticalLayout {
+        alignment: center;
+        ExportButton {
+            width: 116px;
+            height: 38px;
+            format: Pages.export-format;
+            subtitles: Pages.transcript != "";
+            state: Main.export-state;
+            progress: Main.export-progress;
+            export(kind) => { Main.export-as(kind); root.refocus(); }
+        }
+    }
+}
+
+// The one-clip page. Portrait: the page strip (CLIPS, Rename, Delete), the screen, the
+// transport, the parts of a merged clip, the transcript screen, the option and the
+// footer. Wide: the screen, the transport and the speaker on the left, the transcript on
+// the right.
+export component ClipPage inherits Alu {
+    in property <bool> narrow;
+    in property <bool> wide;
+    callback go(int);
+    callback refocus();
+    // Leaving the editor asks about unsaved changes first (AppWindow.leave-editor).
+    callback leave-editor(int);
+    callback start-edit();
+    callback ask-delete(int);
+    callback rename-selected(string);
+    callback toggle-play();
+    callback skip(float);
+    callback speed-changed(int);
+    callback trim-changed(float, float);
+    callback clean-voice-changed(bool);
+    callback parts-move(int, int);
+    callback part-take-out(int);
+    callback rename-part(int);
+    // The transcript card's actions (see TranscriptCard).
+    callback choose-lang(string);
+    callback lang-filter(string);
+    callback install-for(int);
+    callback summarise();
+    callback edit-changed(string);
+    callback apply-transcript(string);
+    callback transcribe();
+    callback seek-word(int);
+    pure callback edit-markup(string) -> styled-text;
+    pure callback plain-selection(string, int, int) -> string;
+
+    property <string> name: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].name : "";
+
+    function rename(t: string) {
+        Pages.renaming = false;
+        root.rename-selected(t);
+        root.refocus();
+    }
+
+    VerticalLayout {
+        Title { big: root.wide; gear: false; }
+        PageStrip {
+            back-text: "CLIPS";
+            back-label: "Back to Clips";
+            back => { if (Pages.editing) { root.leave-editor(0); } else { root.go(0); } }
+            VerticalLayout {
+                alignment: center;
+                Key {
+                    text: "RENAME";
+                    icon: "pencil";
+                    label: "Rename clip";
+                    tip: "Rename";
+                    enabled: !Main.recording;
+                    clicked => { Pages.renaming = true; }
+                }
+            }
+            VerticalLayout {
+                alignment: center;
+                Key {
+                    text: "DELETE";
+                    icon: "trash";
+                    label: "Delete clip";
+                    tip: "Delete";
+                    enabled: !Main.recording;
+                    clicked => { root.ask-delete(Main.selected); }
+                }
+            }
+        }
+
+        // Portrait.
+        if !root.wide: VerticalLayout {
+            vertical-stretch: 0;
+            padding-left: 14px;
+            padding-right: 14px;
+            padding-top: 12px;
+            padding-bottom: 4px;
+            spacing: 8px;
+            screen := ClipScreen {
+                height: 124px;
+                trimmed(a, b) => { root.trim-changed(a, b); }
+                tapped => { root.refocus(); }
+                rename(t) => { root.rename(t); }
+                cancel-rename => { Pages.renaming = false; root.refocus(); }
+            }
+            if Pages.renaming: RenameKeys {
+                rename => { root.rename(screen.draft-text()); }
+                cancel => { Pages.renaming = false; root.refocus(); }
+            }
+            Text {
+                text: Pages.detail-meta;
+                color: Ps.mute;
+                font-family: "JetBrains Mono";
+                font-size: 9.5px;
+                font-weight: 500;
+                letter-spacing: 0.3px;
+                overflow: elide;
+            }
+            Transport {
+                toggle-play => { root.toggle-play(); }
+                skip(s) => { root.skip(s); }
+                speed-changed(i) => { root.speed-changed(i); }
+                refocus => { root.refocus(); }
+            }
+        }
+        if !root.wide && Pages.parts.length >= 2: VerticalLayout {
+            vertical-stretch: 0;
+            padding-left: 14px;
+            padding-right: 14px;
+            padding-top: 4px;
+            Parts {
+                moved(a, b) => { root.parts-move(a, b); }
+                take-out(i) => { root.part-take-out(i); }
+                rename(i) => { root.rename-part(i); }
+            }
+        }
+        if !root.wide: VerticalLayout {
+            vertical-stretch: 1;
+            padding-left: 14px;
+            padding-right: 14px;
+            padding-top: 8px;
+            padding-bottom: 12px;
+            Transcript {
+                vertical-stretch: 1;
+                name: root.name;
+                choose-lang(c) => { root.choose-lang(c); }
+                lang-filter(t) => { root.lang-filter(t); }
+                install-for(k) => { root.install-for(k); }
+                summarise => { root.summarise(); }
+                edit => { root.start-edit(); }
+                edited(t) => { root.edit-changed(t); }
+                cancel => { root.leave-editor(-1); }
+                save => { root.apply-transcript(Pages.edit-draft); }
+                edit-markup(t) => { return root.edit-markup(t); }
+                plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+                transcribe => { root.transcribe(); root.refocus(); }
+                seek-word(i) => { root.seek-word(i); root.refocus(); }
+            }
+        }
+        if !root.wide: Rectangle {
+            vertical-stretch: 0;
+            height: 42px;
+            Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: Ps.edge; }
+            CleanVoice {
+                x: 14px;
+                y: 1px;
+                width: parent.width - 28px;
+                height: parent.height - 1px;
+                changed-to(on) => { root.clean-voice-changed(on); }
+            }
+        }
+
+        // Wide.
+        if root.wide: HorizontalLayout {
+            vertical-stretch: 1;
+            Rectangle {
+                width: 392px;
+                Rectangle { background: @linear-gradient(180deg, #00000004 0%, #0000000a 100%); }
+                Rectangle { x: parent.width - 1px; y: 0; width: 1px; height: parent.height; background: Ps.edge; }
+                VerticalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 16px;
+                    padding-bottom: 14px;
+                    spacing: 10px;
+                    wscreen := ClipScreen {
+                        big: true;
+                        height: clamp(root.height - 410px, 170px, 212px);
+                        trimmed(a, b) => { root.trim-changed(a, b); }
+                        tapped => { root.refocus(); }
+                        rename(t) => { root.rename(t); }
+                        cancel-rename => { Pages.renaming = false; root.refocus(); }
+                    }
+                    if Pages.renaming: RenameKeys {
+                        rename => { root.rename(wscreen.draft-text()); }
+                        cancel => { Pages.renaming = false; root.refocus(); }
+                    }
+                    Text {
+                        text: Pages.detail-meta;
+                        color: Ps.mute;
+                        font-family: "JetBrains Mono";
+                        font-size: 9.5px;
+                        font-weight: 500;
+                        letter-spacing: 0.3px;
+                        overflow: elide;
+                    }
+                    Transport {
+                        big: true;
+                        toggle-play => { root.toggle-play(); }
+                        skip(s) => { root.skip(s); }
+                        speed-changed(i) => { root.speed-changed(i); }
+                        refocus => { root.refocus(); }
+                    }
+                    Speaker { vertical-stretch: 1; }
+                    VerticalLayout {
+                        vertical-stretch: 0;
+                        spacing: 8px;
+                        Silk { text: "OPTIONS"; height: 8px; }
+                        CleanVoice { changed-to(on) => { root.clean-voice-changed(on); } }
+                    }
+                }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                padding-left: 18px;
+                padding-right: 18px;
+                padding-top: 14px;
+                padding-bottom: 14px;
+                spacing: 12px;
+                if Pages.parts.length >= 2: Parts {
+                    moved(a, b) => { root.parts-move(a, b); }
+                    take-out(i) => { root.part-take-out(i); }
+                    rename(i) => { root.rename-part(i); }
+                }
+                Transcript {
+                    vertical-stretch: 1;
+                    name: root.name;
+                    choose-lang(c) => { root.choose-lang(c); }
+                    lang-filter(t) => { root.lang-filter(t); }
+                    install-for(k) => { root.install-for(k); }
+                    summarise => { root.summarise(); }
+                    edit => { root.start-edit(); }
+                    edited(t) => { root.edit-changed(t); }
+                    cancel => { root.leave-editor(-1); }
+                    save => { root.apply-transcript(Pages.edit-draft); }
+                    edit-markup(t) => { return root.edit-markup(t); }
+                    plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+                    transcribe => { root.transcribe(); root.refocus(); }
+                    seek-word(i) => { root.seek-word(i); root.refocus(); }
+                }
+            }
+        }
+
+        ClipFooter { big: root.wide; refocus => { root.refocus(); } }
+    }
+}
+
+// ---------- Settings ----------
+
+// A panel on the faceplate: an orange square and its name in silkscreen, then its rows.
+component Card inherits Rectangle {
+    in property <string> title;
+    background: Theme.card;
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: #d2cfc7;
+    height: unit.preferred-height;
+    Rectangle {
+        x: 1px;
+        y: 1px;
+        width: parent.width - 2px;
+        height: 1px;
+        background: #ffffff;
+    }
+    unit := VerticalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-top: 12px;
+        padding-bottom: 4px;
+        spacing: 0;
+        HorizontalLayout {
+            height: 18px;
+            spacing: 8px;
+            alignment: start;
+            VerticalLayout {
+                alignment: center;
+                Rectangle { width: 7px; height: 7px; border-radius: 1.5px; background: Ps.or; }
+            }
+            Text {
+                text: root.title;
+                color: Ps.ink;
+                font-family: "JetBrains Mono";
+                font-size: 8.5px;
+                font-weight: 700;
+                letter-spacing: 2.2px;
+                vertical-alignment: center;
+            }
+        }
+        @children
+    }
+}
+
+// One line of a panel: its name (and a note in small mono type) and its controls.
+component SRow inherits Rectangle {
+    in property <string> label;
+    in property <string> note;
+    in property <bool> first;
+    min-height: 40px;
+    if !root.first: Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: #dedbd3; }
+    HorizontalLayout {
+        padding-top: 6px;
+        padding-bottom: 6px;
+        spacing: 8px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            horizontal-stretch: 1;
+            Text {
+                text: root.label;
+                color: Ps.ink;
+                font-family: "Inter Tight";
+                font-size: 13px;
+                font-weight: 500;
+                overflow: elide;
+            }
+            if root.note != "": Text {
+                text: root.note;
+                color: Ps.mute;
+                font-family: "JetBrains Mono";
+                font-size: 9px;
+                font-weight: 500;
+                overflow: elide;
+            }
+        }
+        HorizontalLayout {
+            alignment: end;
+            spacing: 6px;
+            @children
+        }
+    }
+}
+
+// A value on the right of a row, in mono: OmniVoice, Downloading 64%.
+component Value inherits Text {
+    color: Ps.mute;
+    font-family: "JetBrains Mono";
+    font-size: 10.5px;
+    font-weight: 500;
+    vertical-alignment: center;
+}
+
+// The dropdown of a row (a small screen with an arrow), as wide as its choice needs.
+component RowSelect inherits Select {
+    width: min(self.natural, 220px);
+    height: 28px;
+}
+
+// The Files panel: the folder on its screen strip with Open and Change, the file name on a
+// screen with the next name under it, the export format and Clean voice.
+component FilesCard inherits Card {
+    in property <bool> wide;
+    callback refocus();
+    callback open-folder();
+    callback change-folder();
+    callback template-edited(string);
+    callback template-accepted(string);
+    callback export-format-changed(int);
+    callback clean-voice-changed(bool);
+    title: "FILES";
+    SRow {
+        first: true;
+        label: "Folder";
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: min(path.preferred-width + 22px, root.wide ? 160px : 170px);
+                height: 26px;
+                Oled { width: parent.width; height: parent.height; radius: 5px; bezel: 2px; }
+                path := Text {
+                    x: 10px;
+                    width: parent.width - 20px;
+                    height: parent.height;
+                    text: Pages.folder;
+                    color: Ps.px;
+                    font-family: "JetBrains Mono";
+                    font-size: 10.5px;
+                    font-weight: 500;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            IconBtn {
+                size: 26px;
+                icon: "folder";
+                label: "Open the folder";
+                tip: "Open folder";
+                clicked => { root.open-folder(); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Btn { text: "Change"; height: 26px; font-size: 11px; enabled: !Main.recording; clicked => { root.change-folder(); } }
+        }
+    }
+    Rectangle {
+        height: names.preferred-height;
+        Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: #dedbd3; }
+        names := VerticalLayout {
+            padding-top: 9px;
+            padding-bottom: 9px;
+            spacing: 7px;
+            Text {
+                text: "File name";
+                color: Ps.ink;
+                font-family: "Inter Tight";
+                font-size: 13px;
+                font-weight: 500;
+            }
+            Field {
+                height: 32px;
+                font-size: 12px;
+                label: "File name";
+                text: Pages.name-template;
+                invalid: Pages.name-invalid;
+                edited(t) => { root.template-edited(t); }
+                accepted(t) => { root.template-accepted(t); root.refocus(); }
+            }
+            Text {
+                text: Pages.name-preview;
+                color: Pages.name-invalid ? Ps.or2 : Ps.mute;
+                font-family: "JetBrains Mono";
+                font-size: 9.5px;
+                font-weight: Pages.name-invalid ? 700 : 500;
+                overflow: elide;
+            }
+        }
+    }
+    SRow {
+        label: "Export format";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "Export format";
+                model: ["FLAC", "WAV", "MP3"];
+                current-index <=> Pages.export-format;
+                selected(i) => { root.export-format-changed(i); }
+            }
+        }
+    }
+    SRow {
+        label: "Clean voice on export";
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "Clean voice on export";
+                checked <=> Pages.clean-voice;
+                toggled(on) => { root.clean-voice-changed(on); }
+            }
+        }
+    }
+}
+
+// The Transcription panel.
+component TranscriptionCard inherits Card {
+    callback go(int);
+    callback language-changed(int);
+    callback auto-transcribe-changed(bool);
+    callback ai-names-changed(bool);
+    callback max-pause-changed(int);
+    title: "TRANSCRIPTION";
+    if !Pages.can-transcribe: SRow { first: true; label: "Not in this build"; }
+    if Pages.can-transcribe: SRow {
+        first: true;
+        label: "Language";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "Language";
+                model: Pages.languages;
+                current-index <=> Pages.language-index;
+                selected(i) => { root.language-changed(i); }
+            }
+        }
+    }
+    if Pages.can-transcribe: SRow {
+        label: "Auto transcribe";
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "Auto transcribe";
+                checked <=> Pages.auto-transcribe;
+                toggled(on) => { root.auto-transcribe-changed(on); }
+            }
+        }
+    }
+    if Pages.can-transcribe && Main.can-ai: SRow {
+        label: "AI names";
+        note: Pages.auto-transcribe ? "" : "Auto transcribe off";
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "AI names";
+                enabled: Pages.auto-transcribe;
+                checked <=> Pages.ai-names;
+                toggled(on) => { root.ai-names-changed(on); }
+            }
+        }
+    }
+    if Pages.can-transcribe: SRow {
+        label: "Max pause";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "Max pause";
+                model: Pages.max-pauses;
+                current-index <=> Pages.max-pause-index;
+                selected(i) => { root.max-pause-changed(i); }
+            }
+        }
+    }
+    if Pages.can-transcribe: SRow {
+        label: "Model";
+        note: Pages.model-summary;
+        VerticalLayout {
+            alignment: center;
+            Key {
+                text: "BROWSE";
+                label: "Browse models";
+                clicked => { root.go(4); }
+            }
+        }
+    }
+}
+
+// The AI panel: the model, whether it is ready (an LED) or downloading (an LED bar), and
+// the translator.
+component AiCard inherits Card {
+    callback ai-model-changed(int);
+    callback download-ai(int);
+    title: "AI";
+    SRow {
+        first: true;
+        label: "AI model";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "AI model";
+                model: Pages.ai-models;
+                current-index <=> Pages.ai-model-index;
+                selected(i) => { root.ai-model-changed(i); }
+            }
+        }
+    }
+    SRow {
+        label: Pages.ai-ready ? "Ready" : Pages.ai-download >= 0 ? "Downloading " + round(Pages.ai-download * 100) + "%" : "Not downloaded";
+        if Pages.ai-ready: VerticalLayout {
+            alignment: center;
+            Led { lamp: 1; }
+        }
+        if !Pages.ai-ready && Pages.ai-download >= 0: VerticalLayout {
+            alignment: center;
+            Segments { width: 90px; height: 6px; cell: 5px; gap: 2px; off: #d2cfc7; value: Pages.ai-download; }
+        }
+        if !Pages.ai-ready && Pages.ai-download < 0: VerticalLayout {
+            alignment: center;
+            Key { kind: 1; text: "DOWNLOAD"; label: "Download"; clicked => { root.download-ai(0); } }
+        }
+    }
+    SRow {
+        label: "Translation";
+        note: "Ministral 3B · 2.1 GB";
+        if Pages.translator-ready: Value { text: "Ready"; color: Ps.or2; font-weight: 700; }
+        if !Pages.translator-ready && Pages.translator-download >= 0: Value {
+            text: "Downloading " + round(Pages.translator-download * 100) + "%";
+            color: Ps.or2;
+            font-weight: 700;
+        }
+        if !Pages.translator-ready && Pages.translator-download < 0: VerticalLayout {
+            alignment: center;
+            Key { kind: 1; text: "DOWNLOAD"; label: "Download"; clicked => { root.download-ai(1); } }
+        }
+    }
+}
+
+// Your voice.
+component VoiceCard inherits Card {
+    title: "YOUR VOICE";
+    SRow {
+        first: true;
+        label: "Voice engine";
+        Value { text: "OmniVoice"; }
+    }
+    SRow {
+        label: "Voice sample";
+        Value { text: "20 s from the clip"; }
+    }
+}
+
+export component SettingsPage inherits Alu {
+    in property <bool> wide;
+    callback back();
+    callback go(int);
+    callback refocus();
+    callback theme-changed(int);
+    callback mic-changed(int);
+    callback system-changed(bool);
+    callback recording-limit-changed(int);
+    callback hotkey-captured(string, bool, bool, bool, bool) -> bool;
+    callback hotkey-accepted(string);
+    callback open-folder();
+    callback change-folder();
+    callback template-edited(string);
+    callback template-accepted(string);
+    callback export-format-changed(int);
+    callback clean-voice-changed(bool);
+    callback language-changed(int);
+    callback auto-transcribe-changed(bool);
+    callback ai-names-changed(bool);
+    callback max-pause-changed(int);
+    callback ai-model-changed(int);
+    callback download-ai(int);
+    callback close-to-tray-changed(bool);
+    callback start-with-windows-changed(bool);
+
+    VerticalLayout {
+        Title { big: root.wide; gear: false; }
+        PageStrip {
+            title: "Settings";
+            back => { root.back(); }
+            Silk { text: "SETUP"; }
+        }
+        Rectangle {
+            vertical-stretch: 1;
+            Scroller {
+                width: parent.width;
+                height: parent.height;
+                VerticalLayout {
+                    padding-left: 12px;
+                    padding-right: 18px;
+                    padding-top: 12px;
+                    padding-bottom: 30px;
+                    spacing: 12px;
+                    alignment: start;
+                    Card {
+                        title: "APPEARANCE";
+                        VerticalLayout {
+                            padding-bottom: 8px;
+                            ThemeGallery { picked(i) => { root.theme-changed(i); } }
+                        }
+                    }
+                    // Wide: the panels in three columns under the gallery. Portrait: one column,
+                    // as the mockup stacks them.
+                    HorizontalLayout {
+                        spacing: 12px;
+                        alignment: stretch;
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 12px;
+                            alignment: start;
+                            Card {
+                                title: "RECORDING";
+                                SRow {
+                                    first: true;
+                                    label: "Microphone";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        RowSelect {
+                                            label: "Microphone";
+                                            model: Pages.mic-devices;
+                                            current-index <=> Pages.mic-index;
+                                            enabled: !Main.recording;
+                                            selected(i) => { root.mic-changed(i); }
+                                        }
+                                    }
+                                }
+                                SRow {
+                                    label: "System audio";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "System audio";
+                                            checked <=> Pages.record-system;
+                                            toggled(on) => { root.system-changed(on); }
+                                        }
+                                    }
+                                }
+                                SRow {
+                                    label: "Stop recording after";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        RowSelect {
+                                            label: "Stop recording after";
+                                            model: Pages.recording-limits;
+                                            current-index <=> Pages.recording-limit-index;
+                                            selected(i) => { root.recording-limit-changed(i); }
+                                        }
+                                    }
+                                }
+                                SRow {
+                                    label: "Record hotkey";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        ShortcutBox {
+                                            label: "Record hotkey";
+                                            keys: Pages.hotkey-parts;
+                                            captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
+                                            cleared => { root.hotkey-accepted(""); }
+                                            done => { root.refocus(); }
+                                        }
+                                    }
+                                    if Pages.hotkey-parts.length > 0: VerticalLayout {
+                                        alignment: center;
+                                        IconBtn {
+                                            size: 22px;
+                                            round: true;
+                                            icon: "close";
+                                            icon-size: 9px;
+                                            label: "Clear the shortcut";
+                                            tip: "Clear shortcut";
+                                            clicked => { root.hotkey-accepted(""); }
+                                        }
+                                    }
+                                }
+                            }
+                            if root.wide: Card {
+                                title: "WINDOW";
+                                SRow {
+                                    first: true;
+                                    label: "Close button hides to tray";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "Close button hides to tray";
+                                            checked <=> Pages.close-to-tray;
+                                            toggled(on) => { root.close-to-tray-changed(on); }
+                                        }
+                                    }
+                                }
+                                SRow {
+                                    label: "Start with Windows";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "Start with Windows";
+                                            checked <=> Pages.start-with-windows;
+                                            toggled(on) => { root.start-with-windows-changed(on); }
+                                        }
+                                    }
+                                }
+                            }
+                            if !root.wide: FilesCard {
+                                wide: false;
+                                refocus => { root.refocus(); }
+                                open-folder => { root.open-folder(); }
+                                change-folder => { root.change-folder(); }
+                                template-edited(t) => { root.template-edited(t); }
+                                template-accepted(t) => { root.template-accepted(t); }
+                                export-format-changed(i) => { root.export-format-changed(i); }
+                                clean-voice-changed(on) => { root.clean-voice-changed(on); }
+                            }
+                            if !root.wide: TranscriptionCard {
+                                go(p) => { root.go(p); }
+                                language-changed(i) => { root.language-changed(i); }
+                                auto-transcribe-changed(on) => { root.auto-transcribe-changed(on); }
+                                ai-names-changed(on) => { root.ai-names-changed(on); }
+                                max-pause-changed(i) => { root.max-pause-changed(i); }
+                            }
+                            if !root.wide && Main.can-ai: AiCard {
+                                ai-model-changed(i) => { root.ai-model-changed(i); }
+                                download-ai(k) => { root.download-ai(k); }
+                            }
+                            if !root.wide: VoiceCard { }
+                            if !root.wide: Card {
+                                title: "WINDOW";
+                                SRow {
+                                    first: true;
+                                    label: "Close button hides to tray";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "Close button hides to tray";
+                                            checked <=> Pages.close-to-tray;
+                                            toggled(on) => { root.close-to-tray-changed(on); }
+                                        }
+                                    }
+                                }
+                                SRow {
+                                    label: "Start with Windows";
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Toggle {
+                                            label: "Start with Windows";
+                                            checked <=> Pages.start-with-windows;
+                                            toggled(on) => { root.start-with-windows-changed(on); }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if root.wide: VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 12px;
+                            alignment: start;
+                            FilesCard {
+                                wide: true;
+                                refocus => { root.refocus(); }
+                                open-folder => { root.open-folder(); }
+                                change-folder => { root.change-folder(); }
+                                template-edited(t) => { root.template-edited(t); }
+                                template-accepted(t) => { root.template-accepted(t); }
+                                export-format-changed(i) => { root.export-format-changed(i); }
+                                clean-voice-changed(on) => { root.clean-voice-changed(on); }
+                            }
+                            VoiceCard { }
+                        }
+                        if root.wide: VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 12px;
+                            alignment: start;
+                            TranscriptionCard {
+                                go(p) => { root.go(p); }
+                                language-changed(i) => { root.language-changed(i); }
+                                auto-transcribe-changed(on) => { root.auto-transcribe-changed(on); }
+                                ai-names-changed(on) => { root.ai-names-changed(on); }
+                                max-pause-changed(i) => { root.max-pause-changed(i); }
+                            }
+                            if Main.can-ai: AiCard {
+                                ai-model-changed(i) => { root.ai-model-changed(i); }
+                                download-ai(k) => { root.download-ai(k); }
+                            }
+                        }
+                    }
+                }
+            }
+            Screws { y: parent.height; width: parent.width; }
+        }
+        Toast { text: Main.status; above: 14px; }
+    }
+}
+
+// ---------- Models ----------
+
+// Quality or speed as five LEDs in a ladder.
+component Ladder inherits HorizontalLayout {
+    in property <string> label;
+    in property <int> value;
+    in property <bool> lit;
+    spacing: 6px;
+    Text {
+        text: root.label;
+        color: root.lit ? #ffffffb3 : Ps.mute;
+        font-family: "JetBrains Mono";
+        font-size: 7.5px;
+        font-weight: 700;
+        letter-spacing: 1.2px;
+        vertical-alignment: center;
+    }
+    HorizontalLayout {
+        spacing: 1.5px;
+        alignment: start;
+        for k in 5: VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 6px;
+                height: 6px;
+                background: k < root.value ? (root.lit ? #ffffff : Ps.or) : (root.lit ? #ffffff59 : #d2cfc7);
+            }
+        }
+    }
+}
+
+// The shelves as latching keys, wrapping onto a second row (portrait) or one under the
+// other (wide).
+component Shelves inherits Rectangle {
+    in property <bool> column;
+    callback changed();
+    height: flow.preferred-height;
+    flow := FlexboxLayout {
+        flex-direction: root.column ? FlexboxLayoutDirection.column : FlexboxLayoutDirection.row;
+        flex-wrap: root.column ? FlexboxLayoutWrap.no-wrap : FlexboxLayoutWrap.wrap;
+        alignment: start;
+        cross-axis-alignment: start;
+        spacing: 8px;
+        for f[i] in ["All", "Norwegian", "Swedish", "English", "Downloaded"]: Latch {
+            text: f.to-uppercase();
+            label: f;
+            on: Pages.model-filter == i;
+            clicked => { Pages.model-filter = i; root.changed(); }
+        }
+    }
+}
+
+component ModelSearch inherits Field {
+    height: 36px;
+    icon: "search";
+    label: "Search models";
+    placeholder: "Search " + Pages.model-count + " models";
+}
+
+component Compressed inherits HorizontalLayout {
+    callback changed();
+    spacing: 10px;
+    alignment: start;
+    VerticalLayout {
+        alignment: center;
+        Toggle {
+            label: "Show compressed versions too";
+            checked <=> Pages.model-compressed;
+            toggled => { root.changed(); }
+        }
+    }
+    Text {
+        text: "Show compressed";
+        color: Ps.ink;
+        font-family: "Inter Tight";
+        font-size: 12.5px;
+        font-weight: 500;
+        vertical-alignment: center;
+    }
+}
+
+export component ModelsPage inherits Alu {
+    in property <bool> wide;
+    callback back();
+    callback filter-changed();
+    callback use-model(int);
+    callback cancel-download();
+    callback download-model(int);
+    VerticalLayout {
+        Title { big: root.wide; gear: false; }
+        PageStrip {
+            title: "Models";
+            back => { root.back(); }
+            if !root.wide: VerticalLayout {
+                alignment: center;
+                Chip { text: Pages.models-used; }
+            }
+        }
+        if !root.wide: VerticalLayout {
+            vertical-stretch: 0;
+            padding-left: 14px;
+            padding-right: 14px;
+            padding-top: 12px;
+            padding-bottom: 10px;
+            spacing: 10px;
+            ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+            Shelves { changed => { root.filter-changed(); } }
+            Compressed { changed => { root.filter-changed(); } }
+        }
+        if !root.wide: Rectangle { height: 1px; vertical-stretch: 0; background: Ps.edge; }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            if root.wide: Rectangle {
+                width: 290px;
+                Rectangle { background: @linear-gradient(180deg, #00000004 0%, #0000000a 100%); }
+                Rectangle { x: parent.width - 1px; y: 0; width: 1px; height: parent.height; background: Ps.edge; }
+                VerticalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    padding-top: 14px;
+                    padding-bottom: 16px;
+                    spacing: 12px;
+                    ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+                    VerticalLayout {
+                        vertical-stretch: 0;
+                        spacing: 8px;
+                        Silk { text: "SHELF"; height: 8px; }
+                        Shelves { column: true; changed => { root.filter-changed(); } }
+                    }
+                    Compressed { changed => { root.filter-changed(); } }
+                    Rectangle { vertical-stretch: 1; }
+                    Rectangle {
+                        height: 76px;
+                        Oled { width: parent.width; height: parent.height; }
+                        State { x: 14px; y: 12px; width: self.preferred-width; height: 12px; text: "DISK"; }
+                        Text {
+                            x: 14px;
+                            y: 30px;
+                            width: parent.width - 28px;
+                            height: 32px;
+                            text: Pages.models-used;
+                            color: Ps.px;
+                            font-family: "JetBrains Mono";
+                            font-size: 20px;
+                            font-weight: 300;
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
+                    }
+                }
+            }
+            Scroller {
+                horizontal-stretch: 1;
+                VerticalLayout {
+                    alignment: start;
+                    padding-left: 14px;
+                    padding-right: 18px;
+                    padding-top: 6px;
+                    padding-bottom: 16px;
+                    spacing: 8px;
+                    for m in Pages.models: VerticalLayout {
+                        if m.header: HorizontalLayout {
+                            padding-top: 8px;
+                            padding-left: 2px;
+                            spacing: 8px;
+                            Text {
+                                text: m.title.to-uppercase();
+                                color: Ps.ink;
+                                font-family: "JetBrains Mono";
+                                font-size: 8px;
+                                font-weight: 700;
+                                letter-spacing: 1.6px;
+                                vertical-alignment: center;
+                                horizontal-stretch: 0;
+                            }
+                            Text {
+                                text: m.by;
+                                color: Ps.mute;
+                                font-family: "JetBrains Mono";
+                                font-size: 9px;
+                                font-weight: 500;
+                                vertical-alignment: center;
+                                horizontal-stretch: 1;
+                                overflow: elide;
+                            }
+                        }
+                        if !m.header: Rectangle {
+                            height: card.preferred-height;
+                            SynKey {
+                                x: 0;
+                                y: 0;
+                                width: parent.width;
+                                height: parent.height;
+                                kind: m.active ? 1 : 0;
+                                radius: 9px;
+                            }
+                            card := VerticalLayout {
+                                padding-left: 12px;
+                                padding-right: 10px;
+                                padding-top: 8px;
+                                padding-bottom: 9px;
+                                spacing: 6px;
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    VerticalLayout {
+                                        horizontal-stretch: 1;
+                                        alignment: center;
+                                        spacing: 5px;
+                                        Text {
+                                            text: m.title;
+                                            color: m.active ? #ffffff : Ps.ink;
+                                            font-family: "Inter Tight";
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                            overflow: elide;
+                                        }
+                                        HorizontalLayout {
+                                            spacing: 14px;
+                                            alignment: start;
+                                            Ladder { label: "QUALITY"; value: m.quality; lit: m.active; }
+                                            Ladder { label: "SPEED"; value: m.speed; lit: m.active; }
+                                            Text {
+                                                text: m.size;
+                                                color: m.active ? #ffffff : Ps.ink;
+                                                font-family: "JetBrains Mono";
+                                                font-size: 10px;
+                                                font-weight: 500;
+                                                vertical-alignment: center;
+                                            }
+                                        }
+                                    }
+                                    if m.active: HorizontalLayout {
+                                        horizontal-stretch: 0;
+                                        spacing: 7px;
+                                        VerticalLayout { alignment: center; Led { lamp: 2; } }
+                                        Caps { text: "IN USE"; color: #ffffff; accessible-role: text; accessible-label: "In use"; }
+                                    }
+                                    if m.downloaded && !m.active: VerticalLayout {
+                                        alignment: center;
+                                        Key { text: "USE"; label: "Use"; clicked => { root.use-model(m.index); } }
+                                    }
+                                    if Pages.downloading == m.index: VerticalLayout {
+                                        alignment: center;
+                                        Key { text: "CANCEL"; label: "Cancel"; clicked => { root.cancel-download(); } }
+                                    }
+                                    if !m.downloaded && Pages.downloading != m.index: VerticalLayout {
+                                        alignment: center;
+                                        Key {
+                                            text: "DOWNLOAD";
+                                            kind: Pages.downloading < 0 ? 1 : 0;
+                                            enabled: Pages.downloading < 0;
+                                            label: "Download " + m.title;
+                                            clicked => { root.download-model(m.index); }
+                                        }
+                                    }
+                                }
+                                if Pages.downloading == m.index: HorizontalLayout {
+                                    spacing: 10px;
+                                    Rectangle {
+                                        horizontal-stretch: 1;
+                                        height: 16px;
+                                        Oled { width: parent.width; height: parent.height; radius: 4px; bezel: 2px; }
+                                        Segments {
+                                            x: 5px;
+                                            y: 4px;
+                                            width: parent.width - 10px;
+                                            height: parent.height - 8px;
+                                            cell: 8px;
+                                            value: Pages.download-progress;
+                                        }
+                                    }
+                                    Text {
+                                        text: round(Pages.download-progress * 100) + "%";
+                                        color: Ps.ink;
+                                        font-family: "JetBrains Mono";
+                                        font-size: 9.5px;
+                                        font-weight: 700;
+                                        width: 30px;
+                                        horizontal-alignment: right;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if Pages.models.length == 0: Text {
+                        height: 80px;
+                        text: "No models match";
+                        color: Ps.mute;
+                        font-family: "JetBrains Mono";
+                        font-size: 11px;
+                        font-weight: 500;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+        Screws { width: parent.width; }
+        Toast { text: Main.status; above: 14px; }
+    }
+}
+
+// ---------- Merge ----------
+
+// The chain on the wide screen: every clip as a block by its length, the first lit
+// orange, the total at the right, a tick scale under it.
+component Chain inherits Rectangle {
+    height: 150px;
+    Oled { width: parent.width; height: parent.height; }
+    State { x: 16px; y: 14px; width: self.preferred-width; height: 12px; text: "CHAIN"; }
+    Text {
+        x: parent.width - 16px - self.width;
+        y: 12px;
+        height: 16px;
+        text: Pages.merge-total;
+        color: Ps.dev;
+        font-family: "JetBrains Mono";
+        font-size: 11px;
+        font-weight: 500;
+        vertical-alignment: center;
+    }
+    Rectangle {
+        x: 16px;
+        y: 40px;
+        width: parent.width - 32px;
+        height: 70px;
+        HorizontalLayout {
+            spacing: 4px;
+            for f[i] in Pages.merge-legs: VerticalLayout {
+                horizontal-stretch: max(0.03, f);
+                spacing: 6px;
+                Text {
+                    height: 10px;
+                    text: i + 1;
+                    color: Ps.dev;
+                    font-family: "JetBrains Mono";
+                    font-size: 8.5px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                    overflow: clip;
+                }
+                Rectangle {
+                    height: 34px;
+                    background: i == 0 ? Ps.or : Math.mod(i, 2) == 1 ? #d9ddd9 : #6a716d;
+                    // A white block shows its lines, as a pattern on the screen.
+                    for k in (Math.mod(i, 2) == 1 ? 8 : 0): Rectangle {
+                        x: 0;
+                        y: 3px + k * 4px;
+                        width: parent.width;
+                        height: 1px;
+                        background: #9aa09b;
+                    }
+                }
+            }
+        }
+    }
+    property <int> ticks: floor((root.width - 32px) / 14px) + 1;
+    for t in root.ticks: Rectangle {
+        x: 16px + t * 14px;
+        y: 120px;
+        width: 1px;
+        height: 4px;
+        background: #4a504c;
+    }
+}
+
+export component MergePage inherits Alu {
+    in property <bool> wide;
+    callback go(int);
+    callback move(int, int);
+    callback remove(int);
+    callback play(int);
+    callback run(string);
+    property <string> playing-name: Main.active-clip >= 0 && Main.active-clip < Main.clips.length && Main.playing ? Main.clips[Main.active-clip].name : "";
+    VerticalLayout {
+        Title { big: root.wide; gear: false; }
+        PageStrip {
+            title: "Merge clips";
+            back => { root.go(0); }
+            VerticalLayout {
+                alignment: center;
+                Chip { text: Pages.merge-rows.length + " CLIPS"; }
+            }
+        }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            if root.wide: Rectangle {
+                width: 392px;
+                Rectangle { background: @linear-gradient(180deg, #00000004 0%, #0000000a 100%); }
+                Rectangle { x: parent.width - 1px; y: 0; width: 1px; height: parent.height; background: Ps.edge; }
+                VerticalLayout {
+                    padding-left: 18px;
+                    padding-right: 18px;
+                    padding-top: 14px;
+                    padding-bottom: 14px;
+                    spacing: 12px;
+                    Chain { }
+                    VerticalLayout {
+                        vertical-stretch: 0;
+                        spacing: 7px;
+                        Silk { text: "NEW CLIP · NAME"; height: 8px; }
+                        Field {
+                            height: 38px;
+                            font-size: 13.5px;
+                            text <=> Pages.merge-name;
+                            placeholder: "Name";
+                            label: "Name of the merged clip";
+                        }
+                    }
+                    Speaker { vertical-stretch: 1; }
+                }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                padding-left: root.wide ? 18px : 14px;
+                padding-right: root.wide ? 18px : 14px;
+                padding-top: 12px;
+                padding-bottom: 10px;
+                spacing: 8px;
+                Silk { text: "ORDER"; height: 8px; }
+                Scroller {
+                    VerticalLayout {
+                        alignment: start;
+                        padding-top: 2px;
+                        padding-right: 8px;
+                        OrderList {
+                            rows: Pages.merge-rows;
+                            removable: true;
+                            playable: true;
+                            playing-name: root.playing-name;
+                            enabled: !Pages.merging;
+                            moved(a, b) => { root.move(a, b); }
+                            act(i) => { root.remove(i); }
+                            play(i) => { root.play(i); }
+                        }
+                    }
+                }
+            }
+        }
+        if !root.wide: Rectangle {
+            vertical-stretch: 0;
+            height: name-box.preferred-height;
+            Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: Ps.edge; }
+            name-box := VerticalLayout {
+                padding-left: 14px;
+                padding-right: 14px;
+                padding-top: 12px;
+                padding-bottom: 12px;
+                spacing: 7px;
+                Silk { text: "NEW CLIP · NAME"; height: 8px; }
+                Field {
+                    height: 38px;
+                    font-size: 13.5px;
+                    text <=> Pages.merge-name;
+                    placeholder: "Name";
+                    label: "Name of the merged clip";
+                }
+            }
+        }
+        Footer {
+            big: root.wide;
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                Status { }
+            }
+            VerticalLayout {
+                alignment: center;
+                Btn { height: 32px; text: "Cancel"; clicked => { root.go(0); } }
+            }
+            VerticalLayout {
+                alignment: center;
+                Btn {
+                    height: 32px;
+                    primary: true;
+                    text: Pages.merging ? "Merging" : "Merge " + Pages.merge-rows.length + " clips";
+                    enabled: !Pages.merging && Pages.merge-name != "";
+                    clicked => { root.run(Pages.merge-name); }
+                }
+            }
+        }
+    }
+}
+
+// ---------- Ask ----------
+
+// A source of an answer: a long key with its number on a little screen, the clip (and its
+// project), the time and the words.
+component Source inherits Rectangle {
+    in property <AskSource> source;
+    in property <bool> show-project;
+    in property <string> project;
+    callback clicked;
+    height: 46px;
+    accessible-role: button;
+    accessible-label: root.source.n + " " + root.source.clip + " " + root.source.time;
+    accessible-action-default => { root.clicked(); }
+    SynKey {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        radius: 9px;
+        pressed: t.pressed && t.has-hover;
+        hover: t.has-hover;
+    }
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 12px;
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 20px;
+                height: 20px;
+                border-radius: 4px;
+                background: Ps.oled;
+                Text {
+                    text: root.source.n;
+                    color: Ps.or;
+                    font-family: "JetBrains Mono";
+                    font-size: 10px;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 3px;
+            HorizontalLayout {
+                spacing: 7px;
+                Text {
+                    text: root.source.clip;
+                    color: Ps.ink;
+                    font-family: "Inter Tight";
+                    font-size: 12.5px;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 0;
+                }
+                if root.show-project && root.project != "": VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: pj.preferred-width + 8px;
+                        height: 12px;
+                        border-radius: 2px;
+                        border-width: 1px;
+                        border-color: Ps.faint;
+                        pj := Text {
+                            text: root.project.to-uppercase();
+                            color: #55524c;
+                            font-family: "JetBrains Mono";
+                            font-size: 7.5px;
+                            font-weight: 700;
+                            letter-spacing: 0.6px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                Text {
+                    text: root.source.time;
+                    color: Ps.ink;
+                    font-family: "JetBrains Mono";
+                    font-size: 10.5px;
+                    font-weight: 500;
+                    vertical-alignment: center;
+                }
+            }
+            Text {
+                text: root.source.text;
+                color: Ps.mute;
+                font-family: "JetBrains Mono";
+                font-size: 9px;
+                font-weight: 500;
+                overflow: elide;
+            }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The answer on the mono screen, or THINKING with a running LED bar.
+component Answer inherits Rectangle {
+    in property <length> max-h: 320px;
+    in property <length> font-size: 11.5px;
+    height: min(body.preferred-height + 40px, root.max-h);
+    Oled { width: parent.width; height: parent.height; }
+    State { x: 16px; y: 14px; width: self.preferred-width; height: 12px; text: "ANSWER"; }
+    Scroller {
+        x: 4px;
+        y: 34px;
+        width: parent.width - 8px;
+        height: parent.height - 40px;
+        body := VerticalLayout {
+            padding-left: 12px;
+            padding-right: 14px;
+            padding-bottom: 10px;
+            if Pages.answer == "": HorizontalLayout {
+                spacing: 12px;
+                height: 18px;
+                alignment: start;
+                Text {
+                    text: "THINKING";
+                    color: Ps.px;
+                    font-family: "JetBrains Mono";
+                    font-size: 10px;
+                    font-weight: 700;
+                    letter-spacing: 2px;
+                    vertical-alignment: center;
+                }
+                VerticalLayout {
+                    alignment: center;
+                    Segments { width: 54px; height: 5px; cell: 7px; gap: 2px; value: 0.5; }
+                }
+            }
+            if Pages.answer != "": Text {
+                text: Pages.answer;
+                color: #dfe5df;
+                font-family: "JetBrains Mono";
+                font-size: root.font-size;
+                font-weight: 500;
+                wrap: word-wrap;
+            }
+        }
+    }
+}
+
+// The sources, numbered as the answer cites them.
+component Sources inherits VerticalLayout {
+    callback open(int);
+    spacing: 8px;
+    Silk { text: "SOURCES"; height: 8px; }
+    Scroller {
+        VerticalLayout {
+            alignment: start;
+            padding-top: 2px;
+            padding-right: 8px;
+            padding-bottom: 4px;
+            spacing: 8px;
+            for s[i] in Pages.sources: Source {
+                source: s;
+                show-project: Pages.ask-all;
+                project: s.place >= 0 && s.place < Main.projects.length ? Main.projects[s.place] : "";
+                clicked => { root.open(i); }
+            }
+        }
+    }
+}
+
+export component AskPage inherits Alu {
+    in property <bool> wide;
+    callback go(int);
+    callback ask(string, bool);
+    callback open-source(int);
+    VerticalLayout {
+        Title { big: root.wide; gear: false; }
+        PageStrip { title: "Ask"; back => { root.go(0); } }
+        HorizontalLayout {
+            vertical-stretch: 0;
+            padding-left: 14px;
+            padding-right: 14px;
+            padding-top: 12px;
+            padding-bottom: 12px;
+            spacing: 8px;
+            Field {
+                height: 34px;
+                min-width: 80px;
+                horizontal-stretch: 1;
+                icon: "message";
+                placeholder: "Ask about your clips";
+                label: "Question";
+                text <=> Pages.question;
+                init => { self.grab(); }
+                accepted => { if (Pages.question != "" && !Pages.asking) { root.ask(Pages.question, Pages.ask-all); } }
+            }
+            if Main.projects.length > 1: VerticalLayout {
+                alignment: center;
+                Latch {
+                    height: 32px;
+                    text: "ALL PROJECTS";
+                    label: "Ask all projects";
+                    // A check box, as the classic page's.
+                    accessible-role: checkbox;
+                    on: Pages.ask-all;
+                    clicked => { Pages.ask-all = !Pages.ask-all; }
+                }
+            }
+            VerticalLayout {
+                alignment: center;
+                Btn {
+                    height: 32px;
+                    primary: true;
+                    text: "Ask";
+                    enabled: Pages.question != "" && !Pages.asking;
+                    clicked => { root.ask(Pages.question, Pages.ask-all); }
+                }
+            }
+        }
+        Rectangle { height: 1px; vertical-stretch: 0; background: Ps.edge; }
+        if !root.wide: VerticalLayout {
+            vertical-stretch: 1;
+            padding-left: 14px;
+            padding-right: 14px;
+            padding-top: 12px;
+            padding-bottom: 18px;
+            spacing: 14px;
+            if Pages.answer != "" || Pages.asking: Answer { }
+            if Pages.sources.length > 0: Sources {
+                vertical-stretch: 1;
+                open(i) => { root.open-source(i); root.go(1); }
+            }
+            if Pages.sources.length == 0: Rectangle { vertical-stretch: 1; }
+        }
+        if root.wide: HorizontalLayout {
+            vertical-stretch: 1;
+            padding-left: 18px;
+            padding-right: 18px;
+            padding-top: 14px;
+            padding-bottom: 18px;
+            spacing: 18px;
+            VerticalLayout {
+                horizontal-stretch: 1.1;
+                alignment: start;
+                if Pages.answer != "" || Pages.asking: Answer { max-h: 460px; font-size: 12.5px; }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                if Pages.sources.length > 0: Sources {
+                    open(i) => { root.open-source(i); root.go(1); }
+                }
+                if Pages.sources.length == 0: Rectangle { }
+            }
+        }
+        Screws { width: parent.width; }
+        Toast { text: Main.status; above: 14px; }
+    }
+}
+
+// ---------- The widget ----------
+
+// The small always-on-top window as a slice of the sampler (variant A): the mini screen
+// with the state, the timer and a segment meter, key 09 (REC or Stop), Pause while
+// recording and the round Open key. The plate gets an orange ring while recording. The
+// whole plate moves the window.
+export component Widget inherits Rectangle {
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;
+    // The square blinks while recording, as on the main page.
+    property <bool> dim: Main.recording && !Main.paused && Math.mod(floor(Fx.t / 1.2), 2) == 1;
+    property <int> segs: 20;
+    property <int> on: round(clamp(root.level, 0, 1) * root.segs);
+    property <length> scr-w: root.width - 104px;
+    // The rounded plate: the window is see-through, so the corners stay clear.
+    Rectangle {
+        border-radius: 14px;
+        background: Main.recording ? Ps.or : #9d998f;
+    }
+    Rectangle {
+        x: Main.recording ? 3px : 1px;
+        y: Main.recording ? 3px : 1px;
+        width: parent.width - 2 * self.x;
+        height: parent.height - 2 * self.y;
+        border-radius: Main.recording ? 11px : 13px;
+        background: Ps.body;
+        Image {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            source: @image-url("dv-synth/brush.png");
+            horizontal-tiling: repeat;
+            vertical-tiling: repeat;
+            horizontal-alignment: left;
+            vertical-alignment: top;
+        }
+        Rectangle { x: 8px; y: 1px; width: parent.width - 16px; height: 1px; background: #ffffff; }
+    }
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+        // The mini screen.
+        Rectangle {
+            x: 12px;
+            y: 12px;
+            width: root.scr-w;
+            height: parent.height - 24px;
+            accessible-role: AccessibleRole.text;
+            accessible-label: (Main.recording ? (Main.paused ? "Paused " : "Recording ") : "Ready ") + Main.elapsed;
+            Oled { width: parent.width; height: parent.height; }
+            Rectangle {
+                x: 10px;
+                y: 11px;
+                width: 7px;
+                height: 7px;
+                background: Main.recording && !Main.paused ? Ps.or : Main.paused ? Ps.lcd-silk : Ps.px;
+                opacity: root.dim ? 0.35 : 1;
+            }
+            Text {
+                x: 22px;
+                y: 9px;
+                height: 11px;
+                text: Main.recording ? (Main.paused ? "PAUSED" : "RECORDING") : "READY";
+                color: Ps.px;
+                font-family: "JetBrains Mono";
+                font-size: 7.5px;
+                font-weight: 700;
+                letter-spacing: 1.9px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            Text {
+                x: 10px;
+                y: 24px;
+                height: parent.height - 52px;
+                text: Main.elapsed;
+                color: Ps.px;
+                font-family: "Synth Figures";
+                font-size: Main.elapsed.character-count > 5 ? 22px : 30px;
+                font-weight: 700;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            for i in root.segs: Rectangle {
+                property <length> w: (parent.width - 20px - (root.segs - 1) * 2px) / root.segs;
+                property <length> h: 9px * (0.45 + 0.55 * i / root.segs);
+                x: 10px + i * (self.w + 2px);
+                y: parent.height - 12px - self.h;
+                width: self.w;
+                height: self.h;
+                background: i < root.on ? (i >= root.segs - 3 ? Ps.or : Ps.px) : Ps.px-dim;
+            }
+        }
+        // Pause while recording, and Open the window, top right.
+        HorizontalLayout {
+            x: parent.width - self.width - 10px;
+            y: 10px;
+            width: self.preferred-width;
+            height: 26px;
+            spacing: 8px;
+            if Main.recording: IKey {
+                width: 32px;
+                height: 24px;
+                icon: Main.paused ? "play" : "pause";
+                icon-size: 10px;
+                label: Main.paused ? "Resume" : "Pause";
+                clicked => { Main.toggle-pause(); }
+            }
+            VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    size: 22px;
+                    round: true;
+                    icon: "expand";
+                    icon-size: 10px;
+                    label: "Open the window";
+                    tip: "Open window";
+                    clicked => { Main.compact-changed(false); }
+                }
+            }
+        }
+        // Key 09: REC, or Stop while recording.
+        IKey {
+            x: parent.width - self.width - 12px;
+            y: parent.height - self.height - 14px;
+            width: 72px;
+            height: 52px;
+            kind: 1;
+            num: "09";
+            icon: Main.recording ? "stop" : "mic";
+            icon-size: Main.recording ? 12px : 16px;
+            label: Main.recording ? "Stop recording" : "Record";
+            tip: Main.recording ? "Stop" : "Record";
+            clicked => { Main.toggle-record(); }
+        }
+    }
+}
+
+// ---------- Questions and covers ----------
+
+// A small aluminium plate (the questions and the speaking cover).
+component Plate inherits Rectangle {
+    // Its soft shadow, then the hard rim and the brushed face.
+    Image {
+        x: -12px;
+        y: -12px;
+        width: parent.width + 24px;
+        height: parent.height + 24px;
+        source: @image-url("dv-synth/pad-shade.png", nine-slice(22 22 22 22));
+    }
+    Rectangle { x: 0; y: 2px; width: parent.width; height: parent.height; border-radius: 12px; background: #8e8a80; }
+    Rectangle {
+        border-radius: 12px;
+        background: #9d998f;
+        Rectangle {
+            x: 1px;
+            y: 1px;
+            width: parent.width - 2px;
+            height: parent.height - 2px;
+            border-radius: 11px;
+            background: Ps.body;
+            Image {
+                x: 0;
+                y: 0;
+                width: parent.width;
+                height: parent.height;
+                source: @image-url("dv-synth/brush.png");
+                horizontal-tiling: repeat;
+                vertical-tiling: repeat;
+                horizontal-alignment: left;
+                vertical-alignment: top;
+            }
+            Rectangle { x: 8px; y: 0; width: parent.width - 16px; height: 1px; background: #ffffff; }
+        }
+    }
+    @children
+}
+
+// The title of a question: an orange square and the words (a clip's name on a little
+// black screen).
+component Head inherits HorizontalLayout {
+    in property <string> text;
+    in property <string> clip-name;
+    spacing: 8px;
+    alignment: start;
+    VerticalLayout {
+        alignment: center;
+        Rectangle { width: 9px; height: 9px; border-radius: 2px; background: Ps.or; }
+    }
+    Text {
+        text: root.text;
+        color: Ps.ink;
+        font-family: "Inter Tight";
+        font-size: 17px;
+        font-weight: 800;
+        letter-spacing: -0.17px;
+        vertical-alignment: center;
+        overflow: elide;
+        horizontal-stretch: root.clip-name == "" ? 1 : 0;
+    }
+    if root.clip-name != "": VerticalLayout {
+        alignment: center;
+        horizontal-stretch: 1;
+        Rectangle {
+            width: min(clip-text.preferred-width + 12px, 200px);
+            height: 22px;
+            border-radius: 4px;
+            background: Ps.oled;
+            clip-text := Text {
+                x: 6px;
+                width: parent.width - 12px;
+                height: parent.height;
+                text: root.clip-name;
+                color: Ps.px;
+                font-family: "JetBrains Mono";
+                font-size: 14px;
+                font-weight: 700;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+    }
+}
+
+// A question over the dimmed sampler: the title (a clip's name on a little screen), a
+// note or a name field, and the keys; Delete is the dark key. AppWindow works out the
+// words; the keys report back. A click outside cancels.
+export component Dialog inherits Rectangle {
+    in property <string> title;
+    in property <string> note;
+    in property <string> field;
+    in property <string> ok;
+    in property <bool> ok-enabled;
+    // A single clip's delete question shows its name on a little screen.
+    in property <string> clip-name;
+    callback close();
+    callback confirm();
+    callback discard();
+    property <int> kind: Main.dialog;
+    property <bool> writes: root.kind == 1 || root.kind >= 4;
+    background: #12121180;
+    TouchArea { clicked => { root.close(); } }
+    Plate {
+        width: min(parent.width - 48px, 340px);
+        height: box.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 - 30px;
+        TouchArea { }
+        box := VerticalLayout {
+            padding-left: 16px;
+            padding-right: 16px;
+            padding-top: 16px;
+            padding-bottom: 14px;
+            spacing: 6px;
+            Head {
+                text: root.clip-name != "" ? "Delete" : root.title;
+                clip-name: root.clip-name;
+            }
+            if root.note != "": Text {
+                text: root.note;
+                color: Ps.mute;
+                font-family: "Inter Tight";
+                font-size: 12px;
+                font-weight: 500;
+                wrap: word-wrap;
+            }
+            if root.writes: VerticalLayout {
+                padding-top: 8px;
+                spacing: 6px;
+                Silk { text: root.field.to-uppercase(); height: 8px; }
+                Field {
+                    label: root.field;
+                    text <=> Main.dialog-text;
+                    init => { self.grab(); }
+                    accepted => { if (root.ok-enabled) { root.confirm(); } }
+                }
+            }
+            HorizontalLayout {
+                padding-top: 12px;
+                alignment: end;
+                spacing: 8px;
+                Btn { height: 32px; text: "Cancel"; clicked => { root.close(); } }
+                if root.kind == 3: Btn { height: 32px; text: "Discard changes"; clicked => { root.discard(); } }
+                if root.kind == 2: Key {
+                    height: 32px;
+                    kind: 2;
+                    icon: "trash";
+                    text: root.ok.to-uppercase();
+                    label: root.ok;
+                    enabled: root.ok-enabled;
+                    clicked => { root.confirm(); }
+                }
+                if root.kind != 2: Btn {
+                    height: 32px;
+                    primary: true;
+                    text: root.ok;
+                    enabled: root.ok-enabled;
+                    clicked => { root.confirm(); }
+                }
+            }
+        }
+    }
+}
+
+// New words being spoken: a plate with the stage line, an LED bar with the percent and
+// Cancel. It blocks clicks.
+export component Speaking inherits Rectangle {
+    callback cancel();
+    background: #0a0a0a99;
+    TouchArea { }
+    Plate {
+        width: min(parent.width - 48px, 380px);
+        height: box.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 - 30px;
+        box := VerticalLayout {
+            padding-left: 16px;
+            padding-right: 16px;
+            padding-top: 16px;
+            padding-bottom: 14px;
+            spacing: 8px;
+            Head { text: "Speaking new words"; }
+            Text {
+                text: Pages.speak-stage;
+                color: Ps.mute;
+                font-family: "Inter Tight";
+                font-size: 12px;
+                font-weight: 500;
+                wrap: word-wrap;
+            }
+            HorizontalLayout {
+                padding-top: 4px;
+                spacing: 12px;
+                Rectangle {
+                    horizontal-stretch: 1;
+                    height: 22px;
+                    Oled { width: parent.width; height: parent.height; radius: 5px; bezel: 2px; }
+                    Segments {
+                        x: 8px;
+                        y: 7px;
+                        width: parent.width - 16px;
+                        height: 8px;
+                        cell: 7px;
+                        value: Pages.speak-progress;
+                    }
+                }
+                Text {
+                    text: round(Pages.speak-progress * 100) + "%";
+                    color: Ps.ink;
+                    font-family: "JetBrains Mono";
+                    font-size: 10.5px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                    width: 34px;
+                    horizontal-alignment: right;
+                }
+            }
+            HorizontalLayout {
+                padding-top: 6px;
+                alignment: end;
+                Btn { height: 32px; text: "Cancel"; clicked => { root.cancel(); } }
+            }
+        }
+    }
+}
+
+// Files dragged over the window: an orange frame inset 12px, the Import key 10 and the
+// words on a screen strip.
+export component Drop inherits Rectangle {
+    background: #ff5a1e2e;
+    Rectangle {
+        x: 12px;
+        y: 12px;
+        width: parent.width - 24px;
+        height: parent.height - 24px;
+        border-radius: 10px;
+        border-width: 2px;
+        border-color: Ps.or;
+    }
+    // The key and the words on a pale plate in the middle.
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: max(drop-text.preferred-width + 42px, 96px) + 32px;
+        height: 72px + 14px + 30px + 32px;
+        border-radius: 12px;
+        background: #eeece7f0;
+    }
+    VerticalLayout {
+        alignment: center;
+        spacing: 14px;
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                width: 96px;
+                height: 72px;
+                SynKey { x: 0; y: 0; width: parent.width; height: parent.height; kind: 1; radius: 8px; }
+                Text {
+                    x: 7px;
+                    y: 6px;
+                    text: "10";
+                    color: #ffffff99;
+                    font-family: "JetBrains Mono";
+                    font-size: 8px;
+                    font-weight: 700;
+                }
+                Icon {
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                    name: "import";
+                    tint: #ffffff;
+                    stroke-width: 1.8px;
+                    width: 20px;
+                    height: 20px;
+                }
+            }
+        }
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                width: drop-text.preferred-width + 42px;
+                height: 30px;
+                Oled { width: parent.width; height: parent.height; radius: 6px; bezel: 2px; }
+                Rectangle {
+                    x: 13px;
+                    y: (parent.height - self.height) / 2;
+                    width: 6px;
+                    height: 6px;
+                    border-radius: 3px;
+                    background: Ps.or;
+                }
+                drop-text := Text {
+                    x: 28px;
+                    height: parent.height;
+                    text: "Drop to import";
+                    color: Ps.px;
+                    font-family: "JetBrains Mono";
+                    font-size: 11.5px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}

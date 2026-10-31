@@ -1406,8 +1406,20 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      Spatial Glass built 2026-10-30 (see "Spatial Glass on every other page").
      Car Dashboard built 2026-10-30 (`Theme.pages` 6, see "Built in step 5, Car Dashboard on
      every other page").
-   - Other pages, batch 2 (Pocket, Quest Menu, Brick Phone, Answering Machine, Pocket Synth,
-     Fighter Select) and batch 3 (Cozy Cabin, Pinball, Phonograph): mockups next.
+     All five merged 2026-10-31 (#120 to #125, with the dialog question-mark fix); exe 136 MB.
+   - Other pages of the last 9 (Pocket, Quest Menu, Brick Phone, Answering Machine, Pocket
+     Synth, Fighter Select, Cozy Cabin, Pinball, Phonograph): mockups approved by Max
+     2026-10-31, in `mockups/device-themes/<skin>-pages/`. Max's picks: widget variant A for
+     all nine; Pocket's bezel keys act (A does the page's main thing, B goes back, the pills
+     Rename and Delete); Brick Phone portrait slides the keypad away on the other pages
+     (variant B); Pocket Synth's dialog Delete stays a dark key. Defaults taken without a
+     question: no new keyboard behaviour (Brick Phone keypad digits do not pick items, Pocket's
+     D pad only skips 5 s where the app already does), Quest Menu toggles are the ON OFF pair
+     (A), flavour labels stay as in batch 1. Small mockup faults the builders fix: Quest widget
+     A PAUSED label (class clash), Brick invalid-name panel squashed and the 2 key reading ASK
+     (built page says ABC), Pinball wide Export position and portrait main-page overlaps.
+   - Size (Max, 2026-10-31): the nine would bring the exe to about 235 MB. Build all nine,
+     then one size pass (palette PNGs, shared frames deduped) to pull it back toward 200 MB.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`
      (`.claude/targets/shared`), never a target per copy.
 6. **Docs:** update `docs/plan.md` section 16 and the building notes.

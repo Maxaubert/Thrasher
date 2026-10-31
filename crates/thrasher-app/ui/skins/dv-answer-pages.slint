@@ -1,0 +1,2775 @@
+// The Answering Machine look of every page but the main one (mockups in
+// docs/mockups/device-themes/dv-answer-pages/): every page stays the beige machine. One
+// clip plays back like a message (its number and counter in red segments on the smoked
+// display, the tape as a waveform in a smoked well, the transport as rubber keys in a
+// well, the words on ruled message paper); settings, models and Ask are cards of message
+// paper; merging is a short message log with the new clip's cassette; the widget is a
+// tiny machine front; every question is a small machine panel with a smoked title strip.
+//
+// Behaviour is shared: the state is in the Pages and Main globals, the actions are
+// AppWindow's (reached through the callbacks here), and the shared widgets (the
+// transcript card, menus, dropdowns, switches, keys) draw their machine look themselves
+// for this skin (`Theme.answer`). The parts come from dv-answer-parts.slint, the main
+// page's art and fonts.
+
+import { ThemeGallery } from "../gallery.slint";
+import { Theme, Main, Pages, Tips, Icon, Btn, IconBtn, Toggle, Select, TextField, ShortcutBox, Scroller, OrderList, TranscriptCard, ExportButton, TrimTouch, AskSource, Am, AmKey, AmFace, AmSmoke } from "../common.slint";
+import { Art, Slice3, Lab, Seg, Title, Micro, Grille } from "dv-answer-parts.slint";
+
+// ---------- Small parts ----------
+
+// Small caps printed on paper or plastic: the heads of cards and logs.
+component Caps inherits Text {
+    color: Am.print;
+    font-family: "Barlow Condensed";
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2.6px;
+    vertical-alignment: center;
+    accessible-role: none;
+}
+
+// The unlit layout of a clock string ("0:12", "1:09:26"), by its length.
+global Clock {
+    public pure function ghost(s: string) -> string {
+        return s.character-count <= 4 ? "8:88" : s.character-count == 5 ? "88:88" : s.character-count == 7 ? "8:88:88" : "88:88:88";
+    }
+    public pure function two(n: int) -> string {
+        return (n < 10 ? "0" : "") + n;
+    }
+}
+
+// A lamp with its glow: 0 red, 1 green, 2 amber, 3 dark.
+component Dot inherits Rectangle {
+    in property <int> kind;
+    in property <length> size: 7px;
+    width: root.size;
+    height: root.size;
+    property <color> c: root.kind == 0 ? Am.led : root.kind == 1 ? Am.green : root.kind == 2 ? Am.amber : #5a1a12;
+    Rectangle {
+        visible: root.kind != 3;
+        x: -2px;
+        y: -2px;
+        width: parent.width + 4px;
+        height: parent.height + 4px;
+        border-radius: self.width / 2;
+        background: root.c.with-alpha(0.3);
+    }
+    Rectangle {
+        border-radius: self.width / 2;
+        background: root.c;
+    }
+}
+
+// A number on a small smoked display: the places in a log, the sources, a count.
+component NumChip inherits Rectangle {
+    in property <int> n;
+    in property <length> size: 10px;
+    width: root.size * 2.5;
+    height: root.size * 1.65;
+    border-radius: 3px;
+    background: Am.smoke;
+    Text {
+        text: Clock.two(root.n);
+        color: Am.led;
+        font-family: "Memo Segments";
+        font-size: root.size;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+}
+
+// A rubber key in a row: an icon and a word, red for the main action, held down with an
+// amber lamp while it is latched (a picked filter). Keeps the classic name and tip.
+component RKey inherits Rectangle {
+    in property <string> icon;
+    in property <length> icon-size: 13px;
+    in property <string> text;
+    in property <string> label: root.text;
+    in property <string> tip;
+    in property <bool> red;
+    in property <bool> enabled: true;
+    in property <bool> latched;
+    in property <length> font-size: 10px;
+    in property <length> spacing: 2px;
+    // The words start on the left (the wide filter column) instead of in the middle.
+    in property <bool> left;
+    callback clicked;
+    property <bool> down: root.latched || (t.pressed && t.has-hover && root.enabled);
+    property <color> ink: !root.enabled ? (root.red ? #f0c9bf : #8f877d) : root.red ? Am.rec-ink : Am.key-ink;
+    height: 30px;
+    min-width: row.preferred-width + 22px + (root.latched ? 8px : 0);
+    preferred-width: self.min-width;
+    horizontal-stretch: 0;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    AmKey {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        kind: root.red ? 1 : 0;
+        down: root.down;
+        hover: t.has-hover;
+        enabled: root.enabled;
+    }
+    if root.latched: Rectangle {
+        x: parent.width - 11px;
+        y: 7px;
+        width: 5px;
+        height: 5px;
+        border-radius: 2.5px;
+        background: Am.amber;
+    }
+    row := HorizontalLayout {
+        x: root.left ? 11px : (parent.width - self.preferred-width - (root.latched ? 8px : 0)) / 2;
+        y: root.down ? 2px : 0;
+        width: self.preferred-width;
+        height: parent.height;
+        spacing: 6px;
+        if root.icon != "": Icon {
+            name: root.icon;
+            tint: root.ink;
+            width: root.icon-size;
+            height: root.icon-size;
+            y: (parent.height - self.height) / 2;
+        }
+        if root.text != "": Text {
+            text: root.text;
+            color: root.ink;
+            font-family: "Barlow Condensed";
+            font-size: root.font-size;
+            font-weight: 700;
+            letter-spacing: root.spacing;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        @children
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { if (root.tip != "") { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); } }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The word printed under a key (the wide transport).
+component Under inherits Text {
+    color: Am.print;
+    font-family: "Barlow Condensed";
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 1.53px;
+    horizontal-alignment: center;
+    accessible-role: none;
+}
+
+// A card of message paper: its head in small caps (and a red note on the right) over a
+// red rule, then its contents.
+component Paper inherits Rectangle {
+    in property <string> title;
+    in property <string> note;
+    in property <color> note-ink: Am.rec;
+    in property <length> head-h: 22px;
+    in property <length> side: 12px;
+    // A lamp before the note (WORKING).
+    in property <int> lamp: -1;
+    background: Am.paper;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: Am.paper-edge;
+    Rectangle { x: 8px; y: 1px; width: parent.width - 16px; height: 1px; background: #00000017; }
+    VerticalLayout {
+        padding: 1px;
+        if root.title != "": HorizontalLayout {
+            height: root.head-h;
+            padding-left: root.side;
+            padding-right: root.side;
+            spacing: 6px;
+            Caps { text: root.title; horizontal-stretch: 1; }
+            if root.lamp >= 0: VerticalLayout { alignment: center; Dot { kind: root.lamp; } }
+            if root.note != "": Caps { text: root.note; color: root.note-ink; letter-spacing: 1.8px; }
+        }
+        if root.title != "": Rectangle { height: 1.5px; background: Am.rule; }
+        @children
+    }
+}
+
+// A cream cassette label to type on, with its red rule; red edged when the text is wrong.
+component Field inherits TextField {
+    height: 30px;
+    radius: 3px;
+    fill: Am.cream;
+    rest-edge: Am.edge;
+    ink: Am.name-ink;
+    hint: #a2957b;
+    font-size: 13px;
+    family: "Courier Prime";
+    side: 10px;
+    focus-edge: Am.rec;
+    focus-ring: #cf3c2826;
+    select-fill: Am.rec;
+    select-ink: Am.rec-ink;
+    Rectangle { x: 1px; y: parent.height - 5px; width: parent.width - 2px; height: 2px; background: Am.rec; }
+}
+
+// The sunk search pill of the models page.
+component Pill inherits TextField {
+    height: 30px;
+    radius: 15px;
+    fill: #c3b79c;
+    rest-edge: #b2a589;
+    ink: Am.ink;
+    hint: #6c604b;
+    font-size: 12.5px;
+    family: "Courier Prime";
+    side: 11px;
+    focus-edge: Am.rec;
+    focus-ring: #cf3c2826;
+}
+
+// A message: the smoked strip with a lamp, floating where the page puts it.
+component Toast inherits Rectangle {
+    in property <string> text;
+    in property <length> most: 400px;
+    width: min(msg.preferred-width + 40px, root.most);
+    height: 28px;
+    AmSmoke { x: 0; y: 0; width: parent.width; height: parent.height; r: 6px; }
+    Dot { x: 11px; y: (parent.height - self.height) / 2; kind: 1; }
+    msg := Text {
+        x: 26px;
+        width: parent.width - 36px;
+        height: parent.height;
+        text: root.text;
+        color: #f0d9cf;
+        font-family: "Courier Prime";
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// The keys' well: a sunk tray in the plastic.
+component Well inherits Rectangle {
+    AmFace { x: 0; y: 0; width: parent.width; height: parent.height; r: 12px; top: #b7aa8f; bottom: #c8bca2; }
+    Rectangle { x: 10px; y: 0; width: parent.width - 20px; height: 2px; background: #00000026; }
+    Rectangle { x: 10px; y: parent.height; width: parent.width - 20px; height: 1px; background: #ffffff99; }
+}
+
+// The plastic seam between the machine and the paper (upright), or above the keys.
+component Seam inherits Rectangle {
+    height: 2px;
+    vertical-stretch: 0;
+    Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: Am.edge; }
+    Rectangle { x: 0; y: 1px; width: parent.width; height: 1px; background: #ffffff80; }
+}
+component VSeam inherits Rectangle {
+    width: 2px;
+    horizontal-stretch: 0;
+    Rectangle { x: 0; y: 0; width: 1px; height: parent.height; background: Am.edge; }
+    Rectangle { x: 1px; y: 0; width: 1px; height: parent.height; background: #ffffff80; }
+}
+
+// A slide switch with its name beside it, which takes the click too. The switch keeps
+// the classic name.
+component Switch inherits HorizontalLayout {
+    horizontal-stretch: 0;
+    in property <string> text;
+    in property <string> label;
+    in-out property <bool> checked;
+    in property <bool> enabled: true;
+    callback toggled(bool);
+    spacing: 4px;
+    alignment: start;
+    VerticalLayout {
+        alignment: center;
+        Toggle {
+            label: root.label;
+            enabled: root.enabled;
+            checked <=> root.checked;
+            toggled(on) => { root.toggled(on); }
+        }
+    }
+    Text {
+        text: root.text;
+        color: Am.print;
+        opacity: root.enabled ? 1 : 0.5;
+        font-family: "Barlow Condensed";
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1.54px;
+        vertical-alignment: center;
+        accessible-role: none;
+        TouchArea {
+            enabled: root.enabled;
+            mouse-cursor: pointer;
+            clicked => { root.checked = !root.checked; root.toggled(root.checked); }
+        }
+    }
+}
+
+// An LED bar that fills with a part (0 to 1): red, or green for downloads.
+component LedBar inherits Rectangle {
+    in property <float> part;
+    in property <int> n: 16;
+    in property <bool> green;
+    height: 14px;
+    border-radius: 4px;
+    background: #241a16;
+    border-width: 1.5px;
+    border-color: #a39679;
+    property <int> on: round(clamp(root.part, 0, 1) * root.n);
+    property <length> step: (root.width - 6px) / root.n;
+    for i in root.n: Rectangle {
+        x: 3px + i * root.step;
+        y: 3px;
+        width: root.step - 2px;
+        height: parent.height - 6px;
+        border-radius: 1px;
+        background: i < root.on ? (root.green ? Am.green : Am.led) : #3a2a24;
+    }
+}
+
+// ---------- One clip ----------
+
+// The smoked display of a clip: its number of how many, its name (or the field while it
+// is renamed), when and how long, and the counter with the state.
+component ClipDisplay inherits Rectangle {
+    in property <bool> big;
+    callback rename(string);
+    callback cancel();
+    callback typed(string);
+    property <bool> active: Main.active-clip == Main.selected;
+    property <string> pos: root.active ? Main.play-position : "0:00";
+    property <string> len: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].duration : "";
+    property <string> name: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].name : "";
+    property <int> state: Pages.editing ? 2 : root.active && Main.playing ? 1 : 0;
+    height: root.big ? 124px : 92px;
+    accessible-role: AccessibleRole.text;
+    accessible-label: (root.state == 2 ? "Editing " : root.state == 1 ? "Playing " : "Stopped ") + root.pos + " of " + root.len;
+    Slice3 {
+        pad: 4px;
+        cap: 14px;
+        l: root.big ? @image-url("dv-answer/disp-w-l.png") : @image-url("dv-answer/disp-p-l.png");
+        m: root.big ? @image-url("dv-answer/disp-w-m.png") : @image-url("dv-answer/disp-p-m.png");
+        r: root.big ? @image-url("dv-answer/disp-w-r.png") : @image-url("dv-answer/disp-p-r.png");
+        l2: root.big ? @image-url("dv-answer/disp-w-l@2x.png") : @image-url("dv-answer/disp-p-l@2x.png");
+        m2: root.big ? @image-url("dv-answer/disp-w-m@2x.png") : @image-url("dv-answer/disp-p-m@2x.png");
+        r2: root.big ? @image-url("dv-answer/disp-w-r@2x.png") : @image-url("dv-answer/disp-p-r@2x.png");
+    }
+    HorizontalLayout {
+        padding-left: root.big ? 16px : 12px;
+        padding-right: root.big ? 16px : 12px;
+        padding-top: root.big ? 12px : 9px;
+        padding-bottom: root.big ? 12px : 9px;
+        VerticalLayout {
+            alignment: space-between;
+            Lab { text: "MESSAGE"; color: Am.lab; }
+            HorizontalLayout {
+                alignment: start;
+                Seg {
+                    text: Clock.two(Main.selected + 1);
+                    ghost: Main.selected + 1 >= 100 ? "888" : "88";
+                    size: root.big ? 58px : 40px;
+                }
+            }
+            Lab { text: "OF " + Clock.two(Main.clips.length); color: #7d5a4f; }
+        }
+        Rectangle { width: root.big ? 18px : 12px; }
+        Rectangle { width: 1px; background: #ffffff12; }
+        Rectangle { width: root.big ? 18px : 12px; }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: space-between;
+            if !Pages.renaming: Text {
+                text: root.name;
+                color: #f0d9cf;
+                font-family: "Courier Prime";
+                font-size: root.big ? 17px : 14px;
+                font-weight: 700;
+                overflow: elide;
+            }
+            if Pages.renaming: Field {
+                height: 26px;
+                label: "Clip name";
+                text: root.name;
+                takes-escape: true;
+                init => { self.grab(); }
+                accepted(t) => { root.rename(t); }
+                escaped => { root.cancel(); }
+                edited(t) => { root.typed(t); }
+            }
+            Text {
+                text: Pages.detail-meta.to-uppercase();
+                color: #b48e80;
+                font-family: "Barlow Condensed";
+                font-size: root.big ? 10px : 9px;
+                font-weight: 700;
+                letter-spacing: 1.8px;
+                overflow: elide;
+                accessible-role: none;
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                VerticalLayout {
+                    alignment: end;
+                    Seg {
+                        text: root.pos;
+                        ghost: Clock.ghost(root.pos);
+                        size: root.big ? 32px : 24px;
+                    }
+                }
+                VerticalLayout {
+                    alignment: end;
+                    Text {
+                        text: "/";
+                        color: #7d3a31;
+                        font-family: "Barlow Condensed";
+                        font-size: 13px;
+                        font-weight: 700;
+                        accessible-role: none;
+                    }
+                }
+                VerticalLayout {
+                    alignment: end;
+                    Seg {
+                        text: root.len;
+                        ghost: Clock.ghost(root.len);
+                        size: root.big ? 16px : 13px;
+                        lit: #c4553f;
+                    }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                VerticalLayout {
+                    alignment: end;
+                    HorizontalLayout {
+                        spacing: 6px;
+                        height: 14px;
+                        VerticalLayout { alignment: center; Dot { kind: root.state == 2 ? 2 : root.state == 1 ? 0 : 3; } }
+                        Text {
+                            text: root.state == 2 ? "EDIT" : root.state == 1 ? "PLAY" : "STOP";
+                            color: #e7c9bd;
+                            font-family: "Barlow Condensed";
+                            font-size: root.big ? 11px : 10px;
+                            font-weight: 700;
+                            letter-spacing: 2.4px;
+                            vertical-alignment: center;
+                            accessible-role: none;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// The tape: the clip's waveform in a smoked well, the played part red, the trimmed ends
+// darkened, two cream tabs trim it and an amber line plays. TrimTouch drags the tabs and
+// seeks.
+component SeekStrip inherits Rectangle {
+    callback trimmed(float, float);
+    callback tapped();
+    property <bool> active: Main.active-clip == Main.selected;
+    property <float> played: root.active ? clamp(Main.play-fraction, 0, 1) : 0;
+    property <length> inner-w: root.width - 16px;
+    property <length> start-x: Pages.trim-start * root.inner-w;
+    property <length> end-x: Pages.trim-end * root.inner-w;
+    property <int> n: max(1, floor(root.inner-w / 4px));
+    AmSmoke { x: 0; y: 0; width: parent.width; height: parent.height; r: 7px; }
+    Rectangle {
+        x: 8px;
+        y: 6px;
+        width: root.inner-w;
+        height: parent.height - 12px;
+        for i in root.n: Rectangle {
+            property <float> v: Pages.detail-wave.length > 0 ? Pages.detail-wave[floor(i * Pages.detail-wave.length / root.n)] : 0.06;
+            x: i * root.inner-w / root.n;
+            width: 2.4px;
+            height: max(2px, self.v * (parent.height - 2px));
+            y: (parent.height - self.height) / 2;
+            border-radius: 0.8px;
+            background: (i + 0.5) / root.n <= root.played ? Am.led : #6e3b31;
+        }
+    }
+    Rectangle { x: 0; y: 0; width: 8px + root.start-x; height: parent.height; border-top-left-radius: 7px; border-bottom-left-radius: 7px; background: #0000008c; }
+    Rectangle { x: 8px + root.end-x; y: 0; width: parent.width - 8px - root.end-x; height: parent.height; border-top-right-radius: 7px; border-bottom-right-radius: 7px; background: #0000008c; }
+    if root.active: Rectangle {
+        x: 8px + root.played * root.inner-w - 1px;
+        y: 4px;
+        width: 2px;
+        height: parent.height - 8px;
+        background: Am.amber;
+    }
+    for k in [0, 1]: Rectangle {
+        property <bool> hot: touch.grab == k + 1 || (touch.has-hover && abs(touch.at - (k == 0 ? root.start-x : root.end-x)) <= 8px);
+        x: 8px + (k == 0 ? root.start-x : root.end-x) - 4px;
+        y: 2px;
+        width: 8px;
+        height: parent.height - 4px;
+        Rectangle { x: 0; y: 1px; width: parent.width; height: parent.height; border-radius: 3px; background: #00000099; }
+        AmFace { x: 0; y: 0; width: parent.width; height: parent.height; r: 3px; top: parent.hot ? #fff6e6 : #efe7d6; bottom: parent.hot ? #ddd2bb : #c9bea6; }
+        Rectangle { x: 3px; y: parent.height * 0.4; width: 2px; height: parent.height * 0.2; background: #9d917a; }
+    }
+    touch := TrimTouch {
+        pad: 8px;
+        trimmed(a, b) => { root.trimmed(a, b); }
+        tapped => { root.tapped(); }
+    }
+}
+
+// The place, TAPE and the length under the tape.
+component Ticks inherits HorizontalLayout {
+    height: 11px;
+    Caps { text: Main.active-clip == Main.selected ? Main.play-position : "0:00"; color: Am.print-soft; font-size: 8.5px; letter-spacing: 1.36px; horizontal-stretch: 1; }
+    Caps { text: "TAPE"; color: Am.print-soft; font-size: 8.5px; letter-spacing: 1.36px; horizontal-stretch: 1; horizontal-alignment: center; }
+    Caps {
+        text: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].duration : "";
+        color: Am.print-soft;
+        font-size: 8.5px;
+        letter-spacing: 1.36px;
+        horizontal-stretch: 1;
+        horizontal-alignment: right;
+    }
+}
+
+// Loop as the machine's slide switch with LOOP beside it; still the classic Loop button.
+component Loop inherits Rectangle {
+    callback changed();
+    width: 64px;
+    height: 16px;
+    accessible-role: button;
+    accessible-label: "Loop";
+    accessible-checked: Pages.looping;
+    accessible-action-default => { Pages.looping = !Pages.looping; root.changed(); }
+    Rectangle {
+        x: 0;
+        y: 0;
+        width: 34px;
+        height: 16px;
+        Rectangle { x: 0; y: 1px; width: parent.width; height: parent.height; border-radius: 3px; background: #ffffff8c; }
+        Rectangle { x: 0; y: 0; width: parent.width; height: parent.height; border-radius: 3px; background: #2a221d; }
+        Rectangle {
+            visible: Pages.looping;
+            x: 0;
+            y: 0;
+            width: 17px;
+            height: parent.height;
+            border-top-left-radius: 3px;
+            border-bottom-left-radius: 3px;
+            background: #6b1a10;
+        }
+        Rectangle { x: 3px; y: 0; width: parent.width - 6px; height: 2px; background: #00000059; }
+        Rectangle {
+            x: Pages.looping ? 17px : 2px;
+            y: 2px;
+            width: 15px;
+            height: 12px;
+            Rectangle { x: 0; y: 1px; width: parent.width; height: parent.height; border-radius: 2px; background: #00000080; }
+            AmFace { x: 0; y: 0; width: parent.width; height: parent.height; r: 2px; top: #efe7d6; bottom: #c9bea6; }
+            Rectangle { x: 2px; y: 0; width: parent.width - 4px; height: 1px; background: #ffffff; }
+            for g in 3: Rectangle { x: 5px + g * 2px; y: 3px; width: 1px; height: 6px; background: #9d917a; }
+        }
+    }
+    Text {
+        x: 40px;
+        y: 0;
+        height: parent.height;
+        text: "LOOP";
+        color: Pages.looping ? Am.rec : Am.print;
+        font-family: "Barlow Condensed";
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1.54px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Pages.looping = !Pages.looping; root.changed(); }
+    }
+}
+
+// The transport in its well: back 5 seconds, play (held down with its lamp while it
+// plays), forward 5 seconds, the speed chip and Loop. Wide windows print REPEAT, PLAY and
+// SKIP under the keys.
+component Transport inherits Rectangle {
+    in property <bool> big;
+    callback toggle-play();
+    callback skip(float);
+    callback speed-changed(int);
+    callback refocus();
+    property <bool> playing: Main.active-clip == Main.selected && Main.playing;
+    property <length> kh: root.big ? 50px : 40px;
+    property <length> kw: root.big ? 58px : 48px;
+    height: root.big ? 82px : 56px;
+    Well { x: 0; y: 0; width: parent.width; height: parent.height; }
+    HorizontalLayout {
+        padding-left: root.big ? 12px : 10px;
+        padding-right: root.big ? 12px : 10px;
+        padding-top: 8px;
+        padding-bottom: root.big ? 6px : 8px;
+        spacing: root.big ? 10px : 8px;
+        VerticalLayout {
+            spacing: 5px;
+            alignment: start;
+            RKey {
+                width: root.kw;
+                height: root.kh;
+                icon: "rew";
+                icon-size: 13px;
+                text: "5";
+                font-size: 11px;
+                spacing: 0;
+                label: "Back 5 seconds";
+                tip: "Back 5 seconds";
+                clicked => { root.skip(-5); root.refocus(); }
+            }
+            if root.big: Under { text: "REPEAT"; }
+        }
+        VerticalLayout {
+            spacing: 5px;
+            alignment: start;
+            RKey {
+                width: root.big ? 84px : 62px;
+                height: root.kh;
+                icon: root.playing ? "pause" : "play";
+                icon-size: root.big ? 18px : 15px;
+                latched: root.playing;
+                label: root.playing ? "Pause" : "Play";
+                clicked => { root.toggle-play(); root.refocus(); }
+            }
+            if root.big: Under { text: "PLAY"; }
+        }
+        VerticalLayout {
+            spacing: 5px;
+            alignment: start;
+            RKey {
+                width: root.kw;
+                height: root.kh;
+                text: "5";
+                font-size: 11px;
+                spacing: 0;
+                label: "Forward 5 seconds";
+                tip: "Forward 5 seconds";
+                clicked => { root.skip(5); root.refocus(); }
+                Icon { name: "ff"; tint: Am.key-ink; width: 13px; height: 13px; y: (parent.height - self.height) / 2; }
+            }
+            if root.big: Under { text: "SKIP"; }
+        }
+        Rectangle { horizontal-stretch: 1; }
+        VerticalLayout {
+            alignment: center;
+            spacing: 8px;
+            padding-bottom: root.big ? 4px : 0;
+            Select {
+                width: 86px;
+                height: 26px;
+                label: "Speed";
+                model: ["0.75×", "1.0×", "1.25×", "1.5×", "2.0×"];
+                current-index <=> Pages.speed-index;
+                selected(i) => { root.speed-changed(i); root.refocus(); }
+            }
+            Loop { changed => { root.refocus(); } }
+        }
+    }
+}
+
+// Clean voice on export, the clip's one option.
+component CleanVoice inherits HorizontalLayout {
+    callback changed-to(bool);
+    spacing: 10px;
+    Switch {
+        text: "CLEAN VOICE";
+        label: "Clean voice on export";
+        checked <=> Pages.clean-voice;
+        toggled(on) => { root.changed-to(on); }
+    }
+    Text {
+        text: "Less noise";
+        color: Am.print-soft;
+        font-family: "Barlow Condensed";
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.66px;
+        vertical-alignment: center;
+    }
+    Rectangle { horizontal-stretch: 1; }
+}
+
+// The keys along the top: back to the clips, Rename, Delete and Export.
+component ClipKeys inherits HorizontalLayout {
+    callback back();
+    callback rename();
+    callback delete();
+    callback refocus();
+    spacing: 8px;
+    height: 30px;
+    RKey { icon: "back"; text: "CLIPS"; label: "Back to Clips"; clicked => { root.back(); } }
+    RKey {
+        icon: "pencil";
+        icon-size: 12px;
+        text: "RENAME";
+        label: "Rename clip";
+        tip: "Rename";
+        enabled: !Main.recording;
+        clicked => { root.rename(); }
+    }
+    RKey {
+        icon: "trash";
+        icon-size: 12px;
+        text: "DELETE";
+        label: "Delete clip";
+        tip: "Delete";
+        enabled: !Main.recording;
+        clicked => { root.delete(); }
+    }
+    Rectangle { horizontal-stretch: 1; }
+    ExportButton {
+        height: 30px;
+        drop: true;
+        format: Pages.export-format;
+        subtitles: Pages.transcript != "";
+        state: Main.export-state;
+        progress: Main.export-progress;
+        export(kind) => { Main.export-as(kind); root.refocus(); }
+    }
+}
+
+// Cancel and Rename under the display while the clip is renamed.
+component RenameKeys inherits HorizontalLayout {
+    callback rename();
+    callback cancel();
+    alignment: end;
+    spacing: 8px;
+    height: 30px;
+    Btn { height: 30px; least: 76px; text: "Cancel"; clicked => { root.cancel(); } }
+    Btn { height: 30px; least: 76px; primary: true; text: "Rename"; clicked => { root.rename(); } }
+}
+
+// A merged clip's parts, as a short log that can be put in another order.
+component Parts inherits Paper {
+    callback moved(int, int);
+    callback take-out(int);
+    callback rename(int);
+    title: "PARTS";
+    note: Pages.parts-busy ? "WORKING" : Pages.parts.length + " PARTS";
+    lamp: Pages.parts-busy ? 2 : -1;
+    vertical-stretch: 0;
+    OrderList {
+        rows: Pages.parts;
+        menu: true;
+        enabled: !Pages.parts-busy && !Main.recording;
+        moved(a, b) => { root.moved(a, b); }
+        act(i) => { root.take-out(i); }
+        rename(i) => { root.rename(i); }
+    }
+}
+
+// The one-clip page. Portrait: the keys, the display, the tape, the transport, Clean
+// voice and the transcript paper, top to bottom. Wide: the machine on the left (with
+// the micro cassette turning while it plays), the paper on the right.
+export component ClipPage inherits VerticalLayout {
+    in property <bool> narrow;
+    in property <bool> wide;
+    callback go(int);
+    callback refocus();
+    // Leaving the editor asks about unsaved changes first (AppWindow.leave-editor).
+    callback leave-editor(int);
+    callback start-edit();
+    callback ask-delete(int);
+    callback rename-selected(string);
+    callback toggle-play();
+    callback skip(float);
+    callback speed-changed(int);
+    callback trim-changed(float, float);
+    callback clean-voice-changed(bool);
+    callback parts-move(int, int);
+    callback part-take-out(int);
+    callback rename-part(int);
+    // The transcript card's actions (see TranscriptCard).
+    callback choose-lang(string);
+    callback lang-filter(string);
+    callback install-for(int);
+    callback summarise();
+    callback edit-changed(string);
+    callback apply-transcript(string);
+    callback transcribe();
+    callback seek-word(int);
+    pure callback edit-markup(string) -> styled-text;
+    pure callback plain-selection(string, int, int) -> string;
+
+    property <string> name: Main.selected >= 0 && Main.selected < Main.clips.length ? Main.clips[Main.selected].name : "";
+    // What the rename field holds, for the Rename key under the display.
+    property <string> draft;
+
+    function rename(t: string) {
+        Pages.renaming = false;
+        root.rename-selected(t);
+        root.refocus();
+    }
+    function back() {
+        if (Pages.editing) { root.leave-editor(0); } else { root.go(0); }
+    }
+
+    Title { settings: false; go(p) => { root.go(p); } }
+
+    // Portrait.
+    if !root.wide: Rectangle {
+        vertical-stretch: 1;
+        VerticalLayout {
+            padding-left: 12px;
+            padding-right: 12px;
+            padding-top: 10px;
+            padding-bottom: 12px;
+            spacing: 10px;
+            ClipKeys {
+                back => { root.back(); }
+                rename => { root.draft = ""; Pages.renaming = true; }
+                delete => { root.ask-delete(Main.selected); }
+                refocus => { root.refocus(); }
+            }
+            ClipDisplay {
+                rename(t) => { root.rename(t); }
+                cancel => { Pages.renaming = false; root.refocus(); }
+                typed(t) => { root.draft = t; }
+            }
+            if Pages.renaming: RenameKeys {
+                rename => { root.rename(root.draft != "" ? root.draft : root.name); }
+                cancel => { Pages.renaming = false; root.refocus(); }
+            }
+            VerticalLayout {
+                spacing: 5px;
+                SeekStrip {
+                    height: 62px;
+                    trimmed(a, b) => { root.trim-changed(a, b); }
+                    tapped => { root.refocus(); }
+                }
+                Ticks { }
+            }
+            Transport {
+                toggle-play => { root.toggle-play(); }
+                skip(s) => { root.skip(s); }
+                speed-changed(i) => { root.speed-changed(i); }
+                refocus => { root.refocus(); }
+            }
+            CleanVoice { changed-to(on) => { root.clean-voice-changed(on); } }
+            if Pages.parts.length >= 2: Parts {
+                moved(a, b) => { root.parts-move(a, b); }
+                take-out(i) => { root.part-take-out(i); }
+                rename(i) => { root.rename-part(i); }
+            }
+            TranscriptCard {
+                vertical-stretch: 1;
+                clip-name: root.name;
+                transcript: Pages.transcript;
+                transcribing: Pages.transcribing;
+                translating: Pages.translating;
+                translation: Pages.translation;
+                shown-lang <=> Pages.shown-lang;
+                langs: Pages.langs;
+                choose-lang(c) => { root.choose-lang(c); }
+                lang-filter(t) => { root.lang-filter(t); }
+                install-for(k) => { root.install-for(k); }
+                summary: Pages.summary;
+                summarising: Pages.summarising;
+                can-ai: Main.can-ai;
+                show-summary <=> Pages.show-summary;
+                summarise => { root.summarise(); }
+                transcribe-progress: Pages.transcribe-progress;
+                words: Pages.words;
+                current-word: Pages.current-word;
+                show-marks <=> Pages.show-marks;
+                can-transcribe: Pages.can-transcribe;
+                recording: Main.recording;
+                editing: Pages.editing;
+                edit-draft <=> Pages.edit-draft;
+                edit-badge: Pages.edit-badge;
+                speaking: Pages.speaking;
+                edit => { root.start-edit(); }
+                edited(t) => { root.edit-changed(t); }
+                cancel => { root.leave-editor(-1); }
+                save => { root.apply-transcript(Pages.edit-draft); }
+                edit-markup(t) => { return root.edit-markup(t); }
+                plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+                transcribe => { root.transcribe(); root.refocus(); }
+                seek-word(i) => { root.seek-word(i); root.refocus(); }
+            }
+        }
+        if Main.status != "": Toast {
+            x: 24px;
+            y: parent.height - self.height - 22px;
+            most: parent.width - 48px;
+            text: Main.status;
+        }
+    }
+
+    // Wide.
+    if root.wide: Rectangle {
+        vertical-stretch: 1;
+        HorizontalLayout {
+            VerticalLayout {
+                width: 404px;
+                padding-left: 20px;
+                padding-right: 20px;
+                padding-top: 16px;
+                padding-bottom: 18px;
+                spacing: 14px;
+                ClipKeys {
+                    back => { root.back(); }
+                    rename => { root.draft = ""; Pages.renaming = true; }
+                    delete => { root.ask-delete(Main.selected); }
+                    refocus => { root.refocus(); }
+                }
+                ClipDisplay {
+                    big: true;
+                    rename(t) => { root.rename(t); }
+                    cancel => { Pages.renaming = false; root.refocus(); }
+                    typed(t) => { root.draft = t; }
+                }
+                if Pages.renaming: RenameKeys {
+                    rename => { root.rename(root.draft != "" ? root.draft : root.name); }
+                    cancel => { Pages.renaming = false; root.refocus(); }
+                }
+                VerticalLayout {
+                    spacing: 5px;
+                    SeekStrip {
+                        height: 84px;
+                        trimmed(a, b) => { root.trim-changed(a, b); }
+                        tapped => { root.refocus(); }
+                    }
+                    Ticks { }
+                }
+                Transport {
+                    big: true;
+                    toggle-play => { root.toggle-play(); }
+                    skip(s) => { root.skip(s); }
+                    speed-changed(i) => { root.speed-changed(i); }
+                    refocus => { root.refocus(); }
+                }
+                HorizontalLayout {
+                    spacing: 16px;
+                    vertical-stretch: 0;
+                    alignment: start;
+                    VerticalLayout {
+                        alignment: start;
+                        Micro {
+                            big: true;
+                            zoom: 0.82;
+                            label: root.name;
+                            turning: Main.active-clip == Main.selected && Main.playing;
+                        }
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 8px;
+                        Switch {
+                            text: "CLEAN VOICE";
+                            label: "Clean voice on export";
+                            checked <=> Pages.clean-voice;
+                            toggled(on) => { root.clean-voice-changed(on); }
+                        }
+                        Text {
+                            text: "Less noise";
+                            color: Am.print-soft;
+                            font-family: "Barlow Condensed";
+                            font-size: 11px;
+                            font-weight: 600;
+                            letter-spacing: 0.66px;
+                        }
+                    }
+                }
+                Rectangle { vertical-stretch: 1; }
+            }
+            VSeam { }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 16px;
+                padding-bottom: 18px;
+                spacing: 12px;
+                if Pages.parts.length >= 2: Parts {
+                    moved(a, b) => { root.parts-move(a, b); }
+                    take-out(i) => { root.part-take-out(i); }
+                    rename(i) => { root.rename-part(i); }
+                }
+                TranscriptCard {
+                    vertical-stretch: 1;
+                    clip-name: root.name;
+                    transcript: Pages.transcript;
+                    transcribing: Pages.transcribing;
+                    translating: Pages.translating;
+                    translation: Pages.translation;
+                    shown-lang <=> Pages.shown-lang;
+                    langs: Pages.langs;
+                    choose-lang(c) => { root.choose-lang(c); }
+                    lang-filter(t) => { root.lang-filter(t); }
+                    install-for(k) => { root.install-for(k); }
+                    summary: Pages.summary;
+                    summarising: Pages.summarising;
+                    can-ai: Main.can-ai;
+                    show-summary <=> Pages.show-summary;
+                    summarise => { root.summarise(); }
+                    transcribe-progress: Pages.transcribe-progress;
+                    words: Pages.words;
+                    current-word: Pages.current-word;
+                    show-marks <=> Pages.show-marks;
+                    can-transcribe: Pages.can-transcribe;
+                    recording: Main.recording;
+                    editing: Pages.editing;
+                    edit-draft <=> Pages.edit-draft;
+                    edit-badge: Pages.edit-badge;
+                    speaking: Pages.speaking;
+                    edit => { root.start-edit(); }
+                    edited(t) => { root.edit-changed(t); }
+                    cancel => { root.leave-editor(-1); }
+                    save => { root.apply-transcript(Pages.edit-draft); }
+                    edit-markup(t) => { return root.edit-markup(t); }
+                    plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
+                    transcribe => { root.transcribe(); root.refocus(); }
+                    seek-word(i) => { root.seek-word(i); root.refocus(); }
+                }
+            }
+        }
+        if Main.status != "": Toast {
+            x: 440px;
+            y: parent.height - self.height - 30px;
+            most: parent.width - 470px;
+            text: Main.status;
+        }
+    }
+}
+
+// ---------- Settings ----------
+
+// The plastic under the title bar of a page: BACK on the left, more keys after it.
+component TopKeys inherits HorizontalLayout {
+    callback back();
+    alignment: start;
+    spacing: 8px;
+    height: 30px;
+    vertical-stretch: 0;
+    RKey { icon: "back"; text: "BACK"; label: "Back"; clicked => { root.back(); } }
+    @children
+}
+
+// One line of a settings card: its name (and a note in small type) and its controls,
+// over a hairline.
+component SRow inherits Rectangle {
+    in property <string> label;
+    in property <string> note;
+    in property <bool> last;
+    min-height: 34px;
+    if !root.last: Rectangle { x: 0; y: parent.height - 1px; width: parent.width; height: 1px; background: Am.paper-line; }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+        spacing: 8px;
+        VerticalLayout {
+            alignment: center;
+            spacing: 1px;
+            horizontal-stretch: 1;
+            Text {
+                text: root.label;
+                color: Am.ink;
+                font-family: "Barlow Condensed";
+                font-size: 13.5px;
+                font-weight: 600;
+                letter-spacing: 0.4px;
+                overflow: elide;
+            }
+            if root.note != "": Text {
+                text: root.note;
+                color: Am.print-soft;
+                font-family: "Courier Prime";
+                font-size: 11px;
+                overflow: elide;
+            }
+        }
+        HorizontalLayout {
+            alignment: end;
+            spacing: 6px;
+            @children
+        }
+    }
+}
+
+// A value on the right of a row: OmniVoice, Downloading 64%.
+component Value inherits Text {
+    color: Am.ink;
+    font-family: "Courier Prime";
+    font-size: 12.5px;
+    font-weight: 700;
+    vertical-alignment: center;
+}
+
+// A green lamp and Ready.
+component Ready inherits HorizontalLayout {
+    spacing: 7px;
+    alignment: end;
+    VerticalLayout { alignment: center; Dot { kind: 1; } }
+    Value { text: "Ready"; }
+}
+
+// The picker chip of a row, as wide as its choice needs.
+component RowSelect inherits Select {
+    width: min(self.natural, 200px);
+    height: 26px;
+}
+
+// The settings cards: each group a card of message paper.
+component Appearance inherits Paper {
+    callback picked(int);
+    title: "APPEARANCE";
+    VerticalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-top: 2px;
+        padding-bottom: 8px;
+        ThemeGallery { picked(i) => { root.picked(i); } }
+    }
+}
+
+component Recording inherits Paper {
+    callback mic-changed(int);
+    callback system-changed(bool);
+    callback recording-limit-changed(int);
+    callback hotkey-captured(string, bool, bool, bool, bool) -> bool;
+    callback hotkey-accepted(string);
+    callback refocus();
+    title: "RECORDING";
+    SRow {
+        label: "Microphone";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "Microphone";
+                model: Pages.mic-devices;
+                current-index <=> Pages.mic-index;
+                enabled: !Main.recording;
+                selected(i) => { root.mic-changed(i); }
+            }
+        }
+    }
+    SRow {
+        label: "System audio";
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "System audio";
+                checked <=> Pages.record-system;
+                toggled(on) => { root.system-changed(on); }
+            }
+        }
+    }
+    SRow {
+        label: "Stop recording after";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "Stop recording after";
+                model: Pages.recording-limits;
+                current-index <=> Pages.recording-limit-index;
+                selected(i) => { root.recording-limit-changed(i); }
+            }
+        }
+    }
+    SRow {
+        label: "Record hotkey";
+        last: true;
+        VerticalLayout {
+            alignment: center;
+            ShortcutBox {
+                label: "Record hotkey";
+                keys: Pages.hotkey-parts;
+                captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
+                cleared => { root.hotkey-accepted(""); }
+                done => { root.refocus(); }
+            }
+        }
+        if Pages.hotkey-parts.length > 0: VerticalLayout {
+            alignment: center;
+            IconBtn {
+                size: 24px;
+                height: 22px;
+                icon: "close";
+                icon-size: 10px;
+                label: "Clear the shortcut";
+                tip: "Clear shortcut";
+                clicked => { root.hotkey-accepted(""); }
+            }
+        }
+    }
+}
+
+component Files inherits Paper {
+    callback open-folder();
+    callback change-folder();
+    callback template-edited(string);
+    callback template-accepted(string);
+    callback export-format-changed(int);
+    callback clean-voice-changed(bool);
+    callback refocus();
+    title: "FILES";
+    SRow {
+        label: "Folder";
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: min(path.preferred-width + 22px, 150px);
+                height: 28px;
+                border-radius: 3px;
+                background: Am.cream;
+                border-width: 1px;
+                border-color: Am.edge;
+                opacity: Main.recording ? 0.55 : 1;
+                path := Text {
+                    x: 10px;
+                    width: parent.width - 20px;
+                    height: parent.height - 2px;
+                    text: Pages.folder;
+                    color: Am.name-ink;
+                    font-family: "Courier Prime";
+                    font-size: 12px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                Rectangle { x: 1px; y: parent.height - 5px; width: parent.width - 2px; height: 2px; background: Am.rec; }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            IconBtn {
+                size: 24px;
+                height: 22px;
+                icon: "folder";
+                icon-size: 12px;
+                label: "Open the folder";
+                tip: "Open folder";
+                clicked => { root.open-folder(); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Btn { text: "Change"; height: 26px; enabled: !Main.recording; clicked => { root.change-folder(); } }
+        }
+    }
+    Rectangle {
+        height: names.preferred-height;
+        Rectangle { x: 0; y: parent.height - 1px; width: parent.width; height: 1px; background: Am.paper-line; }
+        names := VerticalLayout {
+            padding-left: 12px;
+            padding-right: 12px;
+            padding-top: 6px;
+            padding-bottom: 8px;
+            spacing: 4px;
+            Text {
+                text: "File name";
+                color: Am.ink;
+                font-family: "Barlow Condensed";
+                font-size: 13.5px;
+                font-weight: 600;
+                letter-spacing: 0.4px;
+            }
+            Field {
+                height: 28px;
+                label: "File name";
+                text: Pages.name-template;
+                invalid: Pages.name-invalid;
+                edited(t) => { root.template-edited(t); }
+                accepted(t) => { root.template-accepted(t); root.refocus(); }
+            }
+            Text {
+                text: Pages.name-preview;
+                color: Pages.name-invalid ? Am.rec : Am.print-soft;
+                font-family: "Barlow Condensed";
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 0.66px;
+                overflow: elide;
+            }
+        }
+    }
+    SRow {
+        label: "Export format";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "Export format";
+                model: ["FLAC", "WAV", "MP3"];
+                current-index <=> Pages.export-format;
+                selected(i) => { root.export-format-changed(i); }
+            }
+        }
+    }
+    SRow {
+        label: "Clean voice on export";
+        last: true;
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "Clean voice on export";
+                checked <=> Pages.clean-voice;
+                toggled(on) => { root.clean-voice-changed(on); }
+            }
+        }
+    }
+}
+
+component WindowCard inherits Paper {
+    callback close-to-tray-changed(bool);
+    callback start-with-windows-changed(bool);
+    title: "WINDOW";
+    SRow {
+        label: "Close button hides to tray";
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "Close button hides to tray";
+                checked <=> Pages.close-to-tray;
+                toggled(on) => { root.close-to-tray-changed(on); }
+            }
+        }
+    }
+    SRow {
+        label: "Start with Windows";
+        last: true;
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "Start with Windows";
+                checked <=> Pages.start-with-windows;
+                toggled(on) => { root.start-with-windows-changed(on); }
+            }
+        }
+    }
+}
+
+component Transcription inherits Paper {
+    callback go(int);
+    callback language-changed(int);
+    callback auto-transcribe-changed(bool);
+    callback ai-names-changed(bool);
+    callback max-pause-changed(int);
+    title: "TRANSCRIPTION";
+    if !Pages.can-transcribe: SRow { label: "Not in this build"; last: true; }
+    if Pages.can-transcribe: SRow {
+        label: "Language";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "Language";
+                model: Pages.languages;
+                current-index <=> Pages.language-index;
+                selected(i) => { root.language-changed(i); }
+            }
+        }
+    }
+    if Pages.can-transcribe: SRow {
+        label: "Auto transcribe";
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "Auto transcribe";
+                checked <=> Pages.auto-transcribe;
+                toggled(on) => { root.auto-transcribe-changed(on); }
+            }
+        }
+    }
+    if Pages.can-transcribe && Main.can-ai: SRow {
+        label: "AI names";
+        note: Pages.auto-transcribe ? "" : "Auto transcribe off";
+        VerticalLayout {
+            alignment: center;
+            Toggle {
+                label: "AI names";
+                enabled: Pages.auto-transcribe;
+                checked <=> Pages.ai-names;
+                toggled(on) => { root.ai-names-changed(on); }
+            }
+        }
+    }
+    if Pages.can-transcribe: SRow {
+        label: "Max pause";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "Max pause";
+                model: Pages.max-pauses;
+                current-index <=> Pages.max-pause-index;
+                selected(i) => { root.max-pause-changed(i); }
+            }
+        }
+    }
+    if Pages.can-transcribe: SRow {
+        label: "Model";
+        note: Pages.model-summary;
+        last: true;
+        VerticalLayout {
+            alignment: center;
+            RKey {
+                height: 26px;
+                text: "BROWSE";
+                label: "Browse models";
+                clicked => { root.go(4); }
+                Icon { name: "chevron"; tint: Am.key-ink; width: 11px; height: 11px; y: (parent.height - self.height) / 2; }
+            }
+        }
+    }
+}
+
+component Ai inherits Paper {
+    callback ai-model-changed(int);
+    callback download-ai(int);
+    title: "AI";
+    SRow {
+        label: "Model";
+        VerticalLayout {
+            alignment: center;
+            RowSelect {
+                label: "AI model";
+                model: Pages.ai-models;
+                current-index <=> Pages.ai-model-index;
+                selected(i) => { root.ai-model-changed(i); }
+            }
+        }
+    }
+    SRow {
+        label: Pages.ai-ready ? "" : Pages.ai-download >= 0 ? "Downloading " + round(Pages.ai-download * 100) + "%" : "Not downloaded";
+        if Pages.ai-ready: Ready { }
+        if !Pages.ai-ready && Pages.ai-download >= 0: VerticalLayout {
+            alignment: center;
+            LedBar { width: 110px; n: 10; green: true; part: Pages.ai-download; }
+        }
+        if !Pages.ai-ready && Pages.ai-download < 0: VerticalLayout {
+            alignment: center;
+            RKey { height: 26px; icon: "import"; icon-size: 11px; text: "DOWNLOAD"; label: "Download"; clicked => { root.download-ai(0); } }
+        }
+    }
+    SRow {
+        label: "Translation";
+        note: "Ministral 3B · 2.1 GB";
+        last: true;
+        if Pages.translator-ready: Ready { }
+        if !Pages.translator-ready && Pages.translator-download >= 0: Value { text: "Downloading " + round(Pages.translator-download * 100) + "%"; }
+        if !Pages.translator-ready && Pages.translator-download < 0: VerticalLayout {
+            alignment: center;
+            RKey { height: 26px; icon: "import"; icon-size: 11px; text: "DOWNLOAD"; label: "Download"; clicked => { root.download-ai(1); } }
+        }
+    }
+}
+
+component Voice inherits Paper {
+    title: "YOUR VOICE";
+    SRow { label: "Voice engine"; Value { text: "OmniVoice"; } }
+    SRow { label: "Voice sample"; last: true; Value { text: "20 s from the clip"; } }
+}
+
+export component SettingsPage inherits VerticalLayout {
+    in property <bool> wide;
+    callback back();
+    callback go(int);
+    callback refocus();
+    callback theme-changed(int);
+    callback mic-changed(int);
+    callback system-changed(bool);
+    callback recording-limit-changed(int);
+    callback hotkey-captured(string, bool, bool, bool, bool) -> bool;
+    callback hotkey-accepted(string);
+    callback open-folder();
+    callback change-folder();
+    callback template-edited(string);
+    callback template-accepted(string);
+    callback export-format-changed(int);
+    callback clean-voice-changed(bool);
+    callback language-changed(int);
+    callback auto-transcribe-changed(bool);
+    callback ai-names-changed(bool);
+    callback max-pause-changed(int);
+    callback ai-model-changed(int);
+    callback download-ai(int);
+    callback close-to-tray-changed(bool);
+    callback start-with-windows-changed(bool);
+
+    Title { settings: false; page: "SETTINGS"; go(p) => { root.go(p); } }
+    Rectangle {
+        vertical-stretch: 1;
+        VerticalLayout {
+            padding-left: root.wide ? 16px : 12px;
+            padding-right: root.wide ? 16px : 12px;
+            padding-top: root.wide ? 12px : 10px;
+            padding-bottom: root.wide ? 16px : 12px;
+            spacing: root.wide ? 12px : 10px;
+            TopKeys { back => { root.back(); } }
+            Scroller {
+                vertical-stretch: 1;
+                rubber: true;
+                // Portrait: one column, Appearance, Recording, Files, Transcription, AI,
+                // Your voice and Window. Wide: Appearance and Window, Recording and Files,
+                // and the AI groups in three columns.
+                HorizontalLayout {
+                    padding-right: 12px;
+                    spacing: 14px;
+                    VerticalLayout {
+                        min-width: root.wide ? 350px : 0;
+                        max-width: root.wide ? 350px : 100000px;
+                        horizontal-stretch: root.wide ? 0 : 1;
+                        spacing: 12px;
+                        alignment: start;
+                        Appearance { picked(i) => { root.theme-changed(i); } }
+                        if root.wide: WindowCard {
+                            close-to-tray-changed(on) => { root.close-to-tray-changed(on); }
+                            start-with-windows-changed(on) => { root.start-with-windows-changed(on); }
+                        }
+                        if !root.wide: Recording {
+                            mic-changed(i) => { root.mic-changed(i); }
+                            system-changed(on) => { root.system-changed(on); }
+                            recording-limit-changed(i) => { root.recording-limit-changed(i); }
+                            hotkey-captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
+                            hotkey-accepted(t) => { root.hotkey-accepted(t); }
+                            refocus => { root.refocus(); }
+                        }
+                        if !root.wide: Files {
+                            open-folder => { root.open-folder(); }
+                            change-folder => { root.change-folder(); }
+                            template-edited(t) => { root.template-edited(t); }
+                            template-accepted(t) => { root.template-accepted(t); }
+                            export-format-changed(i) => { root.export-format-changed(i); }
+                            clean-voice-changed(on) => { root.clean-voice-changed(on); }
+                            refocus => { root.refocus(); }
+                        }
+                        if !root.wide: Transcription {
+                            go(p) => { root.go(p); }
+                            language-changed(i) => { root.language-changed(i); }
+                            auto-transcribe-changed(on) => { root.auto-transcribe-changed(on); }
+                            ai-names-changed(on) => { root.ai-names-changed(on); }
+                            max-pause-changed(i) => { root.max-pause-changed(i); }
+                        }
+                        if !root.wide && Main.can-ai: Ai {
+                            ai-model-changed(i) => { root.ai-model-changed(i); }
+                            download-ai(k) => { root.download-ai(k); }
+                        }
+                        if !root.wide: Voice { }
+                        if !root.wide: WindowCard {
+                            close-to-tray-changed(on) => { root.close-to-tray-changed(on); }
+                            start-with-windows-changed(on) => { root.start-with-windows-changed(on); }
+                        }
+                    }
+                    if root.wide: VerticalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 12px;
+                        alignment: start;
+                        Recording {
+                            mic-changed(i) => { root.mic-changed(i); }
+                            system-changed(on) => { root.system-changed(on); }
+                            recording-limit-changed(i) => { root.recording-limit-changed(i); }
+                            hotkey-captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
+                            hotkey-accepted(t) => { root.hotkey-accepted(t); }
+                            refocus => { root.refocus(); }
+                        }
+                        Files {
+                            open-folder => { root.open-folder(); }
+                            change-folder => { root.change-folder(); }
+                            template-edited(t) => { root.template-edited(t); }
+                            template-accepted(t) => { root.template-accepted(t); }
+                            export-format-changed(i) => { root.export-format-changed(i); }
+                            clean-voice-changed(on) => { root.clean-voice-changed(on); }
+                            refocus => { root.refocus(); }
+                        }
+                    }
+                    if root.wide: VerticalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 12px;
+                        alignment: start;
+                        Transcription {
+                            go(p) => { root.go(p); }
+                            language-changed(i) => { root.language-changed(i); }
+                            auto-transcribe-changed(on) => { root.auto-transcribe-changed(on); }
+                            ai-names-changed(on) => { root.ai-names-changed(on); }
+                            max-pause-changed(i) => { root.max-pause-changed(i); }
+                        }
+                        if Main.can-ai: Ai {
+                            ai-model-changed(i) => { root.ai-model-changed(i); }
+                            download-ai(k) => { root.download-ai(k); }
+                        }
+                        Voice { }
+                    }
+                }
+            }
+        }
+        if Main.status != "": Toast {
+            x: root.wide ? 28px : 24px;
+            y: parent.height - self.height - (root.wide ? 26px : 22px);
+            most: parent.width - 48px;
+            text: Main.status;
+        }
+    }
+}
+
+// ---------- Models ----------
+
+// Quality or speed as five LEDs, green, then amber at the top.
+component Ladder inherits HorizontalLayout {
+    in property <int> value;
+    spacing: 2px;
+    alignment: start;
+    for k in 5: Rectangle {
+        width: 7px;
+        height: 9px;
+        y: (parent.height - self.height) / 2;
+        border-radius: 1.5px;
+        background: k < root.value ? (k >= 3 ? Am.amber : Am.green) : #3a2a24;
+    }
+}
+
+// The filters as rubber keys, the picked one held down with its lamp: a row (portrait)
+// or a column (wide).
+component Filters inherits VerticalLayout {
+    in property <bool> column;
+    callback changed();
+    vertical-stretch: 0;
+    if root.column: VerticalLayout {
+        spacing: 6px;
+        for f[i] in ["All", "Norwegian", "Swedish", "English", "Downloaded"]: RKey {
+            height: 30px;
+            text: f.to-uppercase();
+            label: f;
+            font-size: 9px;
+            spacing: 1.1px;
+            left: true;
+            latched: Pages.model-filter == i;
+            accessible-checked: Pages.model-filter == i;
+            clicked => { Pages.model-filter = i; root.changed(); }
+        }
+    }
+    if !root.column: HorizontalLayout {
+        spacing: 6px;
+        alignment: start;
+        for f[i] in ["All", "Norwegian", "Swedish", "English", "Downloaded"]: RKey {
+            height: 26px;
+            text: f.to-uppercase();
+            label: f;
+            font-size: 9px;
+            spacing: 1.1px;
+            latched: Pages.model-filter == i;
+            accessible-checked: Pages.model-filter == i;
+            clicked => { Pages.model-filter = i; root.changed(); }
+        }
+    }
+}
+
+component Compressed inherits Switch {
+    callback changed();
+    text: "SHOW COMPRESSED";
+    label: "Show compressed versions too";
+    checked <=> Pages.model-compressed;
+    toggled => { root.changed(); }
+}
+
+// The used space on the smoked strip, with a green lamp.
+component Used inherits Rectangle {
+    height: 26px;
+    vertical-stretch: 0;
+    AmSmoke { x: 0; y: 0; width: parent.width; height: parent.height; }
+    Dot { x: 10px; y: (parent.height - self.height) / 2; kind: 1; }
+    Text {
+        x: 25px;
+        width: parent.width - 34px;
+        height: parent.height;
+        text: Pages.models-used;
+        color: Am.disp-ink;
+        font-family: "Courier Prime";
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+component ModelSearch inherits Pill {
+    icon: "search";
+    label: "Search models";
+    placeholder: "Search " + Pages.model-count + " models";
+}
+
+// The action of a model: IN USE with a red lamp, Use, Cancel or Download.
+component ModelAction inherits HorizontalLayout {
+    in property <int> index;
+    in property <bool> active;
+    in property <bool> downloaded;
+    in property <string> title;
+    callback use-model(int);
+    callback cancel-download();
+    callback download-model(int);
+    alignment: end;
+    if root.active: HorizontalLayout {
+        spacing: 6px;
+        min-width: 76px;
+        alignment: center;
+        VerticalLayout { alignment: center; Dot { kind: 0; } }
+        Caps { text: "IN USE"; color: Am.rec; letter-spacing: 1.8px; }
+    }
+    if root.downloaded && !root.active: VerticalLayout {
+        alignment: center;
+        RKey { height: 26px; min-width: 76px; text: "USE"; label: "Use"; clicked => { root.use-model(root.index); } }
+    }
+    if Pages.downloading == root.index: VerticalLayout {
+        alignment: center;
+        RKey { height: 26px; min-width: 76px; text: "CANCEL"; label: "Cancel"; clicked => { root.cancel-download(); } }
+    }
+    if !root.downloaded && Pages.downloading != root.index: VerticalLayout {
+        alignment: center;
+        RKey {
+            height: 26px;
+            icon: "import";
+            icon-size: 11px;
+            text: "DOWNLOAD";
+            label: "Download " + root.title;
+            enabled: Pages.downloading < 0;
+            clicked => { root.download-model(root.index); }
+        }
+    }
+}
+
+export component ModelsPage inherits VerticalLayout {
+    in property <bool> wide;
+    callback back();
+    callback filter-changed();
+    callback use-model(int);
+    callback cancel-download();
+    callback download-model(int);
+    Title { settings: false; page: "MODELS"; }
+    Rectangle {
+        vertical-stretch: 1;
+        HorizontalLayout {
+            // Wide: the search, the filters and the used space on the machine.
+            if root.wide: VerticalLayout {
+                width: 292px;
+                padding-left: 18px;
+                padding-right: 18px;
+                padding-top: 16px;
+                padding-bottom: 18px;
+                spacing: 14px;
+                TopKeys { back => { root.back(); } }
+                ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+                Caps { text: "FILTER"; height: 12px; vertical-stretch: 0; }
+                Filters { column: true; changed => { root.filter-changed(); } }
+                Compressed { changed => { root.filter-changed(); } }
+                Grille { vertical-stretch: 1; min-height: 30px; }
+                Used { }
+            }
+            if root.wide: VSeam { }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                padding-left: root.wide ? 16px : 12px;
+                padding-right: root.wide ? 16px : 12px;
+                padding-top: root.wide ? 16px : 10px;
+                padding-bottom: root.wide ? 18px : 12px;
+                spacing: 10px;
+                if !root.wide: HorizontalLayout {
+                    spacing: 8px;
+                    height: 30px;
+                    vertical-stretch: 0;
+                    RKey { icon: "back"; text: "BACK"; label: "Back"; clicked => { root.back(); } }
+                    ModelSearch {
+                        horizontal-stretch: 1;
+                        min-width: 120px;
+                        text <=> Pages.model-query;
+                        edited => { root.filter-changed(); }
+                    }
+                }
+                if !root.wide: Filters { changed => { root.filter-changed(); } }
+                if !root.wide: Compressed { changed => { root.filter-changed(); } }
+                Paper {
+                    vertical-stretch: 1;
+                    // Wide: the columns' names in the head.
+                    if root.wide: HorizontalLayout {
+                        height: 26px;
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        spacing: 10px;
+                        Rectangle { width: 22px; }
+                        Caps { text: "NAME"; horizontal-stretch: 1; }
+                        Caps { text: "QUALITY"; width: 70px; }
+                        Caps { text: "SPEED"; width: 70px; }
+                        Caps { text: "SIZE"; width: 70px; }
+                        Rectangle { width: 96px; }
+                    }
+                    if root.wide: Rectangle { height: 1.5px; background: Am.rule; }
+                    Scroller {
+                        vertical-stretch: 1;
+                        rubber: true;
+                        VerticalLayout {
+                            alignment: start;
+                            for m in Pages.models: VerticalLayout {
+                                if m.header: Rectangle {
+                                    height: 24px;
+                                    background: #e6dcc6;
+                                    Rectangle { x: 0; y: parent.height - 1.5px; width: parent.width; height: 1.5px; background: Am.rule; }
+                                    HorizontalLayout {
+                                        padding-left: 12px;
+                                        padding-right: 12px;
+                                        spacing: 10px;
+                                        Caps { text: m.title.to-uppercase(); letter-spacing: 2.4px; horizontal-stretch: 0; }
+                                        Text {
+                                            text: m.by.to-uppercase();
+                                            color: Am.print-soft;
+                                            font-family: "Barlow Condensed";
+                                            font-size: 9px;
+                                            font-weight: 600;
+                                            letter-spacing: 1.08px;
+                                            vertical-alignment: center;
+                                            horizontal-stretch: 1;
+                                            overflow: elide;
+                                        }
+                                    }
+                                }
+                                if !m.header: Rectangle {
+                                    height: row.preferred-height;
+                                    background: m.active ? @linear-gradient(90deg, #fbe9dd 0%, #f6ecdc 100%) : transparent;
+                                    if m.active: Rectangle { x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
+                                    Rectangle { x: 0; y: parent.height - 1px; width: parent.width; height: 1px; background: Am.paper-line; }
+                                    row := HorizontalLayout {
+                                        padding-left: 12px;
+                                        padding-right: 12px;
+                                        padding-top: 6px;
+                                        padding-bottom: 6px;
+                                        spacing: 10px;
+                                        min-height: root.wide ? 42px : 44px;
+                                        Icon {
+                                            name: "tape";
+                                            tint: Am.print;
+                                            width: 20px;
+                                            height: 20px;
+                                            y: (parent.height - self.height) / 2;
+                                        }
+                                        VerticalLayout {
+                                            horizontal-stretch: 1;
+                                            alignment: center;
+                                            spacing: 3px;
+                                            Text {
+                                                text: m.title;
+                                                color: Am.ink;
+                                                font-family: "Courier Prime";
+                                                font-size: 12.5px;
+                                                font-weight: 700;
+                                                overflow: elide;
+                                            }
+                                            if !root.wide: HorizontalLayout {
+                                                spacing: 6px;
+                                                alignment: start;
+                                                Caps { text: "QUALITY"; color: Am.print-soft; font-size: 9px; letter-spacing: 1.44px; }
+                                                Ladder { value: m.quality; }
+                                                Caps { text: "SPEED"; color: Am.print-soft; font-size: 9px; letter-spacing: 1.44px; }
+                                                Ladder { value: m.speed; }
+                                                Text { text: m.size; color: Am.print; font-family: "Courier Prime"; font-size: 11px; vertical-alignment: center; }
+                                            }
+                                            if Pages.downloading == m.index: HorizontalLayout {
+                                                spacing: 8px;
+                                                alignment: start;
+                                                LedBar { width: root.wide ? 240px : 170px; n: root.wide ? 20 : 16; green: true; part: Pages.download-progress; }
+                                                Text {
+                                                    text: round(Pages.download-progress * 100) + "%";
+                                                    color: Am.print;
+                                                    font-family: "Courier Prime";
+                                                    font-size: 11px;
+                                                    font-weight: 700;
+                                                    vertical-alignment: center;
+                                                }
+                                            }
+                                        }
+                                        if root.wide: Ladder { width: 70px; value: m.quality; }
+                                        if root.wide: Ladder { width: 70px; value: m.speed; }
+                                        if root.wide: Text { width: 70px; text: m.size; color: Am.ink; font-family: "Courier Prime"; font-size: 12px; font-weight: 700; vertical-alignment: center; }
+                                        ModelAction {
+                                            width: root.wide ? 96px : self.preferred-width;
+                                            index: m.index;
+                                            active: m.active;
+                                            downloaded: m.downloaded;
+                                            title: m.title;
+                                            use-model(i) => { root.use-model(i); }
+                                            cancel-download => { root.cancel-download(); }
+                                            download-model(i) => { root.download-model(i); }
+                                        }
+                                    }
+                                }
+                            }
+                            if Pages.models.length == 0: Text {
+                                height: 80px;
+                                text: "No models match";
+                                color: Am.print;
+                                font-family: "Courier Prime";
+                                font-size: 13px;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+                if !root.wide: Used { }
+            }
+        }
+        if Main.status != "": Toast {
+            x: (parent.width - self.width) / 2;
+            y: parent.height - self.height - (root.wide ? 26px : 48px);
+            most: parent.width - 48px;
+            text: Main.status;
+        }
+    }
+}
+
+// ---------- Merge ----------
+
+// The merge display: how many clips, and the merged total.
+component MergeDisplay inherits Rectangle {
+    in property <bool> big;
+    height: root.big ? 124px : 84px;
+    accessible-role: AccessibleRole.text;
+    accessible-label: "Total " + Pages.merge-total;
+    Slice3 {
+        pad: 4px;
+        cap: 14px;
+        l: root.big ? @image-url("dv-answer/disp-w-l.png") : @image-url("dv-answer/disp-p-l.png");
+        m: root.big ? @image-url("dv-answer/disp-w-m.png") : @image-url("dv-answer/disp-p-m.png");
+        r: root.big ? @image-url("dv-answer/disp-w-r.png") : @image-url("dv-answer/disp-p-r.png");
+        l2: root.big ? @image-url("dv-answer/disp-w-l@2x.png") : @image-url("dv-answer/disp-p-l@2x.png");
+        m2: root.big ? @image-url("dv-answer/disp-w-m@2x.png") : @image-url("dv-answer/disp-p-m@2x.png");
+        r2: root.big ? @image-url("dv-answer/disp-w-r@2x.png") : @image-url("dv-answer/disp-p-r@2x.png");
+    }
+    HorizontalLayout {
+        padding-left: root.big ? 16px : 12px;
+        padding-right: root.big ? 16px : 12px;
+        padding-top: root.big ? 12px : 9px;
+        padding-bottom: root.big ? 12px : 9px;
+        VerticalLayout {
+            alignment: space-between;
+            Lab { text: "MERGE"; color: Am.lab; }
+            HorizontalLayout {
+                alignment: start;
+                Seg { text: Clock.two(Pages.merge-rows.length); ghost: "88"; size: root.big ? 58px : 36px; }
+            }
+            Lab { text: "CLIPS"; color: #7d5a4f; }
+        }
+        Rectangle { width: root.big ? 18px : 12px; }
+        Rectangle { width: 1px; background: #ffffff12; }
+        Rectangle { width: root.big ? 18px : 12px; }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: space-between;
+            Text {
+                text: "Merge clips";
+                color: #f0d9cf;
+                font-family: "Courier Prime";
+                font-size: root.big ? 17px : 14px;
+                font-weight: 700;
+                overflow: elide;
+            }
+            Lab { text: Pages.merge-rows.length + " clips"; color: #b48e80; letter-spacing: 0.9px; }
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                Seg { text: Pages.merge-total; ghost: Clock.ghost(Pages.merge-total); size: root.big ? 30px : 22px; }
+                VerticalLayout { alignment: end; Lab { text: "TOTAL"; color: Am.lab; } }
+            }
+        }
+    }
+}
+
+// The new clip as a large micro cassette with its name on the label (still: nothing
+// turns on this page).
+component BigCassette inherits Rectangle {
+    width: 364px;
+    height: 170px;
+    vertical-stretch: 0;
+    horizontal-stretch: 0;
+    Art {
+        x: -3px;
+        y: -3px;
+        width: 370px;
+        height: 176px;
+        lo: @image-url("dv-answer/mc-l.png");
+        hi: @image-url("dv-answer/mc-l@2x.png");
+    }
+    Text {
+        x: 58px;
+        y: 47px;
+        width: 248px;
+        height: 24px;
+        text: Pages.merge-name;
+        color: #6a3226;
+        font-family: "Courier Prime";
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.9px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        overflow: elide;
+        accessible-role: none;
+    }
+}
+
+// The order of the picked clips, as messages on a short log.
+component Order inherits VerticalLayout {
+    in property <bool> big;
+    in property <string> playing-name;
+    callback move(int, int);
+    callback remove(int);
+    callback play(int);
+    spacing: 8px;
+    HorizontalLayout {
+        height: 12px;
+        Caps { text: "ORDER"; font-size: 9px; letter-spacing: 1.8px; horizontal-stretch: 1; }
+        Caps { text: "DRAG TO REORDER"; color: Am.print-soft; font-size: 8.5px; letter-spacing: 1.5px; }
+    }
+    Paper {
+        vertical-stretch: 1;
+        title: "MESSAGES";
+        note: Pages.merge-rows.length + " OF " + Pages.merge-rows.length;
+        head-h: root.big ? 26px : 22px;
+        side: root.big ? 16px : 12px;
+        Scroller {
+            vertical-stretch: 1;
+            rubber: true;
+            VerticalLayout {
+                alignment: start;
+                OrderList {
+                    rows: Pages.merge-rows;
+                    removable: true;
+                    playable: true;
+                    playing-name: root.playing-name;
+                    enabled: !Pages.merging;
+                    moved(a, b) => { root.move(a, b); }
+                    act(i) => { root.remove(i); }
+                    play(i) => { root.play(i); }
+                }
+            }
+        }
+    }
+}
+
+// The new clip's name on a cream label.
+component NewName inherits VerticalLayout {
+    spacing: 6px;
+    vertical-stretch: 0;
+    Caps { text: "NEW CLIP"; font-size: 9px; letter-spacing: 1.8px; height: 12px; }
+    HorizontalLayout {
+        spacing: 10px;
+        Caps { text: "NAME"; color: Am.print-soft; font-size: 8.5px; letter-spacing: 1.5px; width: 34px; }
+        Field { horizontal-stretch: 1; text <=> Pages.merge-name; placeholder: "Name"; label: "Name of the merged clip"; }
+    }
+}
+
+// Back, Merge (the red key, grey while the name is empty or while it merges) and Cancel.
+component MergeKeys inherits HorizontalLayout {
+    callback go(int);
+    callback run(string);
+    spacing: 8px;
+    height: 30px;
+    vertical-stretch: 0;
+    RKey { icon: "back"; text: "BACK"; label: "Back"; clicked => { root.go(0); } }
+    Rectangle { horizontal-stretch: 1; }
+    RKey {
+        red: true;
+        text: Pages.merging ? "MERGING" : "MERGE " + Pages.merge-rows.length + " CLIPS";
+        label: Pages.merging ? "Merging..." : "Merge " + Pages.merge-rows.length + " clips";
+        enabled: !Pages.merging && Pages.merge-name != "";
+        clicked => { root.run(Pages.merge-name); }
+        if Pages.merging: Dot { kind: 2; y: (parent.height - self.height) / 2; }
+    }
+    RKey { text: "CANCEL"; label: "Cancel"; clicked => { root.go(0); } }
+}
+
+export component MergePage inherits VerticalLayout {
+    in property <bool> wide;
+    callback go(int);
+    callback move(int, int);
+    callback remove(int);
+    callback play(int);
+    callback run(string);
+    property <string> playing-name: Main.active-clip >= 0 && Main.active-clip < Main.clips.length && Main.playing ? Main.clips[Main.active-clip].name : "";
+    Title { settings: false; go(p) => { root.go(p); } }
+    Rectangle {
+        vertical-stretch: 1;
+        if !root.wide: VerticalLayout {
+            padding-left: 12px;
+            padding-right: 12px;
+            padding-top: 10px;
+            padding-bottom: 12px;
+            spacing: 10px;
+            MergeDisplay { }
+            Order {
+                vertical-stretch: 1;
+                playing-name: root.playing-name;
+                move(a, b) => { root.move(a, b); }
+                remove(i) => { root.remove(i); }
+                play(i) => { root.play(i); }
+            }
+            NewName { }
+            Seam { }
+            MergeKeys {
+                go(p) => { root.go(p); }
+                run(n) => { root.run(n); }
+            }
+        }
+        if root.wide: HorizontalLayout {
+            VerticalLayout {
+                width: 404px;
+                padding-left: 20px;
+                padding-right: 20px;
+                padding-top: 16px;
+                padding-bottom: 18px;
+                spacing: 16px;
+                MergeDisplay { big: true; }
+                BigCassette { }
+                NewName { }
+                Grille { broad: true; vertical-stretch: 1; min-height: 30px; }
+            }
+            VSeam { }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                padding-left: 16px;
+                padding-right: 16px;
+                padding-top: 16px;
+                padding-bottom: 18px;
+                spacing: 12px;
+                Order {
+                    big: true;
+                    vertical-stretch: 1;
+                    playing-name: root.playing-name;
+                    move(a, b) => { root.move(a, b); }
+                    remove(i) => { root.remove(i); }
+                    play(i) => { root.play(i); }
+                }
+                MergeKeys {
+                    go(p) => { root.go(p); }
+                    run(n) => { root.run(n); }
+                }
+            }
+        }
+        if Main.status != "": Toast {
+            x: root.wide ? 440px : 24px;
+            y: parent.height - self.height - (root.wide ? 70px : 150px);
+            most: parent.width - (root.wide ? 470px : 48px);
+            text: Main.status;
+        }
+    }
+}
+
+// ---------- Ask ----------
+
+// A source of the answer: its number on a small red display, the clip (and its project),
+// the time and the words; lit with a red edge under the mouse.
+component Source inherits Rectangle {
+    in property <AskSource> source;
+    in property <bool> show-project;
+    in property <string> project;
+    callback clicked;
+    height: body.preferred-height;
+    background: t.has-hover ? @linear-gradient(90deg, #fbe9dd 0%, #f6ecdc 100%) : transparent;
+    accessible-role: button;
+    accessible-label: root.source.n + " " + root.source.clip + " " + root.source.time;
+    accessible-action-default => { root.clicked(); }
+    if t.has-hover: Rectangle { x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
+    Rectangle { x: 0; y: parent.height - 1px; width: parent.width; height: 1px; background: Am.paper-line; }
+    body := HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        spacing: 10px;
+        VerticalLayout { alignment: start; padding-top: 1px; NumChip { n: root.source.n; } }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 2px;
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: root.source.clip;
+                    color: Am.ink;
+                    font-family: "Courier Prime";
+                    font-size: 12.5px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                if root.show-project && root.project != "": Caps {
+                    text: root.project.to-uppercase();
+                    color: Am.print-soft;
+                    font-size: 8.5px;
+                    letter-spacing: 1.5px;
+                }
+                Rectangle { horizontal-stretch: 1; }
+                Text {
+                    text: root.source.time;
+                    color: Am.print-soft;
+                    font-family: "Courier Prime";
+                    font-size: 11px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                }
+            }
+            Text {
+                text: root.source.text;
+                color: Am.print;
+                font-family: "Courier Prime";
+                font-size: 11.5px;
+                overflow: elide;
+            }
+        }
+    }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// The answer on message paper; while it is thought about, the cassette and a red lamp.
+component Answer inherits Paper {
+    in property <bool> big;
+    // The height of the words, for a page that fits the card to them.
+    out property <length> body-h: body.preferred-height + 26px;
+    title: "ANSWER";
+    note: Pages.answer != "" && Pages.sources.length > 0 ? Pages.sources.length + (Pages.sources.length == 1 ? " SOURCE" : " SOURCES") : "";
+    Scroller {
+        rubber: true;
+        body := VerticalLayout {
+            padding-left: 14px;
+            padding-right: 14px;
+            padding-top: 6px;
+            padding-bottom: 8px;
+            if Pages.answer == "": HorizontalLayout {
+                spacing: 14px;
+                alignment: center;
+                padding-top: 4px;
+                padding-bottom: 4px;
+                Micro { label: "ASK"; zoom: 0.8; turning: false; }
+                HorizontalLayout {
+                    spacing: 8px;
+                    VerticalLayout { alignment: center; Dot { kind: 0; } }
+                    Text {
+                        text: "Thinking";
+                        color: Am.print;
+                        font-family: "Courier Prime";
+                        font-size: 13px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+            if Pages.answer != "": Text {
+                text: Pages.answer;
+                color: Am.ink;
+                font-family: "Courier Prime";
+                font-size: root.big ? 14px : 12.5px;
+                wrap: word-wrap;
+            }
+        }
+    }
+}
+
+// The sources, numbered as the answer cites them.
+component Sources inherits Paper {
+    callback open(int);
+    title: "SOURCES";
+    note: "" + Pages.sources.length;
+    Scroller {
+        rubber: true;
+        VerticalLayout {
+            alignment: start;
+            for s[i] in Pages.sources: Source {
+                source: s;
+                show-project: Pages.ask-all;
+                project: s.place >= 0 && s.place < Main.projects.length ? Main.projects[s.place] : "";
+                clicked => { root.open(i); }
+            }
+        }
+    }
+}
+
+export component AskPage inherits VerticalLayout {
+    in property <bool> wide;
+    callback go(int);
+    callback ask(string, bool);
+    callback open-source(int);
+    Title { settings: false; page: "ASK"; go(p) => { root.go(p); } }
+    Rectangle {
+        vertical-stretch: 1;
+        VerticalLayout {
+            padding-left: root.wide ? 16px : 12px;
+            padding-right: root.wide ? 16px : 12px;
+            padding-top: root.wide ? 14px : 10px;
+            padding-bottom: root.wide ? 16px : 12px;
+            spacing: root.wide ? 12px : 10px;
+            TopKeys { back => { root.go(0); } }
+            VerticalLayout {
+                spacing: 8px;
+                vertical-stretch: 0;
+                HorizontalLayout {
+                    spacing: 8px;
+                    Field {
+                        horizontal-stretch: 1;
+                        placeholder: "Ask about your clips";
+                        label: "Question";
+                        text <=> Pages.question;
+                        init => { self.grab(); }
+                        accepted => { if (Pages.question != "" && !Pages.asking) { root.ask(Pages.question, Pages.ask-all); } }
+                    }
+                    Btn {
+                        height: 30px;
+                        least: 64px;
+                        primary: true;
+                        text: "Ask";
+                        enabled: Pages.question != "" && !Pages.asking;
+                        clicked => { root.ask(Pages.question, Pages.ask-all); }
+                    }
+                }
+                if Main.projects.length > 1: Switch {
+                    text: "ALL PROJECTS";
+                    label: "Ask all projects";
+                    checked <=> Pages.ask-all;
+                }
+            }
+            if !root.wide: VerticalLayout {
+                vertical-stretch: 1;
+                spacing: 10px;
+                if Pages.answer != "" || Pages.asking: Answer { height: min(self.body-h, 320px); vertical-stretch: 0; }
+                if Pages.sources.length > 0: Sources {
+                    vertical-stretch: 1;
+                    open(i) => { root.open-source(i); root.go(1); }
+                }
+                if Pages.sources.length == 0: Rectangle { vertical-stretch: 1; }
+            }
+            if root.wide: HorizontalLayout {
+                vertical-stretch: 1;
+                spacing: 14px;
+                VerticalLayout {
+                    horizontal-stretch: 1.25;
+                    if Pages.answer != "" || Pages.asking: Answer { big: true; vertical-stretch: 1; }
+                    if Pages.answer == "" && !Pages.asking: Rectangle { vertical-stretch: 1; }
+                }
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    if Pages.sources.length > 0: Sources {
+                        vertical-stretch: 1;
+                        open(i) => { root.open-source(i); root.go(1); }
+                    }
+                    if Pages.sources.length == 0: Rectangle { vertical-stretch: 1; }
+                }
+            }
+        }
+        if Main.status != "": Toast {
+            x: (parent.width - self.width) / 2;
+            y: parent.height - self.height - 22px;
+            most: parent.width - 48px;
+            text: Main.status;
+        }
+    }
+}
+
+// ---------- The widget ----------
+
+// The small always-on-top window as a tiny machine front (variant A): the smoked display
+// with the state, the timer in red segments (amber while paused) and the NEW lamp; REC on
+// the right, which turns into a pressed Stop with Pause beside it while recording. Open
+// window is the nub at the top right; the whole widget moves the window.
+export component Widget inherits Rectangle {
+    property <bool> rec: Main.recording;
+    property <bool> paused: Main.recording && Main.paused;
+    property <string> clock: Main.elapsed + Main.elapsed-tenth;
+    AmFace { x: 0; y: 0; width: parent.width; height: parent.height; r: 12px; top: #e8dfcb; bottom: #bfb399; }
+    Rectangle {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        border-radius: 12px;
+        border-width: 1px;
+        border-color: #8d8168;
+    }
+    WindowMoveArea {
+        // The strip along the top: the brand and Open window.
+        Rectangle {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: 24px;
+            Rectangle { x: 1px; y: parent.height - 1px; width: parent.width - 2px; height: 1px; background: Am.edge; }
+            Rectangle { x: 1px; y: parent.height; width: parent.width - 2px; height: 1px; background: #ffffff80; }
+            Text {
+                x: 10px;
+                height: parent.height;
+                text: "THRASHER";
+                color: Am.logo;
+                font-family: "Barlow Condensed";
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 3px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            IconBtn {
+                x: parent.width - self.width - 6px;
+                y: 3px;
+                size: 20px;
+                height: 18px;
+                icon: "expand";
+                icon-size: 10px;
+                label: "Open the window";
+                tip: "Open window";
+                clicked => { Main.compact-changed(false); }
+            }
+        }
+        // The display.
+        Rectangle {
+            x: 10px;
+            y: 34px;
+            width: parent.width - 20px - 58px - 10px;
+            height: parent.height - 34px - 10px;
+            accessible-role: AccessibleRole.text;
+            accessible-label: (root.rec ? (root.paused ? "Paused " : "Recording ") : "Ready ") + Main.elapsed;
+            AmSmoke { x: 0; y: 0; width: parent.width; height: parent.height; r: 7px; }
+            VerticalLayout {
+                padding-left: 10px;
+                padding-right: 10px;
+                padding-top: 7px;
+                padding-bottom: 7px;
+                alignment: space-between;
+                HorizontalLayout {
+                    spacing: 6px;
+                    alignment: start;
+                    VerticalLayout { alignment: center; Dot { kind: !root.rec ? 1 : root.paused ? 2 : 0; } }
+                    Text {
+                        text: !root.rec ? "READY" : root.paused ? "PAUSED" : "RECORDING";
+                        color: #e7c9bd;
+                        font-family: "Barlow Condensed";
+                        font-size: 10px;
+                        font-weight: 700;
+                        letter-spacing: 2px;
+                        vertical-alignment: center;
+                        accessible-role: none;
+                    }
+                }
+                HorizontalLayout {
+                    alignment: start;
+                    Seg {
+                        text: root.clock;
+                        ghost: Main.elapsed.character-count > 5 ? "8:88:88.8" : "88:88.8";
+                        size: 22px;
+                        lit: root.paused ? Am.amber : Am.led;
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 5px;
+                    alignment: start;
+                    VerticalLayout { alignment: center; Dot { kind: root.rec && !root.paused ? 0 : 3; size: 6px; } }
+                    Lab { text: "NEW"; color: Am.lab; font-size: 8px; }
+                }
+            }
+        }
+        // REC, or Stop and Pause while recording.
+        VerticalLayout {
+            x: parent.width - 10px - 58px;
+            y: 34px;
+            width: 58px;
+            height: parent.height - 34px - 10px;
+            spacing: 8px;
+            RKey {
+                height: root.rec ? 36px : 76px;
+                red: true;
+                icon: root.rec ? "stop" : "mic";
+                icon-size: root.rec ? 13px : 17px;
+                text: root.rec ? "" : "REC";
+                label: root.rec ? "Stop recording" : "Record";
+                tip: root.rec ? "Stop" : "Record";
+                clicked => { Main.toggle-record(); }
+            }
+            if root.rec: RKey {
+                height: 32px;
+                vertical-stretch: 0;
+                icon: root.paused ? "play" : "pause";
+                icon-size: 12px;
+                latched: root.paused;
+                label: root.paused ? "Resume" : "Pause";
+                clicked => { Main.toggle-pause(); }
+            }
+        }
+    }
+}
+
+// ---------- Questions and covers ----------
+
+// A small machine panel: the plastic with its outline, a smoked title strip with a lamp,
+// the title and a close nub, then its body.
+component Panel inherits Rectangle {
+    in property <string> title;
+    in property <int> lamp: 0;
+    callback close();
+    Rectangle {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        border-radius: 12px;
+        background: #bfb399;
+        drop-shadow-blur: 30px;
+        drop-shadow-offset-y: 16px;
+        drop-shadow-color: #00000080;
+    }
+    AmFace { x: 0; y: 0; width: parent.width; height: parent.height; r: 12px; top: #e8dfcb; bottom: #bfb399; }
+    Rectangle {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        border-radius: 12px;
+        border-width: 1px;
+        border-color: #8d8168;
+    }
+    Rectangle { x: 12px; y: 1px; width: parent.width - 24px; height: 1px; background: #ffffff99; }
+    // Clicks on the panel stay on it.
+    TouchArea { x: 0; y: 0; width: parent.width; height: parent.height; }
+    VerticalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-top: 10px;
+        padding-bottom: 12px;
+        Rectangle {
+            height: 28px;
+            AmSmoke { x: 0; y: 0; width: parent.width; height: parent.height; r: 6px; }
+            HorizontalLayout {
+                padding-left: 10px;
+                padding-right: 5px;
+                spacing: 8px;
+                VerticalLayout { alignment: center; Dot { kind: root.lamp; } }
+                Text {
+                    text: root.title;
+                    color: #f0d9cf;
+                    font-family: "Courier Prime";
+                    font-size: 13px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+                VerticalLayout {
+                    alignment: center;
+                    IconBtn {
+                        size: 20px;
+                        height: 18px;
+                        icon: "close";
+                        icon-size: 9px;
+                        label: "Cancel";
+                        tip: "Cancel";
+                        clicked => { root.close(); }
+                    }
+                }
+            }
+        }
+        @children
+    }
+}
+
+// The picture well beside a question: a rubber or red tile with the icon.
+component ArtWell inherits Rectangle {
+    in property <string> icon;
+    in property <bool> red;
+    in property <bool> amber;
+    width: 52px;
+    height: 52px;
+    AmKey { x: 0; y: 0; width: parent.width; height: parent.height; r: 12px; kind: root.red ? 1 : 0; }
+    Icon {
+        name: root.icon;
+        tint: root.red ? Am.rec-ink : root.amber ? Am.amber : Am.key-ink;
+        width: 24px;
+        height: 24px;
+    }
+}
+
+// A question over the dark cover: the panel with the title in its strip, a picture, the
+// words or a field, and the rubber keys (the confirming one red). AppWindow works out the
+// words; the keys report back. A click outside cancels.
+export component Dialog inherits Rectangle {
+    in property <string> title;
+    in property <string> note;
+    in property <string> field;
+    in property <string> ok;
+    in property <bool> ok-enabled;
+    // A single clip's delete question names the clip.
+    in property <string> clip-name;
+    callback close();
+    callback confirm();
+    callback discard();
+    property <int> kind: Main.dialog;
+    property <bool> writes: root.kind == 1 || root.kind >= 4;
+    property <bool> art: root.kind == 2 || root.kind == 3 || root.kind == 4 || root.kind == 5;
+    background: #160f0b8c;
+    TouchArea { clicked => { root.close(); } }
+    Panel {
+        width: min(parent.width - 40px, root.kind == 3 ? 370px : 330px);
+        height: self.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 - 30px;
+        title: root.title;
+        lamp: root.kind == 3 ? 2 : 0;
+        close => { root.close(); }
+        HorizontalLayout {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            padding-left: 2px;
+            padding-right: 2px;
+            spacing: 12px;
+            if root.art: VerticalLayout {
+                alignment: center;
+                ArtWell {
+                    icon: root.kind == 2 ? "trash" : root.kind == 3 ? "warn" : "folder";
+                    red: root.kind == 2;
+                    amber: root.kind == 3;
+                }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 6px;
+                if !root.writes: Text {
+                    text: root.title;
+                    color: Am.ink;
+                    font-family: "Courier Prime";
+                    font-size: 14px;
+                    font-weight: 700;
+                    overflow: elide;
+                }
+                if !root.writes && root.note != "": Text {
+                    text: root.note;
+                    color: Am.print;
+                    font-family: "Barlow Condensed";
+                    font-size: 13px;
+                    font-weight: 600;
+                    letter-spacing: 0.52px;
+                    wrap: word-wrap;
+                }
+                if root.writes: Text {
+                    text: root.field;
+                    color: Am.print;
+                    font-family: "Barlow Condensed";
+                    font-size: 13px;
+                    font-weight: 600;
+                    letter-spacing: 0.52px;
+                }
+                if root.writes: Field {
+                    label: root.field;
+                    text <=> Main.dialog-text;
+                    init => { self.grab(); }
+                    accepted => { if (root.ok-enabled) { root.confirm(); } }
+                }
+            }
+        }
+        HorizontalLayout {
+            alignment: end;
+            spacing: 8px;
+            Btn { height: 30px; least: 76px; text: "Cancel"; clicked => { root.close(); } }
+            if root.kind == 3: Btn { height: 30px; least: 76px; text: "Discard changes"; clicked => { root.discard(); } }
+            Btn {
+                height: 30px;
+                least: 76px;
+                primary: true;
+                text: root.ok;
+                enabled: root.ok-enabled;
+                clicked => { root.confirm(); }
+            }
+        }
+    }
+}
+
+// New words being spoken: a panel with the cassette (its voice on the label), the stage
+// line, an LED bar with the percent and Cancel. It blocks clicks.
+export component Speaking inherits Rectangle {
+    callback cancel();
+    background: #160f0b8c;
+    TouchArea { }
+    Panel {
+        width: min(parent.width - 40px, 340px);
+        height: self.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 - 30px;
+        title: "Speaking new words";
+        close => { root.cancel(); }
+        VerticalLayout {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            spacing: 10px;
+            HorizontalLayout {
+                spacing: 12px;
+                alignment: start;
+                Micro { label: "VOICE"; zoom: 0.83; turning: false; }
+                VerticalLayout { alignment: center; Icon { name: "chevron"; tint: Am.print-soft; width: 18px; height: 18px; } }
+                VerticalLayout { alignment: center; ArtWell { icon: "mic"; } }
+            }
+            Text {
+                text: Pages.speak-stage;
+                color: Am.print;
+                font-family: "Barlow Condensed";
+                font-size: 13px;
+                font-weight: 600;
+                letter-spacing: 0.52px;
+                wrap: word-wrap;
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                LedBar { horizontal-stretch: 1; n: 18; part: Pages.speak-progress; }
+                Text {
+                    text: round(Pages.speak-progress * 100) + "%";
+                    color: Am.ink;
+                    font-family: "Courier Prime";
+                    font-size: 13px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                }
+            }
+        }
+        HorizontalLayout {
+            alignment: end;
+            Btn { height: 30px; least: 76px; text: "Cancel"; clicked => { root.cancel(); } }
+        }
+    }
+}
+
+// Files dragged over the window: the dark cover, a dashed cream frame inset 12px and the
+// LOAD key with DROP TO IMPORT.
+export component Drop inherits Rectangle {
+    background: #160f0b9e;
+    property <length> fw: root.width - 24px;
+    property <length> fh: root.height - 24px;
+    property <int> nx: floor(root.fw / 12px);
+    property <int> ny: floor(root.fh / 12px);
+    for i in root.nx: Rectangle { x: 12px + i * root.fw / root.nx + 2px; y: 12px; width: root.fw / root.nx - 6px; height: 2px; background: #efe5d0; }
+    for i in root.nx: Rectangle { x: 12px + i * root.fw / root.nx + 2px; y: root.height - 14px; width: root.fw / root.nx - 6px; height: 2px; background: #efe5d0; }
+    for i in root.ny: Rectangle { x: 12px; y: 12px + i * root.fh / root.ny + 2px; width: 2px; height: root.fh / root.ny - 6px; background: #efe5d0; }
+    for i in root.ny: Rectangle { x: root.width - 14px; y: 12px + i * root.fh / root.ny + 2px; width: 2px; height: root.fh / root.ny - 6px; background: #efe5d0; }
+    VerticalLayout {
+        alignment: center;
+        spacing: 14px;
+        HorizontalLayout {
+            alignment: center;
+            Rectangle {
+                width: 84px;
+                height: 70px;
+                AmKey { x: 0; y: 0; width: parent.width; height: parent.height; }
+                Icon { name: "import"; tint: Am.key-ink; width: 30px; height: 30px; }
+            }
+        }
+        Text {
+            text: "DROP TO IMPORT";
+            color: #efe5d0;
+            font-family: "Barlow Condensed";
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 3.9px;
+            horizontal-alignment: center;
+        }
+    }
+}

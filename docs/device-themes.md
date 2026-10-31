@@ -126,10 +126,11 @@ and VT323 (the same `VT323-400.ttf` as Phosphor: its Latin subset covers the ASC
 skin needs, with the same outlines and metrics).
 - `Theme.pages` says how the other pages are built: 1 for Tape Deck, 2 for Phosphor, 3 for
   Desktop 95, 4 for the Comic Book, 5 for Spatial Glass, 6 for the Car Dashboard, 7 for
-  Pocket, 8 for the Quest Menu and 9 for the Brick Phone (each since its pages were built),
-  else 0, the classic pages in the theme's palette. A skin whose other pages are not built
-  yet keeps them classic this way; `app.slint` picks the main page by `Theme.skin` and the
-  rest by `Theme.pages`. Desktop 95's palette is grey and navy for those pages.
+  Pocket, 8 for the Quest Menu, 9 for the Brick Phone and 10 for the Answering Machine (each
+  since its pages were built), else 0, the classic pages in the theme's palette. A skin
+  whose other pages are not built yet keeps them classic this way; `app.slint` picks the
+  main page by `Theme.skin` and the rest by `Theme.pages`. Desktop 95's palette is grey and
+  navy for those pages.
 - The scope and the LED level follow `Main.live` like the classic meter, so the skin needs
   no clock (`EFFECT_FPS` and `RECORDING_FPS` 0). Nothing else moves.
 - `Main.transcribed-count` (set in `refresh_clips`) gives the wide status bar its
@@ -515,7 +516,8 @@ Brick Phone), art in `ui/skins/dv-answer/`
   reels that is the only motion (`RECORDING_FPS` 12, `EFFECT_FPS` 0).
 - A wider portrait window gets more meter bars (10 at the mockup's 400px, up to 20); the
   well fits them.
-- Its other pages are the classic ones in its beige palette (`Theme.pages` 0).
+- Its other pages are its own since 2026-10-31 (`Theme.pages` 10, see "Built in step 5,
+  Answering Machine on every other page" below).
 - Fonts (0.19 MB): Barlow Condensed 600 and 700 and Courier Prime 400 and 700 (OFL, no
   reserved names, Latin subset; their 5s are clear), and Memo Segments, a seven segment
   face drawn from the mockup's own segment shapes (2 KB: digits, minus, colon, point).
@@ -557,6 +559,94 @@ Brick Phone), art in `ui/skins/dv-answer/`
   48.2 vs 43.0 MB, wide 56.9 vs 51.4 MB.
 - Exe +2.68 MB (55.54 to 58.21 MB): fonts 0.19 MB, art 0.24 MB, the rest generated code.
   Ember, Tape Deck and Phosphor main pages at 520x700 and 1100x700 match before and after.
+
+**Built in step 5, Answering Machine on every other page (2026-10-31):** mockups in
+`docs/mockups/device-themes/dv-answer-pages/` (approved by Max 2026-10-31, widget variant A).
+- `ui/skins/dv-answer-parts.slint`: the parts the main page and the other pages share, moved
+  out of `dv-answer.slint` unchanged (`Art`, `Slice3`, `Lab`, `Seg`, `Nub`, `Title`, `Lamp`,
+  `Display`, `Key`, `Micro`, `Grille` and the rest). New, with defaults that keep the main page
+  as it was: `Title.page` (SETTINGS, MODELS, ASK after the badge) and `Title.settings` (the
+  other pages leave the SET nub out, as the classic pages have no Settings button there),
+  `Micro.turning`, `zoom` and `label` (the clip's name on the cassette), `Grille.broad`.
+  The machine's colours (`Am`) moved to `common.slint`.
+- `ui/skins/dv-answer-pages.slint`: `ClipPage`, `SettingsPage`, `ModelsPage`, `MergePage`,
+  `AskPage`, `Widget`, `Dialog`, `Speaking` and `Drop`, picked in `app.slint` by
+  `Theme.pages == 10` (Tape Deck 1, Phosphor 2, Desktop 95 3, Comic Book 4, Spatial Glass 5,
+  Car Dashboard 6 as before). One clip plays back like a message: CLIPS, RENAME, DELETE and
+  EXPORT as rubber keys, the smoked display (message number of how many, the name, when and how
+  long, the counter in red segments with PLAY, STOP or EDIT), the tape as a waveform in a smoked
+  well (two cream trim tabs, an amber play line, `TrimTouch` as before), the transport keys in a
+  well with the speed chip and Loop as a slide switch (still the classic Loop button), Clean voice
+  as a slide switch, and the transcript on ruled message paper. Wide puts the machine on the left
+  with the micro cassette, the clip's name on its label, its reels turning while the clip plays.
+  Settings, models and Ask are cards of message paper (three columns when wide); the models are
+  tapes with LED ladders and rubber filter keys (latched with an amber lamp); merging is a short
+  message log, the merged total on the display and, wide, the new clip as a large cassette; Ask
+  is a cream label with the red ASK key and the answer and sources on paper. The widget is the
+  tiny machine front; questions and covers are machine panels with a smoked title strip over a
+  dark cover; messages are the smoked strip with a green lamp (on the main page too).
+- `Theme.answer` (`Theme.pages == 10`) makes the shared widgets draw the machine: `Btn` and
+  `IconBtn` are rubber keys and nubs (`AmKey`, red for the main action, held down while on),
+  `Toggle` a slide switch with ON or OFF printed beside it, `Select` the cream picker chip
+  (`AmChip`) with a paper list, `MenuCard`, `MenuRow`, `ExportItem`, `MenuRule` and `MenuGroup`
+  paper cards with icons, the hovered row lit with a red edge (`Theme.menu-h` 28px), `Tip` a
+  paper slip, `ExportButton` a rubber key, `OrderList` messages with the place on a small red
+  display, `ShortcutBox` a smoked display (`AmSmoke`) that reads CTRL + ALT + R,
+  `Scroller.rubber` a sunk track with a rubber thumb, `TranscriptCard` the ruled paper (Courier
+  Prime, the word playing lit pale red, pause tags as grey stamps, a red edge and EDITING while
+  typing), and the theme gallery strips (paper tiles, the current one framed red with its lamp,
+  the count on a small red display, rubber nubs, a tape slider). New icons: `rew`, `ff`,
+  `tape`, `warn`.
+- Rust: the editor's pause tags are the machine's grey print (#86795f).
+- Art: two new pieces from `tools/skin-art/dv-answer.html`, `mc-l` (the merge page's large
+  cassette, its reels drawn in, the label blank) and `grille-m` (the speaker cut 366 wide),
+  1x and 2x, 95 KB: `ONLY="mc-l grille-m" sh tools/skin-art/cut.sh dv-answer OUT`. The old
+  pieces cut again match pixel for pixel. No new fonts.
+
+**Lessons from the Answering Machine's other pages:**
+- **Rounded gradients in caps** again, now shared: `AmFace` is a solid top cap, a solid bottom
+  cap and a square gradient between them; `AmKey` (rubber or red key with its lip and shadow),
+  `AmChip` and `AmSmoke` are built from it, so any width and height works without art.
+- **A drop shadow drawn over the face:** a `drop-shadow` on a see-through box placed after the
+  face filled under the box and greyed the panel. Put the shadow on a solid box drawn first.
+- **`alignment: start` stops stretching:** in a row with `alignment: start` the models search
+  pill (stretch 1) shrank to its smallest beside BACK, and the settings columns stayed at
+  their preferred width in the Scroller. Leave alignment out where an item should fill.
+- **A click blocker given as a child** lands in the component's layout when its `@children`
+  sit in one; the panel holds its own `TouchArea` instead.
+- **Fixed-width art does not stretch:** the speaker grille is a 256 wide cut built up in rows,
+  so a wider well needs its own cut (`grille-m`); a cassette scaled 1.6x from the 2x cut was
+  soft, so the merge page's large one is cut at its size (`mc-l`).
+- **Previews:** `slint-viewer --screenshot` worked on the hidden desktop with the default
+  backend; `--backend winit-software` failed there ("take_snapshot() called on window with
+  invalid size"). A wrapper that sets `Main` and `Pages` in a `changed pg` handler showed every
+  page in seconds while the shared target was busy.
+- **Checks that touch clips:** saving an edited transcript speaks the new words and rewrites
+  the clip's audio. A check that typed into the editor and then pressed a `Cancel` hit the
+  wrong one, and the scratch copy of clip_100 was rewritten (restored from the scratch master).
+  Leave the editor with "Discard changes", and compare the scratch clips' sizes after a run.
+  A restored clip gets a new creation time and moves down the list, out of UI Automation's
+  reach: drive clips at the top (clip_001, clip_006, Meeting).
+- **Not verified headless:** tooltips, a real file drop, speaking new words, a merged clip's
+  parts (scrolled out of reach), dragging an order row, Ask's THINKING and a model download.
+
+**Budgets measured on the Answering Machine's other pages** (test copy, hidden desktop,
+10 s samples, 2026-10-31; Ember on the same exe in brackets):
+- CPU idle 0.0 to 0.8% on every page at 520x700 and 1100x700 (Ember 0.0 to 0.9%). Nothing moves
+  on a clock but the cassette's reels while a clip plays on its page (the existing
+  `RECORDING_FPS` 12 for the theme).
+- Working set over Ember at 520x700: main +1.2, clip +0.3, settings +1.5, models +2.1, ask +1.9,
+  merge +1.6, widget +1.4 MB; at 1100x700: +2.9, +4.3, +3.6, +4.0, +2.8, +5.6, +3.6 MB (clip
+  page 77.7 vs 77.4 MB and 87.5 vs 83.2 MB).
+- Exe +15.55 MB (136.41 to 151.96 MB): the pages' generated code and the machine look in the
+  shared widgets (every `Btn`, `IconBtn` and `Toggle` carries an `AmKey` or a slide switch);
+  art 95 KB, no new fonts. More than the batch 1 skins (+8.4 to +12.8 MB); the size pass
+  should look at the key faces first.
+- Ember, Tape Deck and Phosphor: every page, menu and question the scripts reach at 520x700
+  and 1100x700 (38 shots each) match before and after pixel for pixel, but for the blinking
+  cursor in the Ask and New project fields and pages scrolled by the wheel (settings, Phosphor's
+  list), which land a few pixels apart from run to run. A second run at 520x700: Ember and Tape
+  Deck 19 of 19 identical.
 
 **Built in step 5, Pocket Synth main page (2026-10-30):** `ui/skins/dv-synth.slint` (skin 11,
 theme "Pocket Synth", index 18 in `Theme.names`), art in `ui/skins/dv-synth/` (73 PNGs, 148 KB)
@@ -1711,6 +1801,8 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      other page").
      Brick Phone built 2026-10-31 (`Theme.pages` 9, see "Built in step 5, Brick Phone on
      every other page").
+     Answering Machine built 2026-10-31 (`Theme.pages` 10, see "Built in step 5, Answering
+     Machine on every other page").
    - Size (Max, 2026-10-31): the nine would bring the exe to about 235 MB. Build all nine,
      then one size pass (palette PNGs, shared frames deduped) to pull it back toward 200 MB.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

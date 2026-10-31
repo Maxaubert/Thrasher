@@ -102,7 +102,8 @@ dv-brick) PIECES="kp-menu-l:kp-menu-l:30:42 kp-menu-m:kp-menu-m:1:42 kp-menu-r:k
   x-plus:x-plus:7:7 x-box:x-box:7:7 x-loop:x-loop:7:6 x-speak:x-speak:8:8 x-bigimp:x-bigimp:16:16 x-hour:x-hour:7:7
   t-dither:t-dither:2:2" ;;
 # Answering Machine: parts of variable width in three slices (-l, -m, -r); the grille
-# of the wide window is cut short and built up from its rows (see Grille in dv-answer.slint).
+# of the wide window is cut short and built up from its rows (see Grille in dv-answer-parts.slint);
+# mc-l and grille-m are the other pages' large cassette and wide speaker (dv-answer-pages.slint).
 dv-answer) PIECES="disp-p-l:disp-p-l:14:100 disp-p-m:disp-p-m:2:100 disp-p-r:disp-p-r:14:100
   disp-w-l:disp-w-l:14:132 disp-w-m:disp-w-m:2:132 disp-w-r:disp-w-r:14:132
   mw-p-l:mw-p-l:10:46 mw-p-m:mw-p-m:2:46 mw-p-r:mw-p-r:10:46 mw-w-l:mw-w-l:10:68 mw-w-m:mw-w-m:2:68 mw-w-r:mw-w-r:10:68
@@ -114,7 +115,8 @@ dv-answer) PIECES="disp-p-l:disp-p-l:14:100 disp-p-m:disp-p-m:2:100 disp-p-r:dis
   pb-s:pb-s:34:34 pb-s-red:pb-s-red:34:34 pb-l:pb-l:42:42 pb-l-red:pb-l-red:42:42 thumb:thumb:15:20
   grille-p:grille-p:94:80 grille-w:grille-w:256:39 keys:keys:366:98 led-on:led-on:16:16 led-off:led-off:16:16
   dot-ready:dot-ready:15:15 dot-rec:dot-rec:15:15 dot-pause:dot-pause:15:15
-  mc-p:mc-p:148:84 mc-w:mc-w:214:110 reel-p:reel-p:128:16 reel-w:reel-w:176:22" ;;
+  mc-p:mc-p:148:84 mc-w:mc-w:214:110 reel-p:reel-p:128:16 reel-w:reel-w:176:22
+  mc-l:mc-l:370:176 grille-m:grille-m:366:39" ;;
 # Pocket Synth: the screens in three slices (-l, -m, -r), the fixed keys whole with their
 # shadows, the pads' shadows for a nine-slice, the knobs, LEDs and round buttons; the
 # grille is one band of dot rows and the brushed tile one period (both repeated in Slint).

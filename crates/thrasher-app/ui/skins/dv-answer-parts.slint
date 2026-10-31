@@ -1,0 +1,668 @@
+// The Answering Machine's parts, shared by its main page (dv-answer.slint) and its other
+// pages (dv-answer-pages.slint): the art and its slices, the printed labels, the seven
+// segment figures, the rubber nubs and keys, the title bar, the lamps, the smoked display,
+// the level meter, the micro cassette and the speaker grille. Art in dv-answer/, cut from
+// tools/skin-art/dv-answer.html.
+
+import { Theme, Fx, Main, Tips, Icon, Am } from "../common.slint";
+
+// A piece of art, the 2x cut when the display is dense.
+export component Art inherits Image {
+    in property <image> lo;
+    in property <image> hi;
+    source: 1phx < 0.7px ? root.hi : root.lo;
+    image-fit: fill;
+}
+
+// A part of variable width: its left and right ends and a thin middle column stretched
+// between them. The pieces carry `pad` of shadow around the part on every side; `cap`
+// is the width of an end piece.
+export component Slice3 inherits Rectangle {
+    in property <image> l;
+    in property <image> m;
+    in property <image> r;
+    in property <image> l2;
+    in property <image> m2;
+    in property <image> r2;
+    in property <length> pad;
+    in property <length> cap;
+    property <bool> hi: 1phx < 0.7px;
+    Image {
+        x: -root.pad;
+        y: -root.pad;
+        width: root.cap;
+        height: root.height + 2 * root.pad;
+        source: root.hi ? root.l2 : root.l;
+        image-fit: fill;
+    }
+    Image {
+        x: root.cap - root.pad;
+        y: -root.pad;
+        width: max(0px, root.width + 2 * root.pad - 2 * root.cap);
+        height: root.height + 2 * root.pad;
+        source: root.hi ? root.m2 : root.m;
+        image-fit: fill;
+    }
+    Image {
+        x: root.width + root.pad - root.cap;
+        y: -root.pad;
+        width: root.cap;
+        height: root.height + 2 * root.pad;
+        source: root.hi ? root.r2 : root.r;
+        image-fit: fill;
+    }
+}
+
+// Small caps printed on the plastic.
+export component Lab inherits Text {
+    color: Am.print;
+    font-family: "Barlow Condensed";
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    vertical-alignment: center;
+    accessible-role: none;
+    accessible-label: "";
+}
+
+// Red seven segment figures over their unlit segments. `ghost` is the same layout as
+// all 8s (the caller knows the format); both are right-aligned so they line up.
+export component Seg inherits Rectangle {
+    in property <string> text;
+    in property <string> ghost;
+    in property <length> size;
+    in property <color> lit: Am.led;
+    width: shadow.preferred-width;
+    height: root.size;
+    shadow := Text {
+        x: root.width - self.width;
+        text: root.ghost;
+        color: Am.led-dim;
+        font-family: "Memo Segments";
+        font-size: root.size;
+        accessible-role: none;
+    }
+    Text {
+        x: root.width - self.width;
+        text: root.text;
+        color: root.lit;
+        font-family: "Memo Segments";
+        font-size: root.size;
+        accessible-role: none;
+    }
+}
+
+// A rubber nub in the title bar: Settings, minimise and close.
+export component Nub inherits Rectangle {
+    in property <string> icon;
+    in property <string> label;
+    callback clicked;
+    width: 24px;
+    height: 22px;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        y: t.pressed ? 1px : 0;
+        Art {
+            x: -6px;
+            y: -6px;
+            width: 36px;
+            height: 34px;
+            lo: @image-url("dv-answer/nub.png");
+            hi: @image-url("dv-answer/nub@2x.png");
+        }
+        Rectangle {
+            visible: t.has-hover;
+            border-radius: 6px;
+            background: #ffffff1a;
+        }
+        Icon {
+            name: root.icon;
+            tint: #e7dfd2;
+            width: 13px;
+            height: 13px;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The title bar: the brand embossed in the plastic, the model badge, Settings ("SET"),
+// minimise and close.
+export component Title inherits Rectangle {
+    // The page's name printed after the model badge (SETTINGS, MODELS, ASK); none on the
+    // main page.
+    in property <string> page;
+    // The Settings nub; the other pages leave it out, as the classic ones have none.
+    in property <bool> settings: true;
+    callback go(int);
+    height: 34px;
+    Rectangle { y: parent.height - 1px; height: 1px; background: Am.edge; }
+    Rectangle { y: parent.height; height: 1px; background: #ffffff80; }
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 10px;
+        spacing: 8px;
+        Rectangle {
+            width: logo.preferred-width;
+            Text {
+                y: logo.y + 1px;
+                text: logo.text;
+                color: #ffffffb3;
+                font-family: logo.font-family;
+                font-size: logo.font-size;
+                font-weight: logo.font-weight;
+                letter-spacing: logo.letter-spacing;
+                vertical-alignment: center;
+                height: parent.height;
+                accessible-role: none;
+            }
+            Text {
+                y: logo.y - 1px;
+                text: logo.text;
+                color: #0000002e;
+                font-family: logo.font-family;
+                font-size: logo.font-size;
+                font-weight: logo.font-weight;
+                letter-spacing: logo.letter-spacing;
+                vertical-alignment: center;
+                height: parent.height;
+                accessible-role: none;
+            }
+            logo := Text {
+                text: "THRASHER";
+                color: Am.logo;
+                font-family: "Barlow Condensed";
+                font-size: 15px;
+                font-weight: 700;
+                letter-spacing: 5.1px;
+                vertical-alignment: center;
+                height: parent.height;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: model.preferred-width + 10px;
+                height: 14px;
+                border-radius: 3px;
+                border-width: 1px;
+                border-color: Am.print-soft;
+                model := Text {
+                    x: 5px;
+                    y: 1px;
+                    height: parent.height - 1px;
+                    text: "MEMO TX8";
+                    color: Am.print-soft;
+                    font-family: "Barlow Condensed";
+                    font-size: 9.5px;
+                    font-weight: 600;
+                    letter-spacing: 1.9px;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+            }
+        }
+        if root.page != "": Lab {
+            text: root.page;
+            color: Am.print-soft;
+            font-size: 8.5px;
+            letter-spacing: 1.53px;
+        }
+        Rectangle { horizontal-stretch: 1; }
+        if root.settings: Lab {
+            text: "SET";
+            color: Am.print-soft;
+            font-size: 8.5px;
+            letter-spacing: 1.36px;
+        }
+        if root.settings: VerticalLayout {
+            alignment: center;
+            Nub { icon: "cog"; label: "Settings"; clicked => { root.go(3); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            Nub { icon: "minimize"; label: "Minimize"; clicked => { Main.minimize-window(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            Nub { icon: "close"; label: "Close"; clicked => { Main.close-window(); } }
+        }
+    }
+}
+
+// A lamp: the NEW light (red) or the status dot (green ready, red recording, amber
+// paused), with its glow.
+export component Lamp inherits Rectangle {
+    // 0 the red LED, 1 the status dot.
+    in property <int> kind;
+    in property <bool> on: true;
+    width: root.kind == 0 ? 8px : 7px;
+    height: self.width;
+    Art {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        lo: root.kind == 0 ? (root.on ? @image-url("dv-answer/led-on.png") : @image-url("dv-answer/led-off.png"))
+            : !Main.recording ? @image-url("dv-answer/dot-ready.png") : Main.paused ? @image-url("dv-answer/dot-pause.png") : @image-url("dv-answer/dot-rec.png");
+        hi: root.kind == 0 ? (root.on ? @image-url("dv-answer/led-on@2x.png") : @image-url("dv-answer/led-off@2x.png"))
+            : !Main.recording ? @image-url("dv-answer/dot-ready@2x.png") : Main.paused ? @image-url("dv-answer/dot-pause@2x.png") : @image-url("dv-answer/dot-rec@2x.png");
+    }
+}
+
+// The smoked display: the clip count with the NEW lamp, then the state, the timer and
+// the microphone.
+export component Display inherits Rectangle {
+    in property <bool> big;
+    property <string> count: (Main.clips.length < 10 ? "0" : "") + Main.clips.length;
+    property <string> clock: Main.elapsed + Main.elapsed-tenth;
+    // The NEW lamp: lit while there are messages, blinking while one is recorded.
+    property <bool> new-on: Main.recording && !Main.paused ? Math.mod(floor(Fx.t * 0.9), 2) == 0 : Main.clips.length > 0;
+    accessible-role: AccessibleRole.text;
+    accessible-label: (Main.recording ? (Main.paused ? "Paused " : "Recording ") : "Ready ") + root.clock;
+    Slice3 {
+        pad: 4px;
+        cap: 14px;
+        l: root.big ? @image-url("dv-answer/disp-w-l.png") : @image-url("dv-answer/disp-p-l.png");
+        m: root.big ? @image-url("dv-answer/disp-w-m.png") : @image-url("dv-answer/disp-p-m.png");
+        r: root.big ? @image-url("dv-answer/disp-w-r.png") : @image-url("dv-answer/disp-p-r.png");
+        l2: root.big ? @image-url("dv-answer/disp-w-l@2x.png") : @image-url("dv-answer/disp-p-l@2x.png");
+        m2: root.big ? @image-url("dv-answer/disp-w-m@2x.png") : @image-url("dv-answer/disp-p-m@2x.png");
+        r2: root.big ? @image-url("dv-answer/disp-w-r@2x.png") : @image-url("dv-answer/disp-p-r@2x.png");
+    }
+    HorizontalLayout {
+        padding-left: root.big ? 16px : 12px;
+        padding-right: root.big ? 16px : 12px;
+        padding-top: root.big ? 12px : 9px;
+        padding-bottom: root.big ? 12px : 9px;
+        spacing: 0;
+        VerticalLayout {
+            alignment: space-between;
+            Lab {
+                text: "MESSAGES";
+                color: Am.lab;
+                font-size: 9px;
+            }
+            HorizontalLayout {
+                alignment: start;
+                Seg {
+                    text: root.count;
+                    ghost: root.count.character-count > 2 ? "888" : "88";
+                    size: root.big ? 62px : 40px;
+                }
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                alignment: start;
+                VerticalLayout {
+                    alignment: center;
+                    Lamp { on: root.new-on; }
+                }
+                Lab {
+                    text: "NEW";
+                    color: Am.lab;
+                }
+            }
+        }
+        Rectangle { width: root.big ? 18px : 12px; }
+        Rectangle { width: 1px; background: #ffffff12; }
+        Rectangle { width: root.big ? 18px : 12px; }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: space-between;
+            HorizontalLayout {
+                spacing: 6px;
+                alignment: start;
+                VerticalLayout {
+                    alignment: center;
+                    Lamp { kind: 1; }
+                }
+                Text {
+                    text: Main.recording ? (Main.paused ? "PAUSED" : "RECORDING") : "READY";
+                    color: #e7c9bd;
+                    font-family: "Barlow Condensed";
+                    font-size: root.big ? 13px : 12px;
+                    font-weight: 700;
+                    letter-spacing: root.big ? 3.12px : 2.88px;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+            }
+            HorizontalLayout {
+                alignment: start;
+                Seg {
+                    text: root.clock;
+                    ghost: Main.elapsed.character-count > 5 ? "8:88:88.8" : "88:88.8";
+                    size: root.big ? 34px : 22px;
+                }
+            }
+            Text {
+                text: Main.device-label;
+                color: Am.disp-ink;
+                font-family: "Courier Prime";
+                font-size: root.big ? 13px : 11.5px;
+                overflow: elide;
+            }
+        }
+    }
+}
+
+// A key, with its face shifted down while it is held. `kind`: 0 a toolbar key (34x28),
+// 1 the portrait REC key (92x76), 2 a wide rubber key and 3 the wide REC key (any width,
+// 62 high), 4 and 5 the PLAY key (56 and 70 wide, 42 high).
+export component Key inherits Rectangle {
+    in property <int> kind;
+    in property <string> icon;
+    in property <length> icon-size: 15px;
+    in property <string> text;
+    in property <string> label;
+    in property <string> tip: root.label;
+    in property <bool> enabled: true;
+    // Latched down (Pause while paused).
+    in property <bool> lit;
+    callback clicked;
+    property <bool> red: root.kind == 1 || root.kind == 3;
+    property <bool> down: (t.pressed && root.enabled) || root.lit;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    face := Rectangle {
+        y: root.down ? 1.5px : 0;
+        opacity: root.enabled ? 1 : 0.7;
+        // The fixed size keys are one picture, the wide ones three pieces.
+        Art {
+            visible: root.kind != 2 && root.kind != 3;
+            x: -14px;
+            y: -14px;
+            width: parent.width + 28px;
+            height: parent.height + 28px;
+            lo: root.kind == 0 ? @image-url("dv-answer/tk.png") : root.kind == 1 ? @image-url("dv-answer/rec-p.png")
+                : root.kind == 4 ? @image-url("dv-answer/play-p.png") : @image-url("dv-answer/play-w.png");
+            hi: root.kind == 0 ? @image-url("dv-answer/tk@2x.png") : root.kind == 1 ? @image-url("dv-answer/rec-p@2x.png")
+                : root.kind == 4 ? @image-url("dv-answer/play-p@2x.png") : @image-url("dv-answer/play-w@2x.png");
+        }
+        Slice3 {
+            visible: root.kind == 2 || root.kind == 3;
+            pad: 14px;
+            cap: 24px;
+            l: root.kind == 3 ? @image-url("dv-answer/rec-w-l.png") : @image-url("dv-answer/key-w-l.png");
+            m: root.kind == 3 ? @image-url("dv-answer/rec-w-m.png") : @image-url("dv-answer/key-w-m.png");
+            r: root.kind == 3 ? @image-url("dv-answer/rec-w-r.png") : @image-url("dv-answer/key-w-r.png");
+            l2: root.kind == 3 ? @image-url("dv-answer/rec-w-l@2x.png") : @image-url("dv-answer/key-w-l@2x.png");
+            m2: root.kind == 3 ? @image-url("dv-answer/rec-w-m@2x.png") : @image-url("dv-answer/key-w-m@2x.png");
+            r2: root.kind == 3 ? @image-url("dv-answer/rec-w-r@2x.png") : @image-url("dv-answer/key-w-r@2x.png");
+        }
+        Rectangle {
+            visible: root.lit;
+            border-radius: 9px;
+            background: #00000033;
+        }
+        Rectangle {
+            visible: t.has-hover && root.enabled && !root.down;
+            border-radius: 9px;
+            background: #ffffff14;
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 4px;
+            HorizontalLayout {
+                alignment: center;
+                Icon {
+                    name: root.icon;
+                    tint: root.lit ? Am.amber : root.red ? Am.rec-ink : Am.key-ink;
+                    width: root.icon-size;
+                    height: root.icon-size;
+                }
+            }
+            if root.text != "": Text {
+                text: root.text;
+                color: root.lit ? Am.amber : root.red ? Am.rec-ink : Am.key-ink;
+                font-family: "Barlow Condensed";
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 2px;
+                horizontal-alignment: center;
+                accessible-role: none;
+            }
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The word printed under a key.
+export component Under inherits Text {
+    color: Am.print;
+    font-family: "Barlow Condensed";
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 1.53px;
+    horizontal-alignment: center;
+    accessible-role: none;
+    accessible-label: "";
+}
+
+// REC, which stops and saves while recording.
+export component RecKey inherits Key {
+    callback refocus();
+    icon: Main.recording ? "stop" : "mic";
+    text: Main.recording ? "STOP" : "REC";
+    label: Main.recording ? "Stop and save" : "Record";
+    tip: Main.recording ? "Stop" : "Record";
+    clicked => { Main.toggle-record(); root.refocus(); }
+}
+
+// LOAD (Import), or Pause and Resume while recording, when Import is not offered.
+export component LoadKey inherits Key {
+    callback refocus();
+    icon: !Main.recording ? "import" : Main.paused ? "play" : "pause";
+    label: !Main.recording ? "Import audio or video" : Main.paused ? "Resume" : "Pause";
+    tip: !Main.recording ? "Import" : root.label;
+    lit: Main.recording && Main.paused;
+    clicked => {
+        if (Main.recording) {
+            Main.toggle-pause();
+            root.refocus();
+        } else {
+            Main.import-files();
+        }
+    }
+}
+
+// The LED level meter in its well: green, amber, then red, lit up to the level while
+// recording (the scale runs from -40 dB to 0).
+export component Meter inherits Rectangle {
+    in property <bool> big;
+    // The room it may take; a wider portrait window gets more bars (10 at the mockup's
+    // width), and the well fits them.
+    in property <length> room: 120px;
+    property <int> n: root.big ? 12 : clamp(floor((root.room - 13px) / 10px), 10, 20);
+    width: root.big ? self.room : 13px + root.n * 10px;
+    property <length> bw: root.big ? 8px : 7px;
+    property <length> bh: root.big ? 48px : 26px;
+    property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;
+    property <int> on: round(clamp((root.level * 60 - 20) / 40, 0, 1) * root.n);
+    height: root.bh + 14px;
+    Slice3 {
+        pad: 3px;
+        cap: 10px;
+        l: root.big ? @image-url("dv-answer/mw-w-l.png") : @image-url("dv-answer/mw-p-l.png");
+        m: root.big ? @image-url("dv-answer/mw-w-m.png") : @image-url("dv-answer/mw-p-m.png");
+        r: root.big ? @image-url("dv-answer/mw-w-r.png") : @image-url("dv-answer/mw-p-r.png");
+        l2: root.big ? @image-url("dv-answer/mw-w-l@2x.png") : @image-url("dv-answer/mw-p-l@2x.png");
+        m2: root.big ? @image-url("dv-answer/mw-w-m@2x.png") : @image-url("dv-answer/mw-p-m@2x.png");
+        r2: root.big ? @image-url("dv-answer/mw-w-r@2x.png") : @image-url("dv-answer/mw-p-r@2x.png");
+    }
+    for i in root.n: bar := Rectangle {
+        property <color> c: i < root.n * 0.6 ? Am.green : i < root.n * 0.85 ? Am.amber : Am.led;
+        property <bool> lit: i < root.on;
+        x: 8px + i * (root.bw + 3px);
+        y: 7px;
+        width: root.bw;
+        height: root.bh;
+        // The glow around a lit bar.
+        Rectangle {
+            visible: bar.lit;
+            x: -2px;
+            y: -2px;
+            width: parent.width + 4px;
+            height: parent.height + 4px;
+            border-radius: 3px;
+            background: bar.c.with-alpha(0.3);
+        }
+        Rectangle {
+            border-radius: 1.5px;
+            background: bar.lit ? bar.c : Am.bar-off;
+        }
+    }
+}
+
+// The micro cassette window; its reels turn while recording, the full one on the left
+// slower than the take-up reel. 8 frames turn a reel through 120 degrees, its repeat.
+export component Micro inherits Rectangle {
+    in property <bool> big;
+    // The other pages: the reels turn while the clip plays (or Ask thinks), the window is
+    // drawn larger by `zoom`, and the label carries the clip's name instead of MC 60.
+    in property <bool> turning: Main.recording && !Main.paused;
+    in property <float> zoom: 1;
+    in property <string> label;
+    property <bool> hi: 1phx < 0.7px;
+    property <int> left-frame: root.turning ? Math.mod(floor(Fx.t * 4), 8) : 0;
+    property <int> right-frame: root.turning ? Math.mod(floor(Fx.t * 6), 8) : 3;
+    property <length> d: (root.big ? 22px : 16px) * root.zoom;
+    property <int> px: (root.big ? 22 : 16) * (root.hi ? 2 : 1);
+    // Where the reels' middles sit, from the mockup's layout.
+    property <length> lx: (root.big ? 75.2px : 50.84px) * root.zoom;
+    property <length> rx: (root.big ? 132.8px : 91.16px) * root.zoom;
+    property <length> cy: (root.big ? 70.08px : 52.64px) * root.zoom;
+    width: (root.big ? 208px : 142px) * root.zoom;
+    height: (root.big ? 104px : 78px) * root.zoom;
+    accessible-role: none;
+    Art {
+        x: -3px * root.zoom;
+        y: -3px * root.zoom;
+        width: (root.big ? 214px : 148px) * root.zoom;
+        height: (root.big ? 110px : 84px) * root.zoom;
+        lo: root.big ? @image-url("dv-answer/mc-w.png") : @image-url("dv-answer/mc-p.png");
+        hi: root.big ? @image-url("dv-answer/mc-w@2x.png") : @image-url("dv-answer/mc-p@2x.png");
+    }
+    // The label over MC 60, above its red rule.
+    if root.label != "": Rectangle {
+        x: (root.big ? 33.6px : 21.72px) * root.zoom;
+        y: (root.big ? 27.9px : 20.72px) * root.zoom;
+        width: (root.big ? 140.8px : 98.56px) * root.zoom;
+        height: (root.big ? 13.8px : 9.4px) * root.zoom;
+        border-top-left-radius: 2px;
+        border-top-right-radius: 2px;
+        background: #f1ead9;
+        Text {
+            x: 4px;
+            width: parent.width - 8px;
+            y: 1px;
+            height: parent.height;
+            text: root.label;
+            color: #6a3226;
+            font-family: "Courier Prime";
+            font-size: (root.big ? 11px : 8.5px) * root.zoom;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+    Image {
+        x: root.lx - root.d / 2;
+        y: root.cy - root.d / 2;
+        width: root.d;
+        height: root.d;
+        source: root.big ? (root.hi ? @image-url("dv-answer/reel-w@2x.png") : @image-url("dv-answer/reel-w.png"))
+            : (root.hi ? @image-url("dv-answer/reel-p@2x.png") : @image-url("dv-answer/reel-p.png"));
+        source-clip-x: root.left-frame * root.px;
+        source-clip-y: 0;
+        source-clip-width: root.px;
+        source-clip-height: root.px;
+        image-fit: fill;
+    }
+    Image {
+        x: root.rx - root.d / 2;
+        y: root.cy - root.d / 2;
+        width: root.d;
+        height: root.d;
+        source: root.big ? (root.hi ? @image-url("dv-answer/reel-w@2x.png") : @image-url("dv-answer/reel-w.png"))
+            : (root.hi ? @image-url("dv-answer/reel-p@2x.png") : @image-url("dv-answer/reel-p.png"));
+        source-clip-x: root.right-frame * root.px;
+        source-clip-y: 0;
+        source-clip-width: root.px;
+        source-clip-height: root.px;
+        image-fit: fill;
+    }
+}
+
+// The speaker grille of a wide window, built up from a short cut (256x39: 1px of shadow,
+// a well of 37 rows, 1px of shadow) so it costs little at any height: the top 14 rows
+// (the rounded corners and the shade), then one band of 7 rows (one row of dots) as
+// often as it fits, then the bottom 9 rows. The dots stay in step, since every piece
+// starts on a multiple of 7. Portrait windows use the small fixed one.
+export component Grille inherits Rectangle {
+    // The other pages' wide speaker (merge): the same well cut 366 wide (grille-m).
+    in property <bool> broad;
+    property <int> cw: root.broad ? 366 : 256;
+    property <image> art: root.broad ? (root.hi ? @image-url("dv-answer/grille-m@2x.png") : @image-url("dv-answer/grille-m.png"))
+        : (root.hi ? @image-url("dv-answer/grille-w@2x.png") : @image-url("dv-answer/grille-w.png"));
+    property <bool> hi: 1phx < 0.7px;
+    property <int> k: max(0, floor((root.height - 23px) / 7px));
+    property <int> s: root.hi ? 2 : 1;
+    Image {
+        x: -1px;
+        y: -1px;
+        width: root.cw * 1px;
+        height: 15px;
+        source: root.art;
+        source-clip-x: 0;
+        source-clip-y: 0;
+        source-clip-width: root.cw * root.s;
+        source-clip-height: 15 * root.s;
+        image-fit: fill;
+    }
+    for i in root.k: Image {
+        x: -1px;
+        y: 14px + i * 7px;
+        width: root.cw * 1px;
+        height: 7px;
+        source: root.art;
+        source-clip-x: 0;
+        source-clip-y: 15 * root.s;
+        source-clip-width: root.cw * root.s;
+        source-clip-height: 7 * root.s;
+        image-fit: fill;
+    }
+    Image {
+        x: -1px;
+        y: 14px + root.k * 7px;
+        width: root.cw * 1px;
+        height: 10px;
+        source: root.art;
+        source-clip-x: 0;
+        source-clip-y: 29 * root.s;
+        source-clip-width: root.cw * root.s;
+        source-clip-height: 10 * root.s;
+        image-fit: fill;
+    }
+}

@@ -483,9 +483,10 @@ bezel keys act).
   (38.2), one clip 160.4 (166.1), settings 54.1 (56.2), models 54.1 (56.3), Ask 66.1 (68.6), merge 67.9 (69.1),
   widget 61.1 (63.7) MB; at 1100x700 main 45.6 (46.7), one clip 171.5 (168.6), settings 63.0
   (64.2), models 65.3 (65.2), Ask 75.9 (76.9), merge 77.4 (78.5), widget 63.8 (64.7) MB.
-- Exe EXEGROWTH: the nine pages' generated code and the LCD look in the shared widgets; art
-  2.0 KB, no fonts. More than the Car Dashboard (+8.77 MB): every page carries the whole
-  handheld and its bezel.
+- Exe +17.49 MB (136.41 to 153.90 MB): the nine pages' generated code and the LCD look in
+  the shared widgets; art 2.0 KB, no fonts. About twice the Car Dashboard's (+8.77 MB): every
+  page and every question carries the whole handheld and its bezel. A candidate for the size
+  pass after the nine.
 - Ember, Tape Deck and Phosphor: every page, both menus, the export menu, the questions,
   settings scrolled and the widget at 520x700 and 1100x700 match the build before pixel for
   pixel (38 shots each), apart from a blinking text cursor and a scroll bar caught mid fade.

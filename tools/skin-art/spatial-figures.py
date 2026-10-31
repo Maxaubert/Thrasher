@@ -1,13 +1,14 @@
 # Spatial Figures: Inter Tight's tabular figures (the tnum glyphs mapped as the plain
-# ones) at 300 and 400, only the characters of a timer or a length, under their own
-# family name so no other text of the app can pick them up.
+# ones) at 300 and 400, only the characters of a timer, a length, a percent or a size
+# (% G B M, for the other pages), under their own family name so no other text of the
+# app can pick them up. Run: python spatial-figures.py InterTight-VF.ttf OUT_DIR
 import sys
 from fontTools.ttLib import TTFont
 from fontTools.varLib import instancer
 from fontTools import subset
 
 SRC, OUT = sys.argv[1], sys.argv[2]
-CHARS = "0123456789:.-/ "
+CHARS = "0123456789:.-/ %GBM"
 for wght, style in ((300, "Light"), (400, "Regular")):
     f = TTFont(SRC)
     f = instancer.instantiateVariableFont(f, {"wght": wght})

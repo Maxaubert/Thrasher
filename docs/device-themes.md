@@ -125,7 +125,8 @@ theme "Desktop 95", index 10 in `Theme.names`), art in `ui/skins/dv-os95/`, font
 and VT323 (the same `VT323-400.ttf` as Phosphor: its Latin subset covers the ASCII this
 skin needs, with the same outlines and metrics).
 - `Theme.pages` says how the other pages are built: 1 for Tape Deck, 2 for Phosphor, 3 for
-  Desktop 95 and 4 for the Comic Book (each since its pages were built), else 0, the classic
+  Desktop 95, 4 for the Comic Book and 5 for Spatial Glass (each since its pages were built),
+  else 0, the classic
   pages in the theme's palette. A skin whose other pages are not built yet keeps them
   classic this way; `app.slint` picks the main page by `Theme.skin` and the rest by
   `Theme.pages`. Desktop 95's palette is grey and navy for those pages.
@@ -1007,8 +1008,8 @@ step 3 was.
 **Built in step 5, Spatial Glass main page (2026-10-29):** `ui/skins/x-spatial.slint`
 (skin 5, theme "Spatial Glass", index 12 in `Theme.names`), art in `ui/skins/x-spatial/`,
 cut by `sh tools/skin-art/cut.sh x-spatial OUT` from `tools/skin-art/x-spatial.html`. Its
-other pages keep the classic layout in its palette for now (`Theme.pages` 0; only Tape
-Deck has its own). It uses `ProjectMenu.up` (added with Phosphor) to open the project menu
+other pages are its own since 2026-10-30 (`Theme.pages` 5, see "Spatial Glass on every
+other page" below). It uses `ProjectMenu.up` (added with Phosphor) to open the project menu
 above its picker (the ornament sits at the window's foot).
 - **Pre-blurred room:** the room behind the glass is one picture per orientation at half
   the mockup's size (200x310, 500x310), stretched to the window. It is blurred, so the
@@ -1050,6 +1051,76 @@ above its picker (the ornament sits at the window's foot).
   13 to 18% at 1100x700 (Ember 22 to 25%).
 - Working set idle 41 to 42 vs 40 to 41 MB (about +1), wide 52 vs 48 to 49 MB (+3).
 - Exe +2.0 MB (44.83 to 46.85 MB): art 0.41 MB, fonts 7 KB, the rest generated code.
+
+**Built in step 5, Spatial Glass on every other page (2026-10-30):** mockups in
+`docs/mockups/device-themes/x-spatial-pages/` (approved by Max 2026-10-30, widget variant A).
+- `ui/skins/x-spatial-parts.slint`: the parts the main page and the other pages share,
+  moved out of `x-spatial.slint` with no visible change: `Shadow`, `Pane` (now with `lift`,
+  the brighter pane you type in), `Capsule`, `GlassBtn` (now with `tint`), `Status`, `Timer`,
+  `Grab`, and `TiltPane`, the wide recorder's tilted glass without its contents (the wide
+  clip, models and merge pages use it for their left pane; `RecorderTilt` inherits it).
+- `ui/skins/x-spatial-pages.slint`: `ClipPage`, `SettingsPage`, `ModelsPage`, `MergePage`,
+  `AskPage`, `Widget`, `Dialog`, `Speaking` and `Drop`, picked in `app.slint` by
+  `Theme.pages == 5` (`Theme.pages` is 1 for Tape Deck, 5 for Spatial Glass, else 0). Every
+  page is panes in the main page's room: a back pill with the page's name, minimise and
+  close in the title bar; the main actions in an ornament under the window (Clean voice and
+  Export, Cancel and Merge); messages as a glass chip above it (portrait) or in it (wide).
+- `Theme.glass` (skin 5) makes the shared widgets draw the glass look, as `Theme.tape` does
+  the deck look: `Btn` (glass pills, the main action white, `red` for Delete and Merge),
+  `IconBtn` (round glass, white while on), `Toggle` (dark slot, green when on), `Select` (a
+  glass capsule and a glass list), `MenuCard`, `MenuRow`, `ExportItem`, `ExportChoices`
+  (brighter glass menus with lit rows), `ExportButton` (white pill, a dark pill that fills
+  while exporting), `OrderList` (a grip, the place on a white bead, a round play button, a
+  plain x or dots, a faint slot where a dragged row lands), `ShortcutBox` (glass key caps),
+  `Tip` and `TranscriptCard` (the page's pane is the card; the word playing on a white bead,
+  pauses as cyan pills, a dark well and a cyan caret while editing, a cyan change chip). The
+  main page's menus are glass now too. `Glass` (the colours) moved to `common.slint`.
+- `TextField.focus-edge` and `focus-ring`: the white edge of a glass field with the cursor
+  (defaults are the accent, so no other look changes).
+- The gallery (`gallery.slint`) tints its Ember look for glass: a white frame and check bead
+  on the current tile, a cyan focus ring, glass hover, no edge fades (the solid card colour
+  of the fade would show as a band on see-through glass).
+- Art: three new pieces from `tools/skin-art/x-spatial.html` (`ONLY="widget-room orb-w
+  ring-w" sh tools/skin-art/cut.sh x-spatial OUT`): the widget's room with its 24px corners
+  cut (the widget window is see-through and the renderer has no rounded clipping), its orb
+  and its dim halo of 40 ticks, 1x and 2x, 157 KB.
+- Fonts: "Spatial Figures" gains % G B M (percents and model sizes in tabular figures),
+  `tools/skin-art/spatial-figures.py`; 4.2 KB each.
+- Rust: the editor's pause tags are cyan for glass (`edit-markup`).
+- Copy: dialog titles have no question mark ("Delete clip_005", "Delete 2 clips"); the
+  glass dialog words its delete title itself, so the other looks keep theirs.
+
+**Lessons from Spatial Glass's other pages:**
+- **`slint-viewer --check ui/app.slint`** compiles the whole UI in seconds, prints every
+  error and warning and opens no window. Run it before a cargo build, which takes 15 minutes
+  and more while parallel agents queue on the shared target's lock.
+- **The shared target holds whoever built last:** copy `thrasher.exe` out only after checking
+  it is this branch's build (it holds a piece of this branch's new art, see `mine.py` in the
+  step's scratch kit), and under a unique name.
+- **Elements outside a layout are centred,** again: a title bar component without `y: 0`
+  sat in the middle of every page. Set `y` in the component itself.
+- **Pills without gradients:** gradients ignore corners, so glass pills, switches and the
+  play orb are flat fills with a 1px light line along the top, not the mockup's gradients.
+- **A rebuilt subset font can differ in glyph names only:** compare outlines decomposed
+  (`DecomposingRecordingPen`) and advances before trusting that old text did not move.
+- **Checks:** restoring the scratch clips gives them new creation times, which the rows show
+  ("Today 17:05"), so a before and an after run must share one restore. A dialog's field
+  takes Esc and Delete (posted keys go to it, not the window): close a dialog with its Cancel.
+  UI Automation cannot press a control scrolled out of view: wheel the page first (a posted
+  move, then the wheel). A short clip exports in 0.1 s, too fast to see the progress: use a
+  long one (clip_100, 69 minutes).
+
+**Budgets measured on Spatial Glass's other pages** (test copy, 2.25x display, 10 s samples,
+2026-10-30):
+- CPU idle 0.0 to 0.5% on every page at 520x700 and 1100x700 (Ember 0.0 to 1.1%). Nothing
+  moves on a clock.
+- Working set over Ember on the same exe: main +1.9 / +3.4 MB, clip +1.9 / +4.1, settings
+  +2.2 / +4.3, models +2.4 / +4.1, ask +2.4 / +3.7, merge +2.0 / +4.5, widget +3.0 / +6.8
+  (520 / 1100 wide; the wide room picture stays loaded in the widget).
+- Exe +8.37 MB (74.15 to 82.53 MB): art 0.16 MB, fonts 1 KB, the rest the generated code of nine pages and the glass look in the shared widgets (Tape Deck's step 3 was +10.35 MB).
+- Ember and Tape Deck: main, clip, settings (top and scrolled), models, ask, merge, both
+  dialogs, both menus and the widget at 520x700 and 1100x700, 48 shots, match pixel for
+  pixel before and after.
 
 **Built in step 5, Quest Menu main page (2026-10-29):** `ui/skins/px-quest.slint` (skin 8,
 theme "Quest Menu", index 15 in `Theme.names`), art in `ui/skins/px-quest/` (23 PNGs, 4 KB)
@@ -1266,6 +1337,7 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      Desktop 95's other pages: built 2026-10-30 (see "Built in step 5, Desktop 95 on every
      other page").
      Comic Book built 2026-10-30 (`Theme.pages` 4, widget variant A).
+     Spatial Glass built 2026-10-30 (see "Spatial Glass on every other page").
    - Other pages, batch 2 (Pocket, Quest Menu, Brick Phone, Answering Machine, Pocket Synth,
      Fighter Select) and batch 3 (Cozy Cabin, Pinball, Phonograph): mockups next.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

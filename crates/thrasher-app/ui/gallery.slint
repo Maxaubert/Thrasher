@@ -3,9 +3,10 @@
 // group, Classic and Devices, with page arrows, a thin scroll bar and a fade. A click
 // switches the theme at once. The classic tiles are the main page drawn live from the
 // palette; the device tiles are pictures in skins/thumbs (tools/skin-art/thumbs.py).
-// Drawn in the Ember look, or the Tape Deck or Phosphor or Desktop 95 or Comic Book look while that theme is on.
+// Drawn in the Ember look, or the Tape Deck or Phosphor or Desktop 95 or Comic Book look while that theme is on; Spatial Glass
+// tints the Ember look (a white frame and check bead, a cyan focus ring, no fades).
 
-import { Theme, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Palette, Icon, IconBtn, Win } from "common.slint";
+import { Theme, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Glass, Palette, Icon, IconBtn, Win } from "common.slint";
 
 export struct ThemeTile {
     // As in Theme.names.
@@ -97,8 +98,10 @@ component Tile inherits Rectangle {
             height: 70px;
             border-radius: 8px;
             border-width: root.on || root.focused ? 2px : 1px;
-            border-color: root.focused ? Theme.text : root.on ? Theme.accent : root.hover || root.down ? Theme.edge : Theme.divider;
-            background: root.down ? Theme.raised : root.hover ? Theme.hover : Theme.bg;
+            border-color: Theme.glass ? (root.focused ? Glass.cyan : root.on ? #ffffff : root.hover || root.down ? #ffffff73 : #ffffff2e)
+                : root.focused ? Theme.text : root.on ? Theme.accent : root.hover || root.down ? Theme.edge : Theme.divider;
+            background: Theme.glass ? (root.down ? #ffffff26 : root.hover ? #ffffff1a : #0000002e)
+                : root.down ? Theme.raised : root.hover ? Theme.hover : Theme.bg;
         }
         Rectangle {
             x: 3px;
@@ -120,10 +123,10 @@ component Tile inherits Rectangle {
             width: 18px;
             height: 18px;
             border-radius: 9px;
-            background: Theme.accent;
+            background: Theme.glass ? #ffffff : Theme.accent;
             Icon {
                 name: "check";
-                tint: Theme.on-accent;
+                tint: Theme.glass ? #24222b : Theme.on-accent;
                 stroke-width: 1.8px;
                 width: 11px;
                 height: 11px;
@@ -133,7 +136,7 @@ component Tile inherits Rectangle {
             y: 75px;
             height: 15px;
             text: root.tile.name;
-            color: root.on ? Theme.accent : root.hover ? Theme.text : Theme.muted;
+            color: Theme.glass ? (root.on || root.hover ? Glass.ink : Glass.ink2) : root.on ? Theme.accent : root.hover ? Theme.text : Theme.muted;
             font-size: 12px;
             font-weight: root.on ? 600 : 500;
             horizontal-alignment: center;
@@ -394,7 +397,7 @@ component Fade inherits Rectangle {
     background: !Theme.tape ? transparent
         : root.to-right ? @linear-gradient(90deg, #b5ad9f00 0%, #b5ad9f 100%)
         : @linear-gradient(270deg, #c5bdb000 0%, #c5bdb0 100%);
-    for i in Theme.tape ? 0 : root.strips: Rectangle {
+    for i in Theme.tape || Theme.glass ? 0 : root.strips: Rectangle {
         property <length> from: round((root.at-x + i * root.width / root.strips) / 1phx) * 1phx - root.at-x;
         property <length> to: round((root.at-x + (i + 1) * root.width / root.strips) / 1phx) * 1phx - root.at-x;
         x: self.from;
@@ -472,7 +475,7 @@ component Strip inherits VerticalLayout {
 
     // Its head.
     if root.divided && !Theme.tape && !Theme.phos && !Theme.os95: Rectangle { height: 6px; }
-    if root.divided && !Theme.tape && !Theme.phos && !Theme.os95: Rectangle { height: Theme.comic ? 2.5px : 1px; background: Theme.comic ? Comic.ink : Theme.divider; }
+    if root.divided && !Theme.tape && !Theme.phos && !Theme.os95: Rectangle { height: Theme.comic ? 2.5px : 1px; background: Theme.comic ? Comic.ink : Theme.glass ? #ffffff1a : Theme.divider; }
     if root.divided && Theme.phos: Rectangle { height: 8px; }
     if Theme.tape: Rectangle { height: 4px; }
     if root.divided && Theme.os95: Rectangle { height: 6px; }
@@ -484,7 +487,7 @@ component Strip inherits VerticalLayout {
         spacing: 8px;
         if !Theme.tape && !Theme.comic: Text {
             text: root.title;
-            color: Theme.phos ? Ph.hi : Theme.text;
+            color: Theme.phos ? Ph.hi : Theme.glass ? Glass.ink : Theme.text;
             font-family: Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
             font-size: Theme.phos ? 12.5px : Theme.os95 ? 12.5px : 12px;
             font-weight: Theme.phos ? 400 : Theme.os95 ? 700 : 600;
@@ -531,7 +534,7 @@ component Strip inherits VerticalLayout {
         }
         Text {
             text: root.n;
-            color: Theme.tape ? #6f665a : Theme.os95 ? Os.note : Theme.comic ? Comic.sub : Theme.dim;
+            color: Theme.tape ? #6f665a : Theme.os95 ? Os.note : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.dim;
             font-family: Theme.tape ? Theme.mono : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : "Inter Tight";
             font-size: Theme.tape ? 10px : Theme.phos ? 11px : Theme.comic ? 14px : 12px;
             letter-spacing: Theme.comic ? 1px : 0;
@@ -664,7 +667,7 @@ component Strip inherits VerticalLayout {
             visible: root.scrolls;
             height: Theme.tape ? 4px : Theme.os95 ? 16px : Theme.comic ? 5px : 3px;
             border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic ? 0 : 2px;
-            background: Theme.tape ? #1b1410 : Theme.phos ? Ph.faint : Theme.os95 ? Os.face : Theme.comic ? #ffffff : Theme.divider;
+            background: Theme.tape ? #1b1410 : Theme.phos ? Ph.faint : Theme.os95 ? Os.face : Theme.comic ? #ffffff : Theme.glass ? #ffffff1f : Theme.divider;
             border-width: Theme.comic ? 1.5px : 0;
             border-color: Comic.ink;
             property <length> thumb-w: max(30px, self.width * root.view-w / max(root.content-w, 1px));
@@ -684,7 +687,7 @@ component Strip inherits VerticalLayout {
                 width: parent.thumb-w;
                 height: Theme.tape ? 6px : Theme.os95 ? 16px : Theme.comic ? 5px : 3px;
                 border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic ? 0 : 2px;
-                background: Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.phos ? Ph.ph : Theme.os95 ? Os.face : Theme.comic ? Comic.ink : Theme.edge;
+                background: Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.phos ? Ph.ph : Theme.os95 ? Os.face : Theme.comic ? Comic.ink : Theme.glass ? #ffffff73 : Theme.edge;
                 OsBevel { visible: Theme.os95; kind: 0; }
             }
         }

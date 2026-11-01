@@ -8913,26 +8913,27 @@ export component TranscriptCard inherits Rectangle {
                                             }
                                             // Needs a model first: a link to it.
                                             if !l.ready: Rectangle {
-                                                width: install-text.preferred-width + (Theme.pocket ? 8px : (Theme.brick ? 10px : 12px));
-                                                height: Theme.pocket ? 14px : Theme.brick ? 16px : 22px;
+                                                width: install-text.preferred-width + (Theme.pocket ? 8px : (Theme.brick || Theme.fighter ? 10px : 12px));
+                                                height: Theme.pocket ? 14px : Theme.brick || Theme.fighter ? 16px : 22px;
                                                 y: (parent.height - self.height) / 2;
-                                                border-radius: Theme.tape ? 2px : Theme.phos || Theme.brick ? 0 : Theme.os95 ? 0 : Theme.comic ? 0 : Theme.glass ? 11px : 5px;
+                                                border-radius: Theme.tape ? 2px : Theme.phos || Theme.brick || Theme.fighter ? 0 : Theme.os95 ? 0 : Theme.comic ? 0 : Theme.glass ? 11px : 5px;
                                                 border-width: Theme.tape || Theme.glass || Theme.brick || Theme.synth ? 1px : Theme.comic ? 2px : 0;
                                                 border-color: Theme.glass ? #ffffff4d : Theme.comic ? Comic.ink : Theme.brick ? Brick.ink : Theme.synth ? #ff5a1e : Deck.red;
-                                                background: Theme.pocket ? (install-t.has-hover ? Pk.l2 : Pk.l3) : Theme.comic ? (install-t.has-hover ? #a6daf5 : Comic.cyan)
+                                                // Fighter Select: a cyan tag with black capitals.
+                                                background: Theme.fighter ? (install-t.has-hover ? #8af0ff : Fi.cyan) : Theme.pocket ? (install-t.has-hover ? Pk.l2 : Pk.l3) : Theme.comic ? (install-t.has-hover ? #a6daf5 : Comic.cyan)
                                                     : Theme.brick ? (install-t.has-hover ? Brick.ghost : transparent)
                                                     : Theme.os95 ? Os.face : install-t.has-hover ? (Theme.tape ? Deck.red.with-alpha(0.12) : Theme.phos ? Ph.ph : Theme.glass ? #ffffff33 : Theme.accent.with-alpha(0.14))
                                                     : Theme.glass ? #ffffff1a : transparent;
                                                 OsBevel { visible: Theme.os95; kind: install-t.pressed && install-t.has-hover ? 1 : 0; }
                                                 install-text := Text {
-                                                    x: Theme.pocket ? 4px : Theme.brick ? 5px : 6px;
+                                                    x: Theme.pocket ? 4px : Theme.brick || Theme.fighter ? 5px : 6px;
                                                     y: (parent.height - self.height) / 2;
-                                                    text: Theme.tape || Theme.comic || Theme.pocket || Theme.brick || Theme.synth ? "INSTALL" : Theme.phos ? "[install]" : "Install";
-                                                    color: Theme.pocket ? Pk.l0 : Theme.brick ? Brick.ink : Theme.tape ? Deck.red : Theme.glass ? Glass.ink : Theme.phos ? (install-t.has-hover ? Ph.bg : Ph.hi) : Theme.os95 ? #000000 : Theme.comic ? Comic.ink : Theme.synth ? #ff5a1e : Theme.accent;
-                                                    font-family: Theme.pocket ? Pk.small : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.caps : Theme.synth ? Theme.mono : "Inter Tight";
-                                                    font-size: Theme.pocket ? 8px : Theme.tape ? 10px : Theme.comic ? 12px : Theme.glass ? 10.5px : Theme.brick ? 7px : Theme.synth ? 8px : 12px;
-                                                    font-weight: Theme.comic || Theme.phos || Theme.pocket || Theme.brick ? 400 : Theme.synth ? 700 : 600;
-                                                    letter-spacing: Theme.tape ? 1.6px : Theme.comic || Theme.pocket ? 1px : Theme.brick ? 0.5px : 0;
+                                                    text: Theme.tape || Theme.comic || Theme.pocket || Theme.brick || Theme.synth || Theme.fighter ? "INSTALL" : Theme.phos ? "[install]" : "Install";
+                                                    color: Theme.fighter ? #000000 : Theme.pocket ? Pk.l0 : Theme.brick ? Brick.ink : Theme.tape ? Deck.red : Theme.glass ? Glass.ink : Theme.phos ? (install-t.has-hover ? Ph.bg : Ph.hi) : Theme.os95 ? #000000 : Theme.comic ? Comic.ink : Theme.synth ? #ff5a1e : Theme.accent;
+                                                    font-family: Theme.fighter ? Fi.body : Theme.pocket ? Pk.small : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.caps : Theme.synth ? Theme.mono : "Inter Tight";
+                                                    font-size: Theme.fighter ? 9px : Theme.pocket ? 8px : Theme.tape ? 10px : Theme.comic ? 12px : Theme.glass ? 10.5px : Theme.brick ? 7px : Theme.synth ? 8px : 12px;
+                                                    font-weight: Theme.comic || Theme.phos || Theme.pocket || Theme.brick ? 400 : Theme.synth || Theme.fighter ? 700 : 600;
+                                                    letter-spacing: Theme.tape ? 1.6px : Theme.comic || Theme.pocket ? 1px : Theme.brick ? 0.5px : Theme.fighter ? 1.5px : 0;
                                                 }
                                                 install-t := TouchArea {
                                                     mouse-cursor: pointer;

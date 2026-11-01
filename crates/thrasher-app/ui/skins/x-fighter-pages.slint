@@ -638,7 +638,8 @@ component Profile inherits VerticalLayout {
         text: root.name;
         color: #ffffff;
         font-family: F.lean;
-        font-size: root.big ? 40px : 26px;
+        // Wide: a long name steps down, so "clip_101 merged" fits the narrow column.
+        font-size: root.big ? (root.name.character-count > 10 ? 30px : 40px) : 26px;
         letter-spacing: 1px;
         overflow: elide;
     }
@@ -1181,7 +1182,12 @@ export component ClipPage inherits Page {
                                 }
                             }
                             Profile { big: true; }
-                            Counter { size: 44px; inline: true; }
+                            // In a start aligned row: the counter's fixed width would otherwise
+                            // cap the column's width and cut the name short.
+                            HorizontalLayout {
+                                alignment: start;
+                                Counter { size: 44px; inline: true; }
+                            }
                         }
                         if Pages.renaming: VerticalLayout {
                             horizontal-stretch: 1;
@@ -1377,32 +1383,6 @@ component Value inherits Text {
 component RowSelect inherits Select {
     width: min(self.natural, 220px);
     height: 28px;
-}
-
-// Ready: a green dot and READY in the slanted type.
-component Ready inherits HorizontalLayout {
-    spacing: 6px;
-    accessible-role: AccessibleRole.text;
-    accessible-label: "Ready";
-    VerticalLayout {
-        alignment: center;
-        Rectangle {
-            width: 12px;
-            height: 12px;
-            border-radius: 6px;
-            background: #0b3d1d;
-            Rectangle { x: 2px; y: 2px; width: 8px; height: 8px; border-radius: 4px; background: F.green; }
-        }
-    }
-    Text {
-        text: "READY";
-        color: F.green;
-        font-family: F.lean;
-        font-size: 12px;
-        letter-spacing: 1.5px;
-        vertical-alignment: center;
-        accessible-role: none;
-    }
 }
 
 // The Files panel: the folder with Open and Change, the file name with the next name under

@@ -925,6 +925,11 @@ stage heading is not covered; a short dropdown list opens flush with the chip's 
 not past the window. Deliberate differences: the merge rows show the fighter of their place,
 not of the clip's tile; the widget's Open window key is the shared expand icon; the Ask key is
 a cyan slanted key without the dim state's own colour (it fades when off, as every key).
+Review fixes (2026-11-01): the translate menu's INSTALL is the mockup's cyan tag (it was the
+classic red word); on the wide clip page the counter sits in a start aligned row (its fixed
+width capped the name column at about 170px, so "clip_101 merged" and the file name were cut
+short and RENAME and DELETE sat mid panel), and a name over 10 characters steps down from 40px
+to 30px. Lesson: a child with a fixed `width` in a layout caps the whole layout's width.
 
 **Lessons from the Fighter Select pages:**
 - **An `if` whose root is a component copies that component.** `if !root.wide: FilesCard { }`

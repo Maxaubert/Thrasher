@@ -270,7 +270,10 @@ export global Theme {
     // Answering Machine's (skins/dv-answer-pages.slint), 11 the Pocket Synth's
     // (skins/dv-synth-pages.slint), else 0, the classic pages in the theme's palette (also for
     // skins whose pages are not built yet).
-    out property <int> pages: root.skin == 1 ? 1 : root.skin == 2 ? 2 : root.skin == 3 ? 3 : root.skin == 4 ? 4 : root.skin == 5 ? 5 : root.skin == 6 ? 6 : root.skin == 7 ? 7 : root.skin == 8 ? 8 : root.skin == 9 ? 9 : root.skin == 10 ? 10 : root.skin == 11 ? 11 : 0;
+    // One comparison, not a chain of 11: Slint pastes a cheap global binding into every
+    // read, so a long chain here was copied 36,000 times into the generated code (see
+    // docs/device-themes.md, Generated code size). Skins 1 to 11 have their own pages.
+    out property <int> pages: root.skin <= 11 ? root.skin : 0;
     // The Tape Deck skin: the shared widgets below draw their deck look for it.
     out property <bool> tape: root.skin == 1;
     // The Phosphor skin: the shared widgets below draw their terminal look for it.

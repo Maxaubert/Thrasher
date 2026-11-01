@@ -32,3 +32,14 @@ Conclusions:
 How it was measured: `examples/transcribe.rs` for whisper.cpp, a small faster-whisper
 script for the baseline, and a `difflib` word alignment to compare start times. The
 scripts lived in the session scratchpad and are not kept.
+
+## Other engines looked at
+
+- **Nemotron 3.5 ASR Streaming 0.6B** (NVIDIA, released 2026-06-04; checked 2026-11-01 by the
+  Flare session, report at `C:\Users\Admin\Documents\Claude\research\flare\2026-11-01-nemotron-asr.md`).
+  742 MB as q8 GGUF, streams, 40 language-locales including Norwegian Bokmal, OpenMDW-1.1
+  (commercial use allowed). Weak fit for Thrasher: Norwegian WER 18.1 against 10.4 for
+  Whisper large-v3 and 6.6 for NB-Whisper, English 7.91 against 4.85 for Parakeet v3, no
+  word timestamps on the model card, and streaming adds little when clips are transcribed
+  after recording. CPU speed and RAM not measured. If ever wanted: a second engine behind
+  the `Transcriber` trait, in its own process. Not planned.

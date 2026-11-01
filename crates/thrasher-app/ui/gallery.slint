@@ -4,12 +4,14 @@
 // switches the theme at once. The classic tiles are the main page drawn live from the
 // palette; the device tiles are pictures in skins/thumbs (tools/skin-art/thumbs.py).
 // Drawn in the Ember look, or the Tape Deck or Phosphor or Desktop 95 or Comic Book look while that theme is on; Spatial Glass
-// tints the Ember look (a white frame and check bead, a cyan focus ring, no fades). The Quest The Brick
+// tints the Ember look (a white frame and check bead, a cyan focus ring, no fades). The Quest The Brick The
 // Menu frames each picture in pixels: grey, white on the lit tile, gold with the glove on the
 // current one, and a gold ring round the keyboard focus.
 // Phone draws smaller framed tiles on its LCD, the current one inverted in a double frame.
+// Pocket Synth draws its tiles as pads, the current one lit orange, and a row of LEDs for
+// where the strip is.
 
-import { Theme, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Glass, Quest, QPx, Brick, Am, Palette, Icon, IconBtn, Win, Pk, PkRing, PkTile } from "common.slint";
+import { Theme, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Glass, Quest, QPx, Brick, Am, Palette, Icon, IconBtn, Win, Pk, PkRing, PkTile, SynKey } from "common.slint";
 
 export struct ThemeTile {
     // As in Theme.names.
@@ -157,7 +159,7 @@ component Tile inherits Rectangle {
     }
 
     // Ember: a framed picture, the name under it, a check on the current one.
-    if !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick: Rectangle {
+    if !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.synth: Rectangle {
         Rectangle {
             y: 0;
             height: 70px;
@@ -579,6 +581,57 @@ component Tile inherits Rectangle {
         }
     }
 
+    // Pocket Synth: the picture on a pad that sinks while it is held; the current one is an
+    // orange pad with a glow, its name orange; an orange ring round the focused one.
+    if Theme.synth: Rectangle {
+        if root.focused: Rectangle {
+            x: -4px;
+            y: -4px;
+            width: 118px;
+            height: 78px;
+            border-radius: 11px;
+            border-width: 2px;
+            border-color: #ff5a1e;
+        }
+        SynKey {
+            x: 0;
+            y: 0;
+            width: 110px;
+            height: 70px;
+            radius: 8px;
+            kind: root.on ? 3 : 0;
+            pressed: root.down;
+            hover: root.hover;
+        }
+        Rectangle {
+            x: 3px;
+            y: root.down ? 4px : 3px;
+            width: 104px;
+            height: 64px;
+            if root.classic: Mini { p: Theme.palettes[root.tile.index]; }
+            if !root.classic: Image {
+                width: 104px;
+                height: 64px;
+                source: root.hi ? root.tile.art2 : root.tile.art;
+                image-fit: fill;
+            }
+        }
+        Text {
+            x: 0;
+            y: 75px;
+            width: 110px;
+            height: 15px;
+            text: root.tile.name;
+            color: root.on ? #e94a12 : #1c1c1b;
+            font-size: 12px;
+            font-weight: root.on ? 600 : 500;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            overflow: elide;
+            accessible-role: none;
+        }
+    }
+
     t := TouchArea {
         mouse-cursor: pointer;
         clicked => { root.picked(); }
@@ -691,12 +744,12 @@ component Strip inherits VerticalLayout {
         spacing: Theme.brick ? 6px : 8px;
         // Car Dashboard: small caps, as the cards' names. Brick Phone: the LCD's small caps.
         if !Theme.tape && !Theme.comic: Text {
-            text: Theme.dash || Theme.quest || Theme.brick || Theme.answer ? root.title.to-uppercase() : root.title;
-            color: Theme.pocket ? Pk.l3 : Theme.phos ? Ph.hi : Theme.glass ? Glass.ink : Theme.dash ? Theme.muted : Theme.quest ? Quest.white : Theme.answer ? Am.print : Theme.text;
-            font-family: Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.dash ? "Manrope" : Theme.answer ? "Barlow Condensed" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
-            font-size: Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.os95 ? 12.5px : Theme.dash ? 9px : Theme.quest ? 11px : Theme.brick ? 8px : Theme.answer ? 10px : 12px;
-            font-weight: Theme.phos || Theme.quest || Theme.brick ? 400 : Theme.os95 ? 700 : Theme.dash ? 800 : Theme.answer ? 700 : 600;
-            letter-spacing: Theme.dash ? 2.3px : Theme.quest ? 0.5px : Theme.brick ? 0.5px : Theme.answer ? 2.4px : 0;
+            text: Theme.dash || Theme.quest || Theme.brick || Theme.answer || Theme.synth ? root.title.to-uppercase() : root.title;
+            color: Theme.pocket ? Pk.l3 : Theme.phos ? Ph.hi : Theme.glass ? Glass.ink : Theme.dash ? Theme.muted : Theme.quest ? Quest.white : Theme.answer ? Am.print : Theme.synth ? #7a766d : Theme.text;
+            font-family: Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.dash ? "Manrope" : Theme.synth ? Theme.mono : Theme.answer ? "Barlow Condensed" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
+            font-size: Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.os95 ? 12.5px : Theme.dash ? 9px : Theme.quest ? 11px : Theme.brick ? 8px : Theme.answer ? 10px : Theme.synth ? 8px : 12px;
+            font-weight: Theme.phos || Theme.quest || Theme.brick ? 400 : Theme.os95 ? 700 : Theme.dash ? 800 : Theme.answer ? 700 : Theme.synth ? 700 : 600;
+            letter-spacing: Theme.dash ? 2.3px : Theme.quest ? 0.5px : Theme.brick ? 0.5px : Theme.answer ? 2.4px : Theme.synth ? 1.9px : 0;
             vertical-alignment: center;
         }
         if Theme.answer: VerticalLayout {
@@ -756,7 +809,7 @@ component Strip inherits VerticalLayout {
                 }
             }
         }
-        if !Theme.answer: Text {
+        if !Theme.answer && !Theme.synth: Text {
             text: root.n;
             color: Theme.pocket ? Pk.l2 : Theme.tape ? #6f665a : Theme.os95 ? Os.note : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.dash ? #56606c : Theme.brick ? Brick.ink2 : Theme.quest ? Quest.grey : Theme.dim;
             font-family: Theme.pocket ? Pk.small : Theme.tape || Theme.dash ? Theme.mono : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
@@ -764,6 +817,26 @@ component Strip inherits VerticalLayout {
             letter-spacing: Theme.comic ? 1px : 0;
             vertical-alignment: center;
             accessible-role: none;
+        }
+        if Theme.synth: VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: count.preferred-width + 8px;
+                height: 14px;
+                border-radius: 3px;
+                border-width: 1px;
+                border-color: #a9a59b;
+                count := Text {
+                    text: root.n;
+                    color: #7a766d;
+                    font-family: Theme.mono;
+                    font-size: 8px;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+            }
         }
         Rectangle { horizontal-stretch: 1; }
         // Always in the layout, so the width does not depend on whether it scrolls.
@@ -889,9 +962,9 @@ component Strip inherits VerticalLayout {
         padding-bottom: Theme.tape ? 6px : 0;
         Rectangle {
             visible: root.scrolls;
-            height: Theme.tape ? 4px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.answer ? 6px : Theme.brick ? 5px : Theme.pocket ? 6px : Theme.quest ? 9px : 3px;
+            height: Theme.tape ? 4px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.synth ? 5px : Theme.answer ? 6px : Theme.brick ? 5px : Theme.pocket ? 6px : Theme.quest ? 9px : 3px;
             border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.brick || Theme.quest || Theme.pocket ? 0 : Theme.answer ? 3px : 2px;
-            background: Theme.pocket ? transparent : Theme.tape ? #1b1410 : Theme.phos ? Ph.faint : Theme.os95 ? Os.face : Theme.comic ? #ffffff : Theme.glass ? #ffffff1f : Theme.quest ? Quest.ink : Theme.brick ? Brick.ghost : Theme.answer ? #c7bba1 : Theme.divider;
+            background: Theme.pocket ? transparent : Theme.tape ? #1b1410 : Theme.phos ? Ph.faint : Theme.os95 ? Os.face : Theme.comic ? #ffffff : Theme.glass ? #ffffff1f : Theme.quest ? Quest.ink : Theme.brick ? Brick.ghost : Theme.answer ? #c7bba1 : Theme.synth ? transparent : Theme.divider;
             border-width: Theme.comic ? 1.5px : Theme.quest ? 3px : Theme.brick ? 1px : 0;
             border-color: Theme.quest ? Quest.rule : Theme.brick ? Brick.ink : Comic.ink;
             property <length> thumb-w: max(30px, self.width * root.view-w / max(root.content-w, 1px));
@@ -910,7 +983,17 @@ component Strip inherits VerticalLayout {
                 vertical-alignment: top;
             }
             PkTile { visible: Theme.pocket; x: 0; y: 0; width: parent.width; height: parent.height; source: @image-url("skins/px-pocket/dith.png"); }
+            property <int> led-on: round(root.x-off / root.pitch);
+            for k in Theme.synth ? root.n : 0: Rectangle {
+                x: (parent.width - root.n * 9px + 4px) / 2 + k * 9px;
+                y: 0;
+                width: 5px;
+                height: 5px;
+                border-radius: 2.5px;
+                background: k == parent.led-on ? #ff5a1e : #c4c0b6;
+            }
             Rectangle {
+                visible: !Theme.synth;
                 x: Theme.quest ? 3px + (root.max-off > 0 ? root.x-off / root.max-off * (parent.width - 6px - self.width) : 0) : root.max-off > 0 ? root.x-off / root.max-off * (parent.width - self.width) : 0;
                 y: Theme.tape ? -1px : Theme.quest ? 3px : Theme.answer ? -3px : 0;
                 width: Theme.quest ? max(30px, (parent.width - 6px) * root.view-w / max(root.content-w, 1px)) : parent.thumb-w;

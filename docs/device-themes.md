@@ -126,11 +126,11 @@ and VT323 (the same `VT323-400.ttf` as Phosphor: its Latin subset covers the ASC
 skin needs, with the same outlines and metrics).
 - `Theme.pages` says how the other pages are built: 1 for Tape Deck, 2 for Phosphor, 3 for
   Desktop 95, 4 for the Comic Book, 5 for Spatial Glass, 6 for the Car Dashboard, 7 for
-  Pocket, 8 for the Quest Menu, 9 for the Brick Phone and 10 for the Answering Machine (each
-  since its pages were built), else 0, the classic pages in the theme's palette. A skin
-  whose other pages are not built yet keeps them classic this way; `app.slint` picks the
-  main page by `Theme.skin` and the rest by `Theme.pages`. Desktop 95's palette is grey and
-  navy for those pages.
+  Pocket, 8 for the Quest Menu, 9 for the Brick Phone, 10 for the Answering Machine and 11
+  for the Pocket Synth (each since its pages were built), else 0, the classic pages in the
+  theme's palette. A skin whose other pages are not built yet keeps them classic this way;
+  `app.slint` picks the main page by `Theme.skin` and the rest by `Theme.pages`. Desktop
+  95's palette is grey and navy for those pages.
 - The scope and the LED level follow `Main.live` like the classic meter, so the skin needs
   no clock (`EFFECT_FPS` and `RECORDING_FPS` 0). Nothing else moves.
 - `Main.transcribed-count` (set in `refresh_clips`) gives the wide status bar its
@@ -651,7 +651,7 @@ Brick Phone), art in `ui/skins/dv-answer/`
 **Built in step 5, Pocket Synth main page (2026-10-30):** `ui/skins/dv-synth.slint` (skin 11,
 theme "Pocket Synth", index 18 in `Theme.names`), art in `ui/skins/dv-synth/` (73 PNGs, 148 KB)
 from `tools/skin-art/dv-synth.html` (`sh tools/skin-art/cut.sh dv-synth OUT`). Its other pages
-are the classic ones in a white aluminium and orange palette (`Theme.pages` 0).
+are its own since 2026-10-31 (`Theme.pages` 11, see "Pocket Synth on every other page" below).
 - Settings gallery: its tile is the Pocket Synth line in `Gallery.devices` (`ui/gallery.slint`), band #ff6a1a.
 - The recorder is the mono screen (state, microphone, timer, segment meter) with keys 09 to 12
   beside it: REC (Stop while recording), Import (Pause and Resume while recording, lit orange
@@ -707,6 +707,106 @@ are the classic ones in a white aluminium and orange palette (`Theme.pages` 0).
   Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700 match pixel for
   pixel before and after.
 
+**Built in step 5, Pocket Synth on every other page (2026-10-31):** mockups in
+`docs/mockups/device-themes/dv-synth-pages/` (approved by Max 2026-10-31, widget variant A,
+Delete in the questions stays the dark key).
+- `Theme.pages` is 11 for skin 11 (`Theme.synth`); every other value stays as it was.
+  `app.slint` has a `Theme.pages == 11` block next to each Car Dashboard one, with the same
+  bindings, and picks `ui/skins/dv-synth-pages.slint` (`ClipPage`, `SettingsPage`,
+  `ModelsPage`, `MergePage`, `AskPage`, `Widget`, `Dialog`, `Speaking`, `Drop`).
+- `ui/skins/dv-synth-parts.slint`: the parts the main page and the other pages share, moved out
+  of `dv-synth.slint` unchanged (`Ps`, `Art`, `Slice3`, `Lcd`, `Glyph`, `Silk`, `TitleKey`,
+  `Knob`, `Grille`, `Tag`, `Dots`, `Led`; `Title` gained `gear`, off on the other pages as on
+  the classic ones), plus the pages' parts: `Key` (words in capitals, an icon before them),
+  `IKey` (an icon and a printed number: 13 the transport key, 09 REC in the widget), `Latch`
+  (LED and words: Loop, the model shelves, All projects), `Oled`, `State`, `Chip`, `PageStrip`
+  (BACK or CLIPS, the page's name, a chip or SETUP) and `Segments` (LED bars).
+- Every page sits on the brushed aluminium. The clip page is the sampler with the clip loaded:
+  the mono screen holds its name, PLAY, PAUSE or STOP, the dot matrix counter, "of 2:03" and a
+  pixel waveform (3px blocks, the played part white, the trimmed ends darker, orange trim
+  brackets and play head; wide also the time at both ends), and the name field while renaming,
+  with Cancel and Rename under it. Rename and Delete are keys on the page strip; the transport
+  is back 5, key 13, forward 5, the speed as five LEDs and the LOOP latch. The transcript is a
+  second screen under a rail of keys. Settings are panels with an orange square, small screens
+  for the dropdowns and LED keys for the switches; wide puts the gallery across the top and the
+  panels in three columns. Models are long keys with LED ladders, the one in use orange, the
+  download on a screen strip; wide shows the shelves as latches and the DISK screen. Merge is a
+  chain of long keys (place on a little screen, play key, round x), wide with the CHAIN screen
+  (each clip a block by its length, the total) and the name on a screen strip. Ask types on a
+  screen strip; the answer is on the mono screen, the sources long keys with their number on a
+  little screen. Messages are a screen strip in the footer (clip, merge) or floating over the
+  bottom (settings, models, Ask).
+- The shared widgets draw the sampler when `Theme.synth` is set: `SynKey` (new, in
+  `common.slint`: the key's body drawn, the soft shadow the main page's `pad-shade` nine-slice,
+  `pad-glow` for a lit key) under `Btn` (capitals in JetBrains Mono, orange main action, `red`
+  the dark key), `IconBtn` (a small key, round when round, orange while on), `Toggle` (a square
+  key with an LED, with its words when it has a `caption`: Show marks, Clean voice),
+  `SynScreen` (new: a black screen in its bezel and rim, drawn round its box) under `MenuCard`,
+  the `Select` list and the transcript; `Select` (a small screen with an arrow), `MenuRow`
+  (28px rows, `Theme.menu-h`; mono words, a dark line under the pointer, the open row and the
+  current project orange, projects numbered 01 02 by the new `num`, icons before the actions),
+  `MenuRule`, `MenuGroup`, `ExportItem` (tags in capitals, the current format an orange
+  square), `ExportButton` (the orange key, a dark key filling orange under the percent, DONE),
+  `OrderList` (long keys in a chain), `ShortcutBox` (key caps, a screen strip while it
+  listens), `TranscriptCard` (mono words, the playing word orange, an orange ring and block
+  cursor while editing, the change count on a screen chip, the head line ORIGINAL, EDIT,
+  SUMMARY, TRANSLATION, EMPTY or WORKING), `Tip` (a tiny screen label), the orange scroll
+  thumb, and the gallery (`gallery.slint`: tiles as pads, the current one orange and glowing,
+  an orange ring on the focused one, a row of LEDs for where the strip is).
+- Rust: the editor's pause tags are the screens' orange (#ff5a1e).
+- No new art or fonts: the pages reuse the main page's PNGs (pad shade and glow, LEDs, brush,
+  screws, grille) and its fonts.
+
+**Lessons from the Pocket Synth's pages:**
+- **Draw the keys, do not cut them:** every key size and colour would have been a set of
+  slices. `SynKey` draws the body (caps and gradient, as the pads) and reuses the main page's
+  pad shadow and glow as nine-slice pictures (22 and 30 px borders fit keys from 20 px high),
+  so one component serves the text keys, the icon keys, the LED keys, the model rows and the
+  gallery tiles. `SynScreen` draws the bezel and rim round its box the same way; a popup may
+  draw it inside its own edge (`MenuCard` insets it 4px).
+- **A pixel waveform without a rectangle per block:** each column is one bar on the 4px cell
+  grid, and a dark 1px row every 4px across the strip cuts the bars into blocks (about 90
+  bars and 20 rows instead of a thousand blocks).
+- **Change shared files only after the old build has read them:** the "before" build waited
+  over an hour on the shared target's lock, so the work went into a copy of `ui/` checked with
+  `slint-viewer --check` and shot off screen with a preview wrapper (`--load-data`), and was
+  copied back once the old build's build script had finished (the thrasher rustc running).
+- **Components must be declared before use in a file,** and children of a component that
+  inherits another go to the base's `@children` (so `FilesCard inherits Card { SRow {} }`
+  works).
+- **`clip` is a property of every element:** a component's own `in property <string> clip`
+  fails ("Cannot override property"); name it otherwise.
+- **The brushed tile can show a seam** where the renderer redrew only part of the window (the
+  3px stripes do not line up across the edge of the redrawn area); it is the main page's tile,
+  seen there too.
+- **Checks:** a pad of the wide main page plays its clip on a plain click, so picking two clips
+  for a merge is a press on one and a Ctrl press on the other in view (clip_105 and clip_106:
+  the bank shows eight pads and only those have a menu key). Two runs of the old build also
+  differ in the settings shots scrolled by the wheel (a fractional offset) and in the blinking
+  caret, so those are not counted as changes.
+- **A Text with only `accessible-role: none` is still read out** (UI Automation lists it as a
+  Custom item named by its words, so every key said CLIPS or DOWNLOAD twice). `Caps` also sets
+  `accessible-label: ""`, as `Silk` does; a word that classic shows as text (IN USE) sets its
+  own role and name. The Ask page's ALL PROJECTS key is a check box, as on the classic page.
+- Review (2026-10-31): Desktop 95, Comic Book, Spatial Glass, Car Dashboard and Pinball pages at
+  520x700 match before and after (but for the caret, the wheel and a live level). A merged
+  clip's parts, its part menu and tooltips were checked headless. Ember's working set rose
+  about 2 MB on every page (the sampler keys sit hidden in the shared widgets).
+
+**Budgets measured on the Pocket Synth's pages** (test copy, 2.25x display, 10 s samples, pages
+visited in turn in one run, Ember on the same exe, 2026-10-31):
+- CPU idle 0.0 to 0.8% on every page at 520x700 and 1100x700 (Ember 0.0 to 0.5%). Only the
+  widget's state square blinks, while recording.
+- Working set over Ember at 520x700: main +2.1, clip -7.3, settings +1.2, models +1.9, ask
+  +2.0, merge +2.5, widget +2.0 MB; at 1100x700: +1.7, +1.3, +0.4, +2.3, +2.2, +5.2, +5.3 MB.
+- Exe +16.1 MB (136.4 to 152.5 MB): the pages' generated code and the sampler look in the
+  shared widgets (keys drawn per instance); no new art or fonts.
+- Ember, Tape Deck and Phosphor: every page, menu, dropdown and question at 520x700 and
+  1100x700 (42 shots each) match before and after pixel for pixel, but for the caret and the
+  wheel-scrolled settings shots, which differ the same way between two runs of the old build.
+  The Pocket Synth main page differs only by its scroll thumb, now orange.
+- Not verified headless: a model download and the AI download, dropping files (shown with
+  THRASHER_TEST_COVER), the answer while thinking.
 **Built in step 5, Fighter Select main page (2026-10-30):** `ui/skins/x-fighter.slint` (skin 12,
 theme "Fighter Select", index 19 in `Theme.names`, after Pocket Synth), art in
 `ui/skins/x-fighter/` (12 PNGs, 0.10 MB) from `tools/skin-art/x-fighter.html`
@@ -1803,6 +1903,8 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      every other page").
      Answering Machine built 2026-10-31 (`Theme.pages` 10, see "Built in step 5, Answering
      Machine on every other page").
+     Pocket Synth built 2026-10-31 (`Theme.pages` 11, see "Built in step 5, Pocket Synth on
+     every other page").
    - Size (Max, 2026-10-31): the nine would bring the exe to about 235 MB. Build all nine,
      then one size pass (palette PNGs, shared frames deduped) to pull it back toward 200 MB.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

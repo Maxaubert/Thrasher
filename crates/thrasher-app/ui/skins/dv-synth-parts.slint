@@ -1,0 +1,703 @@
+// The Pocket Synth's parts, shared by its main page (dv-synth.slint) and its other pages
+// (dv-synth-pages.slint): the sampler's colours, the art pieces, the screens in three
+// slices, the icons, the silkscreen print, the title bar, the knobs, the speaker grille,
+// the TRANSCRIBED tag, the round menu key and the LEDs (moved from dv-synth.slint as they
+// were), and for the other pages the keys with words or an icon, the latching keys, the
+// black screens drawn round a box, the screen chips, the page strip and the LED bars.
+
+import { Theme, Main, Tips, Icon, SynKey, SynScreen } from "../common.slint";
+
+// The sampler's colours, from the mockup.
+export global Ps {
+    out property <color> ink: #1c1c1b;
+    out property <color> mute: #7a766d;
+    out property <color> faint: #a9a59b;
+    out property <color> edge: #c4c0b6;
+    out property <color> key-ink: #2a2a28;
+    out property <color> or: #ff5a1e;
+    out property <color> or2: #e94a12;
+    out property <color> oled: #0b0c0c;
+    out property <color> px: #eef3ee;
+    out property <color> px-dim: #3a3e3c;
+    out property <color> dev: #b9c0ba;
+    out property <color> hint: #8c948e;
+    out property <color> lcd-silk: #7d857f;
+    out property <color> wave: #2b2a28;
+    out property <brush> body: @linear-gradient(180deg, #eeece7 0%, #e2dfd8 100%);
+}
+
+// A piece of art, the 2x cut when the display is dense.
+export component Art inherits Image {
+    in property <image> lo;
+    in property <image> hi;
+    source: 1phx < 0.7px ? root.hi : root.lo;
+    image-fit: fill;
+    accessible-role: none;
+}
+
+// A part of variable width: its left and right ends and a thin middle column stretched
+// between them. The pieces carry `pad` of shadow around the part on every side; `cap`
+// is the width of an end piece.
+export component Slice3 inherits Rectangle {
+    in property <image> l;
+    in property <image> m;
+    in property <image> r;
+    in property <image> l2;
+    in property <image> m2;
+    in property <image> r2;
+    in property <length> pad;
+    in property <length> cap;
+    property <bool> hi: 1phx < 0.7px;
+    Image {
+        x: -root.pad;
+        y: -root.pad;
+        width: root.cap;
+        height: root.height + 2 * root.pad;
+        source: root.hi ? root.l2 : root.l;
+        image-fit: fill;
+    }
+    Image {
+        x: root.cap - root.pad;
+        y: -root.pad;
+        width: max(0px, root.width + 2 * root.pad - 2 * root.cap);
+        height: root.height + 2 * root.pad;
+        source: root.hi ? root.m2 : root.m;
+        image-fit: fill;
+    }
+    Image {
+        x: root.width + root.pad - root.cap;
+        y: -root.pad;
+        width: root.cap;
+        height: root.height + 2 * root.pad;
+        source: root.hi ? root.r2 : root.r;
+        image-fit: fill;
+    }
+}
+
+// The black screen of a toolbar field or the footer, 30 or 24 high.
+export component Lcd inherits Slice3 {
+    in property <bool> short;
+    pad: 3px;
+    cap: 16px;
+    l: root.short ? @image-url("dv-synth/lcd24-l.png") : @image-url("dv-synth/lcd30-l.png");
+    m: root.short ? @image-url("dv-synth/lcd24-m.png") : @image-url("dv-synth/lcd30-m.png");
+    r: root.short ? @image-url("dv-synth/lcd24-r.png") : @image-url("dv-synth/lcd30-r.png");
+    l2: root.short ? @image-url("dv-synth/lcd24-l@2x.png") : @image-url("dv-synth/lcd30-l@2x.png");
+    m2: root.short ? @image-url("dv-synth/lcd24-m@2x.png") : @image-url("dv-synth/lcd30-m@2x.png");
+    r2: root.short ? @image-url("dv-synth/lcd24-r@2x.png") : @image-url("dv-synth/lcd30-r@2x.png");
+}
+
+// An icon from the mockup, stroked 1.7 units of 24 wide. A stroked path is fitted into
+// its box less the stroke, so the path's box is larger by the stroke and moved back by
+// half of it.
+export component Glyph inherits Rectangle {
+    in property <string> name;
+    in property <color> tint: Ps.key-ink;
+    property <length> sw: root.width * 1.7 / 24;
+    property <bool> solid: root.name == "play" || root.name == "pause" || root.name == "stop" || root.name == "dots";
+    width: 12px;
+    height: 12px;
+    Path {
+        x: root.solid ? 0 : -root.sw / 2;
+        y: root.solid ? 0 : -root.sw / 2;
+        width: root.width + (root.solid ? 0 : root.sw);
+        height: root.height + (root.solid ? 0 : root.sw);
+        viewbox-width: 24;
+        viewbox-height: 24;
+        stroke: root.solid ? transparent : root.tint;
+        stroke-width: root.sw;
+        stroke-line-cap: round;
+        stroke-line-join: round;
+        fill: root.solid ? root.tint : transparent;
+        commands: root.name == "gear" ? "M 9 12 A 3 3 0 1 0 15 12 A 3 3 0 1 0 9 12 Z M 12 2.5 L 12 5.5 M 12 18.5 L 12 21.5 M 2.5 12 L 5.5 12 M 18.5 12 L 21.5 12 M 5.3 5.3 L 7.4 7.4 M 16.6 16.6 L 18.7 18.7 M 5.3 18.7 L 7.4 16.6 M 16.6 7.4 L 18.7 5.3"
+            : root.name == "min" ? "M 6 12 L 18 12"
+            : root.name == "close" ? "M 7 7 L 17 17 M 17 7 L 7 17"
+            : root.name == "mic" ? "M 9 6 A 3 3 0 0 1 15 6 L 15 11 A 3 3 0 0 1 9 11 Z M 5.5 11 A 6.5 6.5 0 0 0 18.5 11 M 12 17.5 L 12 21"
+            : root.name == "import" ? "M 12 4 L 12 15 M 7.5 10.5 L 12 15 L 16.5 10.5 M 5 19.5 L 19 19.5"
+            : root.name == "ask" ? "M 5 5.5 L 19 5.5 L 19 15.5 L 10 15.5 L 6 19 L 6 15.5 L 5 15.5 Z"
+            : root.name == "widget" ? "M 5.5 5 L 18.5 5 A 2 2 0 0 1 20.5 7 L 20.5 17 A 2 2 0 0 1 18.5 19 L 5.5 19 A 2 2 0 0 1 3.5 17 L 3.5 7 A 2 2 0 0 1 5.5 5 Z"
+            : root.name == "down" ? "M 7 10 L 12 15 L 17 10"
+            : root.name == "search" ? "M 5 11 A 6 6 0 1 0 17 11 A 6 6 0 1 0 5 11 Z M 15.5 15.5 L 20 20"
+            : root.name == "check" ? "M 5 12.5 L 10 17 L 19 7"
+            : root.name == "play" ? "M 8 5.5 L 8 18.5 L 18.5 12 Z"
+            : root.name == "pause" ? "M 7 5.5 L 10.5 5.5 L 10.5 18.5 L 7 18.5 Z M 13.5 5.5 L 17 5.5 L 17 18.5 L 13.5 18.5 Z"
+            : root.name == "stop" ? "M 7 7 L 17 7 L 17 17 L 7 17 Z"
+            : root.name == "dots" ? "M 10 5.5 A 2 2 0 1 0 14 5.5 A 2 2 0 1 0 10 5.5 Z M 10 12 A 2 2 0 1 0 14 12 A 2 2 0 1 0 10 12 Z M 10 18.5 A 2 2 0 1 0 14 18.5 A 2 2 0 1 0 10 18.5 Z"
+            : "M 0 0";
+    }
+    // The small filled window of the widget icon.
+    Path {
+        visible: root.name == "widget";
+        width: 100%;
+        height: 100%;
+        viewbox-width: 24;
+        viewbox-height: 24;
+        fill: root.tint;
+        commands: "M 12.5 11.5 L 16.5 11.5 A 1 1 0 0 1 17.5 12.5 L 17.5 15 A 1 1 0 0 1 16.5 16 L 12.5 16 A 1 1 0 0 1 11.5 15 L 11.5 12.5 A 1 1 0 0 1 12.5 11.5 Z";
+    }
+}
+
+// The silkscreen print on the aluminium: small spaced capitals.
+export component Silk inherits Text {
+    color: Ps.mute;
+    font-family: "JetBrains Mono";
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.12px;
+    vertical-alignment: center;
+    accessible-role: none;
+    accessible-label: "";
+}
+
+// A round button in the title bar: Settings, minimise and close.
+export component TitleKey inherits Rectangle {
+    in property <string> icon;
+    in property <string> label;
+    callback clicked;
+    width: 22px;
+    height: 22px;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        y: t.pressed ? 1px : 0;
+        Art {
+            x: -2px;
+            y: -2px;
+            width: 26px;
+            height: 26px;
+            lo: @image-url("dv-synth/tbtn.png");
+            hi: @image-url("dv-synth/tbtn@2x.png");
+        }
+        Rectangle {
+            visible: t.has-hover;
+            border-radius: 11px;
+            background: t.pressed ? #00000014 : #0000000a;
+        }
+        Glyph {
+            name: root.icon;
+            tint: #3b3a37;
+            width: 12px;
+            height: 12px;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The title bar: the orange square, the name, the model badge (and "Pocket sampler" when
+// wide), then Settings (on the main page), minimise and close.
+export component Title inherits Rectangle {
+    in property <bool> big;
+    // The Settings key; the other pages leave it out, as the classic ones do.
+    in property <bool> gear: true;
+    callback go(int);
+    height: 34px;
+    Rectangle { y: parent.height - 1px; height: 1px; background: Ps.edge; }
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    HorizontalLayout {
+        padding-left: 16px;
+        padding-right: 12px;
+        padding-bottom: 1px;
+        spacing: 10px;
+        HorizontalLayout {
+            horizontal-stretch: 0;
+            spacing: 8px;
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 2px;
+                    background: Ps.or;
+                }
+            }
+            Text {
+                horizontal-stretch: 0;
+                text: "THRASHER";
+                color: Ps.ink;
+                font-family: "Inter Tight";
+                font-size: 12px;
+                font-weight: 800;
+                letter-spacing: 2.64px;
+                vertical-alignment: center;
+            }
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 0;
+                Rectangle {
+                    width: badge.preferred-width + 10px;
+                    height: 15px;
+                    border-radius: 3px;
+                    border-width: 1px;
+                    border-color: Ps.faint;
+                    badge := Text {
+                        x: 5px;
+                        text: "PS 16";
+                        color: Ps.mute;
+                        font-family: "JetBrains Mono";
+                        font-size: 9px;
+                        font-weight: 500;
+                        letter-spacing: 1.08px;
+                        vertical-alignment: center;
+                        accessible-role: none;
+                    }
+                }
+            }
+            if root.big: HorizontalLayout {
+                horizontal-stretch: 0;
+                padding-left: 6px;
+                Silk { text: "POCKET SAMPLER"; }
+            }
+        }
+        Rectangle { horizontal-stretch: 1; }
+        if root.gear: VerticalLayout {
+            alignment: center;
+            TitleKey { icon: "gear"; label: "Settings"; clicked => { root.go(3); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            TitleKey { icon: "min"; label: "Minimize"; clicked => { Main.minimize-window(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            TitleKey { icon: "close"; label: "Close"; clicked => { Main.close-window(); } }
+        }
+    }
+}
+
+// A knob: dark (IN, 44 or 62) or light (PROJ, 30 or 32). It only shows.
+export component Knob inherits Rectangle {
+    in property <int> size: 44;
+    width: root.size * 1px;
+    height: root.size * 1px;
+    accessible-role: none;
+    Art {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        lo: root.size == 62 ? @image-url("dv-synth/knob-62.png") : root.size == 30 ? @image-url("dv-synth/knob-30.png")
+            : root.size == 32 ? @image-url("dv-synth/knob-32.png") : @image-url("dv-synth/knob-44.png");
+        hi: root.size == 62 ? @image-url("dv-synth/knob-62@2x.png") : root.size == 30 ? @image-url("dv-synth/knob-30@2x.png")
+            : root.size == 32 ? @image-url("dv-synth/knob-32@2x.png") : @image-url("dv-synth/knob-44@2x.png");
+    }
+}
+
+// The speaker grille of a wide window: one band of dot rows (10px, the dots' period),
+// repeated down, the last one cut to fit.
+export component Grille inherits Rectangle {
+    property <bool> hi: 1phx < 0.7px;
+    property <int> s: root.hi ? 2 : 1;
+    property <int> k: ceil(root.height / 10px);
+    for i in root.k: Image {
+        x: 0;
+        y: i * 10px;
+        width: 277px;
+        height: min(10px, root.height - i * 10px);
+        source: root.hi ? @image-url("dv-synth/grille@2x.png") : @image-url("dv-synth/grille.png");
+        source-clip-x: 0;
+        source-clip-y: 0;
+        source-clip-width: 277 * root.s;
+        source-clip-height: round(min(10px, root.height - i * 10px) / 1px * root.s);
+        image-fit: fill;
+        accessible-role: none;
+    }
+}
+
+// TRANSCRIBED, printed in a thin orange frame.
+export component Tag inherits Rectangle {
+    width: tag.preferred-width + 6px;
+    height: 12.5px;
+    border-radius: 2px;
+    border-width: 1px;
+    border-color: #e94a128c;
+    tag := Text {
+        x: 3px;
+        text: "TRANSCRIBED";
+        color: Ps.or2;
+        font-family: "JetBrains Mono";
+        font-size: 7.5px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        vertical-alignment: center;
+    }
+}
+
+// The round menu button of a clip: manage, rename, export, delete.
+export component Dots inherits Rectangle {
+    in property <string> name;
+    callback clicked;
+    width: 20px;
+    height: 20px;
+    accessible-role: button;
+    accessible-label: "Menu for " + root.name;
+    accessible-action-default => { root.clicked(); }
+    Rectangle {
+        y: t.pressed ? 1px : 0;
+        Art {
+            x: -2px;
+            y: -2px;
+            width: 24px;
+            height: 24px;
+            lo: @image-url("dv-synth/dots.png");
+            hi: @image-url("dv-synth/dots@2x.png");
+        }
+        Rectangle {
+            visible: t.has-hover;
+            border-radius: 10px;
+            background: #0000000d;
+        }
+        Glyph {
+            name: "dots";
+            tint: #55524c;
+            width: 10px;
+            height: 10px;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, "More options", self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The LED of a pad, or a step of the footer: off, orange, or white (on a lit pad).
+export component Led inherits Rectangle {
+    in property <int> lamp;
+    in property <bool> small;
+    width: root.small ? 5px : 6px;
+    height: self.width;
+    Art {
+        x: -6px;
+        y: -6px;
+        width: parent.width + 12px;
+        height: parent.height + 12px;
+        lo: root.small ? (root.lamp == 1 ? @image-url("dv-synth/step-on.png") : @image-url("dv-synth/step-off.png"))
+            : root.lamp == 1 ? @image-url("dv-synth/led-on.png") : root.lamp == 2 ? @image-url("dv-synth/led-w.png") : @image-url("dv-synth/led-off.png");
+        hi: root.small ? (root.lamp == 1 ? @image-url("dv-synth/step-on@2x.png") : @image-url("dv-synth/step-off@2x.png"))
+            : root.lamp == 1 ? @image-url("dv-synth/led-on@2x.png") : root.lamp == 2 ? @image-url("dv-synth/led-w@2x.png") : @image-url("dv-synth/led-off@2x.png");
+    }
+}
+
+// ---------- For the other pages ----------
+
+// Small spaced capitals on a key or a screen, JetBrains Mono 700.
+export component Caps inherits Text {
+    color: Ps.key-ink;
+    font-family: "JetBrains Mono";
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 1.36px;
+    vertical-alignment: center;
+    // Not read out: the key it sits on carries the name.
+    accessible-role: none;
+    accessible-label: "";
+}
+
+// A text key: the words in capitals, an icon before them if it has one; orange for the
+// main action, dark for the dark one. Its name and tip are the classic button's.
+export component Key inherits Rectangle {
+    in property <string> text;
+    in property <string> icon;
+    in property <string> label: root.text;
+    in property <string> tip;
+    // 0 the white cap, 1 orange, 2 dark.
+    in property <int> kind;
+    in property <bool> enabled: true;
+    in property <length> font-size: root.height < 30px ? 8.5px : 9.5px;
+    callback clicked;
+    height: 26px;
+    width: row.preferred-width + (root.height < 30px ? 18px : 26px);
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    SynKey {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        kind: root.kind;
+        radius: root.height < 30px ? 6px : 7px;
+        pressed: t.pressed && t.has-hover;
+        hover: t.has-hover;
+        enabled: root.enabled;
+    }
+    row := HorizontalLayout {
+        x: (parent.width - self.preferred-width) / 2;
+        y: t.pressed && t.has-hover && root.enabled ? 1px : 0;
+        width: self.preferred-width;
+        height: parent.height;
+        spacing: root.height < 30px ? 6px : 7px;
+        opacity: root.enabled ? 1 : 0.45;
+        if root.icon != "": Icon {
+            name: root.icon;
+            tint: root.kind == 0 ? Ps.key-ink : root.kind == 2 ? #ecebe6 : #ffffff;
+            stroke-width: 1.5px;
+            width: root.height < 30px ? 11px : 12px;
+            height: self.width;
+            y: (parent.height - self.height) / 2;
+        }
+        Caps {
+            text: root.text;
+            color: root.kind == 0 ? Ps.key-ink : root.kind == 2 ? #ecebe6 : #ffffff;
+            font-size: root.font-size;
+            letter-spacing: root.font-size * 0.16;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { if (root.tip != "") { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); } }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// A key with one icon, and its number printed in a corner if it has one (13 the
+// transport key, 5 on the skip keys).
+export component IKey inherits Rectangle {
+    in property <string> icon;
+    in property <string> label;
+    in property <string> tip: root.label;
+    in property <string> num;
+    // The number in the top right corner instead of the top left (the skip keys).
+    in property <bool> num-right;
+    in property <int> kind;
+    in property <bool> enabled: true;
+    in property <length> icon-size: 13px;
+    callback clicked;
+    width: 30px;
+    height: 28px;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    SynKey {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        kind: root.kind;
+        radius: root.height < 30px ? 6px : 8px;
+        pressed: t.pressed && t.has-hover;
+        hover: t.has-hover;
+        enabled: root.enabled;
+    }
+    Rectangle {
+        x: 0;
+        y: t.pressed && t.has-hover && root.enabled ? 1px : 0;
+        width: parent.width;
+        height: parent.height;
+        opacity: root.enabled ? 1 : 0.45;
+        if root.num != "": Text {
+            x: root.num-right ? parent.width - self.width - 5px : 6px;
+            y: root.num-right ? 4px : 5px;
+            text: root.num;
+            color: root.kind == 0 ? #2a2a2899 : #ffffff99;
+            font-family: "JetBrains Mono";
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 0.48px;
+            accessible-role: none;
+        }
+        Icon {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            name: root.icon;
+            tint: root.kind == 0 ? Ps.key-ink : root.kind == 2 ? #ecebe6 : #ffffff;
+            stroke-width: 1.5px;
+            width: root.icon-size;
+            height: root.icon-size;
+        }
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// A latching key: its LED lights orange and it stays down while it is on (Loop, the
+// model shelves, All projects).
+export component Latch inherits Rectangle {
+    in property <string> text;
+    in property <string> label: root.text;
+    in property <bool> on;
+    in property <bool> enabled: true;
+    callback clicked;
+    width: word.preferred-width + 37px;
+    height: 26px;
+    horizontal-stretch: 0;
+    accessible-role: button;
+    accessible-checked: root.on;
+    accessible-label: root.label;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    SynKey {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        radius: 6px;
+        down: root.on;
+        pressed: t.pressed && t.has-hover;
+        hover: t.has-hover;
+        enabled: root.enabled;
+    }
+    Rectangle {
+        x: 0;
+        y: root.on || (t.pressed && t.has-hover) ? 1px : 0;
+        width: parent.width;
+        height: parent.height;
+        opacity: root.enabled ? 1 : 0.45;
+        Led {
+            x: 10px;
+            y: (parent.height - 6px) / 2;
+            lamp: root.on ? 1 : 0;
+        }
+        word := Caps {
+            x: 23px;
+            y: 0;
+            height: parent.height;
+            text: root.text;
+        }
+    }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// A black screen in its dark bezel and grey rim (drawn round the box), orange while it is
+// typed on.
+export component Oled inherits Rectangle {
+    in property <bool> hot;
+    in property <length> radius: 7px;
+    in property <length> bezel: 3px;
+    SynScreen {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        radius: root.radius;
+        bezel: root.bezel;
+        hot: root.hot;
+    }
+    @children
+}
+
+// The state line of a screen: a square and its word in spaced capitals.
+export component State inherits HorizontalLayout {
+    in property <string> text;
+    in property <color> square: Ps.lcd-silk;
+    in property <color> ink: Ps.lcd-silk;
+    spacing: 7px;
+    alignment: start;
+    VerticalLayout {
+        alignment: center;
+        Rectangle { width: 7px; height: 7px; background: root.square; }
+    }
+    Text {
+        text: root.text;
+        color: root.ink;
+        font-family: "JetBrains Mono";
+        font-size: 7.5px;
+        font-weight: 700;
+        letter-spacing: 1.9px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+}
+
+// A small screen chip with words in capitals: "3 CLIPS", "2 CHANGES", "3.6 GB used".
+export component Chip inherits Rectangle {
+    in property <string> text;
+    in property <color> ink: Ps.px;
+    width: chip-text.preferred-width + 14px;
+    height: 20px;
+    border-radius: 4px;
+    background: Ps.oled;
+    border-width: 1px;
+    border-color: #a19d93;
+    chip-text := Text {
+        x: 7px;
+        width: parent.width - 14px;
+        height: parent.height;
+        text: root.text;
+        color: root.ink;
+        font-family: "JetBrains Mono";
+        font-size: 8.5px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        vertical-alignment: center;
+        horizontal-alignment: center;
+    }
+}
+
+// The strip under the title bar: the back key, the page's name, and a chip or label at
+// the right (its children).
+export component PageStrip inherits Rectangle {
+    in property <string> title;
+    in property <string> back-text: "BACK";
+    in property <string> back-label: "Back";
+    callback back();
+    height: 46px;
+    vertical-stretch: 0;
+    Rectangle { x: 0; y: parent.height - 1px; width: parent.width; height: 1px; background: Ps.edge; }
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        padding-bottom: 1px;
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            Key {
+                text: root.back-text;
+                icon: "back";
+                label: root.back-label;
+                clicked => { root.back(); }
+            }
+        }
+        if root.title != "": Text {
+            text: root.title;
+            color: Ps.ink;
+            font-family: "Inter Tight";
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: -0.17px;
+            vertical-alignment: center;
+            horizontal-stretch: 0;
+            overflow: elide;
+        }
+        Rectangle { horizontal-stretch: 1; }
+        @children
+    }
+}
+
+// A row of LEDs, `lit` of `n` on (a progress bar on a screen or the faceplate).
+export component Segments inherits Rectangle {
+    in property <float> value;
+    in property <length> cell: 8px;
+    in property <length> gap: 2px;
+    in property <color> on: Ps.or;
+    in property <color> off: #2c302e;
+    property <int> n: max(1, floor((root.width + root.gap) / (root.cell + root.gap)));
+    property <int> lit: round(clamp(root.value, 0, 1) * root.n);
+    for i in root.n: Rectangle {
+        x: i * (root.cell + root.gap);
+        y: 0;
+        width: root.cell;
+        height: root.height;
+        background: i < root.lit ? root.on : root.off;
+    }
+}

@@ -2546,7 +2546,8 @@ fn main() -> Result<(), slint::PlatformError> {
                 // in its amber, as its pause tags show outside the editor; Desktop 95 in the blue
                 // of its links, on Notepad's white page; the Comic Book letters them in blue, as it
                 // shows them; Spatial Glass in its cyan; Pocket in the LCD's mid green; the Quest
-                // Menu in its blue, as its dialogue box shows them.
+                // Menu in its blue, as its dialogue box shows them; the Pocket Synth in the orange
+                // of its screens.
                 let ui = weak.unwrap();
                 let theme = ui.global::<Theme>();
                 let accent = if theme.get_tape() {
@@ -2566,6 +2567,8 @@ fn main() -> Result<(), slint::PlatformError> {
                 } else if theme.get_answer() {
                     // The Answering Machine prints them as small grey stamps.
                     slint::Color::from_rgb_u8(0x86, 0x79, 0x5f)
+                } else if theme.get_synth() {
+                    slint::Color::from_rgb_u8(0xff, 0x5a, 0x1e)
                 } else {
                     theme.get_accent()
                 };

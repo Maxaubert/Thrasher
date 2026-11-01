@@ -35,11 +35,15 @@ scripts lived in the session scratchpad and are not kept.
 
 ## Other engines looked at
 
-- **Nemotron 3.5 ASR Streaming 0.6B** (NVIDIA, released 2026-06-04; checked 2026-11-01 by the
-  Flare session, report at `C:\Users\Admin\Documents\Claude\research\flare\2026-11-01-nemotron-asr.md`).
-  742 MB as q8 GGUF, streams, 40 language-locales including Norwegian Bokmal, OpenMDW-1.1
-  (commercial use allowed). Weak fit for Thrasher: Norwegian WER 18.1 against 10.4 for
-  Whisper large-v3 and 6.6 for NB-Whisper, English 7.91 against 4.85 for Parakeet v3, no
-  word timestamps on the model card, and streaming adds little when clips are transcribed
-  after recording. CPU speed and RAM not measured. If ever wanted: a second engine behind
-  the `Transcriber` trait, in its own process. Not planned.
+Checked 2026-11-01 by the Flare session; report at
+`C:\Users\Admin\Documents\Claude\research\flare\2026-11-01-nemotron-asr.md`.
+
+- **Nemotron 3.5 Transcribe 30B-A4B** (NVIDIA, released 2026-10-28): speech encoder plus a
+  30B MoE language model, about 4.3B active. 40 languages, word timestamps, diarization,
+  translation, no streaming. Best open English (4.71 mean WER, Parakeet v3 5.58, Whisper
+  large-v3 6.66), but Norwegian is unusable (63.76 WER on FLEURS; NVIDIA says the Norwegian
+  data "did not yield usable quality"). About 21 GB of VRAM or RAM loaded. Not for Thrasher:
+  NB-Whisper stays far better on Norwegian.
+- **Nemotron 3.5 ASR Streaming 0.6B** (released 2026-06-04): 742 MB, streams, Norwegian WER
+  18.1 against 6.6 for NB-Whisper, no word timestamps on the model card. Not for Thrasher.
+- If either is ever wanted: a second engine behind the `Transcriber` trait, in its own process.

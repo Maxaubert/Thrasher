@@ -1,0 +1,20 @@
+[package]
+name = "thrasher-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Thrasher's Slint UI (crates/thrasher-app/ui), compiled on its own"
+
+# The generated UI code is one very large module. In its own crate it gets its own
+# release profile (root Cargo.toml) and is not compiled again when only the app's Rust
+# changes.
+
+[dependencies]
+slint.workspace = true
+
+[build-dependencies]
+slint-build.workspace = true
+
+[lints]
+workspace = true

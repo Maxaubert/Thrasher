@@ -33,7 +33,8 @@ use thrasher_core::sidecar::Sidecar;
 use thrasher_core::sidecar::TrackKind;
 use thrasher_core::wasapi_io::{DeviceInfo, input_devices};
 
-slint::include_modules!();
+// The UI types (AppWindow, the globals) come from Slint's generated code in thrasher-ui.
+use thrasher_ui::*;
 
 const FULL_SIZE: LogicalSize = LogicalSize::new(520.0, 600.0);
 const WIDGET_SIZE: LogicalSize = LogicalSize::new(240.0, 124.0);

@@ -7250,43 +7250,31 @@ export component WindowFx inherits Rectangle {
 
 // A scrolling area with a thin bar that only shows when there is more to see. It
 // widens under the mouse and can be dragged.
-export component Scroller inherits Rectangle {
-    out property <length> visible-width <=> fl.width;
-    out property <length> visible-height <=> fl.height;
-    in-out property <length> content-height <=> fl.content-height;
-    in-out property <length> content-y <=> fl.content-y;
-    callback scrolled <=> fl.flicked;
-    // Its content fades out at an edge it scrolls past: strips there repaint the window
-    // background over it, more see-through the further in. Only for a list that sits on
-    // the window background.
+// The Scroller's decorations: the fade strips at its edges and each skin's scroll bar.
+// One shared component, placed over the Scroller's list, so the Scroller (inlined at
+// every use, as it always has children) does not copy these repeaters into every use.
+component ScrollDecor inherits Rectangle {
     in property <bool> fade;
-    // Its own thin bar; off for a skin that draws its own (Brick Phone).
-    in property <bool> bar: true;
-    // The Comic Book's inked rail instead of the thin bar.
+    in property <bool> bar;
     in property <bool> ink-rail;
-    // The Quest Menu's rail instead of the thin bar: 12px of ink in a blue rim along the
-    // right edge with a gold thumb (the content leaves that room).
     in property <bool> quest-rail;
-    // The Answering Machine's sunk track with a rubber thumb instead of the thin bar.
     in property <bool> rubber;
-    property <length> top-depth: root.fade ? clamp(-fl.content-y, 0, 80px) : 0;
-    property <length> bottom-depth: root.fade ? clamp(root.range + fl.content-y, 0, 80px) : 0;
+    in property <bool> bar95;
+    in property <bool> pk-rail;
+    in-out property <length> content-y;
+    in property <length> content-height;
+    in property <length> view-height;
+    property <length> top-depth: root.fade ? clamp(-root.content-y, 0, 80px) : 0;
+    property <length> bottom-depth: root.fade ? clamp(root.range + root.content-y, 0, 80px) : 0;
     property <int> strips: 10;
     // Where it sits in the window. absolute-position is not read again when only an
     // ancestor moves, so these name the window size to be worked out again on a resize.
     property <length> at-x: Win.width > 0 && Win.height > 0 && root.width > 0 ? self.absolute-position.x : self.absolute-position.x;
     property <length> at-y: Win.width > 0 && Win.height > 0 && root.height > 0 ? self.absolute-position.y : self.absolute-position.y;
-    property <length> range: fl.content-height - fl.height;
-    property <length> thumb-h: max(28px, fl.height * fl.height / max(fl.content-height, 1px));
-    horizontal-stretch: 1;
-    vertical-stretch: 1;
-    min-height: 50px;
-    fl := Flickable {
-        width: parent.width;
-        height: parent.height;
-        mouse-drag-pan-enabled: false;
-        @children
-    }
+    property <length> range: root.content-height - root.view-height;
+    property <length> thumb-h: max(28px, root.view-height * root.view-height / max(root.content-height, 1px));
+    property <length> track-h: root.view-height - 32px;
+    property <length> thumb95: max(14px, root.track-h * root.view-height / max(root.content-height, 1px));
     for i in root.top-depth > 0 ? root.strips : 0: Rectangle {
         // Strip edges on whole device pixels, in window coordinates, so the strips
         // meet without a seam and the background lines up with the real one.
@@ -7323,9 +7311,6 @@ export component Scroller inherits Rectangle {
     }
     // Desktop 95: a grey scroll bar over its right 16px (the content leaves that room), with
     // arrow keys and a raised thumb on a checker track.
-    in property <bool> bar95;
-    property <length> track-h: fl.height - 32px;
-    property <length> thumb95: max(14px, root.track-h * fl.height / max(fl.content-height, 1px));
     if root.bar95: Rectangle {
         x: parent.width - 16px;
         width: 16px;
@@ -7349,7 +7334,7 @@ export component Scroller inherits Rectangle {
             background: Os.face;
             accessible-role: button;
             accessible-label: k == 0 ? "Scroll up" : "Scroll down";
-            accessible-action-default => { fl.content-y = clamp(fl.content-y + (k == 0 ? 40px : -40px), -max(0px, root.range), 0); }
+            accessible-action-default => { root.content-y = clamp(root.content-y + (k == 0 ? 40px : -40px), -max(0px, root.range), 0); }
             OsBevel { kind: arrow.pressed && arrow.has-hover ? 1 : 0; }
             OsPx {
                 x: (parent.width - self.width) / 2;
@@ -7358,11 +7343,11 @@ export component Scroller inherits Rectangle {
                 opacity: root.range > 1px ? 1 : 0.45;
             }
             arrow := TouchArea {
-                clicked => { fl.content-y = clamp(fl.content-y + (k == 0 ? 40px : -40px), -max(0px, root.range), 0); }
+                clicked => { root.content-y = clamp(root.content-y + (k == 0 ? 40px : -40px), -max(0px, root.range), 0); }
             }
         }
         if root.range > 1px: Rectangle {
-            y: 16px + (-fl.content-y / root.range) * (root.track-h - root.thumb95);
+            y: 16px + (-root.content-y / root.range) * (root.track-h - root.thumb95);
             width: 16px;
             height: root.thumb95;
             background: Os.face;
@@ -7370,7 +7355,7 @@ export component Scroller inherits Rectangle {
             drag95 := TouchArea {
                 moved => {
                     if (self.pressed) {
-                        fl.content-y = clamp(-(parent.y - 16px + self.mouse-y - self.pressed-y) / (root.track-h - root.thumb95) * root.range, -root.range, 0);
+                        root.content-y = clamp(-(parent.y - 16px + self.mouse-y - self.pressed-y) / (root.track-h - root.thumb95) * root.range, -root.range, 0);
                     }
                 }
             }
@@ -7385,7 +7370,7 @@ export component Scroller inherits Rectangle {
         border-color: Comic.ink;
         Rectangle {
             x: 0;
-            y: (-fl.content-y / root.range) * (parent.height - root.thumb-h);
+            y: (-root.content-y / root.range) * (parent.height - root.thumb-h);
             height: root.thumb-h;
             background: rail-drag.pressed ? Comic.red : Comic.ink;
         }
@@ -7394,7 +7379,7 @@ export component Scroller inherits Rectangle {
             width: parent.width + 4px;
             // The thumb follows the pointer, centred on it.
             function follow() {
-                fl.content-y = clamp(-(self.mouse-y - root.thumb-h / 2) / max(1px, parent.height - root.thumb-h) * root.range, -root.range, 0);
+                root.content-y = clamp(-(self.mouse-y - root.thumb-h / 2) / max(1px, parent.height - root.thumb-h) * root.range, -root.range, 0);
             }
             pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.follow(); } }
             moved => { if (self.pressed) { self.follow(); } }
@@ -7402,7 +7387,6 @@ export component Scroller inherits Rectangle {
     }
     // Pocket: a dithered rail 4px in from the right edge with a dark thumb (the content
     // leaves 14px).
-    in property <bool> pk-rail;
     if root.pk-rail && root.range > 1px: Rectangle {
         x: parent.width - 10px;
         y: 6px;
@@ -7411,7 +7395,7 @@ export component Scroller inherits Rectangle {
         PkTile { source: @image-url("skins/px-pocket/dith.png"); }
         Rectangle {
             x: 0;
-            y: round((-fl.content-y / root.range) * (parent.height - root.thumb-h) / 2px) * 2px;
+            y: round((-root.content-y / root.range) * (parent.height - root.thumb-h) / 2px) * 2px;
             height: min(parent.height, root.thumb-h);
             background: Pk.l3;
         }
@@ -7419,7 +7403,7 @@ export component Scroller inherits Rectangle {
             x: -4px;
             width: parent.width + 6px;
             function follow() {
-                fl.content-y = clamp(-(self.mouse-y - root.thumb-h / 2) / max(1px, parent.height - root.thumb-h) * root.range, -root.range, 0);
+                root.content-y = clamp(-(self.mouse-y - root.thumb-h / 2) / max(1px, parent.height - root.thumb-h) * root.range, -root.range, 0);
             }
             pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.follow(); } }
             moved => { if (self.pressed) { self.follow(); } }
@@ -7431,10 +7415,10 @@ export component Scroller inherits Rectangle {
         background: Quest.ink;
         border-width: 3px;
         border-color: Quest.rule;
-        property <length> qthumb: max(30px, (self.height - 6px) * fl.height / max(fl.content-height, 1px));
+        property <length> qthumb: max(30px, (self.height - 6px) * root.view-height / max(root.content-height, 1px));
         Rectangle {
             x: 3px;
-            y: 3px + round((-fl.content-y / root.range) * (parent.height - 6px - parent.qthumb) / 1px) * 1px;
+            y: 3px + round((-root.content-y / root.range) * (parent.height - 6px - parent.qthumb) / 1px) * 1px;
             width: parent.width - 6px;
             height: parent.qthumb;
             background: Quest.gold;
@@ -7443,7 +7427,7 @@ export component Scroller inherits Rectangle {
             x: -4px;
             width: parent.width + 4px;
             function follow() {
-                fl.content-y = clamp(-(self.mouse-y - parent.qthumb / 2) / max(1px, parent.height - parent.qthumb) * root.range, -root.range, 0);
+                root.content-y = clamp(-(self.mouse-y - parent.qthumb / 2) / max(1px, parent.height - parent.qthumb) * root.range, -root.range, 0);
             }
             pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.follow(); } }
             moved => { if (self.pressed) { self.follow(); } }
@@ -7455,9 +7439,9 @@ export component Scroller inherits Rectangle {
         x: parent.width - 5px;
         y: 0;
         height: parent.height;
-        content-y <=> fl.content-y;
-        content-h: fl.content-height;
-        view-h: fl.height;
+        content-y <=> root.content-y;
+        content-h: root.content-height;
+        view-h: root.view-height;
     }
     if root.rubber && !root.bar95 && !root.ink-rail && root.range > 1px: Rectangle {
         x: parent.width - self.width;
@@ -7467,7 +7451,7 @@ export component Scroller inherits Rectangle {
         Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: #00000026; }
         Rectangle {
             x: 0;
-            y: (-fl.content-y / root.range) * (parent.height - root.thumb-h);
+            y: (-root.content-y / root.range) * (parent.height - root.thumb-h);
             height: root.thumb-h;
             border-radius: 3px;
             background: @linear-gradient(180deg, #635c56 0%, #4b4540 100%);
@@ -7476,7 +7460,7 @@ export component Scroller inherits Rectangle {
             x: -6px;
             width: parent.width + 8px;
             function follow() {
-                fl.content-y = clamp(-(self.mouse-y - root.thumb-h / 2) / max(1px, parent.height - root.thumb-h) * root.range, -root.range, 0);
+                root.content-y = clamp(-(self.mouse-y - root.thumb-h / 2) / max(1px, parent.height - root.thumb-h) * root.range, -root.range, 0);
             }
             pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.follow(); } }
             moved => { if (self.pressed) { self.follow(); } }
@@ -7484,7 +7468,7 @@ export component Scroller inherits Rectangle {
     }
     if root.bar && !root.bar95 && !root.ink-rail && !root.pk-rail && !root.quest-rail && !root.rubber && !Theme.brick && root.range > 1px: Rectangle {
         x: parent.width - self.width - 2px;
-        y: (-fl.content-y / root.range) * (fl.height - root.thumb-h);
+        y: (-root.content-y / root.range) * (root.view-height - root.thumb-h);
         width: drag.has-hover || drag.pressed ? 6px : 3px;
         height: root.thumb-h;
         border-radius: self.width / 2;
@@ -7495,10 +7479,58 @@ export component Scroller inherits Rectangle {
             width: parent.width + 8px;
             moved => {
                 if (self.pressed) {
-                    fl.content-y = clamp(-(parent.y + self.mouse-y - self.pressed-y) / (fl.height - root.thumb-h) * root.range, -root.range, 0);
+                    root.content-y = clamp(-(parent.y + self.mouse-y - self.pressed-y) / (root.view-height - root.thumb-h) * root.range, -root.range, 0);
                 }
             }
         }
+    }
+}
+
+export component Scroller inherits Rectangle {
+    out property <length> visible-width <=> fl.width;
+    out property <length> visible-height <=> fl.height;
+    in-out property <length> content-height <=> fl.content-height;
+    in-out property <length> content-y <=> fl.content-y;
+    callback scrolled <=> fl.flicked;
+    // Its content fades out at an edge it scrolls past: strips there repaint the window
+    // background over it, more see-through the further in. Only for a list that sits on
+    // the window background.
+    in property <bool> fade;
+    // Its own thin bar; off for a skin that draws its own (Brick Phone).
+    in property <bool> bar: true;
+    // The Comic Book's inked rail instead of the thin bar.
+    in property <bool> ink-rail;
+    // The Quest Menu's rail instead of the thin bar: 12px of ink in a blue rim along the
+    // right edge with a gold thumb (the content leaves that room).
+    in property <bool> quest-rail;
+    // The Answering Machine's sunk track with a rubber thumb instead of the thin bar.
+    in property <bool> rubber;
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+    min-height: 50px;
+    fl := Flickable {
+        width: parent.width;
+        height: parent.height;
+        mouse-drag-pan-enabled: false;
+        @children
+    }
+    in property <bool> bar95;
+    in property <bool> pk-rail;
+    ScrollDecor {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        fade: root.fade;
+        bar: root.bar;
+        ink-rail: root.ink-rail;
+        quest-rail: root.quest-rail;
+        rubber: root.rubber;
+        bar95: root.bar95;
+        pk-rail: root.pk-rail;
+        content-y <=> fl.content-y;
+        content-height: fl.content-height;
+        view-height: fl.height;
     }
 }
 

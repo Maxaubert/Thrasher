@@ -2542,11 +2542,11 @@ fn main() -> Result<(), slint::PlatformError> {
         let weak = ui.as_weak();
         move |text| {
             {
-                // Tape Deck types the tags in a darker amber, readable on its cream card;
-                // Phosphor in its amber, as its pause tags show outside the editor;
-                // Desktop 95 in the blue of its links, on Notepad's white page; the Comic
-                // Book letters them in blue, as it shows them; Spatial Glass in its cyan;
-                // Pocket in the LCD's mid green.
+                // Tape Deck types the tags in a darker amber, readable on its cream card; Phosphor
+                // in its amber, as its pause tags show outside the editor; Desktop 95 in the blue
+                // of its links, on Notepad's white page; the Comic Book letters them in blue, as it
+                // shows them; Spatial Glass in its cyan; Pocket in the LCD's mid green; the Quest
+                // Menu in its blue, as its dialogue box shows them.
                 let ui = weak.unwrap();
                 let theme = ui.global::<Theme>();
                 let accent = if theme.get_tape() {
@@ -2561,6 +2561,8 @@ fn main() -> Result<(), slint::PlatformError> {
                     slint::Color::from_rgb_u8(0x9f, 0xe3, 0xff)
                 } else if theme.get_pocket() {
                     slint::Color::from_rgb_u8(0x4e, 0x61, 0x27)
+                } else if theme.get_quest() {
+                    slint::Color::from_rgb_u8(0x56, 0xa8, 0xff)
                 } else {
                     theme.get_accent()
                 };

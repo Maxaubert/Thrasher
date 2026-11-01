@@ -63,11 +63,16 @@ px-pocket) PIECES="mic:mic:9:11 mics:mics:5:7 gear:gear:9:9 min:min:7:7 close:cl
   grip:grip:5:8 folder:folder:7:6 plus:plus:5:5 x:x:5:5 expand:expand:7:7 chev:chev:4:7 loop:loop:7:6 tick:tick:7:6
   drop:drop:16:17 key-8:key-8:8:8 dimL:dimL:4:4 dimD:dimD:4:4" ;;
 # Quest Menu: pixel art (only the 1x cut is used, scaled up pixelated in Slint) and the
-# wide command menu's upright title (1x and 2x).
+# wide command menu's upright title (1x and 2x); from back on, the other pages' pieces
+# (ONLY="back chev ..." cuts just those).
 px-quest) PIECES="gear:gear:7:7 min:min:7:7 close:close:7:7 play:play:5:5 pause:pause:5:5 dots:dots:1:5
   imp:imp:7:7 ask:ask:7:7 widget:widget:7:7 search:search:7:7 down:down:5:3 note:note:4:5 cpause:cpause:7:7
   cplay:cplay:7:7 check:check:5:5 hand:hand:8:6 mic:mic:10:14 rec-s:rec-s:19:19 rec-l:rec-l:33:33
-  stop-s:stop-s:19:19 stop-l:stop-l:33:33 cmd:cmd:14:32" ;;
+  stop-s:stop-s:19:19 stop-l:stop-l:33:33 cmd:cmd:14:32
+  back:back:4:7 chev:chev:4:7 pencil:pencil:7:7 trash:trash:7:7 rew:rew:7:7 ff:ff:7:7 lang:lang:7:7
+  spark:spark:7:7 copy:copy:7:7 tick:tick:7:6 up:up:7:7 x:x:5:5 grip:grip:3:5 folder:folder:7:6 plus:plus:5:5
+  box:box:7:7 expand:expand:7:7 tri:tri:3:5 upt:upt:5:3 stop:stop:5:5 tape:tape:14:11 owl:owl:12:13
+  chest:chest:12:9 wrec:wrec:17:17 wstop:wstop:17:17" ;;
 # Brick Phone: the stretching keys in three slices, the fixed keys whole, the rocker and
 # its OK key, the antenna and the earpieces at 1x and 2x; the white icons for colorize;
 # the LCD's pixel glyphs and tiles (x-, t-) are used at 1x only.

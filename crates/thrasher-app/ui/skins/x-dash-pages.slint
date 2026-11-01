@@ -65,44 +65,49 @@ component Key inherits Rectangle {
     callback clicked;
     width: 34px;
     height: self.width;
-    opacity: root.enabled ? 1 : 0.4;
+    // Drawn in body, not on the root: a root opacity, visible, shadow or border makes
+    // Slint inline the whole widget at every use (docs/device-themes.md, Generated code size).
+    // No x, y or size: it fills the root and passes its children's layout constraints on.
+    body := Rectangle {
+        opacity: root.enabled ? 1 : 0.4;
+        Art {
+            x: -root.width / 12;
+            y: -root.width / 12;
+            width: root.width * 42 / 36;
+            height: root.width * 42 / 36;
+            lo: @image-url("dash/sbtn.png");
+            hi: @image-url("dash/sbtn@2x.png");
+        }
+        Rectangle {
+            visible: t.has-hover && root.enabled;
+            border-radius: root.width / 2;
+            background: t.pressed ? #ffffff08 : #ffffff14;
+        }
+        Icon {
+            y: (parent.height - self.height) / 2 + (t.pressed ? 1px : 0);
+            name: root.icon;
+            tint: root.red ? #ff8a95 : t.has-hover && root.enabled ? #ffffff : #d7dee6;
+            width: root.icon-size;
+            height: root.icon-size;
+        }
+        if root.caption != "": Text {
+            x: (parent.width - 60px) / 2;
+            y: parent.height + 5px;
+            width: 60px;
+            text: root.caption;
+            color: Dash.faint;
+            font-family: "Manrope";
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.64px;
+            horizontal-alignment: center;
+            accessible-role: none;
+        }
+        @children
+    }
     accessible-role: button;
     accessible-label: root.label;
     accessible-action-default => { if (root.enabled) { root.clicked(); } }
-    Art {
-        x: -root.width / 12;
-        y: -root.width / 12;
-        width: root.width * 42 / 36;
-        height: root.width * 42 / 36;
-        lo: @image-url("dash/sbtn.png");
-        hi: @image-url("dash/sbtn@2x.png");
-    }
-    Rectangle {
-        visible: t.has-hover && root.enabled;
-        border-radius: root.width / 2;
-        background: t.pressed ? #ffffff08 : #ffffff14;
-    }
-    Icon {
-        y: (parent.height - self.height) / 2 + (t.pressed ? 1px : 0);
-        name: root.icon;
-        tint: root.red ? #ff8a95 : t.has-hover && root.enabled ? #ffffff : #d7dee6;
-        width: root.icon-size;
-        height: root.icon-size;
-    }
-    if root.caption != "": Text {
-        x: (parent.width - 60px) / 2;
-        y: parent.height + 5px;
-        width: 60px;
-        text: root.caption;
-        color: Dash.faint;
-        font-family: "Manrope";
-        font-size: 8px;
-        font-weight: 800;
-        letter-spacing: 0.64px;
-        horizontal-alignment: center;
-        accessible-role: none;
-    }
-    @children
     property <bool> hovering: t.has-hover;
     changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
     t := TouchArea {

@@ -1798,6 +1798,62 @@ portrait pages slide the keypad away so the LCD grows, keypad digits pick nothin
   the full look on every page for all 15 skins and accepted an exe near 200 MB (2026-10-29).
   Still keep generated code lean where it costs nothing in looks.
 
+### Generated code size
+
+Lesson of 2026-11-01. Slint turns `ui/` into one Rust module (`app.rs` in the build
+folder, now in the `thrasher-ui` crate). By the Pocket Synth's pages it was 467 MB, the
+exe 246 MB, and one release rustc needed over 30 GB of RAM (a debug one reached 45 GB and
+froze the PC). Nearly all of it was copies, not UI. Three things made the copies:
+
+1. **A cheap global binding is pasted into every read.** Slint's optimizer inlines any
+   binding that costs less than about 1390 units (one property read is 1000). After the
+   reads of `skin` were merged into one local, the 11-way chain
+   `pages: skin == 1 ? 1 : skin == 2 ? 2 : ...` fell under that limit and was copied
+   about 36,700 times, also through `os95`, `brick` and the other flags built on it: 29%
+   of the file. It is now `pages: skin <= 11 ? skin : 0`.
+2. **A component whose root binds `opacity`, `visible`, `drop-shadow-*`, an animated
+   public property or a percent size is inlined at every use** (Slint wraps the element
+   in an Opacity or Clip item, and a component root cannot get a parent). Every `if`,
+   `for` and PopupWindow inside it then becomes a new type per use. Select (27 uses) had
+   78 copies of its popup and rows (about 67 MB), Toggle 100 copies, Btn and IconBtn
+   hundreds of inlined bodies. Each `if` or `for` costs 13 to 24 KB of code even for a
+   single Text; a shared sub-component use costs about 1.4 KB.
+3. **A component used with children is always inlined**, so the Scroller (always used
+   with children) copied its 11 per-skin rails and fade strips into all 100 uses.
+
+What was done (app.rs 467 MB to 188 MB, exe 246 MB to 106 MB):
+the `pages` line; Select, Toggle, Btn, IconBtn, TextField, MenuRow and the Car
+Dashboard's Key draw everything in a `body := Rectangle` child that fills the root (the
+root keeps the API, size, accessibility and input); the Scroller's decorations are one
+shared `ScrollDecor` component; and the UI is its own crate, `thrasher-ui`, built with
+`opt-level = "s"` (docs/building.md). Every theme's pages were shot before and after and
+compared pixel for pixel. The rustc peak for the UI is still about 26 to 29 GB (it was
+over 30 GB): it falls only with less generated code.
+
+Rules for new skins and widgets:
+
+- **No `opacity`, `visible`, `drop-shadow-*`, `animate` of a public property or percent
+  size on a component's root.** Put them on a `body := Rectangle` child that fills the
+  root. Give body **no x, y, width or height**: it fills the root anyway, and only a
+  child without x and y passes its layout constraints (preferred width and so on) up to
+  the root; with `x: 0; y: 0` the buttons lost their preferred widths and grew.
+- If a use site sets a Rectangle look (background, border, radius) on such a widget,
+  forward it to body; otherwise it paints the empty root, under body.
+- A widget that takes `@children` is inlined wherever it is used with children. Keep it a
+  thin shell; put per-skin art (rails, frames, `if Theme.x` pieces) in one separate
+  component with plain `in` properties, placed with explicit x and y, as `ScrollDecor`.
+- No long `==` chains in cheap global bindings (Theme). One comparison, an array lookup
+  (it costs over the limit, so it stays a cached property) or a plain property.
+- Per-skin variants of a shared widget: one skin-only component inside the widget's
+  single shared type (`if Theme.x: XArt {}`), never new `if` branches in a widget that is
+  inlined.
+- For a tiny absolutely positioned per-skin piece, `visible:` (about 1 to 2 KB) is
+  cheaper than `if` (13 to 24 KB), but never inside a layout: invisible items still take
+  layout space there.
+- Check `app.rs` after a skin's pages land (the newest
+  `target/release/build/thrasher-ui-*/out/app.rs`): a skin's pages should cost about 3 to
+  5 MB of exe, not 20 MB.
+
 ## 4. Theme picker
 
 With 23 themes, a dropdown is too long. Settings gets a theme gallery: small thumbnails in

@@ -8,10 +8,28 @@ cargo run --release -p thrasher-app
 
 Needs only Rust (stable, MSVC). This is what CI builds and tests.
 
-Debug builds of `thrasher-app` carry line tables only (`[profile.dev.package.thrasher-app]`
-in the root `Cargo.toml`): with full debug info the test exe passed the linker's program
-database limit (`LNK1140`) once the generated UI code grew with the Quest Menu and Brick Phone pages
-(2026-10-31).
+Debug builds of `thrasher-app` and `thrasher-ui` carry line tables only
+(`[profile.dev.package.*]` in the root `Cargo.toml`): with full debug info the test exe
+passed the linker's program database limit (`LNK1140`) once the generated UI code grew
+with the Quest Menu and Brick Phone pages (2026-10-31).
+
+### Generated UI code
+
+The `.slint` files stay in `crates/thrasher-app/ui`, but they are compiled in their own
+crate, `crates/thrasher-ui` (its `build.rs` runs slint-build, its `lib.rs` holds
+`slint::include_modules!()`, and the app does `use thrasher_ui::*`). A change to the
+app's Rust no longer compiles the UI again. The crate is built with `opt-level = "s"`
+and 64 codegen units (`[profile.release.package.thrasher-ui]`): the exe is 106 MB instead
+of 141 MB, and shots of every theme matched the opt-level 3 build pixel for pixel
+(2026-11-01; a few anti-aliased pixels on the Pocket Synth and Comic Book pages flip by
+one level from run to run with any build, main included). The generated module is still
+large (about 187 MB of Rust in `target/release/build/thrasher-ui-*/out/app.rs`); a release
+rustc of it peaks near 26 to 29 GB when codegen starts (around minute 11), so run one
+cargo command at a time. A debug build of it (`cargo test` without `--release`) still
+passed 30 GB at that point, also with `-j 4` (2026-11-01), so run the app's tests with
+`cargo test --release -p thrasher-app`, which reuses the release UI build. Building `--bin thrasher-transcribe` also needs thrasher-ui;
+after the app's own build it is already compiled. What makes Slint's output large and the
+rules that keep it small: docs/device-themes.md, "Generated code size" (2026-11-01).
 
 ## With transcription (whisper.cpp)
 

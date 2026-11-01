@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/thrasher-core", "crates/thrasher-app", "crates/thrasher-ask"]
+members = ["crates/thrasher-core", "crates/thrasher-ui", "crates/thrasher-app", "crates/thrasher-ask"]
 
 [workspace.package]
 version = "0.1.0"
@@ -35,3 +35,13 @@ all = { level = "warn", priority = -1 }
 # backtraces; only this crate is affected, so dependencies keep their build.
 [profile.dev.package.thrasher-app]
 debug = "line-tables-only"
+[profile.dev.package.thrasher-ui]
+debug = "line-tables-only"
+
+# The UI crate is the code Slint generates: one module of about 190 MB of Rust. Built
+# for size the exe is about 35 MB smaller, with the same pixels on every theme; the
+# renderer (i-slint-core) and the app keep opt-level 3. More codegen units keep each
+# LLVM job small (docs/building.md, Generated UI code).
+[profile.release.package.thrasher-ui]
+opt-level = "s"
+codegen-units = 64

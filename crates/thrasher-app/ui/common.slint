@@ -270,7 +270,10 @@ export global Theme {
     // Answering Machine's (skins/dv-answer-pages.slint), 11 the Pocket Synth's
     // (skins/dv-synth-pages.slint), else 0, the classic pages in the theme's palette (also for
     // skins whose pages are not built yet).
-    out property <int> pages: root.skin == 1 ? 1 : root.skin == 2 ? 2 : root.skin == 3 ? 3 : root.skin == 4 ? 4 : root.skin == 5 ? 5 : root.skin == 6 ? 6 : root.skin == 7 ? 7 : root.skin == 8 ? 8 : root.skin == 9 ? 9 : root.skin == 10 ? 10 : root.skin == 11 ? 11 : 0;
+    // One comparison, not a chain of 11: Slint pastes a cheap global binding into every
+    // read, so a long chain here was copied 36,000 times into the generated code (see
+    // docs/device-themes.md, Generated code size). Skins 1 to 11 have their own pages.
+    out property <int> pages: root.skin <= 11 ? root.skin : 0;
     // The Tape Deck skin: the shared widgets below draw their deck look for it.
     out property <bool> tape: root.skin == 1;
     // The Phosphor skin: the shared widgets below draw their terminal look for it.
@@ -1545,295 +1548,302 @@ export component Btn inherits Rectangle {
     // At least this wide (the 95 message box keys are 74px).
     in property <length> least;
     min-width: Theme.phos ? (root.key != "" ? ph-key.preferred-width + 6px : ph-word.preferred-width + 22px) : max(root.least, Theme.os95 ? os-label.preferred-width + 16px : Theme.pocket ? pk-word.preferred-width + 16px : Theme.quest ? q-word.preferred-width + 20px : Theme.answer ? am-word.preferred-width + 24px : label.preferred-width + (Theme.tape ? 24px : Theme.glass ? 30px : Theme.comic ? 20px : Theme.dash ? 28px : Theme.brick ? 16px : Theme.synth ? (root.height < 30px ? 20px : 28px) : 26px));
-    // Car Dashboard: a glass pill; the main one ice, Delete red.
-    border-radius: Theme.tape || Theme.os95 || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.synth ? 0 : Theme.glass ? self.height / 2 : Theme.dash ? self.height / 2 : 9px;
-    // Spatial Glass: a glass pill; the main action white, deleting and merging red.
-    // Brick Phone: an LCD button in an ink frame, inverted for the main action.
-    // Pocket Synth: a white key in capitals, the main action orange, `red` the dark key.
-    background: Theme.tape || Theme.comic || Theme.phos || Theme.pocket || Theme.quest || Theme.answer || Theme.synth ? transparent
-        : Theme.brick ? (primary || on ? Brick.ink : t.has-hover && enabled ? Brick.ghost : transparent)
-        : Theme.os95 ? Os.face
-        : Theme.glass ? (primary ? (root.red ? (t.has-hover && enabled ? #ff6371 : Glass.rec) : (t.has-hover && enabled ? #ffffff : #ececf2))
-            : on ? #ffffff59 : t.has-hover && enabled ? #ffffff3d : #ffffff29)
-        : Theme.dash ? (primary && red ? (t.has-hover && enabled ? #ff6b78 : #ff4d5e) : primary ? (t.has-hover && enabled ? Theme.accent-hover : Theme.accent) : on ? #62d2ff1f : t.has-hover && enabled ? #1f252d : #181d23)
-        : primary ? (t.has-hover && enabled ? Theme.accent-hover : Theme.accent) : (t.has-hover && enabled ? Theme.raised : transparent);
-    border-width: Theme.glass ? 1px : Theme.brick ? 2px : primary || Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.answer || Theme.synth ? 0 : 1px;
-    border-color: Theme.glass ? (primary ? (root.red ? #ffffff73 : #ffffff) : on ? #ffffffb3 : #ffffff4d) : on ? Theme.accent : Theme.dash ? #ffffff1f : Theme.edge;
-    opacity: enabled || Theme.tape || Theme.os95 || Theme.pocket || Theme.quest || Theme.answer ? 1 : Theme.comic ? 0.45 : Theme.glass || Theme.brick ? 0.38 : 0.4;
-    // Pocket: an LCD key, a dark ring with a mid green band along its foot; the main
-    // action dark (Delete with a light inner ring), held down and dark while on, pale when
-    // off.
-    property <bool> pk-dark: root.primary || root.red || root.danger || root.on;
-    property <bool> pk-down: root.on || (t.pressed && t.has-hover && root.enabled);
-    Rectangle {
-        visible: Theme.pocket;
-        x: 0;
-        y: root.pk-down ? 2px : 0;
-        width: parent.width;
-        height: parent.height - (root.pk-down ? 2px : 0);
-        background: root.pk-dark ? (root.enabled ? Pk.l3 : Pk.l1) : t.has-hover && root.enabled ? #b3bf6a : Pk.l0;
-        Rectangle { visible: !root.pk-dark && !root.pk-down; x: 2px; y: parent.height - 4px; width: parent.width - 4px; height: 2px; background: Pk.l1; }
-        Rectangle { visible: root.pk-dark && !root.pk-down && root.enabled; x: 0; y: parent.height - 2px; width: parent.width; height: 2px; background: Pk.l2; }
-        PkRing { visible: !root.pk-dark; ink: root.enabled ? Pk.l3 : Pk.l1; }
-        PkRing { visible: (root.red || root.danger) && root.enabled; x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px; ink: Pk.l0; }
-        pk-word := Text {
+    // Drawn in body, not on the root: a root opacity, visible, shadow or border makes
+    // Slint inline the whole widget at every use (docs/device-themes.md, Generated code size).
+    // No x, y or size: it fills the root and passes its children's layout constraints on.
+    body := Rectangle {
+        // Car Dashboard: a glass pill; the main one ice, Delete red.
+        border-radius: Theme.tape || Theme.os95 || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.synth ? 0 : Theme.glass ? self.height / 2 : Theme.dash ? self.height / 2 : 9px;
+        // Spatial Glass: a glass pill; the main action white, deleting and merging red.
+        // Brick Phone: an LCD button in an ink frame, inverted for the main action.
+        // Pocket Synth: a white key in capitals, the main action orange, `red` the dark key.
+        background: Theme.tape || Theme.comic || Theme.phos || Theme.pocket || Theme.quest || Theme.answer || Theme.synth ? transparent
+            : Theme.brick ? (primary || on ? Brick.ink : t.has-hover && enabled ? Brick.ghost : transparent)
+            : Theme.os95 ? Os.face
+            : Theme.glass ? (primary ? (root.red ? (t.has-hover && enabled ? #ff6371 : Glass.rec) : (t.has-hover && enabled ? #ffffff : #ececf2))
+                : on ? #ffffff59 : t.has-hover && enabled ? #ffffff3d : #ffffff29)
+            : Theme.dash ? (primary && red ? (t.has-hover && enabled ? #ff6b78 : #ff4d5e) : primary ? (t.has-hover && enabled ? Theme.accent-hover : Theme.accent) : on ? #62d2ff1f : t.has-hover && enabled ? #1f252d : #181d23)
+            : primary ? (t.has-hover && enabled ? Theme.accent-hover : Theme.accent) : (t.has-hover && enabled ? Theme.raised : transparent);
+        border-width: Theme.glass ? 1px : Theme.brick ? 2px : primary || Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.answer || Theme.synth ? 0 : 1px;
+        border-color: Theme.glass ? (primary ? (root.red ? #ffffff73 : #ffffff) : on ? #ffffffb3 : #ffffff4d) : on ? Theme.accent : Theme.dash ? #ffffff1f : Theme.edge;
+        opacity: enabled || Theme.tape || Theme.os95 || Theme.pocket || Theme.quest || Theme.answer ? 1 : Theme.comic ? 0.45 : Theme.glass || Theme.brick ? 0.38 : 0.4;
+        Rectangle {
+            visible: Theme.pocket;
             x: 0;
-            y: -1px;
+            y: root.pk-down ? 2px : 0;
+            width: parent.width;
+            height: parent.height - (root.pk-down ? 2px : 0);
+            background: root.pk-dark ? (root.enabled ? Pk.l3 : Pk.l1) : t.has-hover && root.enabled ? #b3bf6a : Pk.l0;
+            Rectangle { visible: !root.pk-dark && !root.pk-down; x: 2px; y: parent.height - 4px; width: parent.width - 4px; height: 2px; background: Pk.l1; }
+            Rectangle { visible: root.pk-dark && !root.pk-down && root.enabled; x: 0; y: parent.height - 2px; width: parent.width; height: 2px; background: Pk.l2; }
+            PkRing { visible: !root.pk-dark; ink: root.enabled ? Pk.l3 : Pk.l1; }
+            PkRing { visible: (root.red || root.danger) && root.enabled; x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px; ink: Pk.l0; }
+            pk-word := Text {
+                x: 0;
+                y: -1px;
+                width: parent.width;
+                height: parent.height;
+                text: root.text;
+                color: root.pk-dark ? Pk.l0 : root.enabled ? Pk.l3 : Pk.l1;
+                font-family: Pk.big;
+                font-size: root.height <= 22px ? 16px : 20px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+        // Quest Menu: a pixel key, the main action lit with gold words, Delete red, an off key
+        // dark with dim words.
+        QFace {
+            visible: Theme.quest;
+            x: 0;
+            y: 0;
+            kind: !root.enabled ? 3 : root.primary && (root.red || root.danger) ? 2 : root.primary ? 1 : root.on ? 4 : 0;
+            hover: t.has-hover && root.enabled;
+        }
+        q-word := Text {
+            visible: Theme.quest;
+            x: 0;
+            y: (t.pressed && t.has-hover && root.enabled ? 1px : 0);
             width: parent.width;
             height: parent.height;
             text: root.text;
-            color: root.pk-dark ? Pk.l0 : root.enabled ? Pk.l3 : Pk.l1;
-            font-family: Pk.big;
-            font-size: root.height <= 22px ? 16px : 20px;
+            color: !root.enabled ? Quest.dim : root.primary && (root.red || root.danger) ? Quest.white : root.primary || root.on ? Quest.gold : root.danger || root.red ? Quest.lred : Quest.white;
+            font-family: Quest.font;
+            font-size: root.height < 26px ? 13px : 14px;
             horizontal-alignment: center;
             vertical-alignment: center;
             accessible-role: none;
         }
-    }
-    // Quest Menu: a pixel key, the main action lit with gold words, Delete red, an off key
-    // dark with dim words.
-    QFace {
-        visible: Theme.quest;
-        x: 0;
-        y: 0;
-        kind: !root.enabled ? 3 : root.primary && (root.red || root.danger) ? 2 : root.primary ? 1 : root.on ? 4 : 0;
-        hover: t.has-hover && root.enabled;
-    }
-    q-word := Text {
-        visible: Theme.quest;
-        x: 0;
-        y: (t.pressed && t.has-hover && root.enabled ? 1px : 0);
-        width: parent.width;
-        height: parent.height;
-        text: root.text;
-        color: !root.enabled ? Quest.dim : root.primary && (root.red || root.danger) ? Quest.white : root.primary || root.on ? Quest.gold : root.danger || root.red ? Quest.lred : Quest.white;
-        font-family: Quest.font;
-        font-size: root.height < 26px ? 13px : 14px;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        accessible-role: none;
-    }
-    // Answering Machine: a rubber key, red for the main action and for deleting, held
-    // down while it is on (with an amber lamp), grey when off.
-    property <bool> am-down: (t.pressed && t.has-hover && root.enabled) || root.on;
-    AmKey {
-        visible: Theme.answer;
-        x: 0;
-        y: 0;
-        width: parent.width;
-        height: parent.height;
-        kind: root.primary || root.red ? 1 : 0;
-        down: root.am-down;
-        hover: t.has-hover;
-        enabled: root.enabled;
-    }
-    Rectangle {
-        visible: Theme.answer && root.on;
-        x: parent.width - 11px;
-        y: 5px + (root.am-down ? 2px : 0);
-        width: 5px;
-        height: 5px;
-        border-radius: 2.5px;
-        background: Am.amber;
-    }
-    am-word := Text {
-        visible: Theme.answer;
-        x: 0;
-        y: root.am-down ? 2px : 0;
-        width: parent.width;
-        height: parent.height;
-        text: root.text.to-uppercase();
-        color: root.primary || root.red ? (root.enabled ? Am.rec-ink : #f0c9bf) : !root.enabled ? #8f877d : root.danger ? #ff8a72 : Am.key-ink;
-        font-family: "Barlow Condensed";
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 2px;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        accessible-role: none;
-    }
-    // Desktop 95: a grey push button, the main action the default button with its black
-    // ring, the words a pixel down and right while it is held; grey etched words when off.
-    property <bool> os-down: (t.pressed && t.has-hover && root.enabled) || root.on;
-    OsBevel {
-        visible: Theme.os95;
-        kind: root.os-down ? 1 : root.primary ? 6 : 0;
-    }
-    Text {
-        visible: Theme.os95 && !root.enabled;
-        x: 1px;
-        y: 1px;
-        width: parent.width;
-        height: parent.height;
-        text: root.text;
-        color: Os.hi;
-        font-family: Os.font;
-        font-size: 12.5px;
-        font-weight: root.primary ? 700 : 400;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        accessible-role: none;
-    }
-    os-label := Text {
-        visible: Theme.os95;
-        x: root.os-down ? 1px : 0;
-        y: root.os-down ? 1px : 0;
-        width: parent.width;
-        height: parent.height;
-        text: root.text;
-        color: root.enabled ? #000000 : Os.sh;
-        font-family: Os.font;
-        font-size: 12.5px;
-        font-weight: root.primary ? 700 : 400;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        accessible-role: none;
-    }
-    // Comic Book: an ink key with a hard shadow that sinks onto it when pressed (or on):
-    // yellow for the main action, red for deleting and merging.
-    property <bool> ink-down: Theme.comic && ((t.pressed && t.has-hover && root.enabled) || root.on);
-    InkShadow { visible: Theme.comic && root.enabled && !root.ink-down; off: 2px; }
-    Rectangle {
-        visible: Theme.comic;
-        x: root.ink-down ? 2px : 0;
-        y: root.ink-down ? 2px : 0;
-        background: root.red || root.danger ? Comic.red : root.primary || root.on ? Comic.yellow : #ffffff;
-        border-width: 2.5px;
-        border-color: Comic.ink;
-        Rectangle { visible: t.has-hover && root.enabled && !root.ink-down; x: 2.5px; y: 2.5px; width: parent.width - 5px; height: parent.height - 5px; background: #ffffff40; }
-        Text {
-            y: 1px;
-            height: parent.height - 1px;
+        AmKey {
+            visible: Theme.answer;
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            kind: root.primary || root.red ? 1 : 0;
+            down: root.am-down;
+            hover: t.has-hover;
+            enabled: root.enabled;
+        }
+        Rectangle {
+            visible: Theme.answer && root.on;
+            x: parent.width - 11px;
+            y: 5px + (root.am-down ? 2px : 0);
+            width: 5px;
+            height: 5px;
+            border-radius: 2.5px;
+            background: Am.amber;
+        }
+        am-word := Text {
+            visible: Theme.answer;
+            x: 0;
+            y: root.am-down ? 2px : 0;
+            width: parent.width;
+            height: parent.height;
             text: root.text.to-uppercase();
-            color: root.red || root.danger ? #ffffff : Comic.ink;
-            font-family: "Bangers";
-            font-size: root.height < 32px ? 12.5px : 14px;
+            color: root.primary || root.red ? (root.enabled ? Am.rec-ink : #f0c9bf) : !root.enabled ? #8f877d : root.danger ? #ff8a72 : Am.key-ink;
+            font-family: "Barlow Condensed";
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        OsBevel {
+            visible: Theme.os95;
+            kind: root.os-down ? 1 : root.primary ? 6 : 0;
+        }
+        Text {
+            visible: Theme.os95 && !root.enabled;
+            x: 1px;
+            y: 1px;
+            width: parent.width;
+            height: parent.height;
+            text: root.text;
+            color: Os.hi;
+            font-family: Os.font;
+            font-size: 12.5px;
+            font-weight: root.primary ? 700 : 400;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        os-label := Text {
+            visible: Theme.os95;
+            x: root.os-down ? 1px : 0;
+            y: root.os-down ? 1px : 0;
+            width: parent.width;
+            height: parent.height;
+            text: root.text;
+            color: root.enabled ? #000000 : Os.sh;
+            font-family: Os.font;
+            font-size: 12.5px;
+            font-weight: root.primary ? 700 : 400;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        InkShadow { visible: Theme.comic && root.enabled && !root.ink-down; off: 2px; }
+        Rectangle {
+            visible: Theme.comic;
+            x: root.ink-down ? 2px : 0;
+            y: root.ink-down ? 2px : 0;
+            background: root.red || root.danger ? Comic.red : root.primary || root.on ? Comic.yellow : #ffffff;
+            border-width: 2.5px;
+            border-color: Comic.ink;
+            Rectangle { visible: t.has-hover && root.enabled && !root.ink-down; x: 2.5px; y: 2.5px; width: parent.width - 5px; height: parent.height - 5px; background: #ffffff40; }
+            Text {
+                y: 1px;
+                height: parent.height - 1px;
+                text: root.text.to-uppercase();
+                color: root.red || root.danger ? #ffffff : Comic.ink;
+                font-family: "Bangers";
+                font-size: root.height < 32px ? 12.5px : 14px;
+                letter-spacing: 1px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+        // Tape Deck: a piano key, amber for the main action, red for deleting.
+        DeckKey {
+            visible: Theme.tape;
+            kind: root.red ? 2 : root.primary ? 1 : 0;
+            down: root.on;
+            pressed: t.pressed && t.has-hover;
+            hover: t.has-hover;
+            enabled: root.enabled;
+        }
+        Text {
+            visible: Theme.tape;
+            y: (t.pressed && t.has-hover && root.enabled) || root.on ? 1px : 0;
+            width: parent.width;
+            height: parent.height * 0.78;
+            text: root.text.to-uppercase();
+            color: root.red ? #fff3e6 : root.primary ? #2a1406 : Deck.key-ink;
+            opacity: root.enabled ? 1 : 0.5;
+            font-family: "Oswald";
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 2.2px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Rectangle {
+            visible: Theme.phos && root.key == "";
+            x: 0;
+            y: 0;
+            background: Ph.bg;
+            border-width: 1px;
+            border-color: root.ph-amber ? Ph.amber : Ph.ph;
+            Rectangle {
+                x: 3px;
+                y: 3px;
+                width: parent.width - 6px;
+                height: parent.height - 6px;
+                border-width: 1px;
+                border-color: root.ph-lit ? Ph.bg2 : Ph.dim;
+                background: root.ph-lit ? (root.ph-amber ? Ph.amber : Ph.ph) : #4dff7a0f;
+            }
+        }
+        ph-word := Text {
+            visible: Theme.phos && root.key == "";
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            text: root.text.to-uppercase();
+            color: root.ph-lit ? Ph.bg : Ph.hi;
+            font-family: Ph.crt;
+            font-size: clamp(root.height * 0.64, 16px, 21px);
             letter-spacing: 1px;
             horizontal-alignment: center;
             vertical-alignment: center;
             accessible-role: none;
         }
+        Rectangle {
+            visible: Theme.phos && root.key != "";
+            x: 0;
+            y: 0;
+            background: t.has-hover && root.enabled ? Ph.ph : transparent;
+            ph-key := HorizontalLayout {
+                x: 3px;
+                width: self.preferred-width;
+                Text {
+                    text: root.key;
+                    color: t.has-hover && root.enabled ? Ph.bg : Ph.hi;
+                    font-family: Ph.mono;
+                    font-size: 12px;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+                Text {
+                    text: root.tail;
+                    color: t.has-hover && root.enabled ? Ph.bg2 : Ph.dim;
+                    font-family: Ph.mono;
+                    font-size: 12px;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+            }
+        }
+        Rectangle {
+            visible: Theme.glass && !root.primary;
+            x: parent.height * 0.4;
+            y: 1px;
+            width: parent.width - parent.height * 0.8;
+            height: 1px;
+            background: #ffffff73;
+        }
+        SynKey {
+            visible: Theme.synth;
+            x: 0;
+            y: 0;
+            width: root.width;
+            height: root.height;
+            kind: root.red ? 2 : root.primary ? 1 : 0;
+            radius: root.height < 30px ? 6px : 7px;
+            down: root.on;
+            pressed: t.pressed && t.has-hover;
+            hover: t.has-hover;
+        }
+        label := Text {
+            visible: !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.answer;
+            text: Theme.tape || Theme.comic || Theme.synth ? root.text.to-uppercase() : root.text;
+            color: Theme.glass ? (primary ? (root.red ? #ffffff : #211f28) : danger ? Glass.rec-hi : Glass.ink)
+                : Theme.brick ? (primary || on ? Brick.lcd1 : Brick.ink)
+                : Theme.synth ? (root.red ? #ecebe6 : primary ? #ffffff : danger ? #e94a12 : #2a2a28)
+                : Theme.dash && primary && red ? #ffffff : primary ? Theme.on-accent : danger ? Theme.danger : on ? Theme.accent : Theme.text;
+            font-family: Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.synth ? Theme.mono : "Inter Tight";
+            font-size: Theme.tape ? 10px : Theme.comic ? 14px : Theme.glass ? min(root.font-size, 12.5px) : Theme.brick ? (root.height >= 24px ? 19px : 16px) : Theme.synth ? (root.height < 30px ? 8.5px : 9.5px) : root.font-size;
+            font-weight: Theme.tape || Theme.glass ? 600 : Theme.comic || Theme.brick ? 400 : Theme.synth ? 700 : primary ? 800 : Theme.dash ? 700 : 500;
+            letter-spacing: Theme.tape ? 2.2px : Theme.comic ? 1px : Theme.synth ? (root.height < 30px ? 1.36px : 1.52px) : 0;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        // Children given at a use site are drawn (and faded) with the rest, as before.
+        @children
     }
+    // Pocket: an LCD key, a dark ring with a mid green band along its foot; the main
+    // action dark (Delete with a light inner ring), held down and dark while on, pale when
+    // off.
+    property <bool> pk-dark: root.primary || root.red || root.danger || root.on;
+    property <bool> pk-down: root.on || (t.pressed && t.has-hover && root.enabled);
+    // Answering Machine: a rubber key, red for the main action and for deleting, held
+    // down while it is on (with an amber lamp), grey when off.
+    property <bool> am-down: (t.pressed && t.has-hover && root.enabled) || root.on;
+    // Desktop 95: a grey push button, the main action the default button with its black
+    // ring, the words a pixel down and right while it is held; grey etched words when off.
+    property <bool> os-down: (t.pressed && t.has-hover && root.enabled) || root.on;
+    // Comic Book: an ink key with a hard shadow that sinks onto it when pressed (or on):
+    // yellow for the main action, red for deleting and merging.
+    property <bool> ink-down: Theme.comic && ((t.pressed && t.has-hover && root.enabled) || root.on);
     accessible-role: button;
     accessible-label: text;
     accessible-action-default => { if (enabled) { root.clicked(); } }
-    // Tape Deck: a piano key, amber for the main action, red for deleting.
-    DeckKey {
-        visible: Theme.tape;
-        kind: root.red ? 2 : root.primary ? 1 : 0;
-        down: root.on;
-        pressed: t.pressed && t.has-hover;
-        hover: t.has-hover;
-        enabled: root.enabled;
-    }
-    Text {
-        visible: Theme.tape;
-        y: (t.pressed && t.has-hover && root.enabled) || root.on ? 1px : 0;
-        width: parent.width;
-        height: parent.height * 0.78;
-        text: root.text.to-uppercase();
-        color: root.red ? #fff3e6 : root.primary ? #2a1406 : Deck.key-ink;
-        opacity: root.enabled ? 1 : 0.5;
-        font-family: "Oswald";
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 2.2px;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        accessible-role: none;
-    }
-    Rectangle {
-        visible: Theme.phos && root.key == "";
-        x: 0;
-        y: 0;
-        background: Ph.bg;
-        border-width: 1px;
-        border-color: root.ph-amber ? Ph.amber : Ph.ph;
-        Rectangle {
-            x: 3px;
-            y: 3px;
-            width: parent.width - 6px;
-            height: parent.height - 6px;
-            border-width: 1px;
-            border-color: root.ph-lit ? Ph.bg2 : Ph.dim;
-            background: root.ph-lit ? (root.ph-amber ? Ph.amber : Ph.ph) : #4dff7a0f;
-        }
-    }
-    ph-word := Text {
-        visible: Theme.phos && root.key == "";
-        x: 0;
-        y: 0;
-        width: parent.width;
-        height: parent.height;
-        text: root.text.to-uppercase();
-        color: root.ph-lit ? Ph.bg : Ph.hi;
-        font-family: Ph.crt;
-        font-size: clamp(root.height * 0.64, 16px, 21px);
-        letter-spacing: 1px;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        accessible-role: none;
-    }
-    Rectangle {
-        visible: Theme.phos && root.key != "";
-        x: 0;
-        y: 0;
-        background: t.has-hover && root.enabled ? Ph.ph : transparent;
-        ph-key := HorizontalLayout {
-            x: 3px;
-            width: self.preferred-width;
-            Text {
-                text: root.key;
-                color: t.has-hover && root.enabled ? Ph.bg : Ph.hi;
-                font-family: Ph.mono;
-                font-size: 12px;
-                vertical-alignment: center;
-                accessible-role: none;
-            }
-            Text {
-                text: root.tail;
-                color: t.has-hover && root.enabled ? Ph.bg2 : Ph.dim;
-                font-family: Ph.mono;
-                font-size: 12px;
-                vertical-alignment: center;
-                accessible-role: none;
-            }
-        }
-    }
-    Rectangle {
-        visible: Theme.glass && !root.primary;
-        x: parent.height * 0.4;
-        y: 1px;
-        width: parent.width - parent.height * 0.8;
-        height: 1px;
-        background: #ffffff73;
-    }
-    SynKey {
-        visible: Theme.synth;
-        x: 0;
-        y: 0;
-        width: root.width;
-        height: root.height;
-        kind: root.red ? 2 : root.primary ? 1 : 0;
-        radius: root.height < 30px ? 6px : 7px;
-        down: root.on;
-        pressed: t.pressed && t.has-hover;
-        hover: t.has-hover;
-    }
-    label := Text {
-        visible: !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.answer;
-        text: Theme.tape || Theme.comic || Theme.synth ? root.text.to-uppercase() : root.text;
-        color: Theme.glass ? (primary ? (root.red ? #ffffff : #211f28) : danger ? Glass.rec-hi : Glass.ink)
-            : Theme.brick ? (primary || on ? Brick.lcd1 : Brick.ink)
-            : Theme.synth ? (root.red ? #ecebe6 : primary ? #ffffff : danger ? #e94a12 : #2a2a28)
-            : Theme.dash && primary && red ? #ffffff : primary ? Theme.on-accent : danger ? Theme.danger : on ? Theme.accent : Theme.text;
-        font-family: Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.synth ? Theme.mono : "Inter Tight";
-        font-size: Theme.tape ? 10px : Theme.comic ? 14px : Theme.glass ? min(root.font-size, 12.5px) : Theme.brick ? (root.height >= 24px ? 19px : 16px) : Theme.synth ? (root.height < 30px ? 8.5px : 9.5px) : root.font-size;
-        font-weight: Theme.tape || Theme.glass ? 600 : Theme.comic || Theme.brick ? 400 : Theme.synth ? 700 : primary ? 800 : Theme.dash ? 700 : 500;
-        letter-spacing: Theme.tape ? 2.2px : Theme.comic ? 1px : Theme.synth ? (root.height < 30px ? 1.36px : 1.52px) : 0;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-    }
     t := TouchArea {
         enabled: root.enabled;
         mouse-cursor: pointer;
@@ -1865,129 +1875,213 @@ export component IconBtn inherits Rectangle {
     callback clicked;
     width: root.ph-keyed ? ph-key.preferred-width + 6px : size;
     height: size;
-    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.synth ? 0 : Theme.glass ? size / 2 : radius;
-    // Spatial Glass: a round glass button, white while it is on.
-    // Car Dashboard: a glass key, lit ice while it is on.
-    // Brick Phone: a square LCD button in an ink frame with a pixel glyph, inverted while on.
-    // Pocket Synth: a white key (round when the button is round), orange while it is on.
-    background: Theme.tape || Theme.comic || Theme.pocket || Theme.quest || Theme.answer || Theme.synth ? transparent : Theme.phos ? (root.ph-lit ? Ph.ph : transparent) : Theme.os95 ? Os.face
-        : Theme.brick ? (filled || active ? Brick.ink : t.has-hover && enabled ? Brick.ghost : transparent)
-        : Theme.glass ? (filled || active ? (t.has-hover ? #ffffff : #f0f0f5) : t.has-hover && enabled ? #ffffff3d : #ffffff26)
-        : filled ? (t.has-hover ? Theme.accent-hover : Theme.accent)
-        : Theme.dash ? (active ? #62d2ff1f : t.has-hover && enabled ? #1f252d : #181d23)
-        : t.has-hover && enabled ? Theme.raised : transparent;
-    border-width: Theme.pocket ? 0 : Theme.quest ? 0 : Theme.answer ? 0 : Theme.synth ? 0 : Theme.glass ? 1px : Theme.brick ? 2px : (outlined || Theme.dash) && !Theme.tape && !filled ? 1px : outlined && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic ? 1px : 0;
-    // Answering Machine: a rubber nub, red when filled, held down with an amber icon
-    // while it is on.
-    AmKey {
-        visible: Theme.answer;
-        x: 0;
-        y: 0;
-        width: parent.width;
-        height: parent.height;
-        r: root.round ? min(root.width, root.height) / 2 : 6px;
-        lip: 1.5px;
-        kind: root.filled ? 1 : 0;
-        down: root.active || (t.pressed && t.has-hover && root.enabled);
-        hover: t.has-hover;
-        enabled: root.enabled;
+    // Drawn in body, not on the root: a root opacity, visible, shadow or border makes
+    // Slint inline the whole widget at every use (docs/device-themes.md, Generated code size).
+    // No x, y or size: it fills the root and passes its children's layout constraints on.
+    body := Rectangle {
+        border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.synth ? 0 : Theme.glass ? size / 2 : radius;
+        // Spatial Glass: a round glass button, white while it is on.
+        // Car Dashboard: a glass key, lit ice while it is on.
+        // Brick Phone: a square LCD button in an ink frame with a pixel glyph, inverted while on.
+        // Pocket Synth: a white key (round when the button is round), orange while it is on.
+        background: Theme.tape || Theme.comic || Theme.pocket || Theme.quest || Theme.answer || Theme.synth ? transparent : Theme.phos ? (root.ph-lit ? Ph.ph : transparent) : Theme.os95 ? Os.face
+            : Theme.brick ? (filled || active ? Brick.ink : t.has-hover && enabled ? Brick.ghost : transparent)
+            : Theme.glass ? (filled || active ? (t.has-hover ? #ffffff : #f0f0f5) : t.has-hover && enabled ? #ffffff3d : #ffffff26)
+            : filled ? (t.has-hover ? Theme.accent-hover : Theme.accent)
+            : Theme.dash ? (active ? #62d2ff1f : t.has-hover && enabled ? #1f252d : #181d23)
+            : t.has-hover && enabled ? Theme.raised : transparent;
+        border-width: Theme.pocket ? 0 : Theme.quest ? 0 : Theme.answer ? 0 : Theme.synth ? 0 : Theme.glass ? 1px : Theme.brick ? 2px : (outlined || Theme.dash) && !Theme.tape && !filled ? 1px : outlined && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic ? 1px : 0;
+        // Answering Machine: a rubber nub, red when filled, held down with an amber icon
+        // while it is on.
+        AmKey {
+            visible: Theme.answer;
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            r: root.round ? min(root.width, root.height) / 2 : 6px;
+            lip: 1.5px;
+            kind: root.filled ? 1 : 0;
+            down: root.active || (t.pressed && t.has-hover && root.enabled);
+            hover: t.has-hover;
+            enabled: root.enabled;
+        }
+        border-color: Theme.glass ? (filled || active ? #ffffff : #ffffff4d) : Theme.dash ? (active ? #62d2ff59 : #ffffff1f) : Theme.edge;
+        opacity: enabled || Theme.tape || Theme.os95 || Theme.pocket ? 1 : Theme.comic || Theme.quest ? 0.45 : Theme.brick ? 0.38 : 0.4;
+        Rectangle {
+            visible: Theme.pocket;
+            x: 0;
+            y: root.pk-dark || (t.pressed && t.has-hover && root.enabled) ? 2px : 0;
+            width: parent.width;
+            height: parent.height - (root.pk-dark ? 2px : 0);
+            background: root.pk-dark ? Pk.l3 : t.has-hover && root.enabled ? #b3bf6a : Pk.l0;
+            PkRing { visible: !root.pk-dark; ink: root.enabled ? Pk.l3 : Pk.l1; }
+            PkPx {
+                visible: root.pk-icon.width > 0;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                source: root.pk-icon;
+                colorize: root.pk-dark ? Pk.l0 : root.enabled ? Pk.l3 : Pk.l1;
+            }
+            Icon {
+                visible: root.pk-icon.width == 0;
+                name: root.icon;
+                tint: root.pk-dark ? Pk.l0 : root.enabled ? Pk.l3 : Pk.l1;
+                width: root.icon-size;
+                height: root.icon-size;
+            }
+        }
+        QFace {
+            visible: Theme.quest;
+            x: 0;
+            y: 0;
+            kind: root.filled || root.active ? 4 : 0;
+            hover: t.has-hover && root.enabled;
+        }
+        QPx {
+            visible: Theme.quest && root.q-icon.width > 0;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2 + (t.pressed && t.has-hover && root.enabled ? 1px : 0);
+            s: root.size >= 26px && root.q-icon.width <= 7 && root.q-icon.height <= 7 ? 3 : 2;
+            source: root.q-icon;
+            colorize: root.filled || root.active ? Quest.gold : Quest.white;
+        }
+        Icon {
+            visible: Theme.quest && root.q-icon.width == 0;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            name: root.icon;
+            tint: root.filled || root.active ? Quest.gold : Quest.white;
+            width: root.icon-size;
+            height: root.icon-size;
+        }
+        brick-glyph := BrickGlyph {
+            visible: Theme.brick;
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            name: Theme.brick ? root.icon : "";
+            shift: t.pressed && t.has-hover ? 1px : 0;
+            tint: root.filled || root.active ? Brick.lcd1 : Brick.ink;
+        }
+        Image {
+            visible: Theme.os95 && root.active;
+            x: 2px;
+            y: 2px;
+            width: parent.width - 4px;
+            height: parent.height - 4px;
+            source: 1phx < 0.7px ? @image-url("skins/dv-os95/checker@2x.png") : @image-url("skins/dv-os95/checker.png");
+            horizontal-tiling: repeat;
+            vertical-tiling: repeat;
+            horizontal-alignment: left;
+            vertical-alignment: top;
+        }
+        OsBevel { visible: Theme.os95; kind: root.os-down ? 1 : 0; }
+        OsPx {
+            visible: Theme.os95 && root.os-icon.width > 0;
+            x: (parent.width - self.width) / 2 + (root.os-down ? 1px : 0);
+            y: (parent.height - self.height) / 2 + (root.os-down ? 1px : 0);
+            source: root.os-icon;
+            opacity: root.enabled ? 1 : 0.4;
+        }
+        Icon {
+            visible: Theme.os95 && root.os-icon.width == 0;
+            name: root.icon;
+            tint: #000000;
+            opacity: root.enabled ? 1 : 0.4;
+            width: root.icon-size;
+            height: root.icon-size;
+        }
+        InkShadow { visible: Theme.comic && root.enabled && !root.ink-down; off: 2px; radius: root.ink-r; }
+        Rectangle {
+            visible: Theme.comic;
+            x: root.ink-down ? 2px : 0;
+            y: root.ink-down ? 2px : 0;
+            border-radius: root.ink-r;
+            background: root.filled || root.active ? Comic.yellow : t.has-hover && root.enabled ? Comic.pale : #ffffff;
+            border-width: 2.5px;
+            border-color: Comic.ink;
+            Icon {
+                name: root.icon;
+                tint: Comic.ink;
+                stroke-width: 2.4px;
+                width: root.icon-size;
+                height: root.icon-size;
+            }
+        }
+        // Tape Deck: a small square key, amber while it is on.
+        DeckKey {
+            visible: Theme.tape;
+            kind: root.filled || root.active ? 1 : 0;
+            pressed: t.pressed && t.has-hover;
+            hover: t.has-hover;
+            enabled: root.enabled;
+        }
+        Icon {
+            visible: Theme.tape;
+            y: (parent.height * 0.8 - self.height) / 2 + (t.pressed && t.has-hover && root.enabled ? 1px : 0);
+            name: root.icon;
+            tint: root.filled || root.active ? #2a1406 : Deck.key-ink;
+            opacity: root.enabled ? 1 : 0.5;
+            width: root.icon-size;
+            height: root.icon-size;
+        }
+        SynKey {
+            visible: Theme.synth;
+            x: 0;
+            y: 0;
+            width: root.width;
+            height: root.height;
+            kind: root.filled || root.active ? 1 : 0;
+            round: root.round;
+            radius: 6px;
+            pressed: t.pressed && t.has-hover;
+            hover: t.has-hover;
+        }
+        Icon {
+            visible: !Theme.tape && !root.ph-keyed && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !(Theme.brick && brick-glyph.has);
+            name: root.icon;
+            tint: Theme.phos ? (root.ph-lit ? Ph.bg : Ph.hi) : Theme.glass ? (root.filled || root.active ? #1d1b24 : Glass.ink)
+                : Theme.answer ? (root.active ? Am.amber : root.filled ? Am.rec-ink : #e7dfd2)
+                : Theme.synth ? (root.filled || root.active ? #ffffff : root.round ? #55524c : #2a2a28)
+                : t.has-hover && !root.filled && !root.active ? Theme.text : root.tint;
+            stroke-width: Theme.synth ? 1.6px : 2px;
+            width: root.icon-size;
+            height: root.icon-size;
+        }
+        ph-key := HorizontalLayout {
+            visible: root.ph-keyed;
+            x: 3px;
+            width: self.preferred-width;
+            Text {
+                text: root.key;
+                color: root.ph-lit ? Ph.bg : Ph.hi;
+                font-family: Ph.mono;
+                font-size: 12px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            Text {
+                text: root.tail;
+                color: root.ph-lit ? Ph.bg2 : Ph.dim;
+                font-family: Ph.mono;
+                font-size: 12px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+        @children
     }
-    border-color: Theme.glass ? (filled || active ? #ffffff : #ffffff4d) : Theme.dash ? (active ? #62d2ff59 : #ffffff1f) : Theme.edge;
-    opacity: enabled || Theme.tape || Theme.os95 || Theme.pocket ? 1 : Theme.comic || Theme.quest ? 0.45 : Theme.brick ? 0.38 : 0.4;
     // Pocket: a small LCD key with a pixel icon, held down and dark while on, pale when
     // off.
     property <image> pk-icon: Theme.pocket ? PkIcons.pick(root.icon) : @image-url("");
     property <bool> pk-dark: root.filled || root.active;
-    Rectangle {
-        visible: Theme.pocket;
-        x: 0;
-        y: root.pk-dark || (t.pressed && t.has-hover && root.enabled) ? 2px : 0;
-        width: parent.width;
-        height: parent.height - (root.pk-dark ? 2px : 0);
-        background: root.pk-dark ? Pk.l3 : t.has-hover && root.enabled ? #b3bf6a : Pk.l0;
-        PkRing { visible: !root.pk-dark; ink: root.enabled ? Pk.l3 : Pk.l1; }
-        PkPx {
-            visible: root.pk-icon.width > 0;
-            x: (parent.width - self.width) / 2;
-            y: (parent.height - self.height) / 2;
-            source: root.pk-icon;
-            colorize: root.pk-dark ? Pk.l0 : root.enabled ? Pk.l3 : Pk.l1;
-        }
-        Icon {
-            visible: root.pk-icon.width == 0;
-            name: root.icon;
-            tint: root.pk-dark ? Pk.l0 : root.enabled ? Pk.l3 : Pk.l1;
-            width: root.icon-size;
-            height: root.icon-size;
-        }
-    }
     // Quest Menu: a small pixel key with a pixel icon, lit with the icon gold while on.
     property <image> q-icon: Theme.quest ? QIcons.pick(root.icon) : @image-url("");
-    QFace {
-        visible: Theme.quest;
-        x: 0;
-        y: 0;
-        kind: root.filled || root.active ? 4 : 0;
-        hover: t.has-hover && root.enabled;
-    }
-    QPx {
-        visible: Theme.quest && root.q-icon.width > 0;
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2 + (t.pressed && t.has-hover && root.enabled ? 1px : 0);
-        s: root.size >= 26px && root.q-icon.width <= 7 && root.q-icon.height <= 7 ? 3 : 2;
-        source: root.q-icon;
-        colorize: root.filled || root.active ? Quest.gold : Quest.white;
-    }
-    Icon {
-        visible: Theme.quest && root.q-icon.width == 0;
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        name: root.icon;
-        tint: root.filled || root.active ? Quest.gold : Quest.white;
-        width: root.icon-size;
-        height: root.icon-size;
-    }
-    brick-glyph := BrickGlyph {
-        visible: Theme.brick;
-        x: 0;
-        y: 0;
-        width: parent.width;
-        height: parent.height;
-        name: Theme.brick ? root.icon : "";
-        shift: t.pressed && t.has-hover ? 1px : 0;
-        tint: root.filled || root.active ? Brick.lcd1 : Brick.ink;
-    }
     // Desktop 95: a small grey key with a pixel icon; pushed in (on a checker) while on.
     property <bool> os-down: (t.pressed && t.has-hover && root.enabled) || root.active;
     property <image> os-icon: Theme.os95 ? OsIcons.pick(root.icon) : @image-url("");
-    Image {
-        visible: Theme.os95 && root.active;
-        x: 2px;
-        y: 2px;
-        width: parent.width - 4px;
-        height: parent.height - 4px;
-        source: 1phx < 0.7px ? @image-url("skins/dv-os95/checker@2x.png") : @image-url("skins/dv-os95/checker.png");
-        horizontal-tiling: repeat;
-        vertical-tiling: repeat;
-        horizontal-alignment: left;
-        vertical-alignment: top;
-    }
-    OsBevel { visible: Theme.os95; kind: root.os-down ? 1 : 0; }
-    OsPx {
-        visible: Theme.os95 && root.os-icon.width > 0;
-        x: (parent.width - self.width) / 2 + (root.os-down ? 1px : 0);
-        y: (parent.height - self.height) / 2 + (root.os-down ? 1px : 0);
-        source: root.os-icon;
-        opacity: root.enabled ? 1 : 0.4;
-    }
-    Icon {
-        visible: Theme.os95 && root.os-icon.width == 0;
-        name: root.icon;
-        tint: #000000;
-        opacity: root.enabled ? 1 : 0.4;
-        width: root.icon-size;
-        height: root.icon-size;
-    }
     accessible-role: button;
     accessible-label: label;
     accessible-action-default => { if (enabled) { root.clicked(); } }
@@ -1995,88 +2089,9 @@ export component IconBtn inherits Rectangle {
     // the button is round.
     property <bool> ink-down: Theme.comic && t.pressed && t.has-hover && root.enabled;
     property <length> ink-r: root.round ? root.height / 2 : 0;
-    InkShadow { visible: Theme.comic && root.enabled && !root.ink-down; off: 2px; radius: root.ink-r; }
-    Rectangle {
-        visible: Theme.comic;
-        x: root.ink-down ? 2px : 0;
-        y: root.ink-down ? 2px : 0;
-        border-radius: root.ink-r;
-        background: root.filled || root.active ? Comic.yellow : t.has-hover && root.enabled ? Comic.pale : #ffffff;
-        border-width: 2.5px;
-        border-color: Comic.ink;
-        Icon {
-            name: root.icon;
-            tint: Comic.ink;
-            stroke-width: 2.4px;
-            width: root.icon-size;
-            height: root.icon-size;
-        }
-    }
-    // Tape Deck: a small square key, amber while it is on.
-    DeckKey {
-        visible: Theme.tape;
-        kind: root.filled || root.active ? 1 : 0;
-        pressed: t.pressed && t.has-hover;
-        hover: t.has-hover;
-        enabled: root.enabled;
-    }
-    Icon {
-        visible: Theme.tape;
-        y: (parent.height * 0.8 - self.height) / 2 + (t.pressed && t.has-hover && root.enabled ? 1px : 0);
-        name: root.icon;
-        tint: root.filled || root.active ? #2a1406 : Deck.key-ink;
-        opacity: root.enabled ? 1 : 0.5;
-        width: root.icon-size;
-        height: root.icon-size;
-    }
-    SynKey {
-        visible: Theme.synth;
-        x: 0;
-        y: 0;
-        width: root.width;
-        height: root.height;
-        kind: root.filled || root.active ? 1 : 0;
-        round: root.round;
-        radius: 6px;
-        pressed: t.pressed && t.has-hover;
-        hover: t.has-hover;
-    }
-    Icon {
-        visible: !Theme.tape && !root.ph-keyed && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !(Theme.brick && brick-glyph.has);
-        name: root.icon;
-        tint: Theme.phos ? (root.ph-lit ? Ph.bg : Ph.hi) : Theme.glass ? (root.filled || root.active ? #1d1b24 : Glass.ink)
-            : Theme.answer ? (root.active ? Am.amber : root.filled ? Am.rec-ink : #e7dfd2)
-            : Theme.synth ? (root.filled || root.active ? #ffffff : root.round ? #55524c : #2a2a28)
-            : t.has-hover && !root.filled && !root.active ? Theme.text : root.tint;
-        stroke-width: Theme.synth ? 1.6px : 2px;
-        width: root.icon-size;
-        height: root.icon-size;
-    }
-    ph-key := HorizontalLayout {
-        visible: root.ph-keyed;
-        x: 3px;
-        width: self.preferred-width;
-        Text {
-            text: root.key;
-            color: root.ph-lit ? Ph.bg : Ph.hi;
-            font-family: Ph.mono;
-            font-size: 12px;
-            vertical-alignment: center;
-            accessible-role: none;
-        }
-        Text {
-            text: root.tail;
-            color: root.ph-lit ? Ph.bg2 : Ph.dim;
-            font-family: Ph.mono;
-            font-size: 12px;
-            vertical-alignment: center;
-            accessible-role: none;
-        }
-    }
     // The button has no text, so hovering it names what it does.
     property <bool> hovering: t.has-hover;
     changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
-    @children
     t := TouchArea {
         enabled: root.enabled;
         mouse-cursor: pointer;
@@ -2104,336 +2119,343 @@ export component Toggle inherits Rectangle {
     property <bool> ph-key-lit: root.on || (ph-t.has-hover && root.enabled);
     width: Theme.quest ? (root.lamp ? 15px : q-pair.preferred-width) : Theme.os95 ? 13px + (root.caption != "" ? 6px + cap.preferred-width : 0) : Theme.synth ? (root.caption != "" ? syn-cap.preferred-width + 33px : 36px) : Theme.tape ? 53px : Theme.glass ? 40px : Theme.comic ? 42px : root.ph-keyed ? ph-key.preferred-width + 6px : Theme.phos ? 44px : Theme.pocket ? 44px : Theme.brick ? 40px : Theme.answer ? 58px : 38px;
     height: Theme.quest ? (root.lamp ? 15px : 18px) : Theme.os95 ? 16px : Theme.synth ? (root.caption != "" ? 26px : 24px) : Theme.tape ? 18px : Theme.phos ? 20px : Theme.glass ? 24px : Theme.pocket ? 18px : Theme.brick ? 15px : Theme.answer ? 16px : 22px;
-    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.synth ? 0 : Theme.glass ? 12px : 11px;
-    // Pocket: a two cell OFF ON switch in a dark ring, the live cell dark; pale when off.
-    Rectangle {
-        visible: Theme.pocket;
-        x: 0;
-        y: 0;
-        width: parent.width;
-        height: parent.height;
-        background: Pk.l0;
-        Rectangle { x: root.on ? 22px : 2px; y: 2px; width: 20px; height: 14px; background: root.enabled ? Pk.l3 : Pk.l1; }
-        PkRing { ink: root.enabled ? Pk.l3 : Pk.l1; }
-        Text {
-            x: 2px;
-            y: 2px;
-            width: 20px;
-            height: 14px;
-            text: "OFF";
-            color: !root.on ? Pk.l0 : Pk.l2;
-            font-family: Pk.small;
-            font-size: 8px;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-            accessible-role: none;
-        }
-        Text {
-            x: 22px;
-            y: 2px;
-            width: 20px;
-            height: 14px;
-            text: "ON";
-            color: root.on ? Pk.l0 : root.enabled ? Pk.l2 : Pk.l1;
-            font-family: Pk.small;
-            font-size: 8px;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-            accessible-role: none;
-        }
-    }
-    // Spatial Glass: a dark glass slot, green while on, a white knob.
-    // Car Dashboard: a blue track with a white knob when on, a dark one with a grey knob
-    // when off.
-    // Brick Phone: an OFF ON pair in an ink frame, the live side inverted.
-    background: Theme.tape || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth ? transparent : Theme.phos ? (on || (root.ph-keyed && ph-t.has-hover && root.enabled) ? Ph.ph : transparent) : Theme.comic ? (on ? Comic.yellow : #ffffff) : Theme.glass ? (on ? #5ae49c : #00000047) : on ? (Theme.dash ? #3a8dff : Theme.accent) : Theme.track;
-    border-width: Theme.synth ? 0 : Theme.pocket ? 0 : Theme.quest ? 0 : Theme.dash ? (on ? 0 : 1px) : Theme.glass ? 1px : Theme.comic ? 2.5px : Theme.brick ? 2px : Theme.phos && !root.ph-keyed && !root.on ? 1px : 0;
-    border-color: Theme.dash ? #ffffff1f : Theme.glass ? (on ? #ffffff73 : #ffffff33) : Theme.comic ? Comic.ink : Theme.brick ? Brick.ink : Ph.dim;
-    opacity: root.enabled || Theme.os95 || Theme.pocket ? 1 : Theme.comic || Theme.quest ? 0.4 : Theme.brick ? 0.38 : Theme.answer ? 0.5 : 0.45;
-    // Quest Menu: ON and OFF side by side, the current one gold with the cursor before it.
-    q-pair := HorizontalLayout {
-        visible: Theme.quest && !root.lamp;
-        x: 0;
-        y: 0;
-        height: parent.height;
-        spacing: 12px;
-        for w[k] in ["ON", "OFF"]: HorizontalLayout {
-            property <bool> cur: (k == 0) == root.on;
-            spacing: 4px;
-            QPx {
-                y: (parent.height - self.height) / 2;
-                s: 2;
-                source: @image-url("skins/px-quest/tri.png");
-                colorize: Quest.gold;
-                opacity: parent.cur ? 1 : 0;
+    // Drawn in body, not on the root: a root opacity, visible, shadow or border makes
+    // Slint inline the whole widget at every use (docs/device-themes.md, Generated code size).
+    // No x, y or size: it fills the root and passes its children's layout constraints on.
+    body := Rectangle {
+        border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.synth ? 0 : Theme.glass ? 12px : 11px;
+        // Pocket: a two cell OFF ON switch in a dark ring, the live cell dark; pale when off.
+        Rectangle {
+            visible: Theme.pocket;
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            background: Pk.l0;
+            Rectangle { x: root.on ? 22px : 2px; y: 2px; width: 20px; height: 14px; background: root.enabled ? Pk.l3 : Pk.l1; }
+            PkRing { ink: root.enabled ? Pk.l3 : Pk.l1; }
+            Text {
+                x: 2px;
+                y: 2px;
+                width: 20px;
+                height: 14px;
+                text: "OFF";
+                color: !root.on ? Pk.l0 : Pk.l2;
+                font-family: Pk.small;
+                font-size: 8px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                accessible-role: none;
             }
             Text {
-                text: w;
-                color: parent.cur ? Quest.gold : Quest.dim;
-                font-family: Quest.label;
-                font-size: 11px;
+                x: 22px;
+                y: 2px;
+                width: 20px;
+                height: 14px;
+                text: "ON";
+                color: root.on ? Pk.l0 : root.enabled ? Pk.l2 : Pk.l1;
+                font-family: Pk.small;
+                font-size: 8px;
+                horizontal-alignment: center;
                 vertical-alignment: center;
                 accessible-role: none;
             }
         }
-    }
-    // Quest Menu: the lamp check box.
-    Rectangle {
-        visible: Theme.quest && root.lamp;
-        x: 0;
-        y: 0;
-        background: Quest.ink;
-        border-width: 3px;
-        border-color: root.on ? Quest.gold : Quest.grey;
-        Rectangle { visible: root.on; x: 4.5px; y: 4.5px; width: 6px; height: 6px; background: Quest.gold; }
-    }
-    Rectangle {
-        visible: Theme.brick;
-        x: root.on ? parent.width / 2 : 0;
-        y: 0;
-        width: parent.width / 2;
-        height: parent.height;
-        background: Brick.ink;
-    }
-    Text {
-        visible: Theme.brick;
-        x: 0;
-        y: 0;
-        width: parent.width / 2;
-        height: parent.height;
-        text: "OFF";
-        color: root.on ? Brick.ink : Brick.lcd1;
-        font-family: Brick.caps;
-        font-size: 7px;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        accessible-role: none;
-    }
-    Text {
-        visible: Theme.brick;
-        x: parent.width / 2;
-        y: 0;
-        width: parent.width / 2;
-        height: parent.height;
-        text: "ON";
-        color: root.on ? Brick.lcd1 : Brick.ink;
-        font-family: Brick.caps;
-        font-size: 7px;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        accessible-role: none;
-    }
-    // Answering Machine: a two way slide switch in a dark slot, its left half red while on,
-    // with ON or OFF printed beside it.
-    Rectangle {
-        visible: Theme.answer;
-        x: 0;
-        y: 0;
-        width: 34px;
-        height: 16px;
-        Rectangle { x: 0; y: 1px; width: parent.width; height: parent.height; border-radius: 3px; background: #ffffff8c; }
-        Rectangle { x: 0; y: 0; width: parent.width; height: parent.height; border-radius: 3px; background: #2a221d; }
-        Rectangle {
-            visible: root.on;
+        // Spatial Glass: a dark glass slot, green while on, a white knob.
+        // Car Dashboard: a blue track with a white knob when on, a dark one with a grey knob
+        // when off.
+        // Brick Phone: an OFF ON pair in an ink frame, the live side inverted.
+        background: Theme.tape || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth ? transparent : Theme.phos ? (on || (root.ph-keyed && ph-t.has-hover && root.enabled) ? Ph.ph : transparent) : Theme.comic ? (on ? Comic.yellow : #ffffff) : Theme.glass ? (on ? #5ae49c : #00000047) : on ? (Theme.dash ? #3a8dff : Theme.accent) : Theme.track;
+        border-width: Theme.synth ? 0 : Theme.pocket ? 0 : Theme.quest ? 0 : Theme.dash ? (on ? 0 : 1px) : Theme.glass ? 1px : Theme.comic ? 2.5px : Theme.brick ? 2px : Theme.phos && !root.ph-keyed && !root.on ? 1px : 0;
+        border-color: Theme.dash ? #ffffff1f : Theme.glass ? (on ? #ffffff73 : #ffffff33) : Theme.comic ? Comic.ink : Theme.brick ? Brick.ink : Ph.dim;
+        opacity: root.enabled || Theme.os95 || Theme.pocket ? 1 : Theme.comic || Theme.quest ? 0.4 : Theme.brick ? 0.38 : Theme.answer ? 0.5 : 0.45;
+        // Quest Menu: ON and OFF side by side, the current one gold with the cursor before it.
+        q-pair := HorizontalLayout {
+            visible: Theme.quest && !root.lamp;
             x: 0;
             y: 0;
-            width: 17px;
             height: parent.height;
-            border-top-left-radius: 3px;
-            border-bottom-left-radius: 3px;
-            background: #6b1a10;
+            spacing: 12px;
+            for w[k] in ["ON", "OFF"]: HorizontalLayout {
+                property <bool> cur: (k == 0) == root.on;
+                spacing: 4px;
+                QPx {
+                    y: (parent.height - self.height) / 2;
+                    s: 2;
+                    source: @image-url("skins/px-quest/tri.png");
+                    colorize: Quest.gold;
+                    opacity: parent.cur ? 1 : 0;
+                }
+                Text {
+                    text: w;
+                    color: parent.cur ? Quest.gold : Quest.dim;
+                    font-family: Quest.label;
+                    font-size: 11px;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+            }
         }
-        Rectangle { x: 3px; y: 0; width: parent.width - 6px; height: 2px; background: #00000059; }
+        // Quest Menu: the lamp check box.
         Rectangle {
-            x: root.on ? 17px : 2px;
-            y: 2px;
-            width: 15px;
-            height: 12px;
+            visible: Theme.quest && root.lamp;
+            x: 0;
+            y: 0;
+            background: Quest.ink;
+            border-width: 3px;
+            border-color: root.on ? Quest.gold : Quest.grey;
+            Rectangle { visible: root.on; x: 4.5px; y: 4.5px; width: 6px; height: 6px; background: Quest.gold; }
+        }
+        Rectangle {
+            visible: Theme.brick;
+            x: root.on ? parent.width / 2 : 0;
+            y: 0;
+            width: parent.width / 2;
+            height: parent.height;
+            background: Brick.ink;
+        }
+        Text {
+            visible: Theme.brick;
+            x: 0;
+            y: 0;
+            width: parent.width / 2;
+            height: parent.height;
+            text: "OFF";
+            color: root.on ? Brick.ink : Brick.lcd1;
+            font-family: Brick.caps;
+            font-size: 7px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Text {
+            visible: Theme.brick;
+            x: parent.width / 2;
+            y: 0;
+            width: parent.width / 2;
+            height: parent.height;
+            text: "ON";
+            color: root.on ? Brick.lcd1 : Brick.ink;
+            font-family: Brick.caps;
+            font-size: 7px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        // Answering Machine: a two way slide switch in a dark slot, its left half red while on,
+        // with ON or OFF printed beside it.
+        Rectangle {
+            visible: Theme.answer;
+            x: 0;
+            y: 0;
+            width: 34px;
+            height: 16px;
+            Rectangle { x: 0; y: 1px; width: parent.width; height: parent.height; border-radius: 3px; background: #ffffff8c; }
+            Rectangle { x: 0; y: 0; width: parent.width; height: parent.height; border-radius: 3px; background: #2a221d; }
+            Rectangle {
+                visible: root.on;
+                x: 0;
+                y: 0;
+                width: 17px;
+                height: parent.height;
+                border-top-left-radius: 3px;
+                border-bottom-left-radius: 3px;
+                background: #6b1a10;
+            }
+            Rectangle { x: 3px; y: 0; width: parent.width - 6px; height: 2px; background: #00000059; }
+            Rectangle {
+                x: root.on ? 17px : 2px;
+                y: 2px;
+                width: 15px;
+                height: 12px;
+                animate x { duration: 120ms; easing: ease-out; }
+                Rectangle { x: 0; y: 1px; width: parent.width; height: parent.height; border-radius: 2px; background: #00000080; }
+                AmFace { x: 0; y: 0; width: parent.width; height: parent.height; r: 2px; top: #efe7d6; bottom: #c9bea6; }
+                Rectangle { x: 2px; y: 0; width: parent.width - 4px; height: 1px; background: #ffffff; }
+                for g in 3: Rectangle { x: 5px + g * 2px; y: 3px; width: 1px; height: 6px; background: #9d917a; }
+            }
+        }
+        Text {
+            visible: Theme.answer;
+            x: 40px;
+            y: 0;
+            height: 16px;
+            text: root.on ? "ON" : "OFF";
+            color: root.on ? Am.rec : Am.print-soft;
+            font-family: "Barlow Condensed";
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 1.28px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        // Pocket Synth: a white key that stays down with its LED lit orange while it is on; with
+        // a caption, the words in capitals beside the LED (a latching key).
+        SynKey {
+            visible: Theme.synth;
+            x: 0;
+            y: 0;
+            width: root.width;
+            height: root.height;
+            radius: 6px;
+            down: root.on;
+            pressed: ph-t.pressed && ph-t.has-hover;
+            hover: ph-t.has-hover;
+        }
+        Image {
+            visible: Theme.synth;
+            x: (root.caption != "" ? 10px : (root.width - 6px) / 2) - 6px;
+            y: (root.height - 6px) / 2 - 6px + (root.on ? 1px : 0);
+            width: 18px;
+            height: 18px;
+            source: root.on ? (1phx < 0.7px ? @image-url("skins/dv-synth/led-on@2x.png") : @image-url("skins/dv-synth/led-on.png"))
+                : (1phx < 0.7px ? @image-url("skins/dv-synth/led-off@2x.png") : @image-url("skins/dv-synth/led-off.png"));
+            image-fit: fill;
+        }
+        syn-cap := Text {
+            visible: Theme.synth && root.caption != "";
+            x: 23px;
+            y: root.on ? 1px : 0;
+            height: root.height;
+            text: root.caption.to-uppercase();
+            color: #2a2a28;
+            font-family: Theme.mono;
+            font-size: 8.5px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        // Desktop 95: a checkbox, grey when off, with its words beside it.
+        Rectangle {
+            visible: Theme.os95;
+            x: 0;
+            y: (parent.height - 13px) / 2;
+            width: 13px;
+            height: 13px;
+            background: root.enabled ? #ffffff : Os.face;
+            OsBevel { kind: 2; }
+            OsPx {
+                visible: root.on;
+                x: 2px;
+                y: 3px;
+                source: @image-url("skins/dv-os95/tick.png");
+                colorize: root.enabled ? #000000 : Os.sh;
+            }
+        }
+        cap := Text {
+            visible: Theme.os95 && root.caption != "";
+            x: 19px;
+            height: parent.height;
+            text: root.caption;
+            color: root.enabled ? #000000 : Os.sh;
+            font-family: Os.font;
+            font-size: 12.5px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        // Comic Book: an inked pill, yellow when on, its knob grey or red.
+        Rectangle {
+            visible: Theme.comic;
+            x: root.on ? 21.5px : 4.5px;
+            y: 4.5px;
+            width: 13px;
+            height: 13px;
+            border-radius: 6.5px;
+            background: root.on ? Comic.red : Comic.grey;
+            border-width: 2px;
+            border-color: Comic.ink;
             animate x { duration: 120ms; easing: ease-out; }
-            Rectangle { x: 0; y: 1px; width: parent.width; height: parent.height; border-radius: 2px; background: #00000080; }
-            AmFace { x: 0; y: 0; width: parent.width; height: parent.height; r: 2px; top: #efe7d6; bottom: #c9bea6; }
-            Rectangle { x: 2px; y: 0; width: parent.width - 4px; height: 1px; background: #ffffff; }
-            for g in 3: Rectangle { x: 5px + g * 2px; y: 3px; width: 1px; height: 6px; background: #9d917a; }
         }
-    }
-    Text {
-        visible: Theme.answer;
-        x: 40px;
-        y: 0;
-        height: 16px;
-        text: root.on ? "ON" : "OFF";
-        color: root.on ? Am.rec : Am.print-soft;
-        font-family: "Barlow Condensed";
-        font-size: 8px;
-        font-weight: 700;
-        letter-spacing: 1.28px;
-        vertical-alignment: center;
-        accessible-role: none;
-    }
-    // Pocket Synth: a white key that stays down with its LED lit orange while it is on; with
-    // a caption, the words in capitals beside the LED (a latching key).
-    SynKey {
-        visible: Theme.synth;
-        x: 0;
-        y: 0;
-        width: root.width;
-        height: root.height;
-        radius: 6px;
-        down: root.on;
-        pressed: ph-t.pressed && ph-t.has-hover;
-        hover: ph-t.has-hover;
-    }
-    Image {
-        visible: Theme.synth;
-        x: (root.caption != "" ? 10px : (root.width - 6px) / 2) - 6px;
-        y: (root.height - 6px) / 2 - 6px + (root.on ? 1px : 0);
-        width: 18px;
-        height: 18px;
-        source: root.on ? (1phx < 0.7px ? @image-url("skins/dv-synth/led-on@2x.png") : @image-url("skins/dv-synth/led-on.png"))
-            : (1phx < 0.7px ? @image-url("skins/dv-synth/led-off@2x.png") : @image-url("skins/dv-synth/led-off.png"));
-        image-fit: fill;
-    }
-    syn-cap := Text {
-        visible: Theme.synth && root.caption != "";
-        x: 23px;
-        y: root.on ? 1px : 0;
-        height: root.height;
-        text: root.caption.to-uppercase();
-        color: #2a2a28;
-        font-family: Theme.mono;
-        font-size: 8.5px;
-        font-weight: 700;
-        letter-spacing: 1.2px;
-        vertical-alignment: center;
-        accessible-role: none;
-    }
-    // Desktop 95: a checkbox, grey when off, with its words beside it.
-    Rectangle {
-        visible: Theme.os95;
-        x: 0;
-        y: (parent.height - 13px) / 2;
-        width: 13px;
-        height: 13px;
-        background: root.enabled ? #ffffff : Os.face;
-        OsBevel { kind: 2; }
-        OsPx {
-            visible: root.on;
-            x: 2px;
+        // Tape Deck: a slide switch in a sunk slot, with a lamp that lights when it is on.
+        Rectangle {
+            visible: Theme.tape;
+            x: 0;
+            y: 5px;
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: root.on ? @radial-gradient(circle, #fff0c8 0%, #f2a64a 45%, #9a5a14 100%) : @radial-gradient(circle, #6a5a48 0%, #3a2f25 60%, #211912 100%);
+        }
+        Rectangle {
+            visible: Theme.tape;
+            x: 15px;
+            width: 38px;
+            Rectangle { y: 1px; background: #ffffff80; }
+            Rectangle { height: parent.height; background: root.on ? #3a2410 : #1b1410; }
+            Rectangle { y: 0; height: 2px; background: #00000080; }
+            Rectangle {
+                x: root.on ? 20px : 2px;
+                y: 2px;
+                width: 16px;
+                height: 14px;
+                background: Deck.key-face;
+                Rectangle { y: 0; height: 1px; background: #ffffff; }
+                animate x { duration: 120ms; easing: ease-out; }
+            }
+        }
+        Text {
+            visible: Theme.phos && !root.ph-keyed;
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            text: root.on ? "on" : "off";
+            color: root.on ? Ph.bg : Ph.dim;
+            font-family: Ph.mono;
+            font-size: 12px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        ph-key := HorizontalLayout {
+            visible: root.ph-keyed;
+            x: 3px;
+            width: self.preferred-width;
+            Text {
+                text: root.key;
+                color: root.ph-key-lit ? Ph.bg : Ph.hi;
+                font-family: Ph.mono;
+                font-size: 12px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            Text {
+                text: root.tail;
+                color: root.ph-key-lit ? Ph.bg2 : Ph.dim;
+                font-family: Ph.mono;
+                font-size: 12px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+        Rectangle {
+            visible: Theme.glass;
+            x: knob.x;
+            y: 4.5px;
+            width: knob.width;
+            height: knob.height;
+            border-radius: knob.border-radius;
+            background: #0000003d;
+        }
+        knob := Rectangle {
+            visible: !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer && !Theme.synth;
+            x: root.on ? root.width - self.width - 3px : 3px;
             y: 3px;
-            source: @image-url("skins/dv-os95/tick.png");
-            colorize: root.enabled ? #000000 : Os.sh;
+            width: Theme.glass ? 18px : 16px;
+            height: Theme.glass ? 18px : 16px;
+            border-radius: Theme.glass ? 9px : 8px;
+            background: Theme.glass ? #f6f6fa : Theme.dash ? (root.on ? #ffffff : #7d8894) : root.on ? Theme.on-accent : Theme.knob;
+            animate x { duration: 120ms; easing: ease-out; }
         }
-    }
-    cap := Text {
-        visible: Theme.os95 && root.caption != "";
-        x: 19px;
-        height: parent.height;
-        text: root.caption;
-        color: root.enabled ? #000000 : Os.sh;
-        font-family: Os.font;
-        font-size: 12.5px;
-        vertical-alignment: center;
-        accessible-role: none;
-    }
-    // Comic Book: an inked pill, yellow when on, its knob grey or red.
-    Rectangle {
-        visible: Theme.comic;
-        x: root.on ? 21.5px : 4.5px;
-        y: 4.5px;
-        width: 13px;
-        height: 13px;
-        border-radius: 6.5px;
-        background: root.on ? Comic.red : Comic.grey;
-        border-width: 2px;
-        border-color: Comic.ink;
-        animate x { duration: 120ms; easing: ease-out; }
+        // Children given at a use site are drawn (and faded) with the rest, as before.
+        @children
     }
     accessible-role: checkbox;
     accessible-checkable: true;
     accessible-checked: on;
     accessible-label: label;
     accessible-action-default => { if (root.enabled) { root.checked = !root.checked; root.toggled(root.checked); } }
-    // Tape Deck: a slide switch in a sunk slot, with a lamp that lights when it is on.
-    Rectangle {
-        visible: Theme.tape;
-        x: 0;
-        y: 5px;
-        width: 8px;
-        height: 8px;
-        border-radius: 4px;
-        background: root.on ? @radial-gradient(circle, #fff0c8 0%, #f2a64a 45%, #9a5a14 100%) : @radial-gradient(circle, #6a5a48 0%, #3a2f25 60%, #211912 100%);
-    }
-    Rectangle {
-        visible: Theme.tape;
-        x: 15px;
-        width: 38px;
-        Rectangle { y: 1px; background: #ffffff80; }
-        Rectangle { height: parent.height; background: root.on ? #3a2410 : #1b1410; }
-        Rectangle { y: 0; height: 2px; background: #00000080; }
-        Rectangle {
-            x: root.on ? 20px : 2px;
-            y: 2px;
-            width: 16px;
-            height: 14px;
-            background: Deck.key-face;
-            Rectangle { y: 0; height: 1px; background: #ffffff; }
-            animate x { duration: 120ms; easing: ease-out; }
-        }
-    }
-    Text {
-        visible: Theme.phos && !root.ph-keyed;
-        x: 0;
-        y: 0;
-        width: parent.width;
-        height: parent.height;
-        text: root.on ? "on" : "off";
-        color: root.on ? Ph.bg : Ph.dim;
-        font-family: Ph.mono;
-        font-size: 12px;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        accessible-role: none;
-    }
-    ph-key := HorizontalLayout {
-        visible: root.ph-keyed;
-        x: 3px;
-        width: self.preferred-width;
-        Text {
-            text: root.key;
-            color: root.ph-key-lit ? Ph.bg : Ph.hi;
-            font-family: Ph.mono;
-            font-size: 12px;
-            vertical-alignment: center;
-            accessible-role: none;
-        }
-        Text {
-            text: root.tail;
-            color: root.ph-key-lit ? Ph.bg2 : Ph.dim;
-            font-family: Ph.mono;
-            font-size: 12px;
-            vertical-alignment: center;
-            accessible-role: none;
-        }
-    }
-    Rectangle {
-        visible: Theme.glass;
-        x: knob.x;
-        y: 4.5px;
-        width: knob.width;
-        height: knob.height;
-        border-radius: knob.border-radius;
-        background: #0000003d;
-    }
-    knob := Rectangle {
-        visible: !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer && !Theme.synth;
-        x: root.on ? root.width - self.width - 3px : 3px;
-        y: 3px;
-        width: Theme.glass ? 18px : 16px;
-        height: Theme.glass ? 18px : 16px;
-        border-radius: Theme.glass ? 9px : 8px;
-        background: Theme.glass ? #f6f6fa : Theme.dash ? (root.on ? #ffffff : #7d8894) : root.on ? Theme.on-accent : Theme.knob;
-        animate x { duration: 120ms; easing: ease-out; }
-    }
     ph-t := TouchArea {
         enabled: root.enabled;
         mouse-cursor: pointer;
@@ -2789,273 +2811,280 @@ export component MenuRow inherits Rectangle {
     in property <image> os-icon: Theme.os95 ? OsIcons.pick(root.icon) : @image-url("");
     property <bool> os-hot: (t.has-hover || root.lit) && root.enabled;
     height: Theme.menu-h;
-    border-radius: Theme.tape || Theme.os95 || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth ? 0 : Theme.glass ? 12px : Theme.dash ? 8px : 6px;
+    // Drawn in body, not on the root: a root opacity, visible, shadow or border makes
+    // Slint inline the whole widget at every use (docs/device-themes.md, Generated code size).
+    // No x, y or size: it fills the root and passes its children's layout constraints on.
+    body := Rectangle {
+        border-radius: Theme.tape || Theme.os95 || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth ? 0 : Theme.glass ? 12px : Theme.dash ? 8px : 6px;
+        // Answering Machine: the hovered row (and the row of an open submenu) lit with a red
+        // edge.
+        Rectangle { visible: Theme.answer && (t.has-hover || root.lit) && root.enabled; x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
+        background: Theme.tape || Theme.quest ? transparent : Theme.pocket ? (root.pk-hot ? Pk.l3 : root.checked ? Pk.l1 : transparent)
+            : Theme.phos ? (t.has-hover && root.enabled ? (root.danger ? Ph.amber : Ph.ph) : root.lit ? Ph.faint : transparent)
+            : Theme.os95 || Theme.brick ? (root.os-hot ? (Theme.brick ? Brick.ink : Os.navy) : transparent)
+            : Theme.comic ? (root.ink-lit ? Comic.yellow : t.has-hover && root.enabled ? Comic.wash : transparent)
+            : Theme.synth ? (root.syn-lit ? #ff5a1e : t.has-hover && root.enabled ? #232625 : transparent)
+            : (t.has-hover || root.lit) && root.enabled ? (Theme.glass ? Glass.lit : Theme.dash ? #62d2ff1f : Theme.answer ? Am.lit : Theme.hover) : transparent;
+        border-width: Theme.glass && (t.has-hover || root.lit) && root.enabled ? 1px : 0;
+        border-color: Glass.lit-edge;
+        Rectangle { visible: root.ink-lit; x: 0; width: 4px; background: Comic.red; }
+        QLit { visible: root.q-lit; x: 0; y: 0; }
+        opacity: root.enabled || Theme.os95 || Theme.pocket || Theme.quest || (Theme.synth && root.checked) ? 1 : Theme.brick ? 0.38 : 0.4;
+        if Theme.pocket: HorizontalLayout {
+            padding-left: 16px;
+            padding-right: 10px;
+            spacing: 8px;
+            if root.pk-icon.width > 0: PkPx { y: (parent.height - self.height) / 2; source: root.pk-icon; colorize: root.pk-ink; }
+            Text {
+                text: root.text;
+                color: root.pk-ink;
+                font-family: Pk.big;
+                font-size: 20px;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+                overflow: elide;
+                accessible-role: none;
+            }
+            if root.more: PkPx { y: (parent.height - self.height) / 2; source: @image-url("skins/px-pocket/chev.png"); colorize: root.pk-ink; }
+            if root.checked: PkPx { y: (parent.height - self.height) / 2; source: @image-url("skins/px-pocket/tick.png"); colorize: root.pk-ink; }
+        }
+        PkPx { visible: root.pk-hot; x: 5px; y: (parent.height - self.height) / 2; s: 1; source: @image-url("skins/px-pocket/chev.png"); colorize: Pk.l0; }
+        // Brick Phone: the number, the words, the icon or arrow and the check; inverted while
+        // hovered or while its submenu is open.
+        if Theme.brick: HorizontalLayout {
+            padding-left: 6px;
+            padding-right: 8px;
+            spacing: 7px;
+            if root.num > 0: VerticalLayout {
+                alignment: center;
+                BrickNum { text: root.num; lit: root.os-hot; }
+            }
+            Text {
+                text: root.text;
+                color: root.os-hot ? Brick.lcd1 : Brick.ink;
+                font-family: Brick.words;
+                font-size: 18px;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+                overflow: elide;
+                accessible-role: none;
+            }
+            if root.icon != "" && !root.tile: VerticalLayout {
+                alignment: center;
+                BrickPx { source: BrickIcons.pick(root.icon); tint: root.os-hot ? Brick.lcd1 : Brick.ink; }
+            }
+            if root.more || root.checked: VerticalLayout {
+                alignment: center;
+                BrickPx {
+                    source: root.more ? @image-url("skins/dv-brick/x-rt.png") : @image-url("skins/dv-brick/x-check.png");
+                    tint: root.os-hot ? Brick.lcd1 : Brick.ink;
+                }
+            }
+        }
+        // Tape Deck: an amber highlighter stroke under the hovered line.
+        Rectangle { visible: Theme.tape && !root.drawer && (t.has-hover || root.lit) && root.enabled; y: 7px; height: 20px; background: Deck.amber.with-alpha(0.5); }
+        Rectangle { visible: Theme.tape && root.drawer && t.has-hover && root.enabled; background: #00000014; }
+        // Desktop 95: navy while hovered; grey etched words when it is off.
+        if Theme.os95: HorizontalLayout {
+            padding-left: 6px;
+            padding-right: 8px;
+            spacing: 6px;
+            Rectangle {
+                width: 16px;
+                OsPx {
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                    source: root.os-icon;
+                    colorize: root.os-hot && root.os-icon.width < 12 ? #ffffff : transparent;
+                    opacity: root.enabled ? 1 : 0.45;
+                }
+            }
+            Rectangle {
+                horizontal-stretch: 1;
+                Text {
+                    visible: !root.enabled;
+                    x: 1px;
+                    y: 1px;
+                    width: parent.width;
+                    height: parent.height;
+                    text: root.text;
+                    color: Os.hi;
+                    font-family: Os.font;
+                    font-size: 12.5px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    accessible-role: none;
+                }
+                Text {
+                    width: parent.width;
+                    height: parent.height;
+                    text: root.text;
+                    color: !root.enabled ? Os.sh : root.os-hot ? #ffffff : #000000;
+                    font-family: Os.font;
+                    font-size: 12.5px;
+                    font-weight: root.checked ? 700 : 400;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    accessible-role: none;
+                }
+            }
+            if root.more || root.checked: Rectangle {
+                width: 10px;
+                OsPx {
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                    source: root.more ? @image-url("skins/dv-os95/play.png") : @image-url("skins/dv-os95/tick.png");
+                    colorize: root.os-hot ? #ffffff : transparent;
+                }
+            }
+        }
+        // Quest Menu: the words in the pixel face (gold for the current choice, light red for
+        // Delete, dim when off), an icon before them, the more arrow or a gold check after.
+        if Theme.quest: HorizontalLayout {
+            padding-left: 27px;
+            padding-right: 9px;
+            spacing: 8px;
+            property <image> q-icon: QIcons.pick(root.icon);
+            if root.icon != "" && self.q-icon.width > 0: QPx {
+                y: (parent.height - self.height) / 2;
+                source: parent.q-icon;
+                colorize: !root.enabled ? Quest.dim : root.danger ? Quest.lred : Quest.white;
+            }
+            Text {
+                text: root.text;
+                color: !root.enabled ? Quest.dim : root.danger ? Quest.lred : root.checked ? Quest.gold : Quest.white;
+                font-family: Quest.font;
+                font-size: 14px;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+            if root.more: QPx {
+                y: (parent.height - self.height) / 2;
+                source: @image-url("skins/px-quest/chev.png");
+                s: 2;
+                colorize: root.q-lit ? Quest.gold : Quest.grey;
+            }
+            if root.checked: QPx {
+                y: (parent.height - self.height) / 2;
+                source: @image-url("skins/px-quest/tick.png");
+                colorize: Quest.gold;
+            }
+        }
+        if !Theme.os95 && !Theme.pocket && !Theme.quest && !Theme.brick: HorizontalLayout {
+            padding-left: Theme.phos ? 8px : 10px;
+            padding-right: 8px;
+            spacing: (Theme.tape || Theme.comic || Theme.answer) && root.icon != "" ? 9px : Theme.phos ? 6px : 10px;
+            if Theme.phos: Text {
+                width: 8px;
+                text: root.checked ? "*" : "";
+                color: t.has-hover && root.enabled ? Ph.bg : Ph.ph;
+                font-family: Ph.mono;
+                font-size: 12.5px;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            if (Theme.tape || Theme.comic || Theme.answer) && root.icon != "": Icon {
+                name: root.icon;
+                tint: Theme.comic ? (root.danger ? Comic.red : Comic.ink) : Theme.answer ? (root.danger ? Am.rec : Am.print) : root.danger ? Deck.red : Deck.alu-ink;
+                width: 13px;
+                height: 13px;
+                y: (parent.height - self.height) / 2;
+            }
+            // Car Dashboard: an icon before every row, and a folder tile before a project.
+            if Theme.dash && root.icon == "folder" && root.tile: Rectangle {
+                width: 20px;
+                height: 20px;
+                y: (parent.height - self.height) / 2;
+                border-radius: 6px;
+                background: root.checked ? #3a8dff : #20262e;
+                Icon { name: "folder"; tint: root.checked ? #04121c : #8a95a3; width: 11px; height: 11px; }
+            }
+            if Theme.dash && root.icon != "" && !root.tile: Icon {
+                name: root.icon;
+                tint: root.danger ? #ff8a95 : root.lit ? Theme.accent : Theme.dim;
+                width: 13px;
+                height: 13px;
+                y: (parent.height - self.height) / 2;
+            }
+            // Pocket Synth: an icon before an action, a number before a project.
+            if Theme.synth && root.icon != "" && !root.tile: Icon {
+                name: root.icon;
+                tint: root.syn-lit ? #ffffff : root.danger ? #ff7a48 : #eef3ee;
+                stroke-width: 1.8px;
+                width: 12px;
+                height: 12px;
+                y: (parent.height - self.height) / 2;
+            }
+            if Theme.synth && root.syn-num != "": Text {
+                width: 14px;
+                text: root.syn-num;
+                color: root.syn-lit ? #ffd9c8 : #7d857f;
+                font-family: Theme.mono;
+                font-size: 8px;
+                font-weight: 700;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            Text {
+                text: Theme.phos ? root.prefix + root.text : Theme.comic && root.caption ? root.text.to-uppercase() : root.text;
+                color: Theme.tape ? (root.danger ? Deck.red : Deck.ink) : Theme.phos ? (t.has-hover && root.enabled ? Ph.bg : root.danger ? Ph.amber : Ph.hi)
+                    : Theme.comic ? (root.danger ? Comic.red : Comic.ink)
+                    : Theme.glass ? (root.danger ? Glass.rec-hi : Glass.ink)
+                    : Theme.dash ? (root.danger ? #ff8a95 : root.lit || (root.tile && root.checked) ? Theme.accent : Theme.text)
+                    : Theme.answer ? (root.danger ? Am.rec : Am.ink)
+                    : Theme.synth ? (root.syn-lit ? #ffffff : root.danger ? #ff7a48 : #eef3ee)
+                    : root.danger ? Theme.danger : t.has-hover ? Theme.text : Theme.text2;
+                font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? (root.caption ? "Bangers" : "Comic Neue") : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : "Inter Tight";
+                font-size: Theme.phos ? 12.5px : Theme.comic ? (root.caption ? 15px : 13.5px) : Theme.dash || Theme.answer ? 12.5px : Theme.synth ? 11.5px : 13px;
+                font-weight: Theme.comic ? (root.caption ? 400 : 700) : Theme.dash || Theme.answer ? 700 : Theme.synth ? 500 : Theme.tape && root.checked ? 600 : Theme.glass ? (root.checked ? 600 : 500) : 400;
+                letter-spacing: Theme.tape ? 0.5px : Theme.comic && root.caption ? 1px : 0;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+            if root.more: Icon {
+                name: "chevron";
+                tint: Theme.tape ? Deck.ink-soft : Theme.phos ? (t.has-hover ? Ph.bg : Ph.dim) : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink3 : Theme.synth ? (root.syn-lit ? #ffffff : #b9c0ba) : Theme.dim;
+                width: 13px;
+                height: 13px;
+                y: (parent.height - self.height) / 2;
+            }
+            // Pocket Synth: the current project an orange square where it cannot be picked.
+            if root.checked && Theme.synth && !root.enabled: VerticalLayout {
+                alignment: center;
+                Rectangle { width: 6px; height: 6px; background: #ff5a1e; }
+            }
+            if root.checked && !Theme.phos && !(Theme.synth && !root.enabled): Icon {
+                name: "check";
+                tint: Theme.tape ? Deck.red : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? (root.enabled ? Am.rec : Am.print-soft) : Theme.synth ? #ffffff : Theme.accent;
+                width: 13px;
+                height: 13px;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+        // Children given at a use site are drawn (and faded) with the rest, as before.
+        @children
+    }
     // Pocket Synth: the open row and the current project lit orange, a dark line under the
     // pointer.
     property <bool> syn-lit: Theme.synth && root.enabled && (root.lit || root.checked);
     // Comic Book: a pale yellow line on hover; the open row and the current project
     // yellow with a red edge.
     property <bool> ink-lit: Theme.comic && root.enabled && (root.lit || root.checked);
-    // Answering Machine: the hovered row (and the row of an open submenu) lit with a red
-    // edge.
-    Rectangle { visible: Theme.answer && (t.has-hover || root.lit) && root.enabled; x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
     // Phosphor: the hovered line in inverted video (amber for Delete), the line of an open
     // submenu lit faintly, a star by the current choice.
     // Car Dashboard: ice glass under the hovered row and the row of an open submenu.
     // Pocket: a dark row with the arrow cursor while hovered or open, the current choice
     // mid green with a check.
     property <bool> pk-hot: Theme.pocket && (t.has-hover || root.lit) && root.enabled;
-    background: Theme.tape || Theme.quest ? transparent : Theme.pocket ? (root.pk-hot ? Pk.l3 : root.checked ? Pk.l1 : transparent)
-        : Theme.phos ? (t.has-hover && root.enabled ? (root.danger ? Ph.amber : Ph.ph) : root.lit ? Ph.faint : transparent)
-        : Theme.os95 || Theme.brick ? (root.os-hot ? (Theme.brick ? Brick.ink : Os.navy) : transparent)
-        : Theme.comic ? (root.ink-lit ? Comic.yellow : t.has-hover && root.enabled ? Comic.wash : transparent)
-        : Theme.synth ? (root.syn-lit ? #ff5a1e : t.has-hover && root.enabled ? #232625 : transparent)
-        : (t.has-hover || root.lit) && root.enabled ? (Theme.glass ? Glass.lit : Theme.dash ? #62d2ff1f : Theme.answer ? Am.lit : Theme.hover) : transparent;
-    border-width: Theme.glass && (t.has-hover || root.lit) && root.enabled ? 1px : 0;
-    border-color: Glass.lit-edge;
-    Rectangle { visible: root.ink-lit; x: 0; width: 4px; background: Comic.red; }
     // Quest Menu: the hovered row and the row of an open submenu lit, the glove on it.
     property <bool> q-lit: Theme.quest && (t.has-hover || root.lit) && root.enabled;
-    QLit { visible: root.q-lit; x: 0; y: 0; }
-    opacity: root.enabled || Theme.os95 || Theme.pocket || Theme.quest || (Theme.synth && root.checked) ? 1 : Theme.brick ? 0.38 : 0.4;
     accessible-role: button;
     accessible-label: text;
     accessible-checked: root.checked;
     accessible-action-default => { if (root.enabled) { root.clicked(); } }
     property <image> pk-icon: Theme.pocket ? PkIcons.pick(root.icon) : @image-url("");
     property <color> pk-ink: root.pk-hot ? Pk.l0 : root.enabled ? Pk.l3 : Pk.l1;
-    if Theme.pocket: HorizontalLayout {
-        padding-left: 16px;
-        padding-right: 10px;
-        spacing: 8px;
-        if root.pk-icon.width > 0: PkPx { y: (parent.height - self.height) / 2; source: root.pk-icon; colorize: root.pk-ink; }
-        Text {
-            text: root.text;
-            color: root.pk-ink;
-            font-family: Pk.big;
-            font-size: 20px;
-            vertical-alignment: center;
-            horizontal-stretch: 1;
-            overflow: elide;
-            accessible-role: none;
-        }
-        if root.more: PkPx { y: (parent.height - self.height) / 2; source: @image-url("skins/px-pocket/chev.png"); colorize: root.pk-ink; }
-        if root.checked: PkPx { y: (parent.height - self.height) / 2; source: @image-url("skins/px-pocket/tick.png"); colorize: root.pk-ink; }
-    }
-    PkPx { visible: root.pk-hot; x: 5px; y: (parent.height - self.height) / 2; s: 1; source: @image-url("skins/px-pocket/chev.png"); colorize: Pk.l0; }
-    // Brick Phone: the number, the words, the icon or arrow and the check; inverted while
-    // hovered or while its submenu is open.
-    if Theme.brick: HorizontalLayout {
-        padding-left: 6px;
-        padding-right: 8px;
-        spacing: 7px;
-        if root.num > 0: VerticalLayout {
-            alignment: center;
-            BrickNum { text: root.num; lit: root.os-hot; }
-        }
-        Text {
-            text: root.text;
-            color: root.os-hot ? Brick.lcd1 : Brick.ink;
-            font-family: Brick.words;
-            font-size: 18px;
-            vertical-alignment: center;
-            horizontal-stretch: 1;
-            overflow: elide;
-            accessible-role: none;
-        }
-        if root.icon != "" && !root.tile: VerticalLayout {
-            alignment: center;
-            BrickPx { source: BrickIcons.pick(root.icon); tint: root.os-hot ? Brick.lcd1 : Brick.ink; }
-        }
-        if root.more || root.checked: VerticalLayout {
-            alignment: center;
-            BrickPx {
-                source: root.more ? @image-url("skins/dv-brick/x-rt.png") : @image-url("skins/dv-brick/x-check.png");
-                tint: root.os-hot ? Brick.lcd1 : Brick.ink;
-            }
-        }
-    }
-    // Tape Deck: an amber highlighter stroke under the hovered line.
-    Rectangle { visible: Theme.tape && !root.drawer && (t.has-hover || root.lit) && root.enabled; y: 7px; height: 20px; background: Deck.amber.with-alpha(0.5); }
-    Rectangle { visible: Theme.tape && root.drawer && t.has-hover && root.enabled; background: #00000014; }
-    // Desktop 95: navy while hovered; grey etched words when it is off.
-    if Theme.os95: HorizontalLayout {
-        padding-left: 6px;
-        padding-right: 8px;
-        spacing: 6px;
-        Rectangle {
-            width: 16px;
-            OsPx {
-                x: (parent.width - self.width) / 2;
-                y: (parent.height - self.height) / 2;
-                source: root.os-icon;
-                colorize: root.os-hot && root.os-icon.width < 12 ? #ffffff : transparent;
-                opacity: root.enabled ? 1 : 0.45;
-            }
-        }
-        Rectangle {
-            horizontal-stretch: 1;
-            Text {
-                visible: !root.enabled;
-                x: 1px;
-                y: 1px;
-                width: parent.width;
-                height: parent.height;
-                text: root.text;
-                color: Os.hi;
-                font-family: Os.font;
-                font-size: 12.5px;
-                vertical-alignment: center;
-                overflow: elide;
-                accessible-role: none;
-            }
-            Text {
-                width: parent.width;
-                height: parent.height;
-                text: root.text;
-                color: !root.enabled ? Os.sh : root.os-hot ? #ffffff : #000000;
-                font-family: Os.font;
-                font-size: 12.5px;
-                font-weight: root.checked ? 700 : 400;
-                vertical-alignment: center;
-                overflow: elide;
-                accessible-role: none;
-            }
-        }
-        if root.more || root.checked: Rectangle {
-            width: 10px;
-            OsPx {
-                x: (parent.width - self.width) / 2;
-                y: (parent.height - self.height) / 2;
-                source: root.more ? @image-url("skins/dv-os95/play.png") : @image-url("skins/dv-os95/tick.png");
-                colorize: root.os-hot ? #ffffff : transparent;
-            }
-        }
-    }
-    // Quest Menu: the words in the pixel face (gold for the current choice, light red for
-    // Delete, dim when off), an icon before them, the more arrow or a gold check after.
-    if Theme.quest: HorizontalLayout {
-        padding-left: 27px;
-        padding-right: 9px;
-        spacing: 8px;
-        property <image> q-icon: QIcons.pick(root.icon);
-        if root.icon != "" && self.q-icon.width > 0: QPx {
-            y: (parent.height - self.height) / 2;
-            source: parent.q-icon;
-            colorize: !root.enabled ? Quest.dim : root.danger ? Quest.lred : Quest.white;
-        }
-        Text {
-            text: root.text;
-            color: !root.enabled ? Quest.dim : root.danger ? Quest.lred : root.checked ? Quest.gold : Quest.white;
-            font-family: Quest.font;
-            font-size: 14px;
-            vertical-alignment: center;
-            horizontal-stretch: 1;
-            overflow: elide;
-        }
-        if root.more: QPx {
-            y: (parent.height - self.height) / 2;
-            source: @image-url("skins/px-quest/chev.png");
-            s: 2;
-            colorize: root.q-lit ? Quest.gold : Quest.grey;
-        }
-        if root.checked: QPx {
-            y: (parent.height - self.height) / 2;
-            source: @image-url("skins/px-quest/tick.png");
-            colorize: Quest.gold;
-        }
-    }
-    if !Theme.os95 && !Theme.pocket && !Theme.quest && !Theme.brick: HorizontalLayout {
-        padding-left: Theme.phos ? 8px : 10px;
-        padding-right: 8px;
-        spacing: (Theme.tape || Theme.comic || Theme.answer) && root.icon != "" ? 9px : Theme.phos ? 6px : 10px;
-        if Theme.phos: Text {
-            width: 8px;
-            text: root.checked ? "*" : "";
-            color: t.has-hover && root.enabled ? Ph.bg : Ph.ph;
-            font-family: Ph.mono;
-            font-size: 12.5px;
-            vertical-alignment: center;
-            accessible-role: none;
-        }
-        if (Theme.tape || Theme.comic || Theme.answer) && root.icon != "": Icon {
-            name: root.icon;
-            tint: Theme.comic ? (root.danger ? Comic.red : Comic.ink) : Theme.answer ? (root.danger ? Am.rec : Am.print) : root.danger ? Deck.red : Deck.alu-ink;
-            width: 13px;
-            height: 13px;
-            y: (parent.height - self.height) / 2;
-        }
-        // Car Dashboard: an icon before every row, and a folder tile before a project.
-        if Theme.dash && root.icon == "folder" && root.tile: Rectangle {
-            width: 20px;
-            height: 20px;
-            y: (parent.height - self.height) / 2;
-            border-radius: 6px;
-            background: root.checked ? #3a8dff : #20262e;
-            Icon { name: "folder"; tint: root.checked ? #04121c : #8a95a3; width: 11px; height: 11px; }
-        }
-        if Theme.dash && root.icon != "" && !root.tile: Icon {
-            name: root.icon;
-            tint: root.danger ? #ff8a95 : root.lit ? Theme.accent : Theme.dim;
-            width: 13px;
-            height: 13px;
-            y: (parent.height - self.height) / 2;
-        }
-        // Pocket Synth: an icon before an action, a number before a project.
-        if Theme.synth && root.icon != "" && !root.tile: Icon {
-            name: root.icon;
-            tint: root.syn-lit ? #ffffff : root.danger ? #ff7a48 : #eef3ee;
-            stroke-width: 1.8px;
-            width: 12px;
-            height: 12px;
-            y: (parent.height - self.height) / 2;
-        }
-        if Theme.synth && root.syn-num != "": Text {
-            width: 14px;
-            text: root.syn-num;
-            color: root.syn-lit ? #ffd9c8 : #7d857f;
-            font-family: Theme.mono;
-            font-size: 8px;
-            font-weight: 700;
-            vertical-alignment: center;
-            accessible-role: none;
-        }
-        Text {
-            text: Theme.phos ? root.prefix + root.text : Theme.comic && root.caption ? root.text.to-uppercase() : root.text;
-            color: Theme.tape ? (root.danger ? Deck.red : Deck.ink) : Theme.phos ? (t.has-hover && root.enabled ? Ph.bg : root.danger ? Ph.amber : Ph.hi)
-                : Theme.comic ? (root.danger ? Comic.red : Comic.ink)
-                : Theme.glass ? (root.danger ? Glass.rec-hi : Glass.ink)
-                : Theme.dash ? (root.danger ? #ff8a95 : root.lit || (root.tile && root.checked) ? Theme.accent : Theme.text)
-                : Theme.answer ? (root.danger ? Am.rec : Am.ink)
-                : Theme.synth ? (root.syn-lit ? #ffffff : root.danger ? #ff7a48 : #eef3ee)
-                : root.danger ? Theme.danger : t.has-hover ? Theme.text : Theme.text2;
-            font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? (root.caption ? "Bangers" : "Comic Neue") : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : "Inter Tight";
-            font-size: Theme.phos ? 12.5px : Theme.comic ? (root.caption ? 15px : 13.5px) : Theme.dash || Theme.answer ? 12.5px : Theme.synth ? 11.5px : 13px;
-            font-weight: Theme.comic ? (root.caption ? 400 : 700) : Theme.dash || Theme.answer ? 700 : Theme.synth ? 500 : Theme.tape && root.checked ? 600 : Theme.glass ? (root.checked ? 600 : 500) : 400;
-            letter-spacing: Theme.tape ? 0.5px : Theme.comic && root.caption ? 1px : 0;
-            vertical-alignment: center;
-            horizontal-stretch: 1;
-        }
-        if root.more: Icon {
-            name: "chevron";
-            tint: Theme.tape ? Deck.ink-soft : Theme.phos ? (t.has-hover ? Ph.bg : Ph.dim) : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink3 : Theme.synth ? (root.syn-lit ? #ffffff : #b9c0ba) : Theme.dim;
-            width: 13px;
-            height: 13px;
-            y: (parent.height - self.height) / 2;
-        }
-        // Pocket Synth: the current project an orange square where it cannot be picked.
-        if root.checked && Theme.synth && !root.enabled: VerticalLayout {
-            alignment: center;
-            Rectangle { width: 6px; height: 6px; background: #ff5a1e; }
-        }
-        if root.checked && !Theme.phos && !(Theme.synth && !root.enabled): Icon {
-            name: "check";
-            tint: Theme.tape ? Deck.red : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? (root.enabled ? Am.rec : Am.print-soft) : Theme.synth ? #ffffff : Theme.accent;
-            width: 13px;
-            height: 13px;
-            y: (parent.height - self.height) / 2;
-        }
-    }
     t := TouchArea {
         enabled: root.enabled;
         mouse-cursor: pointer;
@@ -5895,125 +5924,159 @@ export component Select inherits Rectangle {
     property <int> os-hot: -1;
     width: 200px;
     height: 32px;
-    border-radius: Theme.tape ? 2px : Theme.phos ? 0 : Theme.os95 ? 0 : Theme.comic || Theme.pocket || Theme.quest ? 0 : Theme.brick ? 0 : Theme.glass ? self.height / 2 : Theme.synth ? 6px : 8px;
-    // Phosphor: a boxed value with a "v", the edge bright while hovered or focused.
-    // Pocket: the dark picker, a light ring inside while it has the focus.
-    // Brick Phone: a boxed value with a pixel arrow; its list is a numbered pick list.
-    // Pocket Synth: a small black screen in a dark bezel and grey rim, orange while focused.
-    border-width: Theme.comic || Theme.answer || Theme.pocket || Theme.quest ? 0 : Theme.brick ? 2px : Theme.synth ? 2px : Theme.glass || Theme.dash ? 1px : (keys.has-focus || Theme.phos) && !Theme.os95 ? 1px : 0;
-    // Answering Machine: a cream picker chip, framed red while it has the focus.
-    AmChip {
-        visible: Theme.answer;
-        x: 0;
-        y: 0;
-        width: parent.width;
-        height: parent.height;
-        hover: t.has-hover && root.enabled;
-        focused: keys.has-focus;
-    }
-    border-color: Theme.tape ? Deck.amber : Theme.phos ? (keys.has-focus || (t.has-hover && enabled) ? Ph.ph : Ph.dim) : Theme.glass ? (keys.has-focus ? #ffffffb3 : #ffffff47) : Theme.dash ? (keys.has-focus ? Theme.accent : #ffffff1f) : Theme.synth ? (keys.has-focus ? #ff5a1e : #262625) : Theme.edge;
-    // Tape Deck: a black Dymo label strip. Desktop 95: a sunken white drop down box, the
-    // choice navy while it has the focus. Spatial Glass: a glass capsule. Car Dashboard: a
-    // glass chip with a chevron.
-    background: Theme.tape ? (t.has-hover && enabled ? @linear-gradient(180deg, #2a2a2d 0%, #141416 100%) : Deck.dymo)
-        : Theme.pocket ? (!root.enabled ? Pk.l1 : t.has-hover ? Pk.l2 : Pk.l3)
-        : Theme.dash ? (t.has-hover && enabled ? #1f252d : #181d23)
-        : Theme.synth ? (t.has-hover && enabled ? #1a1c1c : #0b0c0c)
-        : Theme.glass ? (t.has-hover && enabled ? #ffffff38 : #ffffff26)
-        : Theme.comic || Theme.answer ? transparent
-        : Theme.quest ? (keys.has-focus || (t.has-hover && enabled) ? Quest.sel : transparent)
-        : Theme.brick ? (t.has-hover && enabled ? Brick.ghost : transparent)
-        : Theme.os95 ? (root.enabled ? #ffffff : Os.face)
-        : Theme.phos ? transparent : t.has-hover && enabled ? Theme.hover-soft : Theme.raised;
-    opacity: enabled || Theme.os95 || Theme.pocket || Theme.quest ? 1 : Theme.brick ? 0.38 : Theme.answer ? 0.55 : 0.45;
-    // Quest Menu: the choice in gold with the gold down arrow after it (dim when off).
-    HorizontalLayout {
-        visible: Theme.quest;
-        x: 0;
-        y: 0;
-        width: parent.width;
-        height: parent.height;
-        padding-left: 6px;
-        padding-right: 3px;
-        spacing: 7px;
-        q-shown := Text {
-            text: root.current-index >= 0 && root.current-index < root.model.length ? root.model[root.current-index] : "";
-            color: root.enabled ? Quest.gold : Quest.dim;
-            font-family: Quest.font;
-            font-size: 14px;
-            vertical-alignment: center;
-            horizontal-stretch: 1;
-            overflow: elide;
-            accessible-role: none;
-        }
-        QPx {
-            y: (parent.height - self.height) / 2;
-            source: @image-url("skins/px-quest/down.png");
-            colorize: root.enabled ? Quest.gold : Quest.dim;
-        }
-    }
-    BrickPx {
-        visible: Theme.brick;
-        x: parent.width - 4px - self.width;
-        y: (parent.height - self.height) / 2;
-        source: @image-url("skins/dv-brick/x-chev.png");
-    }
-    OsBevel { visible: Theme.os95; kind: 2; }
-    PkRing { visible: Theme.pocket && keys.has-focus; x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px; ink: Pk.l1; }
-    Rectangle {
-        visible: Theme.os95;
-        x: 4px;
-        y: 3px;
-        width: parent.width - 26px;
-        height: parent.height - 6px;
-        background: keys.has-focus ? Os.navy : transparent;
-        os-shown := Text {
-            x: 2px;
-            width: parent.width - 4px;
+    // Every visual is drawn in body, never on the root: an opacity on a component's root
+    // makes Slint inline the whole widget (and its popup) at every use (docs/device-themes.md,
+    // Generated code size).
+    // No x, y or size: it fills the root and passes its children's layout constraints on.
+    body := Rectangle {
+        border-radius: Theme.tape ? 2px : Theme.phos ? 0 : Theme.os95 ? 0 : Theme.comic || Theme.pocket || Theme.quest ? 0 : Theme.brick ? 0 : Theme.glass ? self.height / 2 : Theme.synth ? 6px : 8px;
+        // Phosphor: a boxed value with a "v", the edge bright while hovered or focused.
+        // Pocket: the dark picker, a light ring inside while it has the focus.
+        // Brick Phone: a boxed value with a pixel arrow; its list is a numbered pick list.
+        // Pocket Synth: a small black screen in a dark bezel and grey rim, orange while focused.
+        border-width: Theme.comic || Theme.answer || Theme.pocket || Theme.quest ? 0 : Theme.brick ? 2px : Theme.synth ? 2px : Theme.glass || Theme.dash ? 1px : (keys.has-focus || Theme.phos) && !Theme.os95 ? 1px : 0;
+        border-color: Theme.tape ? Deck.amber : Theme.phos ? (keys.has-focus || (t.has-hover && enabled) ? Ph.ph : Ph.dim) : Theme.glass ? (keys.has-focus ? #ffffffb3 : #ffffff47) : Theme.dash ? (keys.has-focus ? Theme.accent : #ffffff1f) : Theme.synth ? (keys.has-focus ? #ff5a1e : #262625) : Theme.edge;
+        // Tape Deck: a black Dymo label strip. Desktop 95: a sunken white drop down box, the
+        // choice navy while it has the focus. Spatial Glass: a glass capsule. Car Dashboard: a
+        // glass chip with a chevron.
+        background: Theme.tape ? (t.has-hover && enabled ? @linear-gradient(180deg, #2a2a2d 0%, #141416 100%) : Deck.dymo)
+            : Theme.pocket ? (!root.enabled ? Pk.l1 : t.has-hover ? Pk.l2 : Pk.l3)
+            : Theme.dash ? (t.has-hover && enabled ? #1f252d : #181d23)
+            : Theme.synth ? (t.has-hover && enabled ? #1a1c1c : #0b0c0c)
+            : Theme.glass ? (t.has-hover && enabled ? #ffffff38 : #ffffff26)
+            : Theme.comic || Theme.answer ? transparent
+            : Theme.quest ? (keys.has-focus || (t.has-hover && enabled) ? Quest.sel : transparent)
+            : Theme.brick ? (t.has-hover && enabled ? Brick.ghost : transparent)
+            : Theme.os95 ? (root.enabled ? #ffffff : Os.face)
+            : Theme.phos ? transparent : t.has-hover && enabled ? Theme.hover-soft : Theme.raised;
+        opacity: enabled || Theme.os95 || Theme.pocket || Theme.quest ? 1 : Theme.brick ? 0.38 : Theme.answer ? 0.55 : 0.45;
+        // Answering Machine: a cream picker chip, framed red while it has the focus.
+        AmChip {
+            visible: Theme.answer;
+            x: 0;
+            y: 0;
+            width: parent.width;
             height: parent.height;
-            text: root.current-index >= 0 && root.current-index < root.model.length ? root.model[root.current-index] : "";
-            color: !root.enabled ? Os.sh : keys.has-focus ? #ffffff : #000000;
-            font-family: Os.font;
-            font-size: 12.5px;
-            vertical-alignment: center;
-            overflow: elide;
-            accessible-role: none;
+            hover: t.has-hover && root.enabled;
+            focused: keys.has-focus;
         }
-    }
-    Rectangle {
-        visible: Theme.os95;
-        x: parent.width - self.width - 2px;
-        y: 2px;
-        width: 16px;
-        height: parent.height - 4px;
-        background: Os.face;
-        OsBevel { kind: t.pressed && t.has-hover ? 1 : 0; }
-        OsPx {
-            x: (parent.width - self.width) / 2;
+        // Quest Menu: the choice in gold with the gold down arrow after it (dim when off).
+        HorizontalLayout {
+            visible: Theme.quest;
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            padding-left: 6px;
+            padding-right: 3px;
+            spacing: 7px;
+            q-shown := Text {
+                text: root.current-index >= 0 && root.current-index < root.model.length ? root.model[root.current-index] : "";
+                color: root.enabled ? Quest.gold : Quest.dim;
+                font-family: Quest.font;
+                font-size: 14px;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+                overflow: elide;
+                accessible-role: none;
+            }
+            QPx {
+                y: (parent.height - self.height) / 2;
+                source: @image-url("skins/px-quest/down.png");
+                colorize: root.enabled ? Quest.gold : Quest.dim;
+            }
+        }
+        BrickPx {
+            visible: Theme.brick;
+            x: parent.width - 4px - self.width;
             y: (parent.height - self.height) / 2;
-            source: @image-url("skins/dv-os95/arrow.png");
-            opacity: root.enabled ? 1 : 0.45;
+            source: @image-url("skins/dv-brick/x-chev.png");
         }
-    }
-    // Comic Book: a yellow caption picker with a hard shadow; red edged while focused.
-    InkShadow { visible: Theme.comic && root.enabled; off: 2px; }
-    Rectangle {
-        visible: Theme.comic;
-        background: t.has-hover && root.enabled ? #ffe066 : Comic.yellow;
-        border-width: 2.5px;
-        border-color: keys.has-focus ? Comic.red : Comic.ink;
-    }
-    Rectangle { visible: Theme.tape; y: 0; x: 1px; width: parent.width - 2px; height: 1px; background: #3a3a3e; }
-    Rectangle { visible: Theme.glass; x: parent.height * 0.45; y: 1px; width: parent.width - parent.height * 0.9; height: 1px; background: #ffffff66; }
-    Rectangle {
-        visible: Theme.synth;
-        x: -1px;
-        y: -1px;
-        width: root.width + 2px;
-        height: root.height + 2px;
-        border-radius: 7px;
-        border-width: 1px;
-        border-color: #a19d93;
+        OsBevel { visible: Theme.os95; kind: 2; }
+        PkRing { visible: Theme.pocket && keys.has-focus; x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px; ink: Pk.l1; }
+        Rectangle {
+            visible: Theme.os95;
+            x: 4px;
+            y: 3px;
+            width: parent.width - 26px;
+            height: parent.height - 6px;
+            background: keys.has-focus ? Os.navy : transparent;
+            os-shown := Text {
+                x: 2px;
+                width: parent.width - 4px;
+                height: parent.height;
+                text: root.current-index >= 0 && root.current-index < root.model.length ? root.model[root.current-index] : "";
+                color: !root.enabled ? Os.sh : keys.has-focus ? #ffffff : #000000;
+                font-family: Os.font;
+                font-size: 12.5px;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+        }
+        Rectangle {
+            visible: Theme.os95;
+            x: parent.width - self.width - 2px;
+            y: 2px;
+            width: 16px;
+            height: parent.height - 4px;
+            background: Os.face;
+            OsBevel { kind: t.pressed && t.has-hover ? 1 : 0; }
+            OsPx {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                source: @image-url("skins/dv-os95/arrow.png");
+                opacity: root.enabled ? 1 : 0.45;
+            }
+        }
+        // Comic Book: a yellow caption picker with a hard shadow; red edged while focused.
+        InkShadow { visible: Theme.comic && root.enabled; off: 2px; }
+        Rectangle {
+            visible: Theme.comic;
+            background: t.has-hover && root.enabled ? #ffe066 : Comic.yellow;
+            border-width: 2.5px;
+            border-color: keys.has-focus ? Comic.red : Comic.ink;
+        }
+        Rectangle { visible: Theme.tape; y: 0; x: 1px; width: parent.width - 2px; height: 1px; background: #3a3a3e; }
+        Rectangle { visible: Theme.glass; x: parent.height * 0.45; y: 1px; width: parent.width - parent.height * 0.9; height: 1px; background: #ffffff66; }
+        Rectangle {
+            visible: Theme.synth;
+            x: -1px;
+            y: -1px;
+            width: root.width + 2px;
+            height: root.height + 2px;
+            border-radius: 7px;
+            border-width: 1px;
+            border-color: #a19d93;
+        }
+        HorizontalLayout {
+            visible: !Theme.quest;
+            padding-left: Theme.tape || Theme.phos ? 9px : Theme.glass ? 13px : Theme.pocket ? 8px : Theme.brick ? 6px : 12px;
+            padding-right: Theme.tape || Theme.phos ? 7px : Theme.glass ? 11px : Theme.pocket ? 8px : Theme.brick ? 4px : 9px;
+            spacing: Theme.tape || Theme.phos ? 6px : Theme.brick ? 5px : 8px;
+            shown := Text {
+                text: root.current-index >= 0 && root.current-index < root.model.length
+                    ? (Theme.tape ? root.model[root.current-index].to-uppercase() : root.model[root.current-index]) : "";
+                color: Theme.pocket ? Pk.l0 : Theme.tape ? #f5f1e8 : Theme.phos ? Ph.hi : Theme.os95 ? transparent : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? Am.name-ink : Theme.synth ? #eef3ee : Theme.text;
+                font-family: Theme.pocket ? Pk.big : Theme.tape || Theme.synth ? Theme.mono : Theme.comic ? "Comic Neue" : Theme.phos ? Ph.mono : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.brick ? Brick.words : "Inter Tight";
+                font-size: Theme.pocket ? 20px : Theme.tape ? 11px : Theme.phos ? 12px : Theme.glass ? 12.5px : Theme.dash ? 12px : Theme.brick ? 16px : Theme.answer ? 12.5px : Theme.synth ? 11px : 13px;
+                font-weight: Theme.tape || Theme.dash || Theme.comic || Theme.answer ? 700 : Theme.glass || Theme.synth ? 500 : 400;
+                letter-spacing: Theme.tape ? 1px : 0;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+            if Theme.pocket: PkPx { y: (parent.height - self.height) / 2; source: @image-url("skins/px-pocket/down.png"); colorize: Pk.l0; }
+            Icon {
+                visible: !Theme.os95 && !Theme.pocket && !Theme.brick;
+                name: Theme.tape || Theme.phos || Theme.comic || Theme.glass || Theme.dash || Theme.answer || Theme.synth ? "down" : "updown";
+                tint: Theme.tape ? #f5f1e8 : Theme.phos ? Ph.dim : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.dash ? Theme.dim : Theme.answer ? Am.print : Theme.synth ? #b9c0ba : Theme.muted;
+                stroke-width: Theme.comic ? 2.8px : 2px;
+                width: Theme.pocket ? 0 : Theme.phos || Theme.dash || Theme.synth ? 10px : Theme.brick ? 8px : 12px;
+                height: Theme.phos || Theme.dash || Theme.synth ? 10px : Theme.brick ? 8px : 12px;
+                y: (parent.height - self.height) / 2;
+            }
+        }
     }
     accessible-role: combobox;
     accessible-label: label;
@@ -6028,34 +6091,6 @@ export component Select inherits Rectangle {
             if (e.text == Key.DownArrow) { root.step(1); return accept; }
             if (e.text == Key.Return || e.text == " ") { root.open(); return accept; }
             reject
-        }
-    }
-    HorizontalLayout {
-        visible: !Theme.quest;
-        padding-left: Theme.tape || Theme.phos ? 9px : Theme.glass ? 13px : Theme.pocket ? 8px : Theme.brick ? 6px : 12px;
-        padding-right: Theme.tape || Theme.phos ? 7px : Theme.glass ? 11px : Theme.pocket ? 8px : Theme.brick ? 4px : 9px;
-        spacing: Theme.tape || Theme.phos ? 6px : Theme.brick ? 5px : 8px;
-        shown := Text {
-            text: root.current-index >= 0 && root.current-index < root.model.length
-                ? (Theme.tape ? root.model[root.current-index].to-uppercase() : root.model[root.current-index]) : "";
-            color: Theme.pocket ? Pk.l0 : Theme.tape ? #f5f1e8 : Theme.phos ? Ph.hi : Theme.os95 ? transparent : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? Am.name-ink : Theme.synth ? #eef3ee : Theme.text;
-            font-family: Theme.pocket ? Pk.big : Theme.tape || Theme.synth ? Theme.mono : Theme.comic ? "Comic Neue" : Theme.phos ? Ph.mono : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.brick ? Brick.words : "Inter Tight";
-            font-size: Theme.pocket ? 20px : Theme.tape ? 11px : Theme.phos ? 12px : Theme.glass ? 12.5px : Theme.dash ? 12px : Theme.brick ? 16px : Theme.answer ? 12.5px : Theme.synth ? 11px : 13px;
-            font-weight: Theme.tape || Theme.dash || Theme.comic || Theme.answer ? 700 : Theme.glass || Theme.synth ? 500 : 400;
-            letter-spacing: Theme.tape ? 1px : 0;
-            vertical-alignment: center;
-            horizontal-stretch: 1;
-            overflow: elide;
-        }
-        if Theme.pocket: PkPx { y: (parent.height - self.height) / 2; source: @image-url("skins/px-pocket/down.png"); colorize: Pk.l0; }
-        Icon {
-            visible: !Theme.os95 && !Theme.pocket && !Theme.brick;
-            name: Theme.tape || Theme.phos || Theme.comic || Theme.glass || Theme.dash || Theme.answer || Theme.synth ? "down" : "updown";
-            tint: Theme.tape ? #f5f1e8 : Theme.phos ? Ph.dim : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.dash ? Theme.dim : Theme.answer ? Am.print : Theme.synth ? #b9c0ba : Theme.muted;
-            stroke-width: Theme.comic ? 2.8px : 2px;
-            width: Theme.pocket ? 0 : Theme.phos || Theme.dash || Theme.synth ? 10px : Theme.brick ? 8px : 12px;
-            height: Theme.phos || Theme.dash || Theme.synth ? 10px : Theme.brick ? 8px : 12px;
-            y: (parent.height - self.height) / 2;
         }
     }
     t := TouchArea {
@@ -6301,80 +6336,87 @@ export component TextField inherits Rectangle {
         input.select-all();
     }
     height: 36px;
-    border-radius: root.radius;
-    background: root.fill;
-    border-width: Theme.brick ? 2px : root.edge-width;
-    border-color: invalid ? Theme.danger : input.has-focus && !root.bare-focus ? root.focus-edge : root.rest-edge;
-    opacity: enabled ? 1 : 0.45;
-    Rectangle {
-        visible: input.has-focus && (!root.invalid || Theme.brick) && !root.bare-focus;
-        x: -3px;
-        y: -3px;
-        width: parent.width + 6px;
-        height: parent.height + 6px;
-        border-radius: root.radius + (Theme.brick ? 0 : 3px);
-        border-width: Theme.brick ? 2px : 3px;
-        border-color: root.focus-ring;
-    }
-    HorizontalLayout {
-        padding-left: root.side;
-        padding-right: root.side;
-        spacing: 8px;
-        if root.icon != "" && Theme.brick: VerticalLayout {
-            alignment: center;
-            BrickPx { source: BrickIcons.pick(root.icon); tint: root.ink; }
-        }
-        if root.icon != "" && !Theme.quest && !Theme.brick: Icon {
-            name: root.icon;
-            tint: root.hint;
-            width: 14px;
-            height: 14px;
-            y: (parent.height - self.height) / 2;
-        }
-        // Quest Menu: the pixel icon.
-        if root.icon != "" && Theme.quest: QPx {
-            y: (parent.height - self.height) / 2;
-            s: 2;
-            source: QIcons.pick(root.icon);
-            colorize: root.text == "" ? Quest.dim : Quest.grey;
-        }
+    // Drawn in body, not on the root: a root opacity, visible, shadow or border makes
+    // Slint inline the whole widget at every use (docs/device-themes.md, Generated code size).
+    // No x, y or size: it fills the root and passes its children's layout constraints on.
+    body := Rectangle {
+        border-radius: root.radius;
+        background: root.fill;
+        border-width: Theme.brick ? 2px : root.edge-width;
+        border-color: invalid ? Theme.danger : input.has-focus && !root.bare-focus ? root.focus-edge : root.rest-edge;
+        opacity: enabled ? 1 : 0.45;
         Rectangle {
-            horizontal-stretch: 1;
-            if root.text == "": Text {
-                width: 100%;
-                height: 100%;
-                text: root.placeholder;
-                color: root.hint;
-                font-size: root.font-size;
-                font-family: root.family;
-                font-italic: root.hint-italic;
-                vertical-alignment: center;
-                overflow: elide;
+            visible: input.has-focus && (!root.invalid || Theme.brick) && !root.bare-focus;
+            x: -3px;
+            y: -3px;
+            width: parent.width + 6px;
+            height: parent.height + 6px;
+            border-radius: root.radius + (Theme.brick ? 0 : 3px);
+            border-width: Theme.brick ? 2px : 3px;
+            border-color: root.focus-ring;
+        }
+        HorizontalLayout {
+            padding-left: root.side;
+            padding-right: root.side;
+            spacing: 8px;
+            if root.icon != "" && Theme.brick: VerticalLayout {
+                alignment: center;
+                BrickPx { source: BrickIcons.pick(root.icon); tint: root.ink; }
             }
-            input := TextInput {
-                width: 100%;
-                height: 100%;
-                text <=> root.text;
-                enabled: root.enabled;
-                single-line: true;
-                vertical-alignment: center;
-                color: root.ink;
-                font-size: root.font-size;
-                font-family: root.family;
-                selection-background-color: root.select-fill;
-                selection-foreground-color: root.select-ink;
-                accessible-label: root.label;
-                edited => { root.edited(self.text); }
-                accepted => { root.accepted(self.text); }
-                key-pressed(e) => {
-                    if (root.takes-escape && e.text == Key.Escape) {
-                        root.escaped();
-                        return accept;
+            if root.icon != "" && !Theme.quest && !Theme.brick: Icon {
+                name: root.icon;
+                tint: root.hint;
+                width: 14px;
+                height: 14px;
+                y: (parent.height - self.height) / 2;
+            }
+            // Quest Menu: the pixel icon.
+            if root.icon != "" && Theme.quest: QPx {
+                y: (parent.height - self.height) / 2;
+                s: 2;
+                source: QIcons.pick(root.icon);
+                colorize: root.text == "" ? Quest.dim : Quest.grey;
+            }
+            Rectangle {
+                horizontal-stretch: 1;
+                if root.text == "": Text {
+                    width: 100%;
+                    height: 100%;
+                    text: root.placeholder;
+                    color: root.hint;
+                    font-size: root.font-size;
+                    font-family: root.family;
+                    font-italic: root.hint-italic;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                input := TextInput {
+                    width: 100%;
+                    height: 100%;
+                    text <=> root.text;
+                    enabled: root.enabled;
+                    single-line: true;
+                    vertical-alignment: center;
+                    color: root.ink;
+                    font-size: root.font-size;
+                    font-family: root.family;
+                    selection-background-color: root.select-fill;
+                    selection-foreground-color: root.select-ink;
+                    accessible-label: root.label;
+                    edited => { root.edited(self.text); }
+                    accepted => { root.accepted(self.text); }
+                    key-pressed(e) => {
+                        if (root.takes-escape && e.text == Key.Escape) {
+                            root.escaped();
+                            return accept;
+                        }
+                        reject
                     }
-                    reject
                 }
             }
         }
+        // Children given at a use site are drawn (and faded) with the rest, as before.
+        @children
     }
 }
 
@@ -7208,43 +7250,31 @@ export component WindowFx inherits Rectangle {
 
 // A scrolling area with a thin bar that only shows when there is more to see. It
 // widens under the mouse and can be dragged.
-export component Scroller inherits Rectangle {
-    out property <length> visible-width <=> fl.width;
-    out property <length> visible-height <=> fl.height;
-    in-out property <length> content-height <=> fl.content-height;
-    in-out property <length> content-y <=> fl.content-y;
-    callback scrolled <=> fl.flicked;
-    // Its content fades out at an edge it scrolls past: strips there repaint the window
-    // background over it, more see-through the further in. Only for a list that sits on
-    // the window background.
+// The Scroller's decorations: the fade strips at its edges and each skin's scroll bar.
+// One shared component, placed over the Scroller's list, so the Scroller (inlined at
+// every use, as it always has children) does not copy these repeaters into every use.
+component ScrollDecor inherits Rectangle {
     in property <bool> fade;
-    // Its own thin bar; off for a skin that draws its own (Brick Phone).
-    in property <bool> bar: true;
-    // The Comic Book's inked rail instead of the thin bar.
+    in property <bool> bar;
     in property <bool> ink-rail;
-    // The Quest Menu's rail instead of the thin bar: 12px of ink in a blue rim along the
-    // right edge with a gold thumb (the content leaves that room).
     in property <bool> quest-rail;
-    // The Answering Machine's sunk track with a rubber thumb instead of the thin bar.
     in property <bool> rubber;
-    property <length> top-depth: root.fade ? clamp(-fl.content-y, 0, 80px) : 0;
-    property <length> bottom-depth: root.fade ? clamp(root.range + fl.content-y, 0, 80px) : 0;
+    in property <bool> bar95;
+    in property <bool> pk-rail;
+    in-out property <length> content-y;
+    in property <length> content-height;
+    in property <length> view-height;
+    property <length> top-depth: root.fade ? clamp(-root.content-y, 0, 80px) : 0;
+    property <length> bottom-depth: root.fade ? clamp(root.range + root.content-y, 0, 80px) : 0;
     property <int> strips: 10;
     // Where it sits in the window. absolute-position is not read again when only an
     // ancestor moves, so these name the window size to be worked out again on a resize.
     property <length> at-x: Win.width > 0 && Win.height > 0 && root.width > 0 ? self.absolute-position.x : self.absolute-position.x;
     property <length> at-y: Win.width > 0 && Win.height > 0 && root.height > 0 ? self.absolute-position.y : self.absolute-position.y;
-    property <length> range: fl.content-height - fl.height;
-    property <length> thumb-h: max(28px, fl.height * fl.height / max(fl.content-height, 1px));
-    horizontal-stretch: 1;
-    vertical-stretch: 1;
-    min-height: 50px;
-    fl := Flickable {
-        width: parent.width;
-        height: parent.height;
-        mouse-drag-pan-enabled: false;
-        @children
-    }
+    property <length> range: root.content-height - root.view-height;
+    property <length> thumb-h: max(28px, root.view-height * root.view-height / max(root.content-height, 1px));
+    property <length> track-h: root.view-height - 32px;
+    property <length> thumb95: max(14px, root.track-h * root.view-height / max(root.content-height, 1px));
     for i in root.top-depth > 0 ? root.strips : 0: Rectangle {
         // Strip edges on whole device pixels, in window coordinates, so the strips
         // meet without a seam and the background lines up with the real one.
@@ -7281,9 +7311,6 @@ export component Scroller inherits Rectangle {
     }
     // Desktop 95: a grey scroll bar over its right 16px (the content leaves that room), with
     // arrow keys and a raised thumb on a checker track.
-    in property <bool> bar95;
-    property <length> track-h: fl.height - 32px;
-    property <length> thumb95: max(14px, root.track-h * fl.height / max(fl.content-height, 1px));
     if root.bar95: Rectangle {
         x: parent.width - 16px;
         width: 16px;
@@ -7307,7 +7334,7 @@ export component Scroller inherits Rectangle {
             background: Os.face;
             accessible-role: button;
             accessible-label: k == 0 ? "Scroll up" : "Scroll down";
-            accessible-action-default => { fl.content-y = clamp(fl.content-y + (k == 0 ? 40px : -40px), -max(0px, root.range), 0); }
+            accessible-action-default => { root.content-y = clamp(root.content-y + (k == 0 ? 40px : -40px), -max(0px, root.range), 0); }
             OsBevel { kind: arrow.pressed && arrow.has-hover ? 1 : 0; }
             OsPx {
                 x: (parent.width - self.width) / 2;
@@ -7316,11 +7343,11 @@ export component Scroller inherits Rectangle {
                 opacity: root.range > 1px ? 1 : 0.45;
             }
             arrow := TouchArea {
-                clicked => { fl.content-y = clamp(fl.content-y + (k == 0 ? 40px : -40px), -max(0px, root.range), 0); }
+                clicked => { root.content-y = clamp(root.content-y + (k == 0 ? 40px : -40px), -max(0px, root.range), 0); }
             }
         }
         if root.range > 1px: Rectangle {
-            y: 16px + (-fl.content-y / root.range) * (root.track-h - root.thumb95);
+            y: 16px + (-root.content-y / root.range) * (root.track-h - root.thumb95);
             width: 16px;
             height: root.thumb95;
             background: Os.face;
@@ -7328,7 +7355,7 @@ export component Scroller inherits Rectangle {
             drag95 := TouchArea {
                 moved => {
                     if (self.pressed) {
-                        fl.content-y = clamp(-(parent.y - 16px + self.mouse-y - self.pressed-y) / (root.track-h - root.thumb95) * root.range, -root.range, 0);
+                        root.content-y = clamp(-(parent.y - 16px + self.mouse-y - self.pressed-y) / (root.track-h - root.thumb95) * root.range, -root.range, 0);
                     }
                 }
             }
@@ -7343,7 +7370,7 @@ export component Scroller inherits Rectangle {
         border-color: Comic.ink;
         Rectangle {
             x: 0;
-            y: (-fl.content-y / root.range) * (parent.height - root.thumb-h);
+            y: (-root.content-y / root.range) * (parent.height - root.thumb-h);
             height: root.thumb-h;
             background: rail-drag.pressed ? Comic.red : Comic.ink;
         }
@@ -7352,7 +7379,7 @@ export component Scroller inherits Rectangle {
             width: parent.width + 4px;
             // The thumb follows the pointer, centred on it.
             function follow() {
-                fl.content-y = clamp(-(self.mouse-y - root.thumb-h / 2) / max(1px, parent.height - root.thumb-h) * root.range, -root.range, 0);
+                root.content-y = clamp(-(self.mouse-y - root.thumb-h / 2) / max(1px, parent.height - root.thumb-h) * root.range, -root.range, 0);
             }
             pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.follow(); } }
             moved => { if (self.pressed) { self.follow(); } }
@@ -7360,7 +7387,6 @@ export component Scroller inherits Rectangle {
     }
     // Pocket: a dithered rail 4px in from the right edge with a dark thumb (the content
     // leaves 14px).
-    in property <bool> pk-rail;
     if root.pk-rail && root.range > 1px: Rectangle {
         x: parent.width - 10px;
         y: 6px;
@@ -7369,7 +7395,7 @@ export component Scroller inherits Rectangle {
         PkTile { source: @image-url("skins/px-pocket/dith.png"); }
         Rectangle {
             x: 0;
-            y: round((-fl.content-y / root.range) * (parent.height - root.thumb-h) / 2px) * 2px;
+            y: round((-root.content-y / root.range) * (parent.height - root.thumb-h) / 2px) * 2px;
             height: min(parent.height, root.thumb-h);
             background: Pk.l3;
         }
@@ -7377,7 +7403,7 @@ export component Scroller inherits Rectangle {
             x: -4px;
             width: parent.width + 6px;
             function follow() {
-                fl.content-y = clamp(-(self.mouse-y - root.thumb-h / 2) / max(1px, parent.height - root.thumb-h) * root.range, -root.range, 0);
+                root.content-y = clamp(-(self.mouse-y - root.thumb-h / 2) / max(1px, parent.height - root.thumb-h) * root.range, -root.range, 0);
             }
             pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.follow(); } }
             moved => { if (self.pressed) { self.follow(); } }
@@ -7389,10 +7415,10 @@ export component Scroller inherits Rectangle {
         background: Quest.ink;
         border-width: 3px;
         border-color: Quest.rule;
-        property <length> qthumb: max(30px, (self.height - 6px) * fl.height / max(fl.content-height, 1px));
+        property <length> qthumb: max(30px, (self.height - 6px) * root.view-height / max(root.content-height, 1px));
         Rectangle {
             x: 3px;
-            y: 3px + round((-fl.content-y / root.range) * (parent.height - 6px - parent.qthumb) / 1px) * 1px;
+            y: 3px + round((-root.content-y / root.range) * (parent.height - 6px - parent.qthumb) / 1px) * 1px;
             width: parent.width - 6px;
             height: parent.qthumb;
             background: Quest.gold;
@@ -7401,7 +7427,7 @@ export component Scroller inherits Rectangle {
             x: -4px;
             width: parent.width + 4px;
             function follow() {
-                fl.content-y = clamp(-(self.mouse-y - parent.qthumb / 2) / max(1px, parent.height - parent.qthumb) * root.range, -root.range, 0);
+                root.content-y = clamp(-(self.mouse-y - parent.qthumb / 2) / max(1px, parent.height - parent.qthumb) * root.range, -root.range, 0);
             }
             pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.follow(); } }
             moved => { if (self.pressed) { self.follow(); } }
@@ -7413,9 +7439,9 @@ export component Scroller inherits Rectangle {
         x: parent.width - 5px;
         y: 0;
         height: parent.height;
-        content-y <=> fl.content-y;
-        content-h: fl.content-height;
-        view-h: fl.height;
+        content-y <=> root.content-y;
+        content-h: root.content-height;
+        view-h: root.view-height;
     }
     if root.rubber && !root.bar95 && !root.ink-rail && root.range > 1px: Rectangle {
         x: parent.width - self.width;
@@ -7425,7 +7451,7 @@ export component Scroller inherits Rectangle {
         Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: #00000026; }
         Rectangle {
             x: 0;
-            y: (-fl.content-y / root.range) * (parent.height - root.thumb-h);
+            y: (-root.content-y / root.range) * (parent.height - root.thumb-h);
             height: root.thumb-h;
             border-radius: 3px;
             background: @linear-gradient(180deg, #635c56 0%, #4b4540 100%);
@@ -7434,7 +7460,7 @@ export component Scroller inherits Rectangle {
             x: -6px;
             width: parent.width + 8px;
             function follow() {
-                fl.content-y = clamp(-(self.mouse-y - root.thumb-h / 2) / max(1px, parent.height - root.thumb-h) * root.range, -root.range, 0);
+                root.content-y = clamp(-(self.mouse-y - root.thumb-h / 2) / max(1px, parent.height - root.thumb-h) * root.range, -root.range, 0);
             }
             pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.follow(); } }
             moved => { if (self.pressed) { self.follow(); } }
@@ -7442,7 +7468,7 @@ export component Scroller inherits Rectangle {
     }
     if root.bar && !root.bar95 && !root.ink-rail && !root.pk-rail && !root.quest-rail && !root.rubber && !Theme.brick && root.range > 1px: Rectangle {
         x: parent.width - self.width - 2px;
-        y: (-fl.content-y / root.range) * (fl.height - root.thumb-h);
+        y: (-root.content-y / root.range) * (root.view-height - root.thumb-h);
         width: drag.has-hover || drag.pressed ? 6px : 3px;
         height: root.thumb-h;
         border-radius: self.width / 2;
@@ -7453,10 +7479,58 @@ export component Scroller inherits Rectangle {
             width: parent.width + 8px;
             moved => {
                 if (self.pressed) {
-                    fl.content-y = clamp(-(parent.y + self.mouse-y - self.pressed-y) / (fl.height - root.thumb-h) * root.range, -root.range, 0);
+                    root.content-y = clamp(-(parent.y + self.mouse-y - self.pressed-y) / (root.view-height - root.thumb-h) * root.range, -root.range, 0);
                 }
             }
         }
+    }
+}
+
+export component Scroller inherits Rectangle {
+    out property <length> visible-width <=> fl.width;
+    out property <length> visible-height <=> fl.height;
+    in-out property <length> content-height <=> fl.content-height;
+    in-out property <length> content-y <=> fl.content-y;
+    callback scrolled <=> fl.flicked;
+    // Its content fades out at an edge it scrolls past: strips there repaint the window
+    // background over it, more see-through the further in. Only for a list that sits on
+    // the window background.
+    in property <bool> fade;
+    // Its own thin bar; off for a skin that draws its own (Brick Phone).
+    in property <bool> bar: true;
+    // The Comic Book's inked rail instead of the thin bar.
+    in property <bool> ink-rail;
+    // The Quest Menu's rail instead of the thin bar: 12px of ink in a blue rim along the
+    // right edge with a gold thumb (the content leaves that room).
+    in property <bool> quest-rail;
+    // The Answering Machine's sunk track with a rubber thumb instead of the thin bar.
+    in property <bool> rubber;
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+    min-height: 50px;
+    fl := Flickable {
+        width: parent.width;
+        height: parent.height;
+        mouse-drag-pan-enabled: false;
+        @children
+    }
+    in property <bool> bar95;
+    in property <bool> pk-rail;
+    ScrollDecor {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        fade: root.fade;
+        bar: root.bar;
+        ink-rail: root.ink-rail;
+        quest-rail: root.quest-rail;
+        rubber: root.rubber;
+        bar95: root.bar95;
+        pk-rail: root.pk-rail;
+        content-y <=> fl.content-y;
+        content-height: fl.content-height;
+        view-height: fl.height;
     }
 }
 

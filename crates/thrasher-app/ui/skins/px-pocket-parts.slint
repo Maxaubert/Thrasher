@@ -1,0 +1,357 @@
+// Pocket's parts, shared by the main page (px-pocket.slint) and the other pages
+// (px-pocket-pages.slint): the pixel art helpers, the stepped boxes, the LCD type, the
+// shell's top edge and its keys. The colours (`Pk`) are in common.slint, so the shared
+// widgets can draw the LCD look too.
+
+import { Pk, Main, Tips } from "../common.slint";
+export { Pk }
+
+// Pixel art at a whole number of device pixels per art pixel, the nearest to `s` logical
+// pixels, without smoothing.
+export component Px inherits Image {
+    in property <float> s: 1;
+    property <length> u: max(1, round(root.s * 1px / 1phx)) * 1phx;
+    width: self.source.width * self.u;
+    height: self.source.height * self.u;
+    image-fit: fill;
+    image-rendering: pixelated;
+}
+
+// A tile repeated from the box's top left, one image pixel per logical pixel.
+export component Tile inherits Image {
+    width: 100%;
+    height: 100%;
+    horizontal-tiling: repeat;
+    vertical-tiling: repeat;
+    horizontal-alignment: left;
+    vertical-alignment: top;
+}
+
+// A box with its corners cut by one 4px pixel step, a light line along the top and a
+// dark band along the bottom (the rubber pills and the top edge keys).
+export component Step4 inherits Rectangle {
+    in property <color> fill;
+    in property <color> hi;
+    in property <color> lo;
+    in property <length> lo-h: 4px;
+    Rectangle { x: 4px; y: 0; width: parent.width - 8px; height: parent.height; background: root.fill; }
+    Rectangle { x: 0; y: 4px; width: parent.width; height: parent.height - 8px; background: root.fill; }
+    Rectangle { x: 4px; y: 0; width: parent.width - 8px; height: 2px; background: root.hi; }
+    Rectangle { x: 4px; y: parent.height - root.lo-h; width: parent.width - 8px; height: root.lo-h; background: root.lo; }
+}
+
+// A box with its corners cut by two 4px steps (the shell and the screen surround).
+export component Step8 inherits Rectangle {
+    in property <color> fill;
+    Rectangle { x: 8px; y: 0; width: parent.width - 16px; height: parent.height; background: root.fill; }
+    Rectangle { x: 4px; y: 4px; width: parent.width - 8px; height: parent.height - 8px; background: root.fill; }
+    Rectangle { x: 0; y: 8px; width: parent.width; height: parent.height - 16px; background: root.fill; }
+    @children
+}
+
+// A 2px outline round a box without its corners, as the mockup's `pxo` draws it.
+export component Outline inherits Rectangle {
+    in property <color> ink: Pk.l3;
+    Rectangle { x: 0; y: -2px; width: parent.width; height: 2px; background: root.ink; }
+    Rectangle { x: 0; y: parent.height; width: parent.width; height: 2px; background: root.ink; }
+    Rectangle { x: -2px; y: 0; width: 2px; height: parent.height; background: root.ink; }
+    Rectangle { x: parent.width; y: 0; width: 2px; height: parent.height; background: root.ink; }
+}
+
+// Small caps (Silkscreen, with a clear 5) at 8px.
+export component Small inherits Text {
+    font-family: Pk.small;
+    font-size: 8px;
+    letter-spacing: 1px;
+    color: Pk.l2;
+    vertical-alignment: center;
+    // A copy with no role is decoration: no name either, or screen readers still find it.
+    accessible-label: self.accessible-role == AccessibleRole.none ? "" : self.text;
+}
+
+// The big LCD type (Jersey 10) at 20px, on a 16px line like the mockup.
+export component Big inherits Text {
+    font-family: Pk.big;
+    font-size: 20px;
+    color: Pk.l3;
+    vertical-alignment: center;
+    accessible-label: self.accessible-role == AccessibleRole.none ? "" : self.text;
+}
+
+// A dark key on the top edge: Settings, minimise, close (green).
+export component HKey inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> green;
+    callback clicked;
+    width: 26px;
+    height: 20px;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Step4 {
+        fill: root.green ? Pk.key : Pk.sh3;
+        hi: t.pressed ? (root.green ? Pk.key-lo : Pk.hkey-lo) : root.green ? Pk.key-hi : Pk.hkey-hi;
+        lo: root.green ? Pk.key-lo : Pk.hkey-lo;
+        lo-h: t.pressed ? 2px : 4px;
+    }
+    Px {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 - (t.pressed ? 0 : 1px);
+        source: root.icon;
+        s: 1.5;
+        colorize: root.green ? (t.has-hover ? #e4edb0 : Pk.l0) : t.has-hover ? #e6e8da : Pk.sh0;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.label, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// The top edge: the moulded logo, the model name, Settings, minimise and close.
+export component Title inherits Rectangle {
+    // The other pages have no Settings key.
+    in property <bool> gear: true;
+    callback go(int);
+    height: 36px;
+    WindowMoveArea {
+        width: 100%;
+        height: 100%;
+    }
+    HorizontalLayout {
+        padding-top: 6px;
+        padding-left: 16px;
+        padding-right: 14px;
+        spacing: 10px;
+        Rectangle {
+            width: logo.preferred-width;
+            Text {
+                x: 0;
+                y: (parent.height - self.height) / 2 + 2px;
+                text: logo.text;
+                color: Pk.sh0;
+                font-family: Pk.big;
+                font-size: 30px;
+                letter-spacing: 1px;
+                accessible-role: none;
+            }
+            logo := Text {
+                x: 0;
+                y: (parent.height - self.height) / 2;
+                text: "THRASHER";
+                color: Pk.sh3;
+                font-family: Pk.big;
+                font-size: 30px;
+                letter-spacing: 1px;
+            }
+        }
+        Small {
+            y: 3px;
+            text: "POCKET REC";
+            color: Pk.sh2;
+            horizontal-stretch: 1;
+            overflow: elide;
+            accessible-role: none;
+        }
+        if root.gear: VerticalLayout {
+            alignment: center;
+            HKey { icon: @image-url("px-pocket/gear.png"); label: "Settings"; clicked => { root.go(3); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            HKey { icon: @image-url("px-pocket/min.png"); label: "Minimize"; clicked => { Main.minimize-window(); } }
+        }
+        VerticalLayout {
+            alignment: center;
+            HKey { icon: @image-url("px-pocket/close.png"); label: "Close"; green: true; clicked => { Main.close-window(); } }
+        }
+    }
+}
+
+// The row above the LCD: the power LED, PWR, a dotted rule, LCD and a short rule.
+export component SurTop inherits HorizontalLayout {
+    height: 14px;
+    spacing: 6px;
+    VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: 6px;
+            height: 6px;
+            background: Pk.l0;
+            Rectangle { x: -2px; y: -2px; width: 10px; height: 2px; background: #22291a; }
+            Rectangle { x: -2px; y: 6px; width: 10px; height: 2px; background: #22291a; }
+            Rectangle { x: -2px; y: 0; width: 2px; height: 6px; background: #22291a; }
+            Rectangle { x: 6px; y: 0; width: 2px; height: 6px; background: #22291a; }
+        }
+    }
+    Small { text: "PWR"; color: Pk.sur-ink; accessible-role: none; }
+    Rectangle {
+        horizontal-stretch: 1;
+        Tile { y: (parent.height - 2px) / 2; height: 2px; source: @image-url("px-pocket/rule-sur.png"); }
+    }
+    Small { text: "LCD"; color: Pk.sur-ink; accessible-role: none; }
+    Rectangle {
+        width: 24px;
+        Tile { y: (parent.height - 2px) / 2; height: 2px; source: @image-url("px-pocket/rule-sur.png"); }
+    }
+}
+
+// A key label under a key: an optional big letter, then small caps, lit from above.
+export component KeyLabel inherits Rectangle {
+    in property <string> letter;
+    in property <string> text;
+    width: row.preferred-width;
+    height: 12px;
+    row := HorizontalLayout {
+        spacing: 3px;
+        if root.letter != "": Rectangle {
+            width: letter.preferred-width;
+            Text {
+                y: (parent.height - self.height) / 2 + 1px;
+                text: root.letter;
+                color: Pk.sh0;
+                font-family: Pk.big;
+                font-size: 20px;
+                accessible-role: none;
+            }
+            letter := Text {
+                y: (parent.height - self.height) / 2;
+                text: root.letter;
+                color: Pk.sh3;
+                font-family: Pk.big;
+                font-size: 20px;
+                accessible-role: none;
+            }
+        }
+        Rectangle {
+            width: word.preferred-width;
+            Small {
+                y: 1px + (root.letter != "" ? 2px : 0);
+                height: parent.height;
+                text: root.text;
+                color: Pk.sh0;
+                accessible-role: none;
+            }
+            word := Small {
+                y: root.letter != "" ? 2px : 0;
+                height: parent.height;
+                text: root.text;
+                color: Pk.sh3;
+                accessible-role: none;
+            }
+        }
+    }
+}
+
+// A round rubber key (A and B): the key art at 4x over its shadow, the icon on it, the
+// label under it. It sinks a pixel when pressed.
+export component RoundKey inherits Rectangle {
+    in property <image> key;
+    in property <image> icon;
+    in property <string> letter;
+    in property <string> word;
+    in property <string> label;
+    in property <string> tip: root.label;
+    // Off: faded and silent, a key the page has no use for. Lit: held down.
+    in property <bool> off;
+    in property <bool> lit;
+    in property <float> s: 4;
+    callback clicked;
+    property <length> u: max(1, round(root.s * 1px / 1phx)) * 1phx;
+    out property <length> d: art.width;
+    width: max(self.d, lab.width);
+    height: self.d + 8px + lab.height;
+    accessible-role: button;
+    accessible-enabled: !root.off;
+    accessible-label: root.off ? "" : root.label;
+    accessible-action-default => { if (!root.off) { root.clicked(); } }
+    Px {
+        x: (parent.width - self.width) / 2;
+        y: root.lit ? root.u / 2 : root.u;
+        source: root.key;
+        s: root.s;
+        colorize: Pk.shade;
+        opacity: root.off ? 0.2 : 0.45;
+    }
+    art := Px {
+        x: (parent.width - self.width) / 2;
+        y: t.pressed || root.lit ? root.u / 2 : 0;
+        source: root.key;
+        s: root.s;
+        opacity: root.off ? 0.45 : 1;
+    }
+    Px {
+        x: (parent.width - self.width) / 2;
+        y: art.y + (art.height - self.height) / 2;
+        source: root.icon;
+        s: 2;
+        colorize: root.off ? Pk.l2 : t.has-hover || root.lit ? #e4edb0 : Pk.l0;
+        opacity: root.off ? 0.45 : 1;
+    }
+    lab := KeyLabel {
+        x: (parent.width - self.width) / 2;
+        y: root.d + 8px;
+        letter: root.letter;
+        text: root.word;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.d, self.d); }
+    t := TouchArea {
+        enabled: !root.off;
+        mouse-cursor: pointer;
+        width: root.d;
+        height: root.d;
+        x: (parent.width - self.width) / 2;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// A rubber pill (Ask, Widget) with its label under it.
+export component Pill inherits Rectangle {
+    in property <image> icon;
+    in property <string> word;
+    in property <string> label;
+    in property <string> tip;
+    in property <length> pill-w: 48px;
+    // Off: the dull grey pill with no word, which does nothing.
+    in property <bool> off;
+    callback clicked;
+    width: max(root.pill-w, lab.width);
+    height: 24px + 8px + lab.height;
+    accessible-role: button;
+    accessible-enabled: !root.off;
+    accessible-label: root.off ? "" : root.label;
+    accessible-action-default => { if (!root.off) { root.clicked(); } }
+    Step4 {
+        x: (parent.width - self.width) / 2;
+        y: t.pressed ? 2px : 0;
+        width: root.pill-w;
+        height: 24px;
+        fill: root.off ? #3a3d33 : Pk.key;
+        hi: root.off ? #4a4d42 : t.pressed ? Pk.key : Pk.key-hi;
+        lo: root.off ? #26281f : Pk.key-lo;
+        lo-h: t.pressed ? 2px : 4px;
+        Px {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2 - 1px;
+            source: root.icon;
+            s: 2;
+            colorize: root.off ? #5c5f52 : t.has-hover ? #e4edb0 : Pk.l0;
+        }
+    }
+    lab := KeyLabel {
+        x: (parent.width - self.width) / 2;
+        y: 32px;
+        text: root.word;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, root.width, 24px); }
+    t := TouchArea {
+        enabled: !root.off;
+        mouse-cursor: pointer;
+        height: 24px;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}

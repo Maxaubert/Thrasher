@@ -125,7 +125,8 @@ theme "Desktop 95", index 10 in `Theme.names`), art in `ui/skins/dv-os95/`, font
 and VT323 (the same `VT323-400.ttf` as Phosphor: its Latin subset covers the ASCII this
 skin needs, with the same outlines and metrics).
 - `Theme.pages` says how the other pages are built: 1 for Tape Deck, 2 for Phosphor, 3 for
-  Desktop 95, 4 for the Comic Book, 5 for Spatial Glass and 6 for the Car Dashboard (each
+  Desktop 95, 4 for the Comic Book, 5 for Spatial Glass, 6 for the Car Dashboard and 7 for
+  Pocket (each
   since its pages were built), else 0, the classic pages in the theme's palette. A skin
   whose other pages are not built yet keeps them classic this way; `app.slint` picks the main page by `Theme.skin` and the rest by
   `Theme.pages`. Desktop 95's palette is grey and navy for those pages.
@@ -402,6 +403,99 @@ used). Its other pages are the classic ones in a green LCD palette (`Theme.pages
   vs 44.3 MB and 53.1 vs 52.0 MB.
 - Exe +1.89 MB (55.54 to 57.43 MB): fonts 34 KB, art 3 KB, the rest generated code. Ember,
   Tape Deck and Phosphor main pages at 520x700 and 1100x700 match before and after.
+
+**Built in step 5, Pocket on every other page (2026-10-31):** mockups in
+`docs/mockups/device-themes/px-pocket-pages/` (approved by Max 2026-10-31, widget variant A, the
+bezel keys act).
+- `ui/skins/px-pocket-parts.slint`: the parts the main page and the other pages share, moved out
+  of `px-pocket.slint` with no visible change (`Px`, `Tile`, `Step4`, `Step8`, `Outline`,
+  `Small`, `Big`, `HKey`, `Title` (now with `gear`), `SurTop`, `KeyLabel`, `RoundKey` (now
+  with `off`, `lit` and `s`), `Pill` (now with `off`)). The colours (`Pk`) moved to
+  `common.slint` with `PkIcons` (pixel icons by name), `PkPx`, `PkTile` and `PkRing`, so the
+  shared widgets can draw the LCD look.
+- `ui/skins/px-pocket-pages.slint`: `ClipPage`, `SettingsPage`, `ModelsPage`, `MergePage`,
+  `AskPage`, `Widget`, `Dialog`, `Speaking` and `Drop`, picked in `app.slint` by
+  `Theme.pages == 7` (`Theme.pocket`). Every page is the handheld (`Shell`): the shell, the
+  top edge without the Settings key, the surround and the page on the LCD, and the `Bezel`,
+  which puts the keys exactly where the main page has them. The keys act: A does the page's
+  main thing (Play or Pause on the clip page, Merge, Ask), B goes back ("Back to Clips" on
+  the clip page, with the unsaved-changes question while editing), the pills are Rename and
+  Delete on the clip page, and a key a page has no use for is faded, unlabelled and silent
+  (`accessible-enabled` false). The D pad skips 5 s back or forward on the clip page (its left
+  and right halves, "Back 5 seconds" and "Forward 5 seconds" for screen readers), as the arrow
+  keys do there; it is faded elsewhere. A on Merge and Ask stays dim until there is a name or
+  a question, and is held down while it runs. Merge and Ask lost their LCD Merge and Ask keys
+  to A (Enter in the field still works); Cancel stays in the merge footer.
+- A question (`Dialog`) and Speaking new words draw the bezel again over the page
+  (`Bezel.cover`): A takes the answer's word and icon (a bin for Delete), B is Cancel, the
+  rest are faded; the LCD under the window is a dither (`dimL`, `dimD`), the window has a dark
+  title bar (a single clip's name in a light box), and its LCD keys carry the letters A and B.
+  Drop to import is a dashed dither field in the LCD with the big import sprite.
+- The shared widgets draw the LCD look when `Theme.pocket` is set, so the main page's menus
+  and questions take it too: `Btn` (LCD key, a dark ring with a mid green foot; the main action
+  dark, Delete with a light inner ring; held down while on), `IconBtn` (small key with a pixel
+  icon from `PkIcons`), `Toggle` (the two cell OFF ON switch), `Select` (the dark picker; its
+  list an LCD window, the current and hovered rows dark with the arrow cursor and a check),
+  `MenuCard` (an LCD window with a dark ring and a mid green hard shadow), `MenuRow` and
+  `ExportItem` (Jersey rows, dark with the arrow cursor under the pointer, the current one mid
+  green; icons before the project actions and Delete), `MenuRule` (a dotted rule),
+  `MenuGroup` (AUDIO and TRANSCRIPT on a mid green band, new `MenuBand`), `ShortcutBox` (small
+  LCD key caps, PRESS THE KEYS on a dark tag), `ExportButton` (the dark key with the up arrow, a
+  dithered bar while exporting, then a check and Done), `OrderList` (grip, the place on a dark
+  tag, a play key, a pixel wave, the length and an x; the parts with their note and dots; a
+  dragged row lifts dark with a hard shadow over a mid green frame), `TranscriptCard` (the key
+  rail, TYPING and the change count as dark tags, a double edged text box and a block caret
+  while editing, Jersey text, the spoken word dark), `Scroller.pk-rail` (a dither rail with a
+  dark thumb), `Tip` (a dark tag with a light edge) and the gallery strips (`gallery.slint`:
+  2px dark frames, the current tile double framed with its name on a dark tag and a corner
+  flag, mid green for the focus, a dither scroll bar, no fades). `Theme.menu-h` is 22px for it.
+- Rust: the editor's pause tags are the LCD's mid green (#4e6127).
+- Art: 19 new pieces at 1x (pixel icons, the big drop sprite, the widget's 8px key and the
+  two dims), 2.0 KB, from `tools/skin-art/px-pocket.html` (`sh
+  tools/skin-art/cut.sh px-pocket OUT`, only the 1x cut is used); the old pieces cut again
+  identically. No new fonts.
+
+**Lessons from Pocket's other pages:**
+- **One shell for every page:** the pages inherit a `Shell` that draws the handheld and takes
+  the page as `@children` into its LCD, so each page only sets its key words (`KeySpec`) and
+  callbacks. The bezel positions are copied from the main page, not shared with it, so the
+  main page could not move; a question draws the same `Bezel` with `cover` over the page's
+  keys, which also blocks them while it is up.
+- **`accessible-role` must be a constant:** an off key keeps the button role and sets
+  `accessible-enabled: false` and an empty label instead.
+- **A hidden item in a layout still takes room, and a bound `width` pins it:** the menu's group
+  band (`MenuBand`) takes no room in the other looks through `max-width: 0px`, and the plain
+  group words take none in Pocket the same way; binding `width` to `self.preferred-width`
+  on a Rectangle whose children are placed by `x` gave 0 (the shelf chips): use
+  `preferred-width` and `min-width`, so a VerticalLayout can still stretch them.
+- **Cannot set both `width` and `max-width`:** the dropdown's line icon gives Pocket's pixel
+  arrow its room with `width: Theme.pocket ? 0 : ...`.
+- **Preview first:** a small wrapper with sample state set in `init` and `changed state`,
+  rendered with `slint-viewer --screenshot --load-data -I ui` on the hidden desktop, showed
+  every page at both sizes in seconds before the build; the transcript editor's text needs the
+  Rust markup callback, so it shows empty there.
+
+**Budgets measured on Pocket's other pages** (test copy, 2.25x display, 10 s samples,
+2026-10-31):
+- CPU idle 0.0 to 0.3% on every page at 520x700 and 1100x700 (Ember 0.0 to 0.6%). Nothing on
+  these pages moves on a clock.
+- Working set within 3 MB of Ember on every page, mostly under it: at 520x700 main 37.7
+  (38.2), one clip 160.4 (166.1), settings 54.1 (56.2), models 54.1 (56.3), Ask 66.1 (68.6), merge 67.9 (69.1),
+  widget 61.1 (63.7) MB; at 1100x700 main 45.6 (46.7), one clip 171.5 (168.6), settings 63.0
+  (64.2), models 65.3 (65.2), Ask 75.9 (76.9), merge 77.4 (78.5), widget 63.8 (64.7) MB.
+- Exe +17.49 MB (136.41 to 153.90 MB): the nine pages' generated code and the LCD look in
+  the shared widgets; art 2.0 KB, no fonts. About twice the Car Dashboard's (+8.77 MB): every
+  page and every question carries the whole handheld and its bezel. A candidate for the size
+  pass after the nine.
+- Ember, Tape Deck and Phosphor: every page, both menus, the export menu, the questions,
+  settings scrolled and the widget at 520x700 and 1100x700 match the build before pixel for
+  pixel (38 shots each), apart from a blinking text cursor and a scroll bar caught mid fade.
+  The Pocket main page matches too; its menus and questions take the new look.
+- Not verified headless: tooltips, a real file drop (the cover was shown with
+  `THRASHER_TEST_COVER`), speaking new words for real, a merged clip's parts, a download, Ask's
+  Thinking (the answer comes at once), and CPU while a clip plays. The shared page script's
+  "Menu for" key on the Pocket main page does not take a posted click (before this change too);
+  `pocket.sh` in the step's kit opens the menus with a right click on the row instead.
 
 **Built in step 5, Answering Machine main page (2026-10-29):** `ui/skins/dv-answer.slint`
 (skin 10, theme "Answering Machine", index 17 in `Theme.names`, after Pocket, Quest Menu and
@@ -1418,6 +1512,8 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      (A), flavour labels stay as in batch 1. Small mockup faults the builders fix: Quest widget
      A PAUSED label (class clash), Brick invalid-name panel squashed and the 2 key reading ASK
      (built page says ABC), Pinball wide Export position and portrait main-page overlaps.
+     Pocket built 2026-10-31 (`Theme.pages` 7, see "Built in step 5, Pocket on every other
+     page").
    - Size (Max, 2026-10-31): the nine would bring the exe to about 235 MB. Build all nine,
      then one size pass (palette PNGs, shared frames deduped) to pull it back toward 200 MB.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

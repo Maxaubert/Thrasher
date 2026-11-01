@@ -2563,6 +2563,9 @@ fn main() -> Result<(), slint::PlatformError> {
                     slint::Color::from_rgb_u8(0x4e, 0x61, 0x27)
                 } else if theme.get_quest() {
                     slint::Color::from_rgb_u8(0x56, 0xa8, 0xff)
+                } else if theme.get_answer() {
+                    // The Answering Machine prints them as small grey stamps.
+                    slint::Color::from_rgb_u8(0x86, 0x79, 0x5f)
                 } else {
                     theme.get_accent()
                 };

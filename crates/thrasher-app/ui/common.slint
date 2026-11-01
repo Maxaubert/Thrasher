@@ -266,9 +266,10 @@ export global Theme {
     // (skins/phosphor-pages.slint), 3 Desktop 95's (skins/dv-os95-pages.slint), 4 Comic Book's
     // (skins/x-comic-pages.slint), 5 Spatial Glass's (skins/x-spatial-pages.slint), 6 the Car
     // Dashboard's (skins/x-dash-pages.slint), 7 Pocket's (skins/px-pocket-pages.slint), 8 the Quest
-    // Menu's (skins/px-quest-pages.slint), 9 the Brick Phone's (skins/dv-brick-pages.slint), else
-    // 0, the classic pages in the theme's palette (also for skins whose pages are not built yet).
-    out property <int> pages: root.skin == 1 ? 1 : root.skin == 2 ? 2 : root.skin == 3 ? 3 : root.skin == 4 ? 4 : root.skin == 5 ? 5 : root.skin == 6 ? 6 : root.skin == 7 ? 7 : root.skin == 8 ? 8 : root.skin == 9 ? 9 : 0;
+    // Menu's (skins/px-quest-pages.slint), 9 the Brick Phone's (skins/dv-brick-pages.slint), 10 the
+    // Answering Machine's (skins/dv-answer-pages.slint), else 0, the classic pages in the theme's
+    // palette (also for skins whose pages are not built yet).
+    out property <int> pages: root.skin == 1 ? 1 : root.skin == 2 ? 2 : root.skin == 3 ? 3 : root.skin == 4 ? 4 : root.skin == 5 ? 5 : root.skin == 6 ? 6 : root.skin == 7 ? 7 : root.skin == 8 ? 8 : root.skin == 9 ? 9 : root.skin == 10 ? 10 : 0;
     // The Tape Deck skin: the shared widgets below draw their deck look for it.
     out property <bool> tape: root.skin == 1;
     // The Phosphor skin: the shared widgets below draw their terminal look for it.
@@ -276,7 +277,7 @@ export global Theme {
     // Desktop 95's pages: the shared widgets draw grey 95 bevels, checkboxes and menus.
     out property <bool> os95: root.pages == 3;
     // The height of a menu row: Desktop 95's and the Brick Phone's menus are tighter.
-    out property <length> menu-h: root.os95 || root.pocket || root.brick ? 22px : root.quest ? 27px : 34px;
+    out property <length> menu-h: root.os95 || root.pocket || root.brick ? 22px : root.quest ? 27px : root.answer ? 28px : 34px;
     // The space round a menu's rows: the Quest Menu's window frame is 9px.
     out property <length> menu-pad: root.quest ? 9px : 5px;
     // The Brick Phone's pages: the shared widgets draw ink on its amber LCD, menus as
@@ -295,6 +296,9 @@ export global Theme {
     out property <bool> pocket: root.pages == 7;
     // The Quest Menu's pages: the shared widgets draw pixel menu windows, keys and the glove.
     out property <bool> quest: root.pages == 8;
+    // The Answering Machine's pages: the shared widgets draw rubber keys, cream picker
+    // chips, slide switches and paper cards for it.
+    out property <bool> answer: root.pages == 10;
 }
 
 // Pocket's colours and fonts (docs/mockups/device-themes/px-pocket.html and
@@ -524,6 +528,152 @@ export component QLit inherits Rectangle {
         y: (parent.height - self.height) / 2;
         source: @image-url("skins/px-quest/hand.png");
     }
+}
+
+// The Answering Machine's colours (docs/mockups/device-themes/dv-answer.html and
+// dv-answer-pages/), here so the shared widgets can draw its look too.
+export global Am {
+    out property <color> print: #5b4f3d;
+    out property <color> print-soft: #86795f;
+    out property <color> logo: #6e624d;
+    out property <color> edge: #a89b7f;
+    out property <color> paper: #efe8d8;
+    out property <color> paper-line: #d6cab0;
+    out property <color> smoke: #1b1311;
+    out property <color> led: #ff4630;
+    // The unlit segments: the mockup's rgba(255,70,48,.09) on the smoked display.
+    out property <color> led-dim: #ff46301a;
+    out property <color> rec: #cf3c28;
+    out property <color> ink: #2f271e;
+    out property <color> ink2: #3c3227;
+    out property <color> key-ink: #ece4d8;
+    out property <color> rec-ink: #fff3ec;
+    out property <color> disp-ink: #d9b9ab;
+    out property <color> lab: #9f7f72;
+    out property <color> green: #7fd15a;
+    out property <color> amber: #ffb22e;
+    out property <color> bar-off: #3a2a24;
+    out property <color> wave: #8b7c63;
+    out property <brush> body: @linear-gradient(180deg, #e8dfcb 0%, #d9cfb9 30%, #bfb399 100%);
+    out property <brush> foot: @linear-gradient(180deg, #cfc4ac 0%, #bcb096 100%);
+    // The other pages: the smoked display's top colour, the paper's outline, the rule
+    // under a paper head, a lit row, the cream of a picker chip and of a label field.
+    out property <color> smoke2: #2a1d19;
+    out property <color> paper-edge: #b4a789;
+    out property <color> rule: #c9a99c;
+    out property <color> lit: #f6ddd2;
+    out property <color> chip-hi: #f3ecdc;
+    out property <color> chip-lo: #e1d7c1;
+    out property <color> chip-lip: #94876c;
+    out property <color> cream: #f6f0e2;
+    out property <color> name-ink: #3e3428;
+}
+
+// A body with a vertical gradient and round corners, which the software renderer cannot
+// draw in one piece (gradients ignore the corners): solid caps as tall as the corners at
+// the top and the bottom and a square gradient between them, starting and ending on the
+// caps' colours. The Answering Machine's rubber keys, picker chips and smoked displays.
+export component AmFace inherits Rectangle {
+    in property <color> top;
+    in property <color> bottom;
+    in property <length> r;
+    property <length> cap: min(root.height / 2, root.r);
+    Rectangle { x: 0; y: 0; width: parent.width; height: 2 * root.cap; border-radius: root.r; background: root.top; }
+    Rectangle { x: 0; y: parent.height - 2 * root.cap; width: parent.width; height: 2 * root.cap; border-radius: root.r; background: root.bottom; }
+    Rectangle {
+        x: 0;
+        y: root.cap;
+        width: parent.width;
+        height: max(0px, parent.height - 2 * root.cap);
+        background: @linear-gradient(180deg, root.top 0%, root.bottom 100%);
+    }
+}
+
+// The Answering Machine's rubber key, the face shifted down onto its lip while it is held
+// or latched. `kind`: 0 rubber, 1 red. The lip and the shadow hang under the key's box, as
+// the mockup's box-shadow does. Used by the shared widgets and the skin's pages.
+export component AmKey inherits Rectangle {
+    in property <int> kind;
+    in property <bool> down;
+    in property <bool> hover;
+    in property <bool> enabled: true;
+    in property <length> r: 9px;
+    in property <length> lip: 2.5px;
+    property <bool> red: root.kind == 1;
+    property <length> sink: root.down ? root.lip - 0.5px : 0;
+    Rectangle {
+        visible: !root.down;
+        x: 0;
+        y: root.lip + 1.5px;
+        width: parent.width;
+        height: parent.height;
+        border-radius: root.r;
+        background: #00000024;
+    }
+    Rectangle {
+        x: 0;
+        y: root.sink + (root.down ? 0.5px : root.lip);
+        width: parent.width;
+        height: parent.height;
+        border-radius: root.r;
+        background: !root.enabled ? (root.red ? #9b6458 : #57514a) : root.red ? #9a2617 : #2f2b27;
+    }
+    AmFace {
+        x: 0;
+        y: root.sink;
+        width: parent.width;
+        height: parent.height;
+        r: root.r;
+        top: !root.enabled ? (root.red ? #c98d80 : #7d766f) : root.red ? #e55a43 : #635c56;
+        bottom: !root.enabled ? (root.red ? #b9786a : #6d665f) : root.red ? #b8311f : #433d38;
+    }
+    Rectangle {
+        x: root.r * 0.7;
+        y: root.sink + 1px;
+        width: parent.width - root.r * 1.4;
+        height: 1px;
+        background: root.red ? #ffffff4d : #ffffff2e;
+    }
+    Rectangle {
+        visible: root.down;
+        x: 0;
+        y: root.sink;
+        width: parent.width;
+        height: parent.height;
+        border-radius: root.r;
+        background: #00000026;
+    }
+    Rectangle {
+        visible: root.hover && root.enabled && !root.down;
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        border-radius: root.r;
+        background: #ffffff14;
+    }
+}
+
+// The Answering Machine's cream picker chip: a 1px outline, a darker lip under it and a
+// white light along its top.
+export component AmChip inherits Rectangle {
+    in property <bool> hover;
+    in property <bool> focused;
+    in property <length> r: 6px;
+    Rectangle { x: -1px; y: 0.5px; width: parent.width + 2px; height: parent.height + 2px; border-radius: root.r + 1px; background: Am.chip-lip; }
+    Rectangle { x: -1px; y: -1px; width: parent.width + 2px; height: parent.height + 2px; border-radius: root.r + 1px; background: root.focused ? Am.rec : Am.edge; }
+    AmFace { x: 0; y: 0; width: parent.width; height: parent.height; r: root.r; top: Am.chip-hi; bottom: Am.chip-lo; }
+    Rectangle { x: root.r; y: 1px; width: parent.width - 2 * root.r; height: 1px; background: #ffffff; }
+    Rectangle { visible: root.hover; x: 0; y: 0; width: parent.width; height: parent.height; border-radius: root.r; background: #ffffff40; }
+}
+
+// The Answering Machine's smoked display: the dark glass with its sheen, in the beige
+// rim of the plastic.
+export component AmSmoke inherits Rectangle {
+    in property <length> r: 5px;
+    Rectangle { x: -1.5px; y: -1.5px; width: parent.width + 3px; height: parent.height + 3px; border-radius: root.r + 1.5px; background: #a39679; }
+    AmFace { x: 0; y: 0; width: parent.width; height: parent.height; r: root.r; top: Am.smoke2; bottom: Am.smoke; }
+    Rectangle { x: root.r; y: 0; width: parent.width - 2 * root.r; height: 2px; background: #00000059; }
 }
 
 // Desktop 95's colours (docs/mockups/device-themes/dv-os95.html and dv-os95-pages/), here so
@@ -1026,10 +1176,11 @@ export component MenuCard inherits Rectangle {
     // moved right by `title-indent` for an icon drawn before it.
     in property <string> title;
     in property <length> title-indent;
-    background: Theme.tape || Theme.comic || Theme.pocket || Theme.quest ? transparent : Theme.brick ? Brick.lcd1 : Theme.phos ? Ph.bg2 : Theme.os95 ? (root.list ? #ffffff : Os.face) : Theme.glass ? Glass.menu : Theme.dash ? #171b21 : root.sub ? Theme.raised : Theme.popup;
-    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.glass ? 18px : Theme.dash ? 12px : 10px;
+    // Answering Machine: a card of message paper.
+    background: Theme.tape || Theme.comic || Theme.pocket || Theme.quest ? transparent : Theme.brick ? Brick.lcd1 : Theme.phos ? Ph.bg2 : Theme.os95 ? (root.list ? #ffffff : Os.face) : Theme.glass ? Glass.menu : Theme.dash ? #171b21 : Theme.answer ? Am.paper : root.sub ? Theme.raised : Theme.popup;
+    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.glass ? 18px : Theme.dash ? 12px : Theme.answer ? 6px : 10px;
     border-width: Theme.tape || Theme.comic || Theme.pocket || Theme.quest ? 0 : Theme.os95 ? (root.list ? 1px : 0) : Theme.brick ? 2px : 1px;
-    border-color: Theme.os95 ? #000000 : Theme.phos ? Ph.ph : Theme.glass ? #ffffff57 : Theme.dash ? #ffffff33 : Theme.edge;
+    border-color: Theme.os95 ? #000000 : Theme.phos ? Ph.ph : Theme.glass ? #ffffff57 : Theme.dash ? #ffffff33 : Theme.answer ? Am.chip-lip : Theme.edge;
     drop-shadow-blur: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : 20px;
     // Brick Phone: the double frame and the title bar.
     BrickMenuFrame {
@@ -1124,7 +1275,7 @@ export global Fx {
 export component Icon inherits Path {
     in property <string> name;
     in property <color> tint: Theme.text;
-    in property <bool> solid: name == "play" || name == "pause" || name == "stop" || name == "dots" || name == "grip" || name == "dot";
+    in property <bool> solid: name == "play" || name == "pause" || name == "stop" || name == "dots" || name == "grip" || name == "dot" || name == "rew" || name == "ff";
     width: 14px;
     height: 14px;
     viewbox-width: 24;
@@ -1174,6 +1325,11 @@ export component Icon inherits Path {
         : name == "eject" ? "M 5 14 L 12 6 L 19 14 Z M 5 18 L 19 18"
         // Spatial Glass.
         : name == "loop" ? "m17 2 4 4-4 4 M3 11v-1a4 4 0 0 1 4-4h14 M7 22l-4-4 4-4 M21 13v1a4 4 0 0 1-4 4H3"
+        // Answering Machine.
+        : name == "rew" ? "M 11 6 L 11 18 L 3 12 Z M 21 6 L 21 18 L 13 12 Z"
+        : name == "ff" ? "M 13 6 L 13 18 L 21 12 Z M 3 6 L 3 18 L 11 12 Z"
+        : name == "tape" ? "M 3 6 L 21 6 L 21 18 L 3 18 Z M 10.5 12 A 2 2 0 1 1 6.5 12 A 2 2 0 1 1 10.5 12 Z M 17.5 12 A 2 2 0 1 1 13.5 12 A 2 2 0 1 1 17.5 12 Z M 10.5 12 L 13.5 12 M 6 18 L 7.5 15.5 L 16.5 15.5 L 18 18"
+        : name == "warn" ? "M 12 4 L 21 20 L 3 20 Z M 12 10 L 12 14.5 M 12 17.2 L 12 17.3"
         : "";
 }
 
@@ -1197,10 +1353,11 @@ export component Tip inherits Rectangle {
     Rectangle { visible: Theme.comic; background: Comic.yellow; border-width: 2.2px; border-color: Comic.ink; }
     // Pocket: a dark LCD tag with a light edge.
     // Brick Phone: a small amber label with an ink frame.
-    background: Theme.tape || Theme.comic ? transparent : Theme.pocket ? Pk.l3 : Theme.quest ? Quest.ink : Theme.brick ? Brick.lcd1 : Theme.phos ? Ph.bg2 : Theme.os95 ? Os.tip : Theme.glass ? #1e1c24eb : Theme.dash ? #20262e : Theme.popup.with-alpha(0.95);
-    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.glass ? self.height / 2 : 7px;
+    // Answering Machine: a small paper slip.
+    background: Theme.tape || Theme.comic ? transparent : Theme.pocket ? Pk.l3 : Theme.quest ? Quest.ink : Theme.brick ? Brick.lcd1 : Theme.phos ? Ph.bg2 : Theme.os95 ? Os.tip : Theme.glass ? #1e1c24eb : Theme.dash ? #20262e : Theme.answer ? Am.paper : Theme.popup.with-alpha(0.95);
+    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.glass ? self.height / 2 : Theme.answer ? 4px : 7px;
     border-width: Theme.tape || Theme.comic ? 0 : Theme.brick ? 2px : Theme.pocket ? 2px : Theme.quest ? 3px : 1px;
-    border-color: Theme.pocket ? Pk.l0 : Theme.quest ? Quest.gold : Theme.phos ? Ph.ph : Theme.os95 ? #000000 : Theme.glass ? #ffffff42 : Theme.dash ? #ffffff33 : Theme.popup-edge;
+    border-color: Theme.pocket ? Pk.l0 : Theme.quest ? Quest.gold : Theme.phos ? Ph.ph : Theme.os95 ? #000000 : Theme.glass ? #ffffff42 : Theme.dash ? #ffffff33 : Theme.answer ? #8d8168 : Theme.popup-edge;
     drop-shadow-blur: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : 14px;
     drop-shadow-offset-y: 4px;
     drop-shadow-color: #00000099;
@@ -1215,11 +1372,11 @@ export component Tip inherits Rectangle {
         padding-bottom: Theme.os95 ? 2px : Theme.comic || Theme.quest ? 4px : Theme.pocket ? 4px : Theme.brick ? 2px : 5px;
         Text {
             text: root.text;
-            color: Theme.pocket ? Pk.l0 : Theme.tape ? Deck.ink : Theme.phos ? Ph.hi : Theme.os95 ? #000000 : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.dash ? #eef2f6 : Theme.quest ? Quest.white : Theme.text2;
-            font-family: Theme.pocket ? Pk.small : Theme.tape ? "Oswald" : Theme.comic ? "Comic Neue" : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.dash ? "Manrope" : Theme.quest ? Quest.font : Theme.brick ? Brick.words : "Inter Tight";
+            color: Theme.pocket ? Pk.l0 : Theme.tape ? Deck.ink : Theme.phos ? Ph.hi : Theme.os95 ? #000000 : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.dash ? #eef2f6 : Theme.quest ? Quest.white : Theme.answer ? Am.ink : Theme.text2;
+            font-family: Theme.pocket ? Pk.small : Theme.tape ? "Oswald" : Theme.comic ? "Comic Neue" : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.dash ? "Manrope" : Theme.answer ? "Barlow Condensed" : Theme.quest ? Quest.font : Theme.brick ? Brick.words : "Inter Tight";
             font-size: Theme.pocket ? 8px : Theme.tape || Theme.phos || Theme.glass ? 11.5px : Theme.dash ? 11px : Theme.brick ? 16px : Theme.quest ? 13px : 12px;
-            font-weight: Theme.os95 || Theme.pocket || Theme.quest ? 400 : Theme.comic ? 700 : Theme.dash ? 700 : 500;
-            letter-spacing: Theme.tape ? 0.6px : Theme.pocket ? 1px : 0;
+            font-weight: Theme.os95 || Theme.pocket || Theme.quest ? 400 : Theme.comic ? 700 : Theme.dash || Theme.answer ? 700 : 500;
+            letter-spacing: Theme.tape ? 0.6px : Theme.pocket ? 1px : Theme.answer ? 1.2px : 0;
         }
     }
 }
@@ -1245,21 +1402,21 @@ export component Btn inherits Rectangle {
     height: 36px;
     // At least this wide (the 95 message box keys are 74px).
     in property <length> least;
-    min-width: Theme.phos ? (root.key != "" ? ph-key.preferred-width + 6px : ph-word.preferred-width + 22px) : max(root.least, Theme.os95 ? os-label.preferred-width + 16px : Theme.pocket ? pk-word.preferred-width + 16px : Theme.quest ? q-word.preferred-width + 20px : label.preferred-width + (Theme.tape ? 24px : Theme.glass ? 30px : Theme.comic ? 20px : Theme.dash ? 28px : Theme.brick ? 16px : 26px));
+    min-width: Theme.phos ? (root.key != "" ? ph-key.preferred-width + 6px : ph-word.preferred-width + 22px) : max(root.least, Theme.os95 ? os-label.preferred-width + 16px : Theme.pocket ? pk-word.preferred-width + 16px : Theme.quest ? q-word.preferred-width + 20px : Theme.answer ? am-word.preferred-width + 24px : label.preferred-width + (Theme.tape ? 24px : Theme.glass ? 30px : Theme.comic ? 20px : Theme.dash ? 28px : Theme.brick ? 16px : 26px));
     // Car Dashboard: a glass pill; the main one ice, Delete red.
     border-radius: Theme.tape || Theme.os95 || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.glass ? self.height / 2 : Theme.dash ? self.height / 2 : 9px;
     // Spatial Glass: a glass pill; the main action white, deleting and merging red.
     // Brick Phone: an LCD button in an ink frame, inverted for the main action.
-    background: Theme.tape || Theme.comic || Theme.phos || Theme.pocket || Theme.quest ? transparent
+    background: Theme.tape || Theme.comic || Theme.phos || Theme.pocket || Theme.quest || Theme.answer ? transparent
         : Theme.brick ? (primary || on ? Brick.ink : t.has-hover && enabled ? Brick.ghost : transparent)
         : Theme.os95 ? Os.face
         : Theme.glass ? (primary ? (root.red ? (t.has-hover && enabled ? #ff6371 : Glass.rec) : (t.has-hover && enabled ? #ffffff : #ececf2))
             : on ? #ffffff59 : t.has-hover && enabled ? #ffffff3d : #ffffff29)
         : Theme.dash ? (primary && red ? (t.has-hover && enabled ? #ff6b78 : #ff4d5e) : primary ? (t.has-hover && enabled ? Theme.accent-hover : Theme.accent) : on ? #62d2ff1f : t.has-hover && enabled ? #1f252d : #181d23)
         : primary ? (t.has-hover && enabled ? Theme.accent-hover : Theme.accent) : (t.has-hover && enabled ? Theme.raised : transparent);
-    border-width: Theme.glass ? 1px : Theme.brick ? 2px : primary || Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest ? 0 : 1px;
+    border-width: Theme.glass ? 1px : Theme.brick ? 2px : primary || Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.answer ? 0 : 1px;
     border-color: Theme.glass ? (primary ? (root.red ? #ffffff73 : #ffffff) : on ? #ffffffb3 : #ffffff4d) : on ? Theme.accent : Theme.dash ? #ffffff1f : Theme.edge;
-    opacity: enabled || Theme.tape || Theme.os95 || Theme.pocket || Theme.quest ? 1 : Theme.comic ? 0.45 : Theme.glass || Theme.brick ? 0.38 : 0.4;
+    opacity: enabled || Theme.tape || Theme.os95 || Theme.pocket || Theme.quest || Theme.answer ? 1 : Theme.comic ? 0.45 : Theme.glass || Theme.brick ? 0.38 : 0.4;
     // Pocket: an LCD key, a dark ring with a mid green band along its foot; the main
     // action dark (Delete with a light inner ring), held down and dark while on, pale when
     // off.
@@ -1309,6 +1466,45 @@ export component Btn inherits Rectangle {
         color: !root.enabled ? Quest.dim : root.primary && (root.red || root.danger) ? Quest.white : root.primary || root.on ? Quest.gold : root.danger || root.red ? Quest.lred : Quest.white;
         font-family: Quest.font;
         font-size: root.height < 26px ? 13px : 14px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    // Answering Machine: a rubber key, red for the main action and for deleting, held
+    // down while it is on (with an amber lamp), grey when off.
+    property <bool> am-down: (t.pressed && t.has-hover && root.enabled) || root.on;
+    AmKey {
+        visible: Theme.answer;
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        kind: root.primary || root.red ? 1 : 0;
+        down: root.am-down;
+        hover: t.has-hover;
+        enabled: root.enabled;
+    }
+    Rectangle {
+        visible: Theme.answer && root.on;
+        x: parent.width - 11px;
+        y: 5px + (root.am-down ? 2px : 0);
+        width: 5px;
+        height: 5px;
+        border-radius: 2.5px;
+        background: Am.amber;
+    }
+    am-word := Text {
+        visible: Theme.answer;
+        x: 0;
+        y: root.am-down ? 2px : 0;
+        width: parent.width;
+        height: parent.height;
+        text: root.text.to-uppercase();
+        color: root.primary || root.red ? (root.enabled ? Am.rec-ink : #f0c9bf) : !root.enabled ? #8f877d : root.danger ? #ff8a72 : Am.key-ink;
+        font-family: "Barlow Condensed";
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 2px;
         horizontal-alignment: center;
         vertical-alignment: center;
         accessible-role: none;
@@ -1470,7 +1666,7 @@ export component Btn inherits Rectangle {
         background: #ffffff73;
     }
     label := Text {
-        visible: !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest;
+        visible: !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.answer;
         text: Theme.tape || Theme.comic ? root.text.to-uppercase() : root.text;
         color: Theme.glass ? (primary ? (root.red ? #ffffff : #211f28) : danger ? Glass.rec-hi : Glass.ink)
             : Theme.brick ? (primary || on ? Brick.lcd1 : Brick.ink)
@@ -1517,13 +1713,28 @@ export component IconBtn inherits Rectangle {
     // Spatial Glass: a round glass button, white while it is on.
     // Car Dashboard: a glass key, lit ice while it is on.
     // Brick Phone: a square LCD button in an ink frame with a pixel glyph, inverted while on.
-    background: Theme.tape || Theme.comic || Theme.pocket || Theme.quest ? transparent : Theme.phos ? (root.ph-lit ? Ph.ph : transparent) : Theme.os95 ? Os.face
+    background: Theme.tape || Theme.comic || Theme.pocket || Theme.quest || Theme.answer ? transparent : Theme.phos ? (root.ph-lit ? Ph.ph : transparent) : Theme.os95 ? Os.face
         : Theme.brick ? (filled || active ? Brick.ink : t.has-hover && enabled ? Brick.ghost : transparent)
         : Theme.glass ? (filled || active ? (t.has-hover ? #ffffff : #f0f0f5) : t.has-hover && enabled ? #ffffff3d : #ffffff26)
         : filled ? (t.has-hover ? Theme.accent-hover : Theme.accent)
         : Theme.dash ? (active ? #62d2ff1f : t.has-hover && enabled ? #1f252d : #181d23)
         : t.has-hover && enabled ? Theme.raised : transparent;
-    border-width: Theme.pocket ? 0 : Theme.quest ? 0 : Theme.glass ? 1px : Theme.brick ? 2px : (outlined || Theme.dash) && !Theme.tape && !filled ? 1px : outlined && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic ? 1px : 0;
+    border-width: Theme.pocket ? 0 : Theme.quest ? 0 : Theme.answer ? 0 : Theme.glass ? 1px : Theme.brick ? 2px : (outlined || Theme.dash) && !Theme.tape && !filled ? 1px : outlined && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic ? 1px : 0;
+    // Answering Machine: a rubber nub, red when filled, held down with an amber icon
+    // while it is on.
+    AmKey {
+        visible: Theme.answer;
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        r: root.round ? min(root.width, root.height) / 2 : 6px;
+        lip: 1.5px;
+        kind: root.filled ? 1 : 0;
+        down: root.active || (t.pressed && t.has-hover && root.enabled);
+        hover: t.has-hover;
+        enabled: root.enabled;
+    }
     border-color: Theme.glass ? (filled || active ? #ffffff : #ffffff4d) : Theme.dash ? (active ? #62d2ff59 : #ffffff1f) : Theme.edge;
     opacity: enabled || Theme.tape || Theme.os95 || Theme.pocket ? 1 : Theme.comic || Theme.quest ? 0.45 : Theme.brick ? 0.38 : 0.4;
     // Pocket: a small LCD key with a pixel icon, held down and dark while on, pale when
@@ -1664,7 +1875,9 @@ export component IconBtn inherits Rectangle {
     Icon {
         visible: !Theme.tape && !root.ph-keyed && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !(Theme.brick && brick-glyph.has);
         name: root.icon;
-        tint: Theme.phos ? (root.ph-lit ? Ph.bg : Ph.hi) : Theme.glass ? (root.filled || root.active ? #1d1b24 : Glass.ink) : t.has-hover && !root.filled && !root.active ? Theme.text : root.tint;
+        tint: Theme.phos ? (root.ph-lit ? Ph.bg : Ph.hi) : Theme.glass ? (root.filled || root.active ? #1d1b24 : Glass.ink)
+            : Theme.answer ? (root.active ? Am.amber : root.filled ? Am.rec-ink : #e7dfd2)
+            : t.has-hover && !root.filled && !root.active ? Theme.text : root.tint;
         width: root.icon-size;
         height: root.icon-size;
     }
@@ -1718,8 +1931,8 @@ export component Toggle inherits Rectangle {
     property <bool> on: root.checked && root.enabled;
     property <bool> ph-keyed: Theme.phos && root.key != "";
     property <bool> ph-key-lit: root.on || (ph-t.has-hover && root.enabled);
-    width: Theme.quest ? (root.lamp ? 15px : q-pair.preferred-width) : Theme.os95 ? 13px + (root.caption != "" ? 6px + cap.preferred-width : 0) : Theme.tape ? 53px : Theme.glass ? 40px : Theme.comic ? 42px : root.ph-keyed ? ph-key.preferred-width + 6px : Theme.phos ? 44px : Theme.pocket ? 44px : Theme.brick ? 40px : 38px;
-    height: Theme.quest ? (root.lamp ? 15px : 18px) : Theme.os95 ? 16px : Theme.tape ? 18px : Theme.phos ? 20px : Theme.glass ? 24px : Theme.pocket ? 18px : Theme.brick ? 15px : 22px;
+    width: Theme.quest ? (root.lamp ? 15px : q-pair.preferred-width) : Theme.os95 ? 13px + (root.caption != "" ? 6px + cap.preferred-width : 0) : Theme.tape ? 53px : Theme.glass ? 40px : Theme.comic ? 42px : root.ph-keyed ? ph-key.preferred-width + 6px : Theme.phos ? 44px : Theme.pocket ? 44px : Theme.brick ? 40px : Theme.answer ? 58px : 38px;
+    height: Theme.quest ? (root.lamp ? 15px : 18px) : Theme.os95 ? 16px : Theme.tape ? 18px : Theme.phos ? 20px : Theme.glass ? 24px : Theme.pocket ? 18px : Theme.brick ? 15px : Theme.answer ? 16px : 22px;
     border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.glass ? 12px : 11px;
     // Pocket: a two cell OFF ON switch in a dark ring, the live cell dark; pale when off.
     Rectangle {
@@ -1762,10 +1975,10 @@ export component Toggle inherits Rectangle {
     // Car Dashboard: a blue track with a white knob when on, a dark one with a grey knob
     // when off.
     // Brick Phone: an OFF ON pair in an ink frame, the live side inverted.
-    background: Theme.tape || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick ? transparent : Theme.phos ? (on || (root.ph-keyed && ph-t.has-hover && root.enabled) ? Ph.ph : transparent) : Theme.comic ? (on ? Comic.yellow : #ffffff) : Theme.glass ? (on ? #5ae49c : #00000047) : on ? (Theme.dash ? #3a8dff : Theme.accent) : Theme.track;
+    background: Theme.tape || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.answer ? transparent : Theme.phos ? (on || (root.ph-keyed && ph-t.has-hover && root.enabled) ? Ph.ph : transparent) : Theme.comic ? (on ? Comic.yellow : #ffffff) : Theme.glass ? (on ? #5ae49c : #00000047) : on ? (Theme.dash ? #3a8dff : Theme.accent) : Theme.track;
     border-width: Theme.pocket ? 0 : Theme.quest ? 0 : Theme.dash ? (on ? 0 : 1px) : Theme.glass ? 1px : Theme.comic ? 2.5px : Theme.brick ? 2px : Theme.phos && !root.ph-keyed && !root.on ? 1px : 0;
     border-color: Theme.dash ? #ffffff1f : Theme.glass ? (on ? #ffffff73 : #ffffff33) : Theme.comic ? Comic.ink : Theme.brick ? Brick.ink : Ph.dim;
-    opacity: root.enabled || Theme.os95 || Theme.pocket ? 1 : Theme.comic || Theme.quest ? 0.4 : Theme.brick ? 0.38 : 0.45;
+    opacity: root.enabled || Theme.os95 || Theme.pocket ? 1 : Theme.comic || Theme.quest ? 0.4 : Theme.brick ? 0.38 : Theme.answer ? 0.5 : 0.45;
     // Quest Menu: ON and OFF side by side, the current one gold with the cursor before it.
     q-pair := HorizontalLayout {
         visible: Theme.quest && !root.lamp;
@@ -1836,6 +2049,53 @@ export component Toggle inherits Rectangle {
         font-family: Brick.caps;
         font-size: 7px;
         horizontal-alignment: center;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    // Answering Machine: a two way slide switch in a dark slot, its left half red while on,
+    // with ON or OFF printed beside it.
+    Rectangle {
+        visible: Theme.answer;
+        x: 0;
+        y: 0;
+        width: 34px;
+        height: 16px;
+        Rectangle { x: 0; y: 1px; width: parent.width; height: parent.height; border-radius: 3px; background: #ffffff8c; }
+        Rectangle { x: 0; y: 0; width: parent.width; height: parent.height; border-radius: 3px; background: #2a221d; }
+        Rectangle {
+            visible: root.on;
+            x: 0;
+            y: 0;
+            width: 17px;
+            height: parent.height;
+            border-top-left-radius: 3px;
+            border-bottom-left-radius: 3px;
+            background: #6b1a10;
+        }
+        Rectangle { x: 3px; y: 0; width: parent.width - 6px; height: 2px; background: #00000059; }
+        Rectangle {
+            x: root.on ? 17px : 2px;
+            y: 2px;
+            width: 15px;
+            height: 12px;
+            animate x { duration: 120ms; easing: ease-out; }
+            Rectangle { x: 0; y: 1px; width: parent.width; height: parent.height; border-radius: 2px; background: #00000080; }
+            AmFace { x: 0; y: 0; width: parent.width; height: parent.height; r: 2px; top: #efe7d6; bottom: #c9bea6; }
+            Rectangle { x: 2px; y: 0; width: parent.width - 4px; height: 1px; background: #ffffff; }
+            for g in 3: Rectangle { x: 5px + g * 2px; y: 3px; width: 1px; height: 6px; background: #9d917a; }
+        }
+    }
+    Text {
+        visible: Theme.answer;
+        x: 40px;
+        y: 0;
+        height: 16px;
+        text: root.on ? "ON" : "OFF";
+        color: root.on ? Am.rec : Am.print-soft;
+        font-family: "Barlow Condensed";
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 1.28px;
         vertical-alignment: center;
         accessible-role: none;
     }
@@ -1957,7 +2217,7 @@ export component Toggle inherits Rectangle {
         background: #0000003d;
     }
     knob := Rectangle {
-        visible: !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick;
+        visible: !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer;
         x: root.on ? root.width - self.width - 3px : 3px;
         y: 3px;
         width: Theme.glass ? 18px : 16px;
@@ -2006,16 +2266,17 @@ export component ExportItem inherits Rectangle {
     in property <int> num;
     callback clicked;
     height: Theme.menu-h;
-    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.glass ? 12px : Theme.dash ? 8px : 6px;
+    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.answer ? 0 : Theme.glass ? 12px : Theme.dash ? 8px : 6px;
     // Tape Deck: an amber highlighter stroke under the hovered line. Phosphor: the line in
     // inverted video, a star by the current format. Desktop 95: navy. Comic Book: a pale
     // yellow line, the current format yellow with a red edge. Car Dashboard: ice
-    // glass under the hovered line and the current format.
+    // glass under the hovered line and the current format. Answering Machine: the hovered
+    // line lit with a red edge, the current format in red.
     // Pocket: a dark row with the arrow cursor under the pointer, the current format mid
     // green.
     background: Theme.tape || Theme.quest ? transparent : Theme.pocket ? (t.has-hover ? Pk.l3 : root.current ? Pk.l1 : transparent) : Theme.dash ? (t.has-hover || root.current ? #62d2ff1f : transparent) : Theme.phos ? (t.has-hover ? Ph.ph : transparent) : Theme.os95 ? (t.has-hover ? Os.navy : transparent) : Theme.comic ? (root.current ? Comic.yellow : t.has-hover ? Comic.wash : transparent)
         : Theme.brick ? (t.has-hover ? Brick.ink : transparent)
-        : t.has-hover ? (Theme.glass ? Glass.lit : Theme.hover) : transparent;
+        : t.has-hover ? (Theme.glass ? Glass.lit : Theme.answer ? Am.lit : Theme.hover) : transparent;
     border-width: Theme.glass && t.has-hover ? 1px : 0;
     border-color: Glass.lit-edge;
     accessible-role: button;
@@ -2025,6 +2286,7 @@ export component ExportItem inherits Rectangle {
     Rectangle { visible: Theme.comic && root.current; x: 0; width: 4px; background: Comic.red; }
     // Quest Menu: the lit row with the glove; the current format in gold.
     QLit { visible: Theme.quest && t.has-hover; x: 0; y: 0; }
+    Rectangle { visible: Theme.answer && t.has-hover; x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
     Rectangle { visible: Theme.tape && t.has-hover; y: 7px; height: 20px; background: Deck.amber.with-alpha(0.5); }
     Rectangle {
         visible: Theme.tape && root.current;
@@ -2133,20 +2395,22 @@ export component ExportItem inherits Rectangle {
         spacing: 10px;
         Text {
             text: root.text;
-            color: Theme.pocket ? (t.has-hover ? Pk.l0 : Pk.l3) : Theme.tape ? Deck.ink : Theme.phos ? (t.has-hover ? Ph.bg : Ph.hi) : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.dash && root.current ? Theme.accent : t.has-hover || root.current ? Theme.text : Theme.text2;
-            font-family: Theme.pocket ? Pk.big : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : "Inter Tight";
-            font-size: Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.comic ? 13.5px : Theme.dash ? 12.5px : 13px;
-            font-weight: Theme.pocket ? 400 : Theme.dash ? 700 : Theme.comic ? 700 : root.current && !Theme.phos ? 600 : Theme.glass ? 500 : 400;
+            color: Theme.pocket ? (t.has-hover ? Pk.l0 : Pk.l3) : Theme.tape ? Deck.ink : Theme.phos ? (t.has-hover ? Ph.bg : Ph.hi) : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.dash && root.current ? Theme.accent
+                : Theme.answer ? (root.current ? Am.rec : Am.ink) : t.has-hover || root.current ? Theme.text : Theme.text2;
+            font-family: Theme.pocket ? Pk.big : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : "Inter Tight";
+            font-size: Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.comic ? 13.5px : Theme.dash || Theme.answer ? 12.5px : 13px;
+            font-weight: Theme.pocket ? 400 : Theme.dash || Theme.answer ? 700 : Theme.comic ? 700 : root.current && !Theme.phos ? 600 : Theme.glass ? 500 : 400;
             letter-spacing: Theme.tape ? 0.5px : 0;
             vertical-alignment: center;
             horizontal-stretch: 1;
         }
         Text {
-            text: Theme.comic || Theme.pocket ? root.tag.to-uppercase() : root.tag;
-            color: Theme.pocket ? (t.has-hover ? Pk.l1 : Pk.l2) : Theme.tape ? Deck.ink-soft : Theme.phos ? (t.has-hover ? Ph.bg2 : Ph.dim) : Theme.comic ? (root.current ? Comic.sub-on-yellow : Comic.sub) : Theme.glass ? Glass.ink3 : Theme.dim;
-            font-family: Theme.pocket ? Pk.small : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : Theme.glass ? "Inter Tight" : Theme.mono;
-            font-size: Theme.pocket ? 8px : Theme.tape ? 10.5px : Theme.comic ? 12px : 11px;
-            letter-spacing: Theme.comic || Theme.pocket ? 1px : 0;
+            text: Theme.comic || Theme.pocket || Theme.answer ? root.tag.to-uppercase() : root.tag;
+            color: Theme.pocket ? (t.has-hover ? Pk.l1 : Pk.l2) : Theme.tape ? Deck.ink-soft : Theme.phos ? (t.has-hover ? Ph.bg2 : Ph.dim) : Theme.comic ? (root.current ? Comic.sub-on-yellow : Comic.sub) : Theme.glass ? Glass.ink3 : Theme.answer ? Am.print-soft : Theme.dim;
+            font-family: Theme.pocket ? Pk.small : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : Theme.glass ? "Inter Tight" : Theme.answer ? "Barlow Condensed" : Theme.mono;
+            font-size: Theme.pocket ? 8px : Theme.tape ? 10.5px : Theme.comic ? 12px : Theme.answer ? 9px : 11px;
+            font-weight: Theme.answer ? 700 : 400;
+            letter-spacing: Theme.comic || Theme.pocket ? 1px : Theme.answer ? 1.44px : 0;
             vertical-alignment: center;
         }
     }
@@ -2166,7 +2430,7 @@ export component MenuRule inherits Rectangle {
         y: Theme.comic ? 3px : (parent.height - self.height) / 2;
         width: parent.width + (Theme.comic ? 4px : Theme.brick ? -8px : -20px);
         height: Theme.comic ? 2.5px : 1px;
-        background: Theme.tape ? #2a1c1240 : Theme.comic ? Comic.ink : Theme.glass ? Glass.rule : Theme.edge;
+        background: Theme.tape ? #2a1c1240 : Theme.comic ? Comic.ink : Theme.glass ? Glass.rule : Theme.answer ? Am.paper-line : Theme.edge;
     }
     // Quest Menu: a 3px blue rule across the window.
     Rectangle { visible: Theme.quest; x: 0; y: 3px; width: parent.width; height: 3px; background: Quest.sep; }
@@ -2240,11 +2504,11 @@ component MenuGroup inherits HorizontalLayout {
         visible: !Theme.comic && !Theme.pocket;
         text: Theme.pocket ? "" : root.text;
         max-width: Theme.pocket ? 0px : 100000px;
-        color: Theme.tape ? Deck.ink-soft : Theme.os95 ? Os.note : Theme.glass ? Glass.ink3 : Theme.dash ? #56606c : Theme.quest ? Quest.gold : Theme.dim;
-        font-family: Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.glass ? "Inter Tight" : Theme.dash ? "Manrope" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : Theme.mono;
-        font-size: Theme.tape || Theme.glass ? 9.5px : Theme.os95 ? 11px : Theme.dash ? 8.5px : Theme.brick ? 7px : 10px;
-        font-weight: Theme.glass ? 600 : Theme.dash ? 800 : 400;
-        letter-spacing: Theme.tape ? 1.7px : Theme.phos || Theme.glass ? 2px : Theme.os95 ? 1px : Theme.dash ? 2.2px : 0;
+        color: Theme.tape ? Deck.ink-soft : Theme.os95 ? Os.note : Theme.glass ? Glass.ink3 : Theme.dash ? #56606c : Theme.quest ? Quest.gold : Theme.answer ? Am.print-soft : Theme.dim;
+        font-family: Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.glass ? "Inter Tight" : Theme.dash ? "Manrope" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : Theme.answer ? "Barlow Condensed" : Theme.mono;
+        font-size: Theme.tape || Theme.glass ? 9.5px : Theme.os95 ? 11px : Theme.dash || Theme.answer ? 8.5px : Theme.brick ? 7px : 10px;
+        font-weight: Theme.glass ? 600 : Theme.dash ? 800 : Theme.answer ? 700 : 400;
+        letter-spacing: Theme.tape ? 1.7px : Theme.phos || Theme.glass ? 2px : Theme.os95 ? 1px : Theme.dash || Theme.answer ? 2.2px : 0;
         vertical-alignment: center;
     }
 }
@@ -2310,10 +2574,13 @@ export component MenuRow inherits Rectangle {
     in property <image> os-icon: Theme.os95 ? OsIcons.pick(root.icon) : @image-url("");
     property <bool> os-hot: (t.has-hover || root.lit) && root.enabled;
     height: Theme.menu-h;
-    border-radius: Theme.tape || Theme.os95 || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.glass ? 12px : Theme.dash ? 8px : 6px;
+    border-radius: Theme.tape || Theme.os95 || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.answer ? 0 : Theme.glass ? 12px : Theme.dash ? 8px : 6px;
     // Comic Book: a pale yellow line on hover; the open row and the current project
     // yellow with a red edge.
     property <bool> ink-lit: Theme.comic && root.enabled && (root.lit || root.checked);
+    // Answering Machine: the hovered row (and the row of an open submenu) lit with a red
+    // edge.
+    Rectangle { visible: Theme.answer && (t.has-hover || root.lit) && root.enabled; x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
     // Phosphor: the hovered line in inverted video (amber for Delete), the line of an open
     // submenu lit faintly, a star by the current choice.
     // Car Dashboard: ice glass under the hovered row and the row of an open submenu.
@@ -2324,7 +2591,7 @@ export component MenuRow inherits Rectangle {
         : Theme.phos ? (t.has-hover && root.enabled ? (root.danger ? Ph.amber : Ph.ph) : root.lit ? Ph.faint : transparent)
         : Theme.os95 || Theme.brick ? (root.os-hot ? (Theme.brick ? Brick.ink : Os.navy) : transparent)
         : Theme.comic ? (root.ink-lit ? Comic.yellow : t.has-hover && root.enabled ? Comic.wash : transparent)
-        : (t.has-hover || root.lit) && root.enabled ? (Theme.glass ? Glass.lit : (Theme.dash ? #62d2ff1f : Theme.hover)) : transparent;
+        : (t.has-hover || root.lit) && root.enabled ? (Theme.glass ? Glass.lit : Theme.dash ? #62d2ff1f : Theme.answer ? Am.lit : Theme.hover) : transparent;
     border-width: Theme.glass && (t.has-hover || root.lit) && root.enabled ? 1px : 0;
     border-color: Glass.lit-edge;
     Rectangle { visible: root.ink-lit; x: 0; width: 4px; background: Comic.red; }
@@ -2482,7 +2749,7 @@ export component MenuRow inherits Rectangle {
     if !Theme.os95 && !Theme.pocket && !Theme.quest && !Theme.brick: HorizontalLayout {
         padding-left: Theme.phos ? 8px : 10px;
         padding-right: 8px;
-        spacing: (Theme.tape || Theme.comic) && root.icon != "" ? 9px : Theme.phos ? 6px : 10px;
+        spacing: (Theme.tape || Theme.comic || Theme.answer) && root.icon != "" ? 9px : Theme.phos ? 6px : 10px;
         if Theme.phos: Text {
             width: 8px;
             text: root.checked ? "*" : "";
@@ -2492,9 +2759,9 @@ export component MenuRow inherits Rectangle {
             vertical-alignment: center;
             accessible-role: none;
         }
-        if (Theme.tape || Theme.comic) && root.icon != "": Icon {
+        if (Theme.tape || Theme.comic || Theme.answer) && root.icon != "": Icon {
             name: root.icon;
-            tint: Theme.comic ? (root.danger ? Comic.red : Comic.ink) : root.danger ? Deck.red : Deck.alu-ink;
+            tint: Theme.comic ? (root.danger ? Comic.red : Comic.ink) : Theme.answer ? (root.danger ? Am.rec : Am.print) : root.danger ? Deck.red : Deck.alu-ink;
             width: 13px;
             height: 13px;
             y: (parent.height - self.height) / 2;
@@ -2521,10 +2788,11 @@ export component MenuRow inherits Rectangle {
                 : Theme.comic ? (root.danger ? Comic.red : Comic.ink)
                 : Theme.glass ? (root.danger ? Glass.rec-hi : Glass.ink)
                 : Theme.dash ? (root.danger ? #ff8a95 : root.lit || (root.tile && root.checked) ? Theme.accent : Theme.text)
+                : Theme.answer ? (root.danger ? Am.rec : Am.ink)
                 : root.danger ? Theme.danger : t.has-hover ? Theme.text : Theme.text2;
-            font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? (root.caption ? "Bangers" : "Comic Neue") : Theme.dash ? "Manrope" : "Inter Tight";
-            font-size: Theme.phos ? 12.5px : Theme.comic ? (root.caption ? 15px : 13.5px) : Theme.dash ? 12.5px : 13px;
-            font-weight: Theme.comic ? (root.caption ? 400 : 700) : Theme.dash ? 700 : Theme.tape && root.checked ? 600 : Theme.glass ? (root.checked ? 600 : 500) : 400;
+            font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? (root.caption ? "Bangers" : "Comic Neue") : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : "Inter Tight";
+            font-size: Theme.phos ? 12.5px : Theme.comic ? (root.caption ? 15px : 13.5px) : Theme.dash || Theme.answer ? 12.5px : 13px;
+            font-weight: Theme.comic ? (root.caption ? 400 : 700) : Theme.dash || Theme.answer ? 700 : Theme.tape && root.checked ? 600 : Theme.glass ? (root.checked ? 600 : 500) : 400;
             letter-spacing: Theme.tape ? 0.5px : Theme.comic && root.caption ? 1px : 0;
             vertical-alignment: center;
             horizontal-stretch: 1;
@@ -2538,7 +2806,7 @@ export component MenuRow inherits Rectangle {
         }
         if root.checked && !Theme.phos: Icon {
             name: "check";
-            tint: Theme.tape ? Deck.red : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.accent;
+            tint: Theme.tape ? Deck.red : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? (root.enabled ? Am.rec : Am.print-soft) : Theme.accent;
             width: 13px;
             height: 13px;
             y: (parent.height - self.height) / 2;
@@ -2668,7 +2936,7 @@ export component ProjectMenu inherits Rectangle {
                         text: p;
                         os-icon: Theme.os95 ? @image-url("skins/dv-os95/folder.png") : @image-url("");
                         caption: true;
-                        icon: Theme.dash ? "folder" : "";
+                        icon: Theme.dash || Theme.answer ? "folder" : "";
                         tile: true;
                         checked: i == root.current;
                         clicked => { root.choose(i); popup.close(); }
@@ -2819,7 +3087,7 @@ export component ClipMenu inherits Rectangle {
                 if root.merge-count >= 2: MenuRow {
                     num: 1;
                     text: "Merge " + root.merge-count + " clips";
-                    icon: Theme.dash ? "list" : "";
+                    icon: Theme.dash || Theme.answer ? "list" : "";
                     changed hovered => { if (self.hovered) { root.sub = 0; } }
                     clicked => { root.merge(); menu.close(); }
                 }
@@ -2827,21 +3095,21 @@ export component ClipMenu inherits Rectangle {
                 MenuRow {
                     num: root.first + 1;
                     text: "Manage";
-                    icon: Theme.dash ? "chevron" : "";
+                    icon: Theme.dash || Theme.answer ? "chevron" : "";
                     changed hovered => { if (self.hovered) { root.sub = 0; } }
                     clicked => { root.open(); menu.close(); }
                 }
                 MenuRow {
                     num: root.first + 2;
                     text: "Rename";
-                    icon: Theme.dash ? "pencil" : "";
+                    icon: Theme.dash || Theme.answer ? "pencil" : "";
                     changed hovered => { if (self.hovered) { root.sub = 0; } }
                     clicked => { root.rename(); menu.close(); }
                 }
                 MenuRow {
                     num: root.first + 3;
                     text: "Export";
-                    icon: Theme.dash ? "export" : "";
+                    icon: Theme.dash || Theme.answer ? "export" : "";
                     more: true;
                     lit: root.sub == 1;
                     changed hovered => { if (self.hovered) { root.sub = 1; } }
@@ -2850,7 +3118,7 @@ export component ClipMenu inherits Rectangle {
                 if root.projects.length > 1: MenuRow {
                     num: root.first + 4;
                     text: "Move to";
-                    icon: Theme.dash ? "folder" : "";
+                    icon: Theme.dash || Theme.answer ? "folder" : "";
                     more: true;
                     lit: root.sub == 2;
                     changed hovered => { if (self.hovered) { root.sub = 2; } }
@@ -2860,7 +3128,7 @@ export component ClipMenu inherits Rectangle {
                 MenuRow {
                     num: root.first + (root.projects.length > 1 ? 5 : 4);
                     text: "Delete";
-                    icon: Theme.dash || Theme.pocket || Theme.brick ? "trash" : "";
+                    icon: Theme.dash || Theme.pocket || Theme.brick || Theme.answer ? "trash" : "";
                     danger: true;
                     changed hovered => { if (self.hovered) { root.sub = 0; } }
                     clicked => { root.delete(); menu.close(); }
@@ -2895,7 +3163,7 @@ export component ClipMenu inherits Rectangle {
                         num: i + 1;
                         text: p;
                         checked: i == root.project;
-                        icon: Theme.dash ? "folder" : "";
+                        icon: Theme.dash || Theme.answer ? "folder" : "";
                         tile: true;
                         enabled: i != root.project;
                         clicked => { root.move-to(i); menu.close(); }
@@ -3162,18 +3430,49 @@ export component ExportButton inherits Rectangle {
     // 1 while exporting, filling with `progress`; 2 for a moment when done.
     in property <int> state;
     in property <float> progress;
+    // Open the menu below the button instead of above it (a button at the top of a page).
+    in property <bool> drop;
     callback export(int);
     function choose(kind: int) {
         popup.close();
         root.export(kind);
     }
     height: 36px;
-    width: Theme.os95 ? os-row.preferred-width : Theme.pocket ? 96px : max(label.preferred-width + 60px, 128px);
+    width: Theme.os95 ? os-row.preferred-width : Theme.pocket ? 96px : Theme.answer ? label.preferred-width + 58px : max(label.preferred-width + 60px, 128px);
     border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest ? 0 : Theme.glass ? self.height / 2 : Theme.dash ? self.height / 2 : 9px;
-    clip: !Theme.tape && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.pocket && !Theme.quest;
+    clip: !Theme.tape && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.pocket && !Theme.quest && !Theme.answer;
     // Spatial Glass: the white pill; while exporting a dark pill that fills with light.
-    background: Theme.tape || Theme.comic || Theme.phos || Theme.pocket || Theme.quest ? transparent : Theme.os95 ? Os.face : Theme.glass ? (root.state == 1 ? #00000040 : t.has-hover ? #ffffff : #ececf2)
+    background: Theme.tape || Theme.comic || Theme.phos || Theme.pocket || Theme.quest || Theme.answer ? transparent : Theme.os95 ? Os.face : Theme.glass ? (root.state == 1 ? #00000040 : t.has-hover ? #ffffff : #ececf2)
         : root.state == 1 ? Theme.raised : t.has-hover ? Theme.accent-hover : Theme.accent;
+    // Answering Machine: a rubber key, held down while it exports and filling with red,
+    // with an amber lamp when done.
+    AmKey {
+        visible: Theme.answer;
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        down: root.state == 1 || (t.pressed && t.has-hover);
+        hover: t.has-hover;
+    }
+    Rectangle {
+        visible: Theme.answer && root.state == 1;
+        x: 0;
+        y: 2px;
+        width: max(18px, parent.width * clamp(root.progress, 0, 1));
+        height: parent.height;
+        border-radius: 9px;
+        background: #cf3c2873;
+    }
+    Rectangle {
+        visible: Theme.answer && root.state == 2;
+        x: parent.width - 11px;
+        y: 5px;
+        width: 5px;
+        height: 5px;
+        border-radius: 2.5px;
+        background: Am.amber;
+    }
     // Phosphor: a boxed key, "EXPORT ^ flac"; while exporting a light shade bar filling
     // inside it with the percent; then "[ok] DONE" in inverted video.
     property <bool> ph-lit: root.state == 2 || (root.state == 0 && t.has-hover);
@@ -3532,7 +3831,7 @@ export component ExportButton inherits Rectangle {
     accessible-expandable: true;
     accessible-action-default => { popup.show(); }
     accessible-action-expand => { popup.show(); }
-    if root.state == 1 && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.pocket && !Theme.quest: Rectangle {
+    if root.state == 1 && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.pocket && !Theme.quest && !Theme.answer: Rectangle {
         x: 0;
         width: parent.width * clamp(root.progress, 0, 1);
         background: Theme.accent.with-alpha(0.35);
@@ -3563,23 +3862,24 @@ export component ExportButton inherits Rectangle {
         }
         if root.state == 2: Icon {
             name: "check";
-            tint: Theme.tape || Theme.phos || Theme.os95 ? transparent : Theme.glass ? #211f28 : Theme.on-accent;
+            tint: Theme.tape || Theme.phos || Theme.os95 ? transparent : Theme.glass ? #211f28 : Theme.answer ? Am.key-ink : Theme.on-accent;
             width: 13px;
             height: 13px;
             y: (parent.height - self.height) / 2;
             stroke-width: 2.5px;
         }
         label := Text {
-            text: root.state == 1 ? round(root.progress * 100) + "%" : root.state == 2 ? "Done" : "Export";
-            color: Theme.tape || Theme.phos || Theme.os95 ? transparent : Theme.glass ? (root.state == 1 ? Glass.ink : #211f28) : root.state == 1 ? Theme.text : Theme.on-accent;
-            font-family: root.state == 1 ? (Theme.glass ? Glass.figures : Theme.mono) : Theme.dash ? "Manrope" : "Inter Tight";
-            font-size: Theme.glass ? 12.5px : 13px;
-            font-weight: Theme.glass ? (root.state == 1 ? 400 : 600) : 800;
+            text: root.state == 1 ? round(root.progress * 100) + "%" : root.state == 2 ? (Theme.answer ? "DONE" : "Done") : Theme.answer ? "EXPORT" : "Export";
+            color: Theme.tape || Theme.phos || Theme.os95 ? transparent : Theme.glass ? (root.state == 1 ? Glass.ink : #211f28) : Theme.answer ? Am.key-ink : root.state == 1 ? Theme.text : Theme.on-accent;
+            font-family: Theme.answer ? (root.state == 1 ? "Courier Prime" : "Barlow Condensed") : root.state == 1 ? (Theme.glass ? Glass.figures : Theme.mono) : Theme.dash ? "Manrope" : "Inter Tight";
+            font-size: Theme.glass ? 12.5px : Theme.answer ? (root.state == 1 ? 12px : 10px) : 13px;
+            font-weight: Theme.glass ? (root.state == 1 ? 400 : 600) : Theme.answer ? 700 : 800;
+            letter-spacing: Theme.answer && root.state != 1 ? 2px : 0;
             vertical-alignment: center;
         }
         if root.state == 0 && !Theme.glass: Icon {
-            name: "up";
-            tint: Theme.tape || Theme.phos || Theme.os95 ? transparent : Theme.on-accent;
+            name: Theme.answer ? "export" : "up";
+            tint: Theme.tape || Theme.phos || Theme.os95 ? transparent : Theme.answer ? Am.key-ink : Theme.on-accent;
             width: 13px;
             height: 13px;
             y: (parent.height - self.height) / 2;
@@ -3597,7 +3897,7 @@ export component ExportButton inherits Rectangle {
     // blue band and its upright words on the left.
     popup := PopupWindow {
         x: Theme.os95 ? 0 : root.width - self.width;
-        y: -self.height - (Theme.os95 ? 2px : 6px);
+        y: root.drop ? root.height + 6px : -self.height - (Theme.os95 ? 2px : 6px);
         width: Theme.os95 ? 276px : 250px;
         height: 2 * Theme.menu-pad + ExportSize.audio + (root.subtitles ? ExportSize.transcript : 0);
         close-policy: close-on-click-outside;
@@ -3713,7 +4013,7 @@ export component OrderList inherits Rectangle {
     callback moved(int, int);
     callback act(int);
     callback play(int);
-    property <length> row-h: Theme.tape ? 48px : Theme.phos || Theme.quest ? 36px : Theme.os95 ? 34px : Theme.comic ? 44px : Theme.pocket ? (root.menu ? 38px : 34px) : Theme.brick ? 32px : 50px;
+    property <length> row-h: Theme.tape ? 48px : Theme.phos || Theme.quest ? 36px : Theme.os95 ? 34px : Theme.comic ? 44px : Theme.pocket ? (root.menu ? 38px : 34px) : Theme.brick ? 32px : Theme.answer ? 40px : 50px;
     property <bool> hi: 1phx < 0.7px;
     property <int> dragging: -1;
     property <length> drag-dy;
@@ -3772,6 +4072,16 @@ export component OrderList inherits Rectangle {
         border-width: 1px;
         border-color: Brick.ink;
     }
+    // Answering Machine: a red insert line where the dragged row will land.
+    if Theme.answer && root.dragging >= 0: Rectangle {
+        x: 8px;
+        y: (root.target > root.dragging ? root.target + 1 : root.target) * root.row-h - 1.5px;
+        width: parent.width - 16px;
+        height: 3px;
+        border-radius: 1.5px;
+        background: Am.rec;
+        z: 2;
+    }
     // Spatial Glass: a faint slot where the dragged row will land.
     if Theme.glass && root.dragging >= 0: Rectangle {
         y: root.target * root.row-h + 3px;
@@ -3793,9 +4103,10 @@ export component OrderList inherits Rectangle {
         animate y { duration: root.dragging >= 0 && i != root.dragging ? 150ms : 0ms; easing: ease-out; }
         height: root.row-h;
         z: i == root.dragging ? 1 : 0;
-        border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest ? 0 : Theme.glass ? 16px : 10px;
-        // Phosphor: the dragged row lifts as inverted video.
-        background: i == root.dragging && !Theme.tape && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick ? (Theme.phos ? Ph.ph : (Theme.glass ? #ffffff2b : Theme.raised)) : transparent;
+        border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest ? 0 : Theme.glass ? 16px : Theme.answer ? 4px : 10px;
+        // Phosphor: the dragged row lifts as inverted video. Answering Machine: it lifts off
+        // the paper.
+        background: i == root.dragging && !Theme.tape && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick ? (Theme.phos ? Ph.ph : Theme.glass ? #ffffff2b : Theme.answer ? #f9f1e3 : Theme.raised) : transparent;
         border-width: i == root.dragging && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick ? 1px : 0;
         border-color: Theme.glass ? #ffffff8c : Theme.edge;
         drop-shadow-blur: i == root.dragging && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick ? 16px : 0;
@@ -4866,7 +5177,116 @@ export component OrderList inherits Rectangle {
                 }
             }
         }
-        if !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.dash && !Theme.pocket && !Theme.quest && !Theme.brick: HorizontalLayout {
+        // Answering Machine: a message on the log: a grip, the place on a small red display,
+        // a round play key (red while it plays), the name and length, and a remove nub.
+        if Theme.answer: HorizontalLayout {
+            padding-left: 10px;
+            padding-right: 8px;
+            spacing: 8px;
+            Icon {
+                name: "grip";
+                tint: Am.print-soft;
+                width: 14px;
+                height: 14px;
+                y: (parent.height - self.height) / 2;
+            }
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    // The place the row has right now, also mid-drag.
+                    property <int> place: (i == root.dragging ? root.target
+                        : root.dragging >= 0 && i > root.dragging && i <= root.target ? i - 1
+                        : root.dragging >= 0 && i < root.dragging && i >= root.target ? i + 1
+                        : i) + 1;
+                    width: 26px;
+                    height: 17px;
+                    border-radius: 3px;
+                    background: Am.smoke;
+                    Text {
+                        text: (self.place < 10 ? "0" : "") + self.place;
+                        property <int> place: parent.place;
+                        color: Am.led;
+                        font-family: "Memo Segments";
+                        font-size: 10px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+            if root.playable: VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    size: 22px;
+                    round: true;
+                    filled: r.name == root.playing-name;
+                    icon: r.name == root.playing-name ? "pause" : "play";
+                    icon-size: 9px;
+                    label: (r.name == root.playing-name ? "Pause " : "Play ") + r.name;
+                    tip: r.name == root.playing-name ? "Pause" : "Play";
+                    clicked => { root.play(i); }
+                }
+            }
+            Text {
+                text: r.name;
+                color: Am.ink;
+                font-family: "Courier Prime";
+                font-size: 12.5px;
+                font-weight: 700;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+            if r.note != "": Text {
+                text: r.note;
+                color: Am.ink2;
+                font-family: "Courier Prime";
+                font-size: 12px;
+                font-weight: 700;
+                vertical-alignment: center;
+                horizontal-alignment: right;
+                min-width: 44px;
+            }
+            if root.removable: VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    icon: "close";
+                    icon-size: 10px;
+                    width: 22px;
+                    height: 20px;
+                    label: "Remove " + r.name;
+                    tip: "Remove";
+                    enabled: root.enabled;
+                    clicked => { root.act(i); }
+                }
+            }
+            if root.menu: VerticalLayout {
+                alignment: center;
+                IconBtn {
+                    icon: "dots";
+                    icon-size: 13px;
+                    width: 22px;
+                    height: 20px;
+                    label: "Options for " + r.name;
+                    tip: "Options";
+                    enabled: root.enabled;
+                    clicked => {
+                        root.menu-row = i;
+                        row-menu.show();
+                    }
+                }
+            }
+            if root.action != "": VerticalLayout {
+                alignment: center;
+                Btn {
+                    text: root.action;
+                    height: 26px;
+                    enabled: root.enabled;
+                    accessible-label: root.action + " " + r.name;
+                    clicked => { root.act(i); }
+                }
+            }
+        }
+        if !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.dash && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer: HorizontalLayout {
             padding-left: 10px;
             padding-right: 8px;
             spacing: 10px;
@@ -4971,14 +5391,14 @@ export component OrderList inherits Rectangle {
                 MenuRow {
                     num: 1;
                     text: "Rename";
-                    icon: Theme.dash ? "pencil" : "";
+                    icon: Theme.dash || Theme.answer ? "pencil" : "";
                     clicked => { root.rename(root.menu-row); row-menu.close(); }
                 }
                 MenuRow {
                     num: 2;
                     text: "Remove";
                     danger: Theme.glass || Theme.dash;
-                    icon: Theme.dash ? "close" : "";
+                    icon: Theme.dash || Theme.answer ? "close" : "";
                     clicked => { root.act(root.menu-row); row-menu.close(); }
                 }
             }
@@ -5044,7 +5464,7 @@ export component Select inherits Rectangle {
     }
     // The width the current choice needs, for skins that size the box to it.
     out property <length> natural: Theme.os95 ? os-shown.preferred-width + 30px : Theme.quest ? q-shown.preferred-width + 31px : shown.preferred-width + (Theme.tape ? 46px : Theme.phos ? 40px : Theme.glass ? 44px : Theme.pocket ? 56px : Theme.brick ? 26px : 42px);
-    property <length> row-h: Theme.tape || Theme.phos ? 26px : Theme.os95 ? 18px : Theme.comic ? 30px : Theme.pocket ? 22px : Theme.quest ? 27px : Theme.brick ? 22px : 32px;
+    property <length> row-h: Theme.tape || Theme.phos || Theme.answer ? 26px : Theme.os95 ? 18px : Theme.comic ? 30px : Theme.pocket ? 22px : Theme.quest ? 27px : Theme.brick ? 22px : 32px;
     property <int> os-hot: -1;
     width: 200px;
     height: 32px;
@@ -5052,7 +5472,17 @@ export component Select inherits Rectangle {
     // Phosphor: a boxed value with a "v", the edge bright while hovered or focused.
     // Pocket: the dark picker, a light ring inside while it has the focus.
     // Brick Phone: a boxed value with a pixel arrow; its list is a numbered pick list.
-    border-width: Theme.comic || Theme.pocket || Theme.quest ? 0 : Theme.brick ? 2px : Theme.glass || Theme.dash ? 1px : (keys.has-focus || Theme.phos) && !Theme.os95 ? 1px : 0;
+    border-width: Theme.comic || Theme.answer || Theme.pocket || Theme.quest ? 0 : Theme.brick ? 2px : Theme.glass || Theme.dash ? 1px : (keys.has-focus || Theme.phos) && !Theme.os95 ? 1px : 0;
+    // Answering Machine: a cream picker chip, framed red while it has the focus.
+    AmChip {
+        visible: Theme.answer;
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        hover: t.has-hover && root.enabled;
+        focused: keys.has-focus;
+    }
     border-color: Theme.tape ? Deck.amber : Theme.phos ? (keys.has-focus || (t.has-hover && enabled) ? Ph.ph : Ph.dim) : Theme.glass ? (keys.has-focus ? #ffffffb3 : #ffffff47) : Theme.dash ? (keys.has-focus ? Theme.accent : #ffffff1f) : Theme.edge;
     // Tape Deck: a black Dymo label strip. Desktop 95: a sunken white drop down box, the
     // choice navy while it has the focus. Spatial Glass: a glass capsule. Car Dashboard: a
@@ -5061,12 +5491,12 @@ export component Select inherits Rectangle {
         : Theme.pocket ? (!root.enabled ? Pk.l1 : t.has-hover ? Pk.l2 : Pk.l3)
         : Theme.dash ? (t.has-hover && enabled ? #1f252d : #181d23)
         : Theme.glass ? (t.has-hover && enabled ? #ffffff38 : #ffffff26)
-        : Theme.comic ? transparent
+        : Theme.comic || Theme.answer ? transparent
         : Theme.quest ? (keys.has-focus || (t.has-hover && enabled) ? Quest.sel : transparent)
         : Theme.brick ? (t.has-hover && enabled ? Brick.ghost : transparent)
         : Theme.os95 ? (root.enabled ? #ffffff : Os.face)
         : Theme.phos ? transparent : t.has-hover && enabled ? Theme.hover-soft : Theme.raised;
-    opacity: enabled || Theme.os95 || Theme.pocket || Theme.quest ? 1 : Theme.brick ? 0.38 : 0.45;
+    opacity: enabled || Theme.os95 || Theme.pocket || Theme.quest ? 1 : Theme.brick ? 0.38 : Theme.answer ? 0.55 : 0.45;
     // Quest Menu: the choice in gold with the gold down arrow after it (dim when off).
     HorizontalLayout {
         visible: Theme.quest;
@@ -5169,10 +5599,10 @@ export component Select inherits Rectangle {
         shown := Text {
             text: root.current-index >= 0 && root.current-index < root.model.length
                 ? (Theme.tape ? root.model[root.current-index].to-uppercase() : root.model[root.current-index]) : "";
-            color: Theme.pocket ? Pk.l0 : Theme.tape ? #f5f1e8 : Theme.phos ? Ph.hi : Theme.os95 ? transparent : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.text;
-            font-family: Theme.pocket ? Pk.big : Theme.tape ? Theme.mono : Theme.comic ? "Comic Neue" : Theme.phos ? Ph.mono : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : "Inter Tight";
-            font-size: Theme.pocket ? 20px : Theme.tape ? 11px : Theme.phos ? 12px : Theme.glass ? 12.5px : Theme.dash ? 12px : Theme.brick ? 16px : 13px;
-            font-weight: Theme.tape || Theme.dash || Theme.comic ? 700 : Theme.glass ? 500 : 400;
+            color: Theme.pocket ? Pk.l0 : Theme.tape ? #f5f1e8 : Theme.phos ? Ph.hi : Theme.os95 ? transparent : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? Am.name-ink : Theme.text;
+            font-family: Theme.pocket ? Pk.big : Theme.tape ? Theme.mono : Theme.comic ? "Comic Neue" : Theme.phos ? Ph.mono : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.brick ? Brick.words : "Inter Tight";
+            font-size: Theme.pocket ? 20px : Theme.tape ? 11px : Theme.phos ? 12px : Theme.glass ? 12.5px : Theme.dash ? 12px : Theme.brick ? 16px : Theme.answer ? 12.5px : 13px;
+            font-weight: Theme.tape || Theme.dash || Theme.comic || Theme.answer ? 700 : Theme.glass ? 500 : 400;
             letter-spacing: Theme.tape ? 1px : 0;
             vertical-alignment: center;
             horizontal-stretch: 1;
@@ -5181,8 +5611,8 @@ export component Select inherits Rectangle {
         if Theme.pocket: PkPx { y: (parent.height - self.height) / 2; source: @image-url("skins/px-pocket/down.png"); colorize: Pk.l0; }
         Icon {
             visible: !Theme.os95 && !Theme.pocket && !Theme.brick;
-            name: Theme.tape || Theme.phos || Theme.comic || Theme.glass || Theme.dash ? "down" : "updown";
-            tint: Theme.tape ? #f5f1e8 : Theme.phos ? Ph.dim : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.dash ? Theme.dim : Theme.muted;
+            name: Theme.tape || Theme.phos || Theme.comic || Theme.glass || Theme.dash || Theme.answer ? "down" : "updown";
+            tint: Theme.tape ? #f5f1e8 : Theme.phos ? Ph.dim : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.dash ? Theme.dim : Theme.answer ? Am.print : Theme.muted;
             stroke-width: Theme.comic ? 2.8px : 2px;
             width: Theme.pocket ? 0 : Theme.phos ? 10px : Theme.dash ? 10px : Theme.brick ? 8px : 12px;
             height: Theme.phos ? 10px : Theme.dash ? 10px : Theme.brick ? 8px : 12px;
@@ -5216,9 +5646,9 @@ export component Select inherits Rectangle {
             // with a bright edge, the hovered line inverted, a star by the current one. Desktop 95: a
             // white list with a black line, the current choice navy.
             background: Theme.pocket ? Pk.l0 : Theme.quest ? transparent : Theme.brick ? transparent : Theme.tape ? #0b0b0c : Theme.phos ? Ph.bg2 : Theme.os95 ? #ffffff : Theme.comic ? #ffffff : Theme.glass ? Glass.menu : Theme.dash ? #171b21 : Theme.popup;
-            border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest ? 0 : Theme.glass ? 16px : Theme.dash ? 12px : 10px;
+            border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest ? 0 : Theme.glass ? 16px : Theme.dash ? 12px : Theme.answer ? 6px : 10px;
             border-width: Theme.comic ? 3px : Theme.quest ? 0 : Theme.pocket ? 2px : Theme.brick ? 0 : 1px;
-            border-color: Theme.pocket ? Pk.l3 : Theme.tape || Theme.os95 ? #000000 : Theme.phos ? Ph.ph : Theme.comic ? Comic.ink : Theme.glass ? #ffffff57 : Theme.dash ? #ffffff33 : Theme.edge;
+            border-color: Theme.pocket ? Pk.l3 : Theme.tape || Theme.os95 ? #000000 : Theme.phos ? Ph.ph : Theme.comic ? Comic.ink : Theme.glass ? #ffffff57 : Theme.dash ? #ffffff33 : Theme.answer ? Am.chip-lip : Theme.edge;
             drop-shadow-blur: Theme.tape || Theme.comic || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick ? 0 : 20px;
             drop-shadow-offset-y: 8px;
             drop-shadow-color: #00000099;
@@ -5258,9 +5688,10 @@ export component Select inherits Rectangle {
                     y: i * root.row-h;
                     height: root.row-h;
                     property <bool> pk-hot: it.has-hover || i == root.current-index;
-                    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.glass ? 11px : Theme.dash ? 8px : 6px;
+                    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.answer ? 0 : Theme.glass ? 11px : Theme.dash ? 8px : 6px;
                     background: Theme.pocket ? (self.pk-hot ? Pk.l3 : transparent)
                         : Theme.quest ? transparent : Theme.tape ? (i == root.current-index ? Deck.amber : it.has-hover ? #2a2a2d : transparent)
+                        : Theme.answer ? (i == root.current-index || it.has-hover ? Am.lit : transparent)
                         : Theme.phos ? (it.has-hover ? Ph.ph : transparent)
                         : Theme.os95 ? (self.os-lit ? Os.navy : transparent)
                         : Theme.comic ? (i == root.current-index ? Comic.yellow : it.has-hover ? Comic.wash : transparent)
@@ -5296,6 +5727,7 @@ export component Select inherits Rectangle {
                             }
                         }
                     }
+                    Rectangle { visible: Theme.answer && (i == root.current-index || it.has-hover); x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
                     if Theme.os95: Text {
                         x: 4px;
                         width: parent.width - 8px;
@@ -5347,11 +5779,12 @@ export component Select inherits Rectangle {
                             color: Theme.pocket ? (it.has-hover || i == root.current-index ? Pk.l0 : Pk.l3) : Theme.tape ? (i == root.current-index ? #2a1406 : #d9d3c6) : Theme.comic ? Comic.ink : Theme.phos ? (it.has-hover ? Ph.bg : Ph.hi)
                                 : Theme.glass ? Glass.ink
                                 : Theme.dash && i == root.current-index ? Theme.accent
+                                : Theme.answer ? Am.ink
                                 : i == root.current-index ? Theme.text : Theme.text2;
-                            font-family: Theme.pocket ? Pk.big : Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : "Inter Tight";
-                            font-weight: Theme.pocket ? 400 : Theme.tape || Theme.dash || Theme.comic ? 700 : Theme.glass ? (i == root.current-index ? 600 : 500) : 400;
+                            font-family: Theme.pocket ? Pk.big : Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : "Inter Tight";
+                            font-weight: Theme.pocket ? 400 : Theme.tape || Theme.dash || Theme.comic || Theme.answer ? 700 : Theme.glass ? (i == root.current-index ? 600 : 500) : 400;
                             letter-spacing: Theme.tape ? 1.4px : 0;
-                            font-size: Theme.pocket ? 20px : Theme.tape ? 10.5px : Theme.phos ? 12.5px : Theme.glass ? 12.5px : Theme.dash ? 12.5px : 13px;
+                            font-size: Theme.pocket ? 20px : Theme.tape ? 10.5px : Theme.phos ? 12.5px : Theme.glass ? 12.5px : Theme.dash || Theme.answer ? 12.5px : 13px;
                             vertical-alignment: center;
                             horizontal-stretch: 1;
                             overflow: elide;
@@ -5359,7 +5792,7 @@ export component Select inherits Rectangle {
                         if i == root.current-index && Theme.pocket: PkPx { y: (parent.height - self.height) / 2; source: @image-url("skins/px-pocket/tick.png"); colorize: Pk.l0; }
                         if i == root.current-index && !Theme.tape && !Theme.phos && !Theme.pocket && !Theme.brick: Icon {
                             name: "check";
-                            tint: Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.accent;
+                            tint: Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? Am.rec : Theme.accent;
                             width: 13px;
                             height: 13px;
                             y: (parent.height - self.height) / 2;
@@ -5625,8 +6058,8 @@ export component ShortcutBox inherits Rectangle {
     callback cleared();
     callback done();
     property <bool> listening: fs.has-focus;
-    width: Theme.tape ? 140px : Theme.phos || Theme.quest ? 150px : Theme.os95 ? 104px : Theme.comic ? 150px : Theme.glass ? 150px : Theme.pocket ? 130px : Theme.brick ? 120px : 200px;
-    height: Theme.tape ? 28px : Theme.phos ? 24px : Theme.os95 ? 21px : Theme.comic ? 30px : Theme.glass ? 30px : Theme.pocket ? 22px : Theme.quest ? 25px : Theme.brick ? 22px : 32px;
+    width: Theme.tape ? 140px : Theme.phos || Theme.quest ? 150px : Theme.os95 ? 104px : Theme.comic ? 150px : Theme.glass ? 150px : Theme.pocket ? 130px : Theme.brick ? 120px : Theme.answer ? 140px : 200px;
+    height: Theme.tape ? 28px : Theme.phos ? 24px : Theme.os95 ? 21px : Theme.comic ? 30px : Theme.glass ? 30px : Theme.pocket ? 22px : Theme.quest ? 25px : Theme.brick ? 22px : Theme.answer ? 26px : 32px;
     border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.glass ? 15px : 8px;
     // Tape Deck: a sunk well with real key caps. Phosphor: boxed keys joined by "+", and
     // "press the keys" in inverted video while it listens. Desktop 95: a white hot key field. Comic Book: ink key caps on the card,
@@ -5636,8 +6069,61 @@ export component ShortcutBox inherits Rectangle {
         : Theme.quest ? (t.has-hover && !listening ? Quest.win-lo : transparent)
         : Theme.glass ? (listening ? #ffffff1f : t.has-hover ? #ffffff14 : transparent)
         : Theme.brick ? (t.has-hover && !listening ? Brick.ghost : transparent)
+        : Theme.answer ? transparent
         : listening ? Theme.accent.with-alpha(0.08) : t.has-hover ? Theme.hover-soft : Theme.raised;
-    border-width: Theme.os95 || Theme.brick || Theme.comic || Theme.pocket || Theme.quest ? 0 : 1px;
+    border-width: Theme.os95 || Theme.brick || Theme.comic || Theme.pocket || Theme.quest || Theme.answer ? 0 : 1px;
+    // Answering Machine: a small smoked display that reads the keys in red, "NOT SET"
+    // dim, and "Press the keys" with a red caret while it listens.
+    AmSmoke { visible: Theme.answer; x: 0; y: 0; width: parent.width; height: parent.height; }
+    Rectangle {
+        visible: Theme.answer && t.has-hover && !root.listening;
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        border-radius: 5px;
+        background: #ffffff0f;
+    }
+    if Theme.answer: HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 2px;
+        alignment: center;
+        if root.listening: Rectangle {
+            width: 2px;
+            height: 15px;
+            y: (parent.height - self.height) / 2;
+            background: Am.rec;
+        }
+        if root.listening: Text {
+            text: "Press the keys";
+            color: #b48e80;
+            font-family: "Courier Prime";
+            font-size: 12px;
+            vertical-alignment: center;
+        }
+        if !root.listening && root.keys.length == 0: Text {
+            text: "NOT SET";
+            color: #7d5a4f;
+            font-family: "Courier Prime";
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.7px;
+            vertical-alignment: center;
+        }
+        if !root.listening: HorizontalLayout {
+            alignment: start;
+            for k[i] in root.keys: Text {
+                text: (i > 0 ? " + " : "") + k.to-uppercase();
+                color: #ff8a72;
+                font-family: "Courier Prime";
+                font-size: 12px;
+                font-weight: 700;
+                letter-spacing: 0.7px;
+                vertical-alignment: center;
+            }
+        }
+    }
     border-color: listening ? (Theme.glass ? #ffffffa0 : Theme.accent) : transparent;
     OsBevel { visible: Theme.os95; kind: 2; }
     if Theme.os95: HorizontalLayout {
@@ -5871,7 +6357,7 @@ export component ShortcutBox inherits Rectangle {
             }
         }
     }
-    if root.listening && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick: HorizontalLayout {
+    if root.listening && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer: HorizontalLayout {
         alignment: center;
         spacing: 8px;
         Rectangle {
@@ -5905,7 +6391,7 @@ export component ShortcutBox inherits Rectangle {
         horizontal-alignment: right;
         vertical-alignment: center;
     }
-    if !root.listening && root.keys.length == 0 && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick: Text {
+    if !root.listening && root.keys.length == 0 && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer: Text {
         text: Theme.tape ? "NOT SET" : Theme.phos ? "not set" : "Not set";
         color: Theme.tape ? #8d7d6a : Theme.glass ? Glass.ink3 : Theme.dim;
         font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
@@ -6017,7 +6503,7 @@ export component ShortcutBox inherits Rectangle {
             }
         }
     }
-    if !root.listening && root.keys.length > 0 && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.pocket && !Theme.quest && !Theme.brick: HorizontalLayout {
+    if !root.listening && root.keys.length > 0 && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer: HorizontalLayout {
         alignment: center;
         spacing: 4px;
         for k in root.keys: Rectangle {
@@ -6263,6 +6749,8 @@ export component Scroller inherits Rectangle {
     // The Quest Menu's rail instead of the thin bar: 12px of ink in a blue rim along the
     // right edge with a gold thumb (the content leaves that room).
     in property <bool> quest-rail;
+    // The Answering Machine's sunk track with a rubber thumb instead of the thin bar.
+    in property <bool> rubber;
     property <length> top-depth: root.fade ? clamp(-fl.content-y, 0, 80px) : 0;
     property <length> bottom-depth: root.fade ? clamp(root.range + fl.content-y, 0, 80px) : 0;
     property <int> strips: 10;
@@ -6453,7 +6941,30 @@ export component Scroller inherits Rectangle {
         content-h: fl.content-height;
         view-h: fl.height;
     }
-    if root.bar && !root.bar95 && !root.ink-rail && !root.pk-rail && !root.quest-rail && !Theme.brick && root.range > 1px: Rectangle {
+    if root.rubber && !root.bar95 && !root.ink-rail && root.range > 1px: Rectangle {
+        x: parent.width - self.width;
+        width: 6px;
+        border-radius: 3px;
+        background: #b8ab90;
+        Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: #00000026; }
+        Rectangle {
+            x: 0;
+            y: (-fl.content-y / root.range) * (parent.height - root.thumb-h);
+            height: root.thumb-h;
+            border-radius: 3px;
+            background: @linear-gradient(180deg, #635c56 0%, #4b4540 100%);
+        }
+        rubber-drag := TouchArea {
+            x: -6px;
+            width: parent.width + 8px;
+            function follow() {
+                fl.content-y = clamp(-(self.mouse-y - root.thumb-h / 2) / max(1px, parent.height - root.thumb-h) * root.range, -root.range, 0);
+            }
+            pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.follow(); } }
+            moved => { if (self.pressed) { self.follow(); } }
+        }
+    }
+    if root.bar && !root.bar95 && !root.ink-rail && !root.pk-rail && !root.quest-rail && !root.rubber && !Theme.brick && root.range > 1px: Rectangle {
         x: parent.width - self.width - 2px;
         y: (-fl.content-y / root.range) * (fl.height - root.thumb-h);
         width: drag.has-hover || drag.pressed ? 6px : 3px;
@@ -6934,19 +7445,19 @@ export component TranscriptCard inherits Rectangle {
     property <bool> copied;
     // Where the editor's cursor is, and how tall it is.
     property <Point> caret;
-    property <length> caret-h: Theme.tape || Theme.os95 ? measure.preferred-height : Theme.phos ? measure-ph.preferred-height : Theme.pocket ? 18px : Theme.quest ? 17px : Theme.brick ? root.brick-size : 20px;
+    property <length> caret-h: Theme.tape || Theme.os95 || Theme.answer ? measure.preferred-height : Theme.phos ? measure-ph.preferred-height : Theme.pocket ? 18px : Theme.quest ? 17px : Theme.brick ? root.brick-size : 20px;
     // Tape Deck: the clip's name on the insert card, and the ruled lines of the card,
     // which scroll with the text (the shown view reports how far it is scrolled).
     in property <string> clip-name;
     // Brick Phone: the size of the words on the LCD (bigger in a wide window).
     in property <length> brick-size: 17px;
-    property <length> text-size: Theme.brick ? root.brick-size : Theme.tape ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : Theme.comic ? 13.5px : Theme.glass ? 14px : 15px;
-    property <string> text-family: Theme.brick ? Brick.words : Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : "Inter Tight";
+    property <length> text-size: Theme.brick ? root.brick-size : Theme.tape ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : Theme.comic ? 13.5px : Theme.glass ? 14px : Theme.answer ? 13px : 15px;
+    property <string> text-family: Theme.brick ? Brick.words : Theme.tape ? Theme.mono : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : "Inter Tight";
     property <length> scroll-y;
     property <length> line-h: measure.preferred-height;
     property <length> rule-pitch: root.original-view && !root.editing ? root.line-h + 5px : root.line-h;
     property <length> rule-off: root.scroll-y - root.rule-pitch * floor(root.scroll-y / root.rule-pitch);
-    measure := Text { visible: false; text: "Xg"; font-family: Theme.os95 ? "VT323" : Theme.mono; font-size: Theme.os95 ? 19px : 12px; }
+    measure := Text { visible: false; text: "Xg"; font-family: Theme.os95 ? "VT323" : Theme.answer ? "Courier Prime" : Theme.mono; font-size: Theme.os95 ? 19px : Theme.answer ? 13px : 12px; }
     // Phosphor: the line height of its text, for the block cursor.
     measure-ph := Text { visible: false; x: 0; y: 0; text: "Xg"; font-family: Ph.mono; font-size: 12.5px; }
     // Phosphor: what the box's head line prints, as on a terminal.
@@ -6955,13 +7466,14 @@ export component TranscriptCard inherits Rectangle {
         : "$ cat " + root.clip-name + ".txt";
         // Comic Book: a tagged white panel with a thick ink edge, red and thicker while it
         // is typed on (the tag is drawn last, over the edge).
-        border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.dash ? 12px : 14px;
+        border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.dash ? 12px : Theme.answer ? 8px : 14px;
         // Spatial Glass: the page's pane is the card. Pocket: the LCD is the card. Quest Menu: the page draws the window
         // round it (gold while it is typed on).
-        // Brick Phone: a box in a 2px ink frame, a heavy double frame while it is typed on.
+        // Brick Phone: a box in a 2px ink frame, a heavy double frame while it is typed on. Answering Machine: message paper,
+        // whiter with a red edge while it is typed on.
         border-width: Theme.tape || Theme.glass || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest ? 0 : Theme.comic ? (root.editing ? 4px : 3px) : Theme.brick ? (root.editing ? 3px : 2px) : 1px;
-        border-color: Theme.comic ? (root.editing ? Comic.red : Comic.ink) : root.editing ? Theme.accent : Theme.card-edge;
-        background: Theme.comic ? #ffffff : transparent;
+        border-color: Theme.comic ? (root.editing ? Comic.red : Comic.ink) : Theme.answer ? (root.editing ? Am.rec : Am.paper-edge) : root.editing ? Theme.accent : Theme.card-edge;
+        background: Theme.comic ? #ffffff : Theme.answer ? (root.editing ? #fbf7ee : Am.paper) : transparent;
         Rectangle {
             visible: Theme.brick && root.editing;
             x: -3px;
@@ -6972,17 +7484,17 @@ export component TranscriptCard inherits Rectangle {
             border-color: Brick.ink;
         }
         VerticalLayout {
-            padding: Theme.tape || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.comic ? 10px : Theme.glass ? 16px : Theme.dash ? 14px : 18px;
-            padding-top: Theme.tape || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.comic ? 7px : Theme.dash ? 10px : 12px;
-            padding-bottom: Theme.tape || Theme.phos || Theme.os95 || Theme.brick || Theme.quest || Theme.pocket ? 0 : Theme.comic ? 8px : Theme.glass ? 14px : 12px;
-            spacing: Theme.tape || Theme.phos || Theme.pocket ? 6px : Theme.os95 ? 4px : Theme.glass ? 10px : Theme.quest ? 9px : Theme.brick ? 0 : 8px;
+            padding: Theme.tape || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.comic ? 10px : Theme.glass ? 16px : Theme.dash ? 14px : Theme.answer ? 10px : 18px;
+            padding-top: Theme.tape || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.comic ? 7px : Theme.dash ? 10px : Theme.answer ? 2px : 12px;
+            padding-bottom: Theme.tape || Theme.phos || Theme.os95 || Theme.brick || Theme.quest || Theme.pocket ? 0 : Theme.comic ? 8px : Theme.glass ? 14px : Theme.answer ? 6px : 12px;
+            spacing: Theme.tape || Theme.phos || Theme.pocket ? 6px : Theme.os95 ? 4px : Theme.glass ? 10px : Theme.quest ? 9px : Theme.brick ? 0 : Theme.answer ? 6px : 8px;
             // Desktop 95: Notepad's toolbar; the window round it (skins/dv-os95-pages.slint)
             // carries the title, and the change count sits in its status bar.
             // Desktop 95 drops the empty bar while there is no text yet (mockup 1B).
             HorizontalLayout {
                 property <bool> os-bare: Theme.os95 && !root.editing && (root.transcript == "" || root.transcribing);
-                height: Theme.phos ? 24px : Theme.os95 ? (self.os-bare ? 0 : 27px) : Theme.comic ? 30px : Theme.brick ? 24px : Theme.pocket ? 22px : Theme.quest ? 27px : 28px;
-                spacing: Theme.tape ? 5px : Theme.phos || Theme.quest ? 6px : Theme.os95 ? 4px : Theme.comic ? 6px : Theme.glass ? 6px : Theme.pocket ? 5px : Theme.brick ? 4px : 0;
+                height: Theme.phos ? 24px : Theme.os95 ? (self.os-bare ? 0 : 27px) : Theme.comic ? 30px : Theme.brick ? 24px : Theme.pocket ? 22px : Theme.quest ? 27px : Theme.answer ? 32px : 28px;
+                spacing: Theme.tape ? 5px : Theme.phos || Theme.quest ? 6px : Theme.os95 ? 4px : Theme.comic ? 6px : Theme.glass || Theme.answer ? 6px : Theme.pocket ? 5px : Theme.brick ? 4px : 0;
                 // Pocket: TYPING or TRANSCRIPT on a dark tag (none over the words).
                 if Theme.pocket && (root.editing || root.transcript == "" || root.transcribing): VerticalLayout {
                     alignment: center;
@@ -7015,13 +7527,14 @@ export component TranscriptCard inherits Rectangle {
                 // Car Dashboard: small caps, EDITING in ice while the words are edited.
                 Text {
                     visible: !Theme.comic && !Theme.brick;
-                    text: Theme.quest ? (root.summary-view && !root.editing ? "SUMMARY" : "TRANSCRIPT") : Theme.dash && root.editing ? "EDITING" : Theme.glass ? "Transcript" : Theme.os95 || Theme.pocket || Theme.brick ? "" : "TRANSCRIPT";
+                    text: Theme.quest ? (root.summary-view && !root.editing ? "SUMMARY" : "TRANSCRIPT") : (Theme.dash || Theme.answer) && root.editing ? "EDITING" : Theme.answer && root.summary-view ? "SUMMARY" : Theme.answer && root.lang-view ? "TRANSLATION"
+                        : Theme.glass ? "Transcript" : Theme.os95 || Theme.pocket || Theme.brick ? "" : "TRANSCRIPT";
                     horizontal-stretch: Theme.os95 || Theme.brick || (Theme.pocket && !root.editing && root.transcript != "" && !root.transcribing) || (Theme.quest && root.editing) ? 0 : 1;
-                    color: Theme.quest ? Quest.gold : Theme.tape ? Deck.rail : Theme.phos ? Ph.dim : Theme.glass ? Glass.ink : Theme.dash ? (root.editing ? Theme.accent : #56606c) : Theme.muted;
-                    font-family: Theme.quest ? Quest.label : Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.dash ? "Manrope" : "Inter Tight";
-                    font-size: Theme.quest ? 11px : Theme.tape ? 10px : Theme.phos ? 10px : Theme.glass ? 13.5px : Theme.dash ? 9px : 12px;
-                    font-weight: Theme.tape ? 500 : Theme.glass ? 600 : Theme.phos || Theme.quest ? 400 : 800;
-                    letter-spacing: Theme.quest ? 0.5px : Theme.tape ? 2.8px : Theme.phos ? 2px : Theme.glass ? 0 : Theme.dash ? 2.3px : 0.7px;
+                    color: Theme.quest ? Quest.gold : Theme.tape ? Deck.rail : Theme.phos ? Ph.dim : Theme.glass ? Glass.ink : Theme.dash ? (root.editing ? Theme.accent : #56606c) : Theme.answer ? (root.editing ? Am.rec : Am.print) : Theme.muted;
+                    font-family: Theme.quest ? Quest.label : Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.dash ? "Manrope" : Theme.answer ? "Barlow Condensed" : "Inter Tight";
+                    font-size: Theme.quest ? 11px : Theme.tape ? 10px : Theme.phos ? 10px : Theme.glass ? 13.5px : Theme.dash ? 9px : Theme.answer ? 10px : 12px;
+                    font-weight: Theme.tape ? 500 : Theme.glass ? 600 : Theme.phos || Theme.quest ? 400 : Theme.answer ? 700 : 800;
+                    letter-spacing: Theme.quest ? 0.5px : Theme.tape ? 2.8px : Theme.phos ? 2px : Theme.glass ? 0 : Theme.dash ? 2.3px : Theme.answer ? 2.6px : 0.7px;
                     vertical-alignment: center;
                 }
                 // Quest Menu: the EDITING tag in ink on gold beside TRANSCRIPT.
@@ -7059,18 +7572,19 @@ export component TranscriptCard inherits Rectangle {
                     width: badge.preferred-width + (Theme.quest ? 4px : Theme.tape ? 12px : Theme.phos || Theme.pocket ? 10px : Theme.glass ? 18px : 16px);
                     height: Theme.tape || Theme.phos ? 17px : Theme.comic ? 22px : Theme.glass ? 22px : Theme.pocket ? 14px : 20px;
                     y: (parent.height - self.height) / 2;
-                    border-radius: Theme.tape ? 2px : Theme.phos || Theme.pocket || Theme.quest ? 0 : Theme.comic ? 0 : Theme.glass ? 11px : 10px;
+                    border-radius: Theme.tape || Theme.answer ? 2px : Theme.phos || Theme.pocket || Theme.quest ? 0 : Theme.comic ? 0 : Theme.glass ? 11px : 10px;
                     // Spatial Glass: a cyan glass chip. Pocket: a dark tag. Quest Menu: a gold label.
-                    background: Theme.pocket ? Pk.l3 : Theme.quest ? transparent : Theme.tape ? #efe3c8e6 : Theme.glass ? #9fe3ff1f : Theme.phos ? Ph.amber : Theme.comic ? Comic.red : Theme.dash ? #ffb54726 : Theme.accent;
-                    border-width: Theme.quest ? 0 : Theme.tape ? 1.5px : Theme.comic ? 2.5px : Theme.glass ? 1px : Theme.dash ? 1px : 0;
-                    border-color: Theme.comic ? Comic.ink : Theme.glass ? #9fe3ff73 : Theme.dash ? #ffb54780 : Deck.red;
+                    // Answering Machine: a red stamp.
+                    background: Theme.pocket ? Pk.l3 : Theme.quest ? transparent : Theme.tape ? #efe3c8e6 : Theme.glass ? #9fe3ff1f : Theme.phos ? Ph.amber : Theme.comic ? Comic.red : Theme.dash ? #ffb54726 : Theme.answer ? transparent : Theme.accent;
+                    border-width: Theme.quest ? 0 : Theme.tape ? 1.5px : Theme.comic ? 2.5px : Theme.glass || Theme.dash || Theme.answer ? 1px : 0;
+                    border-color: Theme.comic ? Comic.ink : Theme.glass ? #9fe3ff73 : Theme.dash ? #ffb54780 : Theme.answer ? Am.rec : Deck.red;
                     badge := Text {
-                        text: Theme.tape || Theme.phos || Theme.comic || Theme.pocket || Theme.quest ? root.edit-badge.to-uppercase() : root.edit-badge;
-                        color: Theme.pocket ? Pk.l0 : Theme.quest ? Quest.gold : Theme.tape ? Deck.red : Theme.glass ? Glass.cyan : Theme.phos ? Ph.bg : Theme.comic ? #ffffff : Theme.dash ? #ffb547 : Theme.on-accent;
-                        font-family: Theme.pocket ? Pk.small : Theme.quest ? Quest.label : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : "Inter Tight";
-                        font-size: Theme.pocket ? 8px : Theme.quest ? 11px : Theme.tape ? 9px : Theme.dash ? 10.5px : Theme.phos ? 10.5px : Theme.comic ? 13px : 11px;
-                        font-weight: Theme.tape || Theme.glass ? 600 : Theme.phos || Theme.pocket || Theme.quest ? 400 : Theme.comic ? 400 : 800;
-                        letter-spacing: Theme.tape ? 1.3px : Theme.phos ? 0.5px : Theme.comic || Theme.pocket ? 1px : 0;
+                        text: Theme.tape || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.answer ? root.edit-badge.to-uppercase() : root.edit-badge;
+                        color: Theme.pocket ? Pk.l0 : Theme.quest ? Quest.gold : Theme.tape ? Deck.red : Theme.glass ? Glass.cyan : Theme.phos ? Ph.bg : Theme.comic ? #ffffff : Theme.dash ? #ffb547 : Theme.answer ? Am.rec : Theme.on-accent;
+                        font-family: Theme.pocket ? Pk.small : Theme.quest ? Quest.label : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.answer ? "Barlow Condensed" : "Inter Tight";
+                        font-size: Theme.pocket ? 8px : Theme.quest ? 11px : Theme.tape ? 9px : Theme.dash ? 10.5px : Theme.phos ? 10.5px : Theme.comic ? 13px : Theme.answer ? 9px : 11px;
+                        font-weight: Theme.tape || Theme.glass ? 600 : Theme.phos || Theme.pocket || Theme.quest ? 400 : Theme.comic ? 400 : Theme.answer ? 700 : 800;
+                        letter-spacing: Theme.tape ? 1.3px : Theme.phos ? 0.5px : Theme.comic || Theme.pocket ? 1px : Theme.answer ? 1.1px : 0;
                     }
                 }
                 if (Theme.os95 || Theme.brick) && root.editing: Rectangle { horizontal-stretch: 1; }
@@ -7140,12 +7654,12 @@ export component TranscriptCard inherits Rectangle {
                                     TextField {
                                         height: Theme.tape || Theme.phos ? 28px : Theme.os95 || Theme.pocket ? 22px : Theme.comic ? 30px : Theme.glass ? 30px : Theme.brick ? 24px : 34px;
                                         radius: Theme.tape ? 2px : Theme.phos || Theme.quest || Theme.pocket ? 0 : Theme.os95 ? 0 : Theme.comic ? 15px : Theme.glass ? 10px : Theme.brick ? 0 : 8px;
-                                        fill: Theme.pocket ? Pk.l0 : Theme.tape ? #fffaf0 : Theme.phos ? Ph.bg : Theme.os95 ? #ffffff : Theme.comic ? #ffffff : Theme.glass ? #0000003d : Theme.brick ? #ffe6aa40 : Theme.quest ? Quest.ink : Theme.field;
+                                        fill: Theme.pocket ? Pk.l0 : Theme.tape ? #fffaf0 : Theme.phos ? Ph.bg : Theme.os95 ? #ffffff : Theme.comic ? #ffffff : Theme.glass ? #0000003d : Theme.answer ? Am.cream : Theme.brick ? #ffe6aa40 : Theme.quest ? Quest.ink : Theme.field;
                                         rest-edge: Theme.pocket ? Pk.l3 : Theme.tape ? #8f8778 : Theme.os95 ? Os.sh : Theme.phos ? Ph.dim : Theme.comic ? Comic.ink : Theme.glass ? #ffffff29 : Theme.quest ? Quest.rule : Theme.edge;
                                         ink: Theme.pocket ? Pk.l3 : Theme.tape ? Deck.ink : Theme.phos ? Ph.hi : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.quest ? Quest.white : Theme.text;
                                         hint: Theme.pocket ? Pk.l2 : Theme.tape ? Deck.ink-soft : Theme.os95 ? #7a7a7a : Theme.comic ? Comic.faint : Theme.glass ? Glass.ink3 : Theme.quest ? Quest.dim : Theme.brick ? Brick.ink2 : Theme.dim;
                                         font-size: Theme.pocket ? 18px : Theme.tape || Theme.phos ? 12px : Theme.os95 ? 12.5px : Theme.glass ? 12.5px : Theme.quest ? 14px : Theme.brick ? 16px : 13px;
-                                        family: Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.quest ? Quest.font : Theme.brick ? Brick.words : "Inter Tight";
+                                        family: Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.quest ? Quest.font : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : "Inter Tight";
                                         side: Theme.brick ? 6px : 12px;
                                         bare-focus: Theme.phos || Theme.os95 || Theme.pocket || Theme.brick;
                                         edge-width: Theme.quest ? 3px : 1px;
@@ -7173,7 +7687,7 @@ export component TranscriptCard inherits Rectangle {
                                         width: parent.width;
                                         height: Theme.menu-h;
                                         border-radius: Theme.phos || Theme.pocket ? 0 : Theme.os95 ? 0 : Theme.comic ? 0 : Theme.brick ? 0 : Theme.glass ? 12px : 6px;
-                                        background: row-t.has-hover && l.ready ? (Theme.pocket ? Pk.l3 : Theme.tape ? Deck.amber.with-alpha(0.3) : Theme.phos ? Ph.ph : Theme.os95 ? Os.navy : Theme.comic ? Comic.wash : Theme.glass ? Glass.lit : Theme.brick ? Brick.ink : Theme.hover) : transparent;
+                                        background: row-t.has-hover && l.ready ? (Theme.pocket ? Pk.l3 : Theme.tape ? Deck.amber.with-alpha(0.3) : Theme.phos ? Ph.ph : Theme.os95 ? Os.navy : Theme.comic ? Comic.wash : Theme.glass ? Glass.lit : Theme.brick ? Brick.ink : Theme.answer ? Am.lit : Theme.hover) : transparent;
                                         property <bool> brick-lit: Theme.brick && row-t.has-hover && l.ready;
                                         border-width: Theme.glass && row-t.has-hover && l.ready ? 1px : 0;
                                         border-color: Glass.lit-edge;
@@ -7197,10 +7711,11 @@ export component TranscriptCard inherits Rectangle {
                                             Text {
                                                 text: l.name;
                                                 color: Theme.pocket ? (!l.ready ? Pk.l1 : row-t.has-hover ? Pk.l0 : Pk.l3) : Theme.brick ? (lrow.brick-lit ? Brick.lcd1 : Brick.ink.with-alpha(l.ready ? 1 : 0.38)) : Theme.tape ? (l.ready ? Deck.ink : #a99880) : Theme.glass ? (l.ready ? Glass.ink : Glass.ink3) : Theme.comic ? (l.ready ? Comic.ink : Comic.faint) : Theme.os95 ? (!l.ready ? Os.sh : row-t.has-hover ? #ffffff : #000000) : Theme.phos ? (!l.ready ? Ph.dim : row-t.has-hover ? Ph.bg : Ph.hi)
+                                                    : Theme.answer ? (l.ready ? Am.ink : #b1a58d)
                                                     : l.ready ? Theme.text2 : Theme.dim;
-                                                font-family: Theme.pocket ? Pk.big : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : "Inter Tight";
-                                                font-weight: Theme.comic ? 700 : 400;
-                                                font-size: Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.brick ? 18px : 13px;
+                                                font-family: Theme.pocket ? Pk.big : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : "Inter Tight";
+                                                font-weight: Theme.comic || Theme.answer ? 700 : 400;
+                                                font-size: Theme.pocket ? 20px : Theme.phos || Theme.answer ? 12.5px : Theme.brick ? 18px : 13px;
                                                 vertical-alignment: center;
                                             }
                                             Text {
@@ -7326,11 +7841,12 @@ export component TranscriptCard inherits Rectangle {
                     padding-left: Theme.tape ? 4px : Theme.glass ? 2px : 0;
                     opacity: root.original-view || Theme.os95 ? 1 : 0.45;
                     if !Theme.phos && !Theme.quest: Text {
-                        text: Theme.tape ? "SHOW MARKS" : Theme.os95 ? "" : Theme.comic || Theme.brick || Theme.pocket ? "MARKS" : "Show marks";
-                        color: Theme.pocket ? Pk.l3 : Theme.tape ? Deck.rail : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.muted;
-                        font-family: Theme.pocket ? Pk.small : Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.caps : "Inter Tight";
-                        font-size: Theme.pocket ? 8px : Theme.tape ? 8.5px : Theme.glass ? 11.5px : Theme.brick ? 7px : 12px;
-                        letter-spacing: Theme.tape ? 1.5px : Theme.comic || Theme.pocket ? 1px : 0;
+                        text: Theme.tape ? "SHOW MARKS" : Theme.os95 ? "" : Theme.comic || Theme.answer || Theme.brick || Theme.pocket ? "MARKS" : "Show marks";
+                        color: Theme.pocket ? Pk.l3 : Theme.tape ? Deck.rail : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.answer ? Am.print : Theme.muted;
+                        font-family: Theme.pocket ? Pk.small : Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.caps : Theme.answer ? "Barlow Condensed" : "Inter Tight";
+                        font-size: Theme.pocket ? 8px : Theme.tape ? 8.5px : Theme.glass ? 11.5px : Theme.brick ? 7px : Theme.answer ? 11px : 12px;
+                        font-weight: Theme.answer ? 700 : 400;
+                        letter-spacing: Theme.tape ? 1.5px : Theme.comic || Theme.pocket ? 1px : Theme.answer ? 1.5px : 0;
                         vertical-alignment: center;
                     }
                     VerticalLayout {
@@ -7361,7 +7877,7 @@ export component TranscriptCard inherits Rectangle {
                     y: Theme.tape || Theme.glass || Theme.comic ? 0 : Theme.phos || Theme.pocket || Theme.quest || Theme.brick ? (parent.height - self.height) / 2 : Theme.os95 ? (parent.height - self.height) / 2 : 1px;
                     border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : Theme.glass ? 14px : 7px;
                     opacity: root.original-view || Theme.pocket || Theme.quest ? 1 : Theme.brick ? 0.38 : 0.45;
-                    background: Theme.pocket ? (edit-touch.has-hover && root.original-view ? #b3bf6a : Pk.l0) : Theme.tape || Theme.comic || Theme.quest ? transparent : Theme.os95 ? Os.face : Theme.phos ? (edit-touch.has-hover && root.original-view ? Ph.ph : transparent)
+                    background: Theme.pocket ? (edit-touch.has-hover && root.original-view ? #b3bf6a : Pk.l0) : Theme.tape || Theme.comic || Theme.quest || Theme.answer ? transparent : Theme.os95 ? Os.face : Theme.phos ? (edit-touch.has-hover && root.original-view ? Ph.ph : transparent)
                         : Theme.brick ? (edit-touch.has-hover && root.original-view ? Brick.ghost : transparent)
                         : Theme.glass ? (edit-touch.has-hover && root.original-view ? #ffffff3d : #ffffff29)
                         : edit-touch.has-hover && root.original-view ? Theme.hover : Theme.raised;
@@ -7407,6 +7923,16 @@ export component TranscriptCard inherits Rectangle {
                             vertical-alignment: center;
                             accessible-role: none;
                         }
+                    }
+                    AmKey {
+                        visible: Theme.answer;
+                        x: 0;
+                        y: 0;
+                        width: parent.width;
+                        height: parent.height;
+                        down: edit-touch.pressed && edit-touch.has-hover && root.original-view;
+                        hover: edit-touch.has-hover;
+                        enabled: root.original-view;
                     }
                     property <bool> ink-down: Theme.comic && edit-touch.pressed && edit-touch.has-hover && root.original-view;
                     InkShadow { visible: Theme.comic && root.original-view && !parent.ink-down; off: 2px; }
@@ -7456,15 +7982,15 @@ export component TranscriptCard inherits Rectangle {
                         y: Theme.tape || Theme.os95 ? (edit-touch.pressed && edit-touch.has-hover ? 1px : 0) : Theme.comic ? (parent.ink-down ? 3px : 1px) : 0;
                         height: Theme.tape ? parent.height * 0.82 : parent.height;
                         spacing: Theme.tape ? 5px : Theme.brick ? 4px : 6px;
-                        Icon { visible: !Theme.brick; name: "pencil"; tint: Theme.tape ? Deck.key-ink : Theme.glass ? Glass.ink : Theme.comic ? Comic.ink : Theme.text; stroke-width: Theme.comic ? 2.4px : 2px; width: Theme.brick ? 0 : 12px; height: 12px; y: (parent.height - self.height) / 2; }
+                        Icon { visible: !Theme.brick; name: "pencil"; tint: Theme.tape ? Deck.key-ink : Theme.glass ? Glass.ink : Theme.comic ? Comic.ink : Theme.answer ? (root.original-view ? Am.key-ink : #8f877d) : Theme.text; stroke-width: Theme.comic ? 2.4px : 2px; width: Theme.brick ? 0 : 12px; height: 12px; y: (parent.height - self.height) / 2; }
                         if Theme.brick: VerticalLayout { alignment: center; BrickPx { source: @image-url("skins/dv-brick/x-pencil.png"); } }
                         Text {
-                            text: Theme.tape || Theme.comic ? "EDIT" : "Edit";
-                            color: Theme.tape ? Deck.key-ink : Theme.glass ? Glass.ink : Theme.comic ? Comic.ink : Theme.text;
-                            font-family: Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : "Inter Tight";
-                            font-size: Theme.tape ? 8.5px : Theme.comic ? 12.5px : Theme.brick ? 16px : 12px;
-                            font-weight: Theme.tape ? 500 : Theme.comic ? 400 : 600;
-                            letter-spacing: Theme.tape ? 1.5px : Theme.comic ? 1px : 0;
+                            text: Theme.tape || Theme.comic || Theme.answer ? "EDIT" : "Edit";
+                            color: Theme.tape ? Deck.key-ink : Theme.glass ? Glass.ink : Theme.comic ? Comic.ink : Theme.answer ? (root.original-view ? Am.key-ink : #8f877d) : Theme.text;
+                            font-family: Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.answer ? "Barlow Condensed" : "Inter Tight";
+                            font-size: Theme.tape ? 8.5px : Theme.comic ? 12.5px : Theme.brick ? 16px : Theme.answer ? 10px : 12px;
+                            font-weight: Theme.tape ? 500 : Theme.comic ? 400 : Theme.answer ? 700 : 600;
+                            letter-spacing: Theme.tape ? 1.5px : Theme.comic ? 1px : Theme.answer ? 2px : 0;
                             vertical-alignment: center;
                         }
                     }
@@ -7476,12 +8002,27 @@ export component TranscriptCard inherits Rectangle {
                 }
             }
             if Theme.brick: Rectangle { height: 1px; background: Brick.ink; }
+            if Theme.answer: Rectangle {
+                height: 1.5px;
+                background: Am.rule;
+            }
             Rectangle {
                 vertical-stretch: 1;
                 // Pocket: a text box with a double edge while it is typed on.
                 if Theme.pocket && root.editing: Rectangle {
                     PkRing { }
                     PkRing { x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px; ink: Pk.l1; }
+                }
+                // Answering Machine: the paper is ruled under each line of text.
+                if Theme.answer && root.transcript != "" && !root.transcribing: Rectangle {
+                    clip: true;
+                    for k in max(0, ceil(parent.height / root.rule-pitch) + 1): Rectangle {
+                        x: 0;
+                        y: root.rule-off + (k + 1) * root.rule-pitch - (root.original-view && !root.editing ? 1px : -1px);
+                        width: parent.width;
+                        height: 1px;
+                        background: Am.paper-line;
+                    }
                 }
                 // Tape Deck: the typed J-card insert from the cassette case, ruled, with its
                 // red margin; an amber frame while it is typed on.
@@ -7601,8 +8142,8 @@ export component TranscriptCard inherits Rectangle {
                 if Theme.os95: HorizontalLayout { alignment: center; OsPx { source: @image-url("skins/dv-os95/hour.png"); s: 2; } }
                 Text {
                     text: (root.translating ? "Translating " : "Transcribing ") + round(root.transcribe-progress * 100) + "%";
-                    color: Theme.quest ? Quest.white : Theme.tape ? Deck.ink-soft : Theme.phos ? Ph.ph : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.text2;
-                    font-family: Theme.quest ? Quest.font : Theme.tape ? "Caveat" : Theme.dash ? "Manrope" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.pocket ? Pk.big : Theme.brick ? Brick.words : "Inter Tight";
+                    color: Theme.quest ? Quest.white : Theme.tape ? Deck.ink-soft : Theme.phos ? Ph.ph : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? Am.print : Theme.text2;
+                    font-family: Theme.quest ? Quest.font : Theme.tape ? "Caveat" : Theme.dash ? "Manrope" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.pocket ? Pk.big : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : "Inter Tight";
                     font-size: Theme.quest ? 15px : Theme.tape ? 22px : Theme.phos ? 12.5px : Theme.comic ? 24px : Theme.pocket ? 22px : Theme.brick ? 20px : 14px;
                     font-weight: Theme.tape ? 700 : Theme.glass ? 500 : 400;
                     letter-spacing: Theme.comic ? 1.2px : 0;
@@ -7643,9 +8184,9 @@ export component TranscriptCard inherits Rectangle {
                     }
                 }
                 if !Theme.os95 && !Theme.quest && !Theme.brick: Rectangle {
-                    height: Theme.tape ? 8px : Theme.glass ? 5px : Theme.phos ? 12px : Theme.comic ? 16px : Theme.pocket ? 10px : 4px;
+                    height: Theme.tape ? 8px : Theme.glass ? 5px : Theme.phos ? 12px : Theme.comic ? 16px : Theme.answer ? 8px : Theme.pocket ? 10px : 4px;
                     border-radius: Theme.tape || Theme.phos || Theme.comic || Theme.pocket ? 0 : Theme.glass ? 2.5px : 2px;
-                    background: Theme.tape ? #1b1410 : Theme.phos || Theme.pocket ? transparent : Theme.comic ? #ffffff : Theme.glass ? #ffffff29 : Theme.track;
+                    background: Theme.tape ? #1b1410 : Theme.phos || Theme.pocket ? transparent : Theme.comic ? #ffffff : Theme.glass ? #ffffff29 : Theme.answer ? #3a2a24 : Theme.track;
                     PhShade { visible: Theme.phos; width: 100%; height: 100%; }
                     PkTile { visible: Theme.pocket; source: @image-url("skins/px-pocket/dith.png"); }
                     PkRing { visible: Theme.pocket; }
@@ -7687,8 +8228,8 @@ export component TranscriptCard inherits Rectangle {
                 spacing: Theme.brick ? 10px : 12px;
                 Text {
                     text: "No transcript yet";
-                    color: Theme.pocket ? Pk.l3 : Theme.quest ? Quest.white : Theme.tape ? Deck.ink-soft : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.brick ? Brick.ink : Theme.dim;
-                    font-family: Theme.pocket ? Pk.big : Theme.quest ? Quest.font : Theme.tape ? "Caveat" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : "Inter Tight";
+                    color: Theme.pocket ? Pk.l3 : Theme.quest ? Quest.white : Theme.tape ? Deck.ink-soft : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.answer ? Am.print : Theme.brick ? Brick.ink : Theme.dim;
+                    font-family: Theme.pocket ? Pk.big : Theme.quest ? Quest.font : Theme.tape ? "Caveat" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : "Inter Tight";
                     font-size: Theme.quest ? 15px : Theme.tape || Theme.pocket ? 22px : Theme.phos ? 12.5px : Theme.comic ? 24px : Theme.brick ? 20px : 14px;
                     font-weight: Theme.tape ? 700 : 400;
                     letter-spacing: Theme.comic ? 1.2px : 0;
@@ -7697,8 +8238,8 @@ export component TranscriptCard inherits Rectangle {
                 if root.can-transcribe: HorizontalLayout {
                     alignment: Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? LayoutAlignment.center : LayoutAlignment.start;
                     Btn {
-                        primary: Theme.tape || Theme.os95 || Theme.comic || Theme.glass || Theme.pocket || Theme.quest || Theme.brick;
-                        height: Theme.quest ? 33px : Theme.tape || Theme.glass ? 32px : Theme.phos ? 30px : Theme.os95 || Theme.pocket ? 23px : Theme.comic ? 40px : Theme.brick ? 24px : 36px;
+                        primary: Theme.tape || Theme.os95 || Theme.comic || Theme.glass || Theme.pocket || Theme.quest || Theme.brick || Theme.answer;
+                        height: Theme.quest ? 33px : Theme.tape || Theme.glass ? 32px : Theme.phos ? 30px : Theme.os95 || Theme.pocket ? 23px : Theme.comic ? 40px : Theme.brick ? 24px : Theme.answer ? 30px : 36px;
                         text: "Transcribe";
                         enabled: !root.recording;
                         clicked => { root.transcribe(); }
@@ -7725,7 +8266,7 @@ export component TranscriptCard inherits Rectangle {
                             width: parent.width;
                             y: 0;
                             text: root.edit-markup(editor.text);
-                            default-color: Theme.quest ? Quest.white : Theme.tape ? #2f2117 : Theme.phos ? Ph.hi : Theme.comic ? Comic.ink : Theme.glass ? #ffffffeb : Theme.text2;
+                            default-color: Theme.quest ? Quest.white : Theme.tape ? #2f2117 : Theme.phos ? Ph.hi : Theme.comic ? Comic.ink : Theme.glass ? #ffffffeb : Theme.answer ? Am.ink : Theme.text2;
                             default-font-family: Theme.pocket ? Pk.big : Theme.quest ? Quest.font : root.text-family;
                             default-font-size: Theme.pocket ? 20px : Theme.quest ? 14px : root.text-size;
                         }
@@ -7807,10 +8348,10 @@ export component TranscriptCard inherits Rectangle {
                     }
                     Text {
                         text: root.summary;
-                        color: Theme.quest ? Quest.white : Theme.tape ? #2f2117 : Theme.phos ? Ph.ph : Theme.comic ? Comic.ink : Theme.glass ? #ffffffeb : Theme.text2;
+                        color: Theme.quest ? Quest.white : Theme.tape ? #2f2117 : Theme.phos ? Ph.ph : Theme.comic ? Comic.ink : Theme.glass ? #ffffffeb : Theme.answer ? Am.ink : Theme.text2;
                         font-family: Theme.pocket ? Pk.big : Theme.quest ? Quest.font : root.text-family;
                         font-weight: Theme.comic ? 700 : 400;
-                        font-size: Theme.pocket ? 20px : Theme.quest ? 14px : root.text-size;
+                        font-size: Theme.pocket ? 20px : Theme.quest ? 14px : Theme.answer ? 13px : root.text-size;
                         wrap: word-wrap;
                     }
                 }
@@ -7829,10 +8370,11 @@ export component TranscriptCard inherits Rectangle {
                         color: Theme.quest ? (root.translation != "" ? Quest.white : Quest.grey) : Theme.tape ? (root.translation != "" ? #2f2117 : Deck.ink-soft) : Theme.phos ? (root.translation != "" ? Ph.ph : Ph.dim)
                             : Theme.comic ? (root.translation != "" ? Comic.ink : Comic.sub)
                             : Theme.glass ? (root.translation != "" ? #ffffffeb : Glass.ink3)
+                            : Theme.answer ? (root.translation != "" ? Am.ink : Am.print-soft)
                             : root.translation != "" ? Theme.text2 : Theme.dim;
                         font-family: Theme.pocket ? Pk.big : Theme.quest ? Quest.font : root.text-family;
                         font-weight: Theme.comic ? 700 : 400;
-                        font-size: Theme.pocket ? 20px : Theme.quest ? 14px : root.text-size;
+                        font-size: Theme.pocket ? 20px : Theme.quest ? 14px : Theme.answer ? 13px : root.text-size;
                         wrap: word-wrap;
                     }
                 }
@@ -7864,11 +8406,12 @@ export component TranscriptCard inherits Rectangle {
                         // Spatial Glass: the word playing on a white glass bead, pauses as cyan pills.
                         // Quest Menu: the word playing on gold.
                         background: Theme.quest ? (i == root.current-word ? Quest.gold : wt.has-hover ? Quest.win-lo : transparent) : Theme.comic ? (i == root.current-word ? Comic.yellow : wt.has-hover ? Comic.pale : transparent)
-                            : i == root.current-word ? (Theme.glass ? #ffffff40 : Theme.pocket ? Pk.l3 : Theme.accent)
+                            : i == root.current-word ? (Theme.glass ? #ffffff40 : Theme.pocket ? Pk.l3 : Theme.answer ? Am.lit : Theme.accent)
                             : Theme.glass && w.is-silence ? #9fe3ff24
+                            : Theme.answer && w.is-silence ? #e8dfcb
                             : wt.has-hover ? (Theme.tape ? #00000014 : Theme.phos ? Ph.faint : Theme.os95 ? #e4e8f6 : Theme.glass ? #ffffff1a : Theme.raised) : transparent;
-                        border-width: Theme.comic && i == root.current-word ? 2px : Theme.glass && (w.is-silence || i == root.current-word) ? 1px : Theme.brick && w.is-silence ? 1px : 0;
-                        border-color: Theme.comic ? Comic.ink : Theme.brick ? Brick.ink : i == root.current-word ? #ffffff66 : #9fe3ff66;
+                        border-width: Theme.comic && i == root.current-word ? 2px : Theme.glass && (w.is-silence || i == root.current-word) ? 1px : Theme.brick && w.is-silence ? 1px : Theme.answer && w.is-silence ? 1px : 0;
+                        border-color: Theme.comic ? Comic.ink : Theme.brick ? Brick.ink : Theme.answer ? #b9ad95 : i == root.current-word ? #ffffff66 : #9fe3ff66;
                         width: hidden ? 0 : label.preferred-width + 6px;
                         height: hidden ? 0 : label.preferred-height + (Theme.comic ? 6px : 4px);
                         label := Text {
@@ -7915,6 +8458,13 @@ export component TranscriptCard inherits Rectangle {
                                     : w.pending ? Pk.l1
                                     : w.spoken ? Pk.l2
                                     : Pk.l3)
+                                : Theme.answer ? (i == root.current-word ? Am.rec
+                                    : w.is-silence ? Am.print-soft
+                                    : !marks ? Am.ink
+                                    : w.failed ? Am.rec
+                                    : w.pending ? #b1a58d
+                                    : w.spoken ? #a8650a
+                                    : Am.ink)
                                 : i == root.current-word ? Theme.on-accent
                                 : w.is-silence ? Theme.accent
                                 : !marks ? Theme.text2
@@ -7922,9 +8472,9 @@ export component TranscriptCard inherits Rectangle {
                                 : w.pending ? Theme.faint
                                 : w.spoken ? Theme.accent
                                 : Theme.text2;
-                            font-family: Theme.pocket ? Pk.big : Theme.quest ? Quest.font : Theme.brick ? Brick.words : Theme.tape ? Theme.mono : Theme.dash ? "Manrope" : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : Theme.comic ? "Comic Neue" : "Inter Tight";
-                            font-weight: Theme.comic || (Theme.tape && w.is-silence) ? 700 : Theme.glass && w.is-silence ? 600 : 400;
-                            font-size: Theme.pocket ? 20px : Theme.quest ? 14px : Theme.brick ? (w.is-silence ? round(root.brick-size * 0.85 / 1px) * 1px : root.brick-size) : Theme.tape ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : Theme.comic ? 13.5px : Theme.glass ? (w.is-silence ? 11.5px : 14px) : 15px;
+                            font-family: Theme.pocket ? Pk.big : Theme.quest ? Quest.font : Theme.brick ? Brick.words : Theme.tape ? Theme.mono : Theme.dash ? "Manrope" : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : Theme.comic ? "Comic Neue" : Theme.answer ? (w.is-silence ? "Barlow Condensed" : "Courier Prime") : "Inter Tight";
+                            font-weight: Theme.comic || (Theme.tape && w.is-silence) || (Theme.answer && (w.is-silence || i == root.current-word)) ? 700 : Theme.glass && w.is-silence ? 600 : 400;
+                            font-size: Theme.pocket ? 20px : Theme.quest ? 14px : Theme.brick ? (w.is-silence ? round(root.brick-size * 0.85 / 1px) * 1px : root.brick-size) : Theme.tape ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : Theme.comic ? 13.5px : Theme.glass ? (w.is-silence ? 11.5px : 14px) : Theme.answer ? (w.is-silence ? 10px : 13px) : 15px;
                             font-italic: w.spoken && marks;
                         }
                         wt := TouchArea {

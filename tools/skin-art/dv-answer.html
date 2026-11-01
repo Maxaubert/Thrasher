@@ -93,7 +93,7 @@ if (el === 'nub') one('nub', 6);
 if (el === 'pb-s' || el === 'pb-l') one('pbtn', 6);
 if (el === 'pb-s-red' || el === 'pb-l-red') one('pbtn red', 6);
 if (el === 'thumb') one('thumb', 3);
-if (el === 'grille-p' || el === 'grille-w') one('grille', 1);
+if (el === 'grille-p' || el === 'grille-w' || el === 'grille-m') one('grille', 1);
 if (el === 'keys') one('well', 1);
 if (el === 'led-on') one('led on', 4);
 if (el === 'led-off') one('led', 4);
@@ -104,16 +104,21 @@ if (el === 'dot-pause') dot('#ffb22e', 'rgba(255,178,46,.7)');
 
 // The micro cassette window with the cassette in it, the reels' wells and the wound
 // tape on the left reel; the reels go on top (reel-p, reel-w).
-const mc = (tag, cw, ch, lbl, reel) => {
+// `still` (the other pages' large cassette, which never turns): the reels drawn in and
+// the label left blank for the clip's name, which Slint writes on it.
+const mc = (tag, cw, ch, lbl, reel, still) => {
+  const r = (ring) => `<div class="${ring ? 'ring ' : ''}" style="position:relative;width:${reel}px;height:${reel}px">${still ? `<div class="reel" style="left:0;top:0;width:${reel}px;height:${reel}px"></div>` : ''}</div>`;
   const inner = `<span class="tag">${tag}</span>
     <div class="cas" style="width:${cw}px;height:${ch}px;left:50%;top:56%;transform:translate(-50%,-50%)">
-      <div class="lbl" style="font-size:${lbl}px">MC 60</div>
-      <div class="win2"><div class="ring" style="width:${reel}px;height:${reel}px"></div><div style="width:${reel}px;height:${reel}px"></div></div></div>
+      <div class="lbl" style="font-size:${lbl}px">${still ? '' : 'MC 60'}</div>
+      <div class="win2">${r(true)}${r(false)}</div></div>
     <div class="glass"></div>`;
   one('mc', 3, '', inner);
 };
 if (el === 'mc-p') mc('MICRO', 112, 56, 9, 16);
 if (el === 'mc-w') mc('MICRO CASSETTE', 160, 74, 11, 22);
+// The merge page's large cassette (364x170 with the shadow margin), from dv-answer-pages/.
+if (el === 'mc-l') mc('MICRO CASSETTE', 290, 118, 15, 34, true);
 // A reel turning: 8 frames side by side, 15 degrees apart (its spokes repeat every 120).
 if (el === 'reel-p' || el === 'reel-w') {
   const d = H;

@@ -9,7 +9,7 @@
 // current one, and a gold ring round the keyboard focus.
 // Phone draws smaller framed tiles on its LCD, the current one inverted in a double frame.
 
-import { Theme, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Glass, Quest, QPx, Brick, Palette, Icon, IconBtn, Win, Pk, PkRing, PkTile } from "common.slint";
+import { Theme, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Glass, Quest, QPx, Brick, Am, Palette, Icon, IconBtn, Win, Pk, PkRing, PkTile } from "common.slint";
 
 export struct ThemeTile {
     // As in Theme.names.
@@ -161,11 +161,13 @@ component Tile inherits Rectangle {
         Rectangle {
             y: 0;
             height: 70px;
-            border-radius: 8px;
+            border-radius: Theme.answer ? 6px : 8px;
             border-width: root.on || root.focused ? 2px : 1px;
             border-color: Theme.glass ? (root.focused ? Glass.cyan : root.on ? #ffffff : root.hover || root.down ? #ffffff73 : #ffffff2e)
+                : Theme.answer ? (root.focused ? Am.amber : root.on ? Am.rec : root.hover || root.down ? Am.print-soft : Am.edge)
                 : root.focused ? Theme.text : root.on ? Theme.accent : root.hover || root.down ? Theme.edge : Theme.divider;
             background: Theme.glass ? (root.down ? #ffffff26 : root.hover ? #ffffff1a : #0000002e)
+                : Theme.answer ? (root.on ? Am.lit : root.down ? #e1d7c1 : root.hover ? #e8dfcb : Am.paper)
                 : root.down ? Theme.raised : root.hover ? Theme.hover : Theme.bg;
         }
         Rectangle {
@@ -182,7 +184,17 @@ component Tile inherits Rectangle {
                 image-fit: fill;
             }
         }
-        if root.on: Rectangle {
+        // Answering Machine: a red lamp instead of the check.
+        if root.on && Theme.answer: Rectangle {
+            x: 110px - 14px;
+            y: 6px;
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: #ffd2c6;
+            Rectangle { x: 1px; y: 1px; width: 6px; height: 6px; border-radius: 3px; background: Am.led; }
+        }
+        if root.on && !Theme.answer: Rectangle {
             x: 110px - 12px;
             y: -6px;
             width: 18px;
@@ -201,9 +213,10 @@ component Tile inherits Rectangle {
             y: 75px;
             height: 15px;
             text: root.tile.name;
-            color: Theme.glass ? (root.on || root.hover ? Glass.ink : Glass.ink2) : root.on ? Theme.accent : root.hover ? Theme.text : Theme.muted;
-            font-size: 12px;
-            font-weight: root.on ? 600 : 500;
+            color: Theme.glass ? (root.on || root.hover ? Glass.ink : Glass.ink2) : Theme.answer ? (root.on ? Am.rec : Am.print) : root.on ? Theme.accent : root.hover ? Theme.text : Theme.muted;
+            font-family: Theme.answer ? "Courier Prime" : Theme.pages == 6 ? "Manrope" : "Inter Tight";
+            font-size: Theme.answer ? 11px : 12px;
+            font-weight: Theme.answer ? 700 : root.on ? 600 : 500;
             horizontal-alignment: center;
             vertical-alignment: center;
             overflow: elide;
@@ -592,7 +605,7 @@ component Fade inherits Rectangle {
         x: self.from;
         width: self.to - self.from;
         // Phosphor's strips sit on the window's black, not on a card.
-        background: (Theme.phos ? Theme.bg : Theme.card).with-alpha(root.to-right ? (i + 0.5) / root.strips : 1 - (i + 0.5) / root.strips);
+        background: (Theme.phos ? Theme.bg : Theme.answer ? Am.paper : Theme.card).with-alpha(root.to-right ? (i + 0.5) / root.strips : 1 - (i + 0.5) / root.strips);
     }
 }
 
@@ -678,13 +691,31 @@ component Strip inherits VerticalLayout {
         spacing: Theme.brick ? 6px : 8px;
         // Car Dashboard: small caps, as the cards' names. Brick Phone: the LCD's small caps.
         if !Theme.tape && !Theme.comic: Text {
-            text: Theme.dash || Theme.quest || Theme.brick ? root.title.to-uppercase() : root.title;
-            color: Theme.pocket ? Pk.l3 : Theme.phos ? Ph.hi : Theme.glass ? Glass.ink : Theme.dash ? Theme.muted : Theme.quest ? Quest.white : Theme.text;
-            font-family: Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.dash ? "Manrope" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
-            font-size: Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.os95 ? 12.5px : Theme.dash ? 9px : Theme.quest ? 11px : Theme.brick ? 8px : 12px;
-            font-weight: Theme.phos || Theme.quest || Theme.brick ? 400 : Theme.os95 ? 700 : Theme.dash ? 800 : 600;
-            letter-spacing: Theme.dash ? 2.3px : Theme.quest ? 0.5px : Theme.brick ? 0.5px : 0;
+            text: Theme.dash || Theme.quest || Theme.brick || Theme.answer ? root.title.to-uppercase() : root.title;
+            color: Theme.pocket ? Pk.l3 : Theme.phos ? Ph.hi : Theme.glass ? Glass.ink : Theme.dash ? Theme.muted : Theme.quest ? Quest.white : Theme.answer ? Am.print : Theme.text;
+            font-family: Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.dash ? "Manrope" : Theme.answer ? "Barlow Condensed" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
+            font-size: Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.os95 ? 12.5px : Theme.dash ? 9px : Theme.quest ? 11px : Theme.brick ? 8px : Theme.answer ? 10px : 12px;
+            font-weight: Theme.phos || Theme.quest || Theme.brick ? 400 : Theme.os95 ? 700 : Theme.dash ? 800 : Theme.answer ? 700 : 600;
+            letter-spacing: Theme.dash ? 2.3px : Theme.quest ? 0.5px : Theme.brick ? 0.5px : Theme.answer ? 2.4px : 0;
             vertical-alignment: center;
+        }
+        if Theme.answer: VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 24px;
+                height: 16px;
+                border-radius: 3px;
+                background: Am.smoke;
+                Text {
+                    text: (root.n < 10 ? "0" : "") + root.n;
+                    color: Am.led;
+                    font-family: "Memo Segments";
+                    font-size: 10px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+            }
         }
         if Theme.comic: VerticalLayout {
             alignment: center;
@@ -725,7 +756,7 @@ component Strip inherits VerticalLayout {
                 }
             }
         }
-        Text {
+        if !Theme.answer: Text {
             text: root.n;
             color: Theme.pocket ? Pk.l2 : Theme.tape ? #6f665a : Theme.os95 ? Os.note : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.dash ? #56606c : Theme.brick ? Brick.ink2 : Theme.quest ? Quest.grey : Theme.dim;
             font-family: Theme.pocket ? Pk.small : Theme.tape || Theme.dash ? Theme.mono : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
@@ -742,9 +773,9 @@ component Strip inherits VerticalLayout {
             VerticalLayout {
                 alignment: center;
                 IconBtn {
-                    size: Theme.os95 ? 22px : Theme.pocket ? 18px : Theme.quest ? 27px : Theme.brick ? 18px : 26px;
-                    height: Theme.tape ? 22px : Theme.os95 || Theme.pocket ? 18px : Theme.comic ? 24px : Theme.quest ? 27px : Theme.brick ? 18px : 26px;
-                    round: !Theme.comic && !Theme.brick;
+                    size: Theme.os95 ? 22px : Theme.pocket ? 18px : Theme.quest ? 27px : Theme.brick ? 18px : Theme.answer ? 24px : 26px;
+                    height: Theme.tape ? 22px : Theme.os95 || Theme.pocket ? 18px : Theme.comic ? 24px : Theme.quest ? 27px : Theme.brick ? 18px : Theme.answer ? 22px : 26px;
+                    round: !Theme.comic && !Theme.brick && !Theme.answer;
                     key: "[<]";
                     icon: "back";
                     icon-size: Theme.tape ? 11px : 13px;
@@ -758,9 +789,9 @@ component Strip inherits VerticalLayout {
             VerticalLayout {
                 alignment: center;
                 IconBtn {
-                    size: Theme.os95 ? 22px : Theme.pocket ? 18px : Theme.quest ? 27px : Theme.brick ? 18px : 26px;
-                    height: Theme.tape ? 22px : Theme.os95 || Theme.pocket ? 18px : Theme.comic ? 24px : Theme.quest ? 27px : Theme.brick ? 18px : 26px;
-                    round: !Theme.comic && !Theme.brick;
+                    size: Theme.os95 ? 22px : Theme.pocket ? 18px : Theme.quest ? 27px : Theme.brick ? 18px : Theme.answer ? 24px : 26px;
+                    height: Theme.tape ? 22px : Theme.os95 || Theme.pocket ? 18px : Theme.comic ? 24px : Theme.quest ? 27px : Theme.brick ? 18px : Theme.answer ? 22px : 26px;
+                    round: !Theme.comic && !Theme.brick && !Theme.answer;
                     key: "[>]";
                     icon: "chevron";
                     icon-size: Theme.tape ? 11px : 13px;
@@ -858,9 +889,9 @@ component Strip inherits VerticalLayout {
         padding-bottom: Theme.tape ? 6px : 0;
         Rectangle {
             visible: root.scrolls;
-            height: Theme.tape ? 4px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.brick ? 5px : Theme.pocket ? 6px : Theme.quest ? 9px : 3px;
-            border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.brick || Theme.quest || Theme.pocket ? 0 : 2px;
-            background: Theme.pocket ? transparent : Theme.tape ? #1b1410 : Theme.phos ? Ph.faint : Theme.os95 ? Os.face : Theme.comic ? #ffffff : Theme.glass ? #ffffff1f : Theme.quest ? Quest.ink : Theme.brick ? Brick.ghost : Theme.divider;
+            height: Theme.tape ? 4px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.answer ? 6px : Theme.brick ? 5px : Theme.pocket ? 6px : Theme.quest ? 9px : 3px;
+            border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.brick || Theme.quest || Theme.pocket ? 0 : Theme.answer ? 3px : 2px;
+            background: Theme.pocket ? transparent : Theme.tape ? #1b1410 : Theme.phos ? Ph.faint : Theme.os95 ? Os.face : Theme.comic ? #ffffff : Theme.glass ? #ffffff1f : Theme.quest ? Quest.ink : Theme.brick ? Brick.ghost : Theme.answer ? #c7bba1 : Theme.divider;
             border-width: Theme.comic ? 1.5px : Theme.quest ? 3px : Theme.brick ? 1px : 0;
             border-color: Theme.quest ? Quest.rule : Theme.brick ? Brick.ink : Comic.ink;
             property <length> thumb-w: max(30px, self.width * root.view-w / max(root.content-w, 1px));
@@ -881,11 +912,12 @@ component Strip inherits VerticalLayout {
             PkTile { visible: Theme.pocket; x: 0; y: 0; width: parent.width; height: parent.height; source: @image-url("skins/px-pocket/dith.png"); }
             Rectangle {
                 x: Theme.quest ? 3px + (root.max-off > 0 ? root.x-off / root.max-off * (parent.width - 6px - self.width) : 0) : root.max-off > 0 ? root.x-off / root.max-off * (parent.width - self.width) : 0;
-                y: Theme.tape ? -1px : Theme.quest ? 3px : 0;
+                y: Theme.tape ? -1px : Theme.quest ? 3px : Theme.answer ? -3px : 0;
                 width: Theme.quest ? max(30px, (parent.width - 6px) * root.view-w / max(root.content-w, 1px)) : parent.thumb-w;
-                height: Theme.tape ? 6px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.pocket ? 6px : Theme.brick ? 5px : 3px;
-                border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.brick || Theme.quest || Theme.pocket ? 0 : 2px;
-                background: Theme.pocket ? Pk.l3 : Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.phos ? Ph.ph : Theme.os95 ? Os.face : Theme.comic ? Comic.ink : Theme.glass ? #ffffff73 : Theme.quest ? Quest.grey : Theme.edge;
+                height: Theme.tape ? 6px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.pocket ? 6px : Theme.brick ? 5px : Theme.answer ? 12px : 3px;
+                border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.brick || Theme.quest || Theme.pocket ? 0 : Theme.answer ? 3px : 2px;
+                background: Theme.pocket ? Pk.l3 : Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.phos ? Ph.ph : Theme.os95 ? Os.face : Theme.comic ? Comic.ink : Theme.glass ? #ffffff73
+                    : Theme.answer ? @linear-gradient(180deg, #635c56 0%, #4b4540 100%) : Theme.quest ? Quest.grey : Theme.edge;
                 OsBevel { visible: Theme.os95; kind: 0; }
             }
         }

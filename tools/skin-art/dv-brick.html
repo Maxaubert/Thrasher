@@ -26,9 +26,12 @@ const FACE = {
   red: 'linear-gradient(#d9493a,#932719)',
 };
 const KEY_SHADOW = 'inset 0 1px 0 rgba(255,255,255,.17),inset 0 -2px 0 rgba(0,0,0,.35),0 2px 0 #0e0f10,0 3px 5px rgba(0,0,0,.45)';
+// A key that is off (the other pages' green key on settings, the widget's red key while
+// ready): the mockup's `.key.off` filter over the whole key and its shadow.
+const OFF = 'filter:saturate(.25) brightness(.7)';
 // A key of w x h with its margin, drawn at x offset `dx` inside the piece.
-function key(w, h, radius, face, dx) {
-  return `<div class="k" style="left:${dx + ML}px;top:${MT}px;width:${w}px;height:${h}px;border-radius:${radius};background:${FACE[face]};box-shadow:${KEY_SHADOW}"></div>`;
+function key(w, h, radius, face, dx, off) {
+  return `<div class="k" style="left:${dx + ML}px;top:${MT}px;width:${w}px;height:${h}px;border-radius:${radius};background:${FACE[face]};box-shadow:${KEY_SHADOW};${off ? OFF : ''}"></div>`;
 }
 // Keys that stretch: [width it is drawn at, height, radius, face].
 const STRETCH = {
@@ -37,6 +40,8 @@ const STRETCH = {
   'kp-rec': [104, 32, '8px 18px 22px 18px', 'green'],
   'kp-stop': [104, 32, '18px 8px 18px 22px', 'red'],
   'kp-pad': [110, 23, '12px', 'rub'],
+  // The other pages: the green key while it is off (settings, models).
+  'kp-off': [104, 32, '8px 18px 22px 18px', 'green', 1],
 };
 // Keys of one size: [width, height, radius, face].
 const FIXED = {
@@ -44,14 +49,20 @@ const FIXED = {
   'kw-rec': [136, 54, '26px', 'green'],
   'kw-stop': [136, 42, '22px', 'red'],
   'kw-soft': [110, 30, '8px 8px 18px 18px', 'soft'],
+  // The other pages (dv-brick-pages): the wide green key while it is off, and the
+  // widget's green and red keys (red off while ready).
+  'kw-off': [136, 54, '26px', 'green', 1],
+  'kg-rec': [66, 36, '18px', 'green'],
+  'kg-stop': [66, 30, '15px', 'red'],
+  'kg-stopoff': [66, 30, '15px', 'red', 1],
 };
 const m = el.match(/^(kp-[a-z]+)-([lmr])$/);
 if (m && STRETCH[m[1]]) {
-  const [w, h, r, f] = STRETCH[m[1]];
+  const [w, h, r, f, off] = STRETCH[m[1]];
   const dx = m[2] === 'l' ? 0 : m[2] === 'm' ? -(ML + w / 2) : -(w + 2 * ML - (CAP + ML));
-  a.innerHTML = key(w, h, r, f, dx);
+  a.innerHTML = key(w, h, r, f, dx, off);
 }
-if (FIXED[el]) { const [w, h, r, f] = FIXED[el]; a.innerHTML = key(w, h, r, f, 0); }
+if (FIXED[el]) { const [w, h, r, f, off] = FIXED[el]; a.innerHTML = key(w, h, r, f, 0, off); }
 
 // The minimise and close nubs (the icon goes on top).
 if (el === 'nub') a.innerHTML = `<div class="k" style="left:${ML}px;top:${MT}px;width:30px;height:18px;border-radius:9px;background:linear-gradient(#45474c,#2a2b2f);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 2px 0 #111,0 3px 4px rgba(0,0,0,.4)"></div>`;
@@ -89,6 +100,15 @@ const SYM = {
   down: '<path d="M12 18l-6-7h12z" fill="currentColor"/>',
   play: '<path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/>',
   pause: '<path d="M7 5.5h3.6v13H7zM13.4 5.5H17v13h-3.6z" fill="currentColor"/>',
+  // The other pages (docs/mockups/device-themes/dv-brick-pages/): send (Export), back,
+  // done, merge, open the window, and the rocker's side arrows.
+  send: '<path d="M12 19V6M6.5 11.5L12 6l5.5 5.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  back: '<path d="M10 7l-5 5 5 5M5 12h9a5 5 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  merge: '<path d="M6 4v5a6 6 0 0 0 6 6M18 4v5a6 6 0 0 1-6 6v5M9 17l3 3 3-3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+  expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+  left: '<path d="M6 12l7-6v12z" fill="currentColor"/>',
+  right: '<path d="M18 12l-7-6v12z" fill="currentColor"/>',
 };
 const ic = el.match(/^i-([a-z]+)\d+$/);
 if (ic && SYM[ic[1]]) a.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 24 24" style="color:#fff">${SYM[ic[1]]}</svg>`;
@@ -114,6 +134,36 @@ if (pg && PX[pg[1]]) {
   const [w, h, d, cut] = PX[pg[1]];
   a.innerHTML = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges"><defs><mask id="m"><rect width="${w}" height="${h}" fill="#fff"/>${cut ? `<path d="${cut}" fill="#000"/>` : ''}</mask></defs><path d="${d}" fill="#fff" mask="url(#m)"/></svg>`;
 }
+// The other pages' pixel glyphs, as the pages mockups draw them: rows of '#' and '.'.
+const PXA = {
+  up: '...##...|..####..|.######.|########',
+  dn: '########|.######.|..####..|...##...',
+  lf: '...#|..##|.###|####|.###|..##|...#',
+  rt: '#...|##..|###.|####|###.|##..|#...',
+  check: '.......##|......##.|#....##..|##..##...|.####....|..##.....',
+  x: '#.....#|.#...#.|..#.#..|...#...|..#.#..|.#...#.|#.....#',
+  grip: '##.##|##.##|.....|##.##|##.##|.....|##.##|##.##',
+  lang: '#####....|..#......|.#.#.....|#...#.##.|.....#..#|....#....#|....######|....#....#',
+  spark: '....#....|....#....|...###...|#########|...###...|....#....|....#....',
+  copy: '..######|..#....#|######.#|#....#.#|#....#.#|#....###|#....#..|######..',
+  pencil: '.....##|....#.#|...#.#.|..#.#..|.#.#...|##.....|###....',
+  trash: '..###..|#######|.#.#.#.|.#.#.#.|.#.#.#.|.#.#.#.|.#####.',
+  folder: '###......|#########|#.......#|#.......#|#.......#|#########',
+  plus: '...#...|...#...|...#...|#######|...#...|...#...|...#...',
+  box: '...#...|..###..|.#.#.#.|...#...|#..#..#|#.....#|#######',
+  loop: '.#####.|#.....#|#.....#|#...#.#|.###.##|.....#.',
+  speak: '...#....|..##..#.|####.#..|####.#.#|####.#.#|####.#..|..##..#.|...#....',
+  bigimp: '.....######.....|.....#....#.....|.....#....#.....|.....#....#.....|.....#....#.....|.....#....#.....|..###......###..|...#........#...|....#......#....|.....#....#.....|......#..#......|.......##.......|................|##............##|##............##|################',
+  hour: '#######|.#...#.|..#.#..|...#...|..#.#..|.#.#.#.|#######',
+};
+if (pg && PXA[pg[1]]) {
+  const rows = PXA[pg[1]].split('|');
+  let d = '';
+  rows.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (row[x] === '#') d += `M${x} ${y}h1v1h-1z`; });
+  a.innerHTML = `<svg width="${rows[0].length}" height="${rows.length}" viewBox="0 0 ${rows[0].length} ${rows.length}" shape-rendering="crispEdges"><path d="${d}" fill="#fff"/></svg>`;
+}
+// The dither of the screen behind a popup: one pixel in two, as a checker.
+if (el === 't-dither') a.innerHTML = `<div class="k" style="left:0;top:0;width:1px;height:1px;background:#fff"></div><div class="k" style="left:1px;top:1px;width:1px;height:1px;background:#fff"></div>`;
 
 // Tiles, white, coloured in Slint: the dashed and dotted rules, the scrollbar's track
 // lines, the LCD's pixel grid (a line every 3 px each way; the mockup's are 7% and 6%

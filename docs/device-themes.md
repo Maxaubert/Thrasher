@@ -126,10 +126,10 @@ and VT323 (the same `VT323-400.ttf` as Phosphor: its Latin subset covers the ASC
 skin needs, with the same outlines and metrics).
 - `Theme.pages` says how the other pages are built: 1 for Tape Deck, 2 for Phosphor, 3 for
   Desktop 95, 4 for the Comic Book, 5 for Spatial Glass, 6 for the Car Dashboard, 7 for
-  Pocket and 8 for the Quest Menu (each since its pages were built), else 0, the classic
-  pages in the theme's palette. A skin whose other pages are not built yet keeps them
-  classic this way; `app.slint` picks the main page by `Theme.skin` and the rest by
-  `Theme.pages`. Desktop 95's palette is grey and navy for those pages.
+  Pocket, 8 for the Quest Menu and 9 for the Brick Phone (each since its pages were built),
+  else 0, the classic pages in the theme's palette. A skin whose other pages are not built
+  yet keeps them classic this way; `app.slint` picks the main page by `Theme.skin` and the
+  rest by `Theme.pages`. Desktop 95's palette is grey and navy for those pages.
 - The scope and the LED level follow `Main.live` like the classic meter, so the skin needs
   no clock (`EFFECT_FPS` and `RECORDING_FPS` 0). Nothing else moves.
 - `Main.transcribed-count` (set in `refresh_clips`) gives the wide status bar its
@@ -1480,6 +1480,107 @@ amber palette (`Theme.pages` 0).
   Tape Deck and Phosphor main pages at 520x700, 420x560, 700x700 and 1100x700 match before and
   after.
 
+**Built in step 5, Brick Phone on every other page (2026-10-31):** mockups in
+`docs/mockups/device-themes/dv-brick-pages/` (approved by Max 2026-10-31: widget variant A,
+portrait pages slide the keypad away so the LCD grows, keypad digits pick nothing).
+- `Theme.pages` is 9 for skin 9 (`Theme.brick`); every other value is as before. `app.slint`
+  has a `Theme.pages == 9` block next to each Car Dashboard one, with the same bindings; the
+  question and the covers also get `wide` and `main: root.page == 0` (they draw over the
+  handset, so they need to know where its LCD and keys are).
+- `ui/skins/dv-brick-parts.slint`: the parts the main page and the other pages share, moved out
+  of `dv-brick.slint` unchanged (keys and their faces, shell, top, bezel, small caps, signal
+  bars, timer, scrollbar), plus `Hand` (where the bezel, the LCD, the soft keys and the rocker
+  sit for a window size, the main page with its keypad or not), `LcdGlass` (the backlight),
+  `LcdCorners` and `Battery`. `KeyFace` gains kinds 5 and 15 (the green key while off) and 16
+  to 18 (the widget's keys). The colours (`Brick`) moved to `common.slint`.
+- `ui/skins/dv-brick-pages.slint`: `ClipPage`, `SettingsPage`, `ModelsPage`, `MergePage`,
+  `AskPage`, `Widget`, `Dialog`, `Speaking` and `Drop`. Every page is the handset (`Phone`):
+  the LCD's title row (signal bars, the page's name, a note or tag, the battery), the page,
+  the soft key labels; the soft keys, the rocker, the green and red keys. The keys keep one
+  job each: green is the page's go key (Export with its list on the LCD, Merge N clips, Ask;
+  off on settings and models), red is Back, the soft keys are Rename and Delete (clip),
+  Cancel (merge) or All projects (Ask, only with two projects); the rocker seeks 5 s and
+  plays on the clip page and scrolls settings, models and Ask ("Scroll up", "Scroll down").
+  Wide pages keep the keypad on the left wing; its digits only show.
+- Questions are LCD boxes with a double ink frame and an inverted title bar over a dithered
+  screen; their answers are drawn on the soft keys and the LCD's foot (Discard changes on the
+  rocker's middle). The speaking cover is the same box over a darker dither, the drop cover
+  a dashed frame 12 px in from the LCD edge with the big pixel arrow.
+- Not reachable headless: a merged clip's parts (the scratch clips have none with two parts),
+  Ask's answer and THINKING (no AI run), a real file drop, speaking new words (the cover is
+  shown with `THRASHER_TEST_COVER`), tooltips, and dragging an order row.
+
+**Budgets measured on the Brick Phone pages** (test copy, 2.25x display, 10 s samples,
+2026-10-31, Ember in brackets):
+- CPU idle 0.0 to 0.3% on every page at 520x700 (0.0 to 0.5%), 0.0 to 0.9% at 1100x700 (0.0 to
+  0.8%; the 0.9 is Ask's blinking caret). Nothing moves on a clock.
+- Working set at 520x700: main 40.9 (41.1), clip 165.3 (168.4), settings 63.0 (57.8), models
+  64.7 (71.8), ask 77.1 (71.9), merge 77.6 (72.4), widget 71.7 (66.9) MB; at 1100x700: main 49.7
+  (48.7), clip 180.1 (170.5), settings 72.2 (66.3), models 74.2 (66.3), ask 86.4 (81.1), merge
+  87.3 (80.8), widget 73.1 (67.2) MB. At most +9.6 MB.
+- Exe +22.26 MB (136.41 to 158.66 MB): the pages' generated code and the LCD look in the shared
+  widgets (the menus inside every skin's clip rows carry it); art 43 KB, no new fonts. Twice
+  the batch 1 skins' cost; a target for the size pass.
+- Ember, Tape Deck and Phosphor: every page, menu and question at 520x700 and 1100x700 (114
+  shots) match the old build pixel for pixel, but for blinking carets and a 4 x 3 px tip of the
+  Tape Deck settings scroll thumb at the page's end (520x700), not explained.
+- The shared widgets draw the LCD look when `Theme.brick` is set: `MenuCard` (double frame,
+  `title` bar), `MenuRow` and `ExportItem` (new `num`: the inverted place number), `Select`
+  (boxed value, a numbered pick list under the setting's name), `Btn`, `IconBtn` (square LCD
+  keys with pixel glyphs from `BrickIcons`), `Toggle` (the OFF ON pair), `TextField` (2 px
+  frame, a second frame while it has the cursor), `ShortcutBox`, `OrderList`, `Scroller` (the
+  LCD's ruled bar), `TranscriptCard` (tagged box, VT323 words, the spoken one inverted, pauses
+  boxed, `brick-size`), `Tip` and the gallery strips (72 px framed tiles, the current one
+  inverted in a double frame). `ProjectMenu` and `ClipMenu` number their lines and carry
+  titles (Projects, the clip's name, Export, Move to), so the main page's menus take the look
+  too. `Theme.menu-h` is 22 px and `Theme.menu-top` 24 px for the skin (0 for every other).
+- The skin's palette is now ink on the amber LCD (it was charcoal for the classic pages), so
+  whatever a shared widget draws without a Brick look of its own lands on the LCD in ink;
+  the editor's pause tags take the palette's accent (ink) with no Rust change.
+- Art: 39 pieces from `tools/skin-art/dv-brick.html` (`kp-off-*` and `kw-off`, the keys off;
+  `kg-*`, the widget's keys; icons send, back, check, merge, ask, expand, left, right; pixel
+  glyphs from the mockups' maps; `t-dither`), 43 KB; `ONLY="kp-off-l ..." sh
+  tools/skin-art/cut.sh dv-brick OUT` cuts them (the list is at the end of its dv-brick line).
+- Mockup faults fixed, not copied: the 2 key reads ABC (as the built main page), the invalid
+  file name field keeps its 24 px height with the error as an inverted tag under it, the
+  transcript words stop short of the scroll bar, and the wide dashed column rule ends above
+  the message line.
+
+**Lessons from the Brick Phone pages:**
+- **A page drawn over the handset needs its geometry from one place.** The questions and
+  covers are drawn by AppWindow over whatever page is shown, so `Hand` works out the bezel,
+  the LCD, the soft keys and the rocker from the window size, the size class and whether the
+  main page's keypad is there; the pages and the overlays both use it.
+- **Redraw a piece of the LCD by clipping a second backlight:** the question's soft labels
+  cover the page's own with a `LcdGlass` of the LCD's full size inside a clipped strip, so
+  the radial gradient matches to the pixel.
+- **Change the palette, not every widget:** setting the skin's palette to the LCD's ink and
+  amber gave every shared widget a usable look at once; the Brick look in each widget then
+  only adds the frames, fonts and inversions.
+- **`slint-viewer --check` on a skin file alone misses errors** (a component never used from
+  an exported one, `width` with `max-width`); check `app.slint`.
+- **Ids inside an `if` cannot be read from outside it**, also not for a height: the shelf row
+  and column became two components.
+- **`accessible-role: text` in a component with a `text` property** is read as the property;
+  write `AccessibleRole.text`.
+- **Widgets with `@children` are inlined wherever they are used** (`MenuCard`, `IconBtn`,
+  `Scroller`), so a look added to them costs at every use. Their Brick parts are their own
+  components (`BrickMenuFrame`, `BrickGlyph`, `BrickBar`); that took 1.65 MB off the first build.
+- **The debug test exe passes the linker's limit:** `cargo test -p thrasher-app` now stops with
+  `LNK1140: limit exceeded for program database` (the generated UI code is that large).
+  `cargo test --release -p thrasher-app` passed (no debug info). Fixed in review: the root
+  `Cargo.toml` sets `debug = "line-tables-only"` for `thrasher-app` in the dev profile (other
+  crates keep full debug info), so `cargo test` and the CI's `cargo test --all` link again.
+- **Review fixes (2026-10-31):** the pick list (`Select`) and the language list drew rounded
+  highlight lines, two lines were inverted at once while hovering (now one, as Desktop 95),
+  the pick list's title bar cut "Stop recording after" (the list is 180 px wide now), and the
+  language list's Install link and check were still in the classic look.
+- **Checks:** the UI Automation names are matched without case, and a `Text` component with
+  `accessible-role: none` set on the instance is still listed, so the LCD's "Cancel" label
+  caught the press meant for the Cancel key; `Words` now goes silent itself. The drive is
+  flaky in places (a menu left open, a window a few px narrower), so the old build was shot
+  twice and a page counts as unchanged when it matches either run.
+
 ### Art
 
 - **Chrome and textures** (walnut, leatherette, brass, bezels, pixel frames) become small
@@ -1608,6 +1709,8 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      page").
      Quest Menu built 2026-10-31 (`Theme.pages` 8, see "Built in step 5, Quest Menu on every
      other page").
+     Brick Phone built 2026-10-31 (`Theme.pages` 9, see "Built in step 5, Brick Phone on
+     every other page").
    - Size (Max, 2026-10-31): the nine would bring the exe to about 235 MB. Build all nine,
      then one size pass (palette PNGs, shared frames deduped) to pull it back toward 200 MB.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

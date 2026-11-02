@@ -73,7 +73,10 @@ export component Tile inherits Image {
 // drawers, the shelf and the foot of a page.
 export component Wood inherits Rectangle {
     in property <bool> dark;
-    background: root.dark ? Pn.wood-dark : Pn.wood;
+    // The middle colour, the gradient on a child: the software renderer draws a gradient of
+    // three stops in bands that can leave a row open at a stop on a half pixel.
+    background: root.dark ? #261009 : #4a1c10;
+    Rectangle { background: root.dark ? Pn.wood-dark : Pn.wood; }
     Tile {
         x: 0;
         y: 0;
@@ -125,14 +128,42 @@ export component PnBar inherits Rectangle {
     }
 }
 
+// A round brass, wax or ivory face shaded from the middle out: `c0` in the middle, `c1` at
+// `mid` of the radius, `c2` at the edge, with an optional edge ring. The software renderer
+// fills a gradient as a square whatever its border-radius, so the shading is seven solid
+// rings, each round. Square: give it the same width and height.
+export component PnDisc inherits Rectangle {
+    in property <color> c0;
+    in property <color> c1;
+    in property <color> c2;
+    in property <float> mid: 0.5;
+    in property <length> edge-width;
+    in property <color> edge: transparent;
+    // The colour at a part of the radius (0 the middle, 1 the edge).
+    pure function at(r: float) -> color {
+        return r <= root.mid ? root.c1.mix(root.c0, r / root.mid) : root.c2.mix(root.c1, (r - root.mid) / (1 - root.mid));
+    }
+    Rectangle { border-radius: self.width / 2; background: root.at(0.93); }
+    Rectangle { x: root.width * 0.07; y: root.height * 0.07; width: root.width * 0.86; height: root.height * 0.86; border-radius: self.width / 2; background: root.at(0.79); }
+    Rectangle { x: root.width * 0.14; y: root.height * 0.14; width: root.width * 0.72; height: root.height * 0.72; border-radius: self.width / 2; background: root.at(0.65); }
+    Rectangle { x: root.width * 0.21; y: root.height * 0.21; width: root.width * 0.58; height: root.height * 0.58; border-radius: self.width / 2; background: root.at(0.51); }
+    Rectangle { x: root.width * 0.28; y: root.height * 0.28; width: root.width * 0.44; height: root.height * 0.44; border-radius: self.width / 2; background: root.at(0.37); }
+    Rectangle { x: root.width * 0.35; y: root.height * 0.35; width: root.width * 0.30; height: root.height * 0.30; border-radius: self.width / 2; background: root.at(0.23); }
+    Rectangle { x: root.width * 0.42; y: root.height * 0.42; width: root.width * 0.16; height: root.height * 0.16; border-radius: self.width / 2; background: root.at(0.08); }
+    Rectangle { border-radius: self.width / 2; border-width: root.edge-width; border-color: root.edge; }
+    @children
+}
+
 // A small brass rivet (a screw head on a card).
-export component Rivet inherits Rectangle {
+export component Rivet inherits PnDisc {
     width: 7px;
     height: 7px;
-    border-radius: 3.5px;
-    background: @linear-gradient(135deg, #fff3c8 0%, #a07a2a 60%, #4d360c 100%);
-    border-width: 0.5px;
-    border-color: #00000080;
+    c0: #fff3c8;
+    c1: #a07a2a;
+    c2: #4d360c;
+    mid: 0.6;
+    edge-width: 0.5px;
+    edge: #00000080;
 }
 
 // Small capitals engraved in brass colour on the wood (COUNTER, SPEED, ORDER).
@@ -157,7 +188,16 @@ export component Plate inherits Rectangle {
     border-bottom-right-radius: 3px;
     border-top-left-radius: root.round-top ? 3px : 0;
     border-top-right-radius: root.round-top ? 3px : 0;
-    background: root.red ? @linear-gradient(180deg, #d0463a 0%, #a3261c 55%, #7e1a12 100%) : Pn.plate-face;
+    // The middle colour, the gradient on a child: the software renderer draws a gradient of
+    // three stops in bands that can leave a row open at a stop on a half pixel.
+    background: root.red ? #a3261c : Pn.brass;
+    Rectangle {
+        border-bottom-left-radius: 3px;
+        border-bottom-right-radius: 3px;
+        border-top-left-radius: root.round-top ? 3px : 0;
+        border-top-right-radius: root.round-top ? 3px : 0;
+        background: root.red ? @linear-gradient(180deg, #d0463a 0%, #a3261c 55%, #7e1a12 100%) : Pn.plate-face;
+    }
     word := Text {
         x: 12px;
         y: root.red ? 0 : 0.5px;

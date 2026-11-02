@@ -3,7 +3,7 @@
 // widgets. app.slint holds the window itself; ui/skins/ the looks of the main page.
 
 import { Pb, Lamp, Lanes, Insert, DotBox } from "skins/x-pinball-parts.slint";
-import { Pn, PnBar } from "skins/x-phono-parts.slint";
+import { Pn, PnBar, PnDisc } from "skins/x-phono-parts.slint";
 
 // One line of the model library: a group heading, or a model in that group's card.
 export struct ModelRow {
@@ -1976,6 +1976,13 @@ export component PnKey inherits Rectangle {
         border-radius: 6px;
         background: root.kind == 1 ? #4a3209 : root.kind == 2 ? Pn.wax-lo : Pn.brass-mid;
     }
+    // The face's middle colour under its gradient: the software renderer draws a gradient of
+    // three or more stops in bands that can leave a row open at a stop when the key sits on a
+    // half pixel, and the brass ring showed through it as a line across the key.
+    Rectangle {
+        border-radius: 5px;
+        background: root.kind == 1 ? Pn.brass : root.kind == 2 ? Pn.wax : root.down ? #e9dcb8 : Pn.ivory;
+    }
     Rectangle {
         border-radius: 5px;
         background: root.kind == 1 ? Pn.brass-face : root.kind == 2 ? Pn.wax-face : root.down ? Pn.ivory-sunk : Pn.ivory-face;
@@ -2008,11 +2015,16 @@ export component PnKnob inherits Rectangle {
         border-radius: self.width / 2;
         background: #e8c86e;
     }
-    Rectangle {
-        border-radius: self.width / 2;
-        background: root.filled ? @radial-gradient(circle, #d0463a 0%, #a3261c 50%, #5e1209 100%)
-            : root.on || root.pressed ? @radial-gradient(circle, #b58a35 0%, #d1a84f 55%, #7a5717 100%)
-            : @radial-gradient(circle, #f6e3a1 0%, #d1a84f 50%, #7a5717 100%);
+    // Rings, not a radial gradient: the software renderer fills a gradient as a square.
+    PnDisc {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.height;
+        c0: root.filled ? #d0463a : root.on || root.pressed ? #b58a35 : #f6e3a1;
+        c1: root.filled ? #a3261c : #d1a84f;
+        c2: root.filled ? #5e1209 : #7a5717;
+        mid: !root.filled && (root.on || root.pressed) ? 0.55 : 0.5;
     }
     Rectangle { visible: root.hover && !root.pressed; border-radius: self.width / 2; background: #ffffff2e; }
 }
@@ -2086,20 +2098,43 @@ export component PnLever inherits Rectangle {
         border-radius: self.height / 2;
         background: root.hover ? Pn.brass : Pn.brass-mid;
     }
+    // The slot: the software renderer fills a gradient as a square, so the shading runs only
+    // between two solid round ends (dark wax on the left, bright on the right, when on).
     Rectangle {
         border-radius: self.height / 2;
-        background: root.on ? @linear-gradient(90deg, #5e1209 0%, #a3261c 100%) : @linear-gradient(180deg, #120804 0%, #24120a 100%);
+        background: root.on ? #5e1209 : #1b0d07;
     }
     Rectangle {
+        visible: root.on;
+        x: root.width - root.height;
+        width: root.height;
+        border-radius: self.height / 2;
+        background: #a3261c;
+    }
+    Rectangle {
+        visible: root.on;
+        x: root.height / 2;
+        width: root.width - root.height;
+        background: @linear-gradient(90deg, #5e1209 0%, #a3261c 100%);
+    }
+    // The ball and the shadow under it, in rings.
+    Rectangle {
+        x: root.on ? root.width - root.height + 2px : 2px;
+        y: 3px;
+        width: root.height - 4px;
+        height: root.height - 4px;
+        border-radius: self.width / 2;
+        background: #00000080;
+    }
+    PnDisc {
         x: root.on ? root.width - root.height + 2px : 2px;
         y: 2px;
         width: root.height - 4px;
         height: root.height - 4px;
-        border-radius: self.width / 2;
-        background: @radial-gradient(circle, #fff3c8 0%, #d1a84f 45%, #7a5717 100%);
-        drop-shadow-blur: 2px;
-        drop-shadow-offset-y: 1px;
-        drop-shadow-color: #000000cc;
+        c0: #fff3c8;
+        c1: #d1a84f;
+        c2: #7a5717;
+        mid: 0.45;
     }
 }
 
@@ -4871,15 +4906,16 @@ component PnXKey inherits Rectangle {
     accessible-role: button;
     accessible-label: root.label;
     accessible-action-default => { if (root.enabled) { root.clicked(); } }
-    if !root.dots: Rectangle {
+    if !root.dots: PnDisc {
         x: (parent.width - 20px) / 2;
         y: (parent.height - 20px) / 2;
         width: 20px;
         height: 20px;
-        border-radius: 10px;
-        background: t.has-hover && root.enabled ? @radial-gradient(circle, #fff3c8 0%, #e3c069 50%, #7a5717 100%) : @radial-gradient(circle, #f6e3a1 0%, #d1a84f 50%, #7a5717 100%);
-        border-width: 1px;
-        border-color: #4a3209;
+        c0: t.has-hover && root.enabled ? #fff3c8 : #f6e3a1;
+        c1: t.has-hover && root.enabled ? #e3c069 : #d1a84f;
+        c2: #7a5717;
+        edge-width: 1px;
+        edge: #4a3209;
         Icon {
             name: "close";
             tint: root.enabled ? Pn.engrave : Pn.ink-soft;
@@ -4899,7 +4935,8 @@ component PnXKey inherits Rectangle {
         width: 3.5px;
         height: 3.5px;
         border-radius: 1.75px;
-        background: @radial-gradient(circle, #fff2c0 0%, #a07a2a 60%, #4d360c 100%);
+        // Solid: the software renderer fills a gradient as a square.
+        background: #a07a2a;
     }
     property <bool> hovering: t.has-hover;
     changed hovering => { if (root.tip != "") { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); } }
@@ -4944,15 +4981,16 @@ component PnOrderRow inherits Rectangle {
         background: root.lifted ? Pn.brass-hi : #a07a2a;
     }
     // The place on a brass disc.
-    Rectangle {
+    PnDisc {
         x: 20px;
         y: (root.height - 20px) / 2;
         width: 20px;
         height: 20px;
-        border-radius: 10px;
-        background: @radial-gradient(circle, #f6e3a1 0%, #d1a84f 50%, #7a5717 100%);
-        border-width: 1px;
-        border-color: #4a3209;
+        c0: #f6e3a1;
+        c1: #d1a84f;
+        c2: #7a5717;
+        edge-width: 1px;
+        edge: #4a3209;
         Text {
             text: root.place;
             color: Pn.engrave;
@@ -5059,11 +5097,19 @@ component PnOrderRow inherits Rectangle {
         accessible-role: button;
         accessible-label: (root.playing ? "Pause " : "Play ") + root.item.name;
         accessible-action-default => { root.play(); }
-        Rectangle {
+        // A brass ring round a dark rim and the lid's face, in solid rings (the software
+        // renderer fills a gradient as a square).
+        PnDisc {
+            x: 0;
             y: lt.pressed ? 1px : 0;
-            border-radius: 14px;
-            background: root.playing ? @radial-gradient(circle, #d0463a 0%, #d0463a 44%, #5e1209 47%, #e7c66f 54%, #a07326 72%, #4d360c 100%)
-                : @radial-gradient(circle, #d8b35c 0%, #d8b35c 46%, #7a5717 48%, #e7c66f 54%, #a07326 72%, #4d360c 100%);
+            width: 28px;
+            height: 28px;
+            c0: #e7c66f;
+            c1: #a07326;
+            c2: #4d360c;
+            mid: 0.72;
+            Rectangle { x: 6.5px; y: 6.5px; width: 15px; height: 15px; border-radius: 7.5px; background: root.playing ? #5e1209 : #7a5717; }
+            Rectangle { x: 7.5px; y: 7.5px; width: 13px; height: 13px; border-radius: 6.5px; background: root.playing ? #d0463a : #d8b35c; }
             Rectangle { visible: lt.has-hover; border-radius: 14px; background: #fff6d826; }
             Icon {
                 x: (parent.width - self.width) / 2 + (root.playing ? 0 : 1px);
@@ -5092,11 +5138,13 @@ component PnShortcutArt inherits Rectangle {
         spacing: 8px;
         if root.listening: VerticalLayout {
             alignment: center;
-            Rectangle {
+            PnDisc {
                 width: 9px;
                 height: 9px;
-                border-radius: 4.5px;
-                background: @radial-gradient(circle, #fff0c0 0%, #e9a52c 45%, #6a420a 100%);
+                c0: #fff0c0;
+                c1: #e9a52c;
+                c2: #6a420a;
+                mid: 0.45;
             }
         }
         Text {

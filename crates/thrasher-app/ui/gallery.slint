@@ -14,7 +14,7 @@
 
 import { Theme, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Glass, Quest, QPx, Brick, Am, Palette, Icon, IconBtn, Win, Pk, PkRing, PkTile, SynKey, Fi, FiSkew, Cz, CzWell } from "common.slint";
 import { Pb } from "skins/x-pinball-parts.slint";
-import { Pn } from "skins/x-phono-parts.slint";
+import { Pn, PnDisc } from "skins/x-phono-parts.slint";
 
 export struct ThemeTile {
     // As in Theme.names.
@@ -218,9 +218,21 @@ component Tile inherits Rectangle {
             width: 18px;
             height: 18px;
             border-radius: 9px;
-            background: Theme.glass ? #ffffff : Theme.phono ? @radial-gradient(circle, #d0463a 0%, #a3261c 55%, #5e1209 100%) : Theme.accent;
-            border-width: Theme.phono ? 1px : 0;
-            border-color: Pn.wax-lo;
+            background: Theme.glass ? #ffffff : Theme.phono ? transparent : Theme.accent;
+            // Phonograph: a red wax seal, in rings (the software renderer fills a gradient
+            // as a square).
+            if Theme.phono: PnDisc {
+                x: 0;
+                y: 0;
+                width: 18px;
+                height: 18px;
+                c0: #d0463a;
+                c1: #a3261c;
+                c2: #5e1209;
+                mid: 0.55;
+                edge-width: 1px;
+                edge: Pn.wax-lo;
+            }
             Icon {
                 name: "check";
                 tint: Theme.glass ? #24222b : Theme.phono ? Pn.wax-ink : Theme.on-accent;

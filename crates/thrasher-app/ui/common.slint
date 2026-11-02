@@ -1755,8 +1755,7 @@ component MenuCardArt inherits Rectangle {
     in property <bool> list;
     in property <bool> sub;
     // Brick Phone: the double frame and the title bar.
-    BrickMenuFrame {
-        visible: Theme.brick;
+    if Theme.brick: BrickMenuFrame {
         x: 0;
         y: 0;
         width: parent.width;
@@ -1765,36 +1764,34 @@ component MenuCardArt inherits Rectangle {
         title-indent: root.title-indent;
     }
     // Desktop 95: a grey raised menu.
-    OsBevel { visible: Theme.os95 && !root.list; kind: 0; }
+    if Theme.os95 && !root.list: OsBevel { kind: 0; }
     // Pocket: an LCD window with a hard two shade edge (dark ring, mid green shadow).
-    Rectangle { visible: Theme.pocket; x: 4px; y: 4px; width: parent.width; height: parent.height; background: Pk.l2; }
-    Rectangle { visible: Theme.pocket; x: 0; y: 0; width: parent.width; height: parent.height; background: Pk.l0; }
-    PkRing { visible: Theme.pocket; x: 0; y: 0; width: parent.width; height: parent.height; }
+    if Theme.pocket: Rectangle { x: 4px; y: 4px; width: parent.width; height: parent.height; background: Pk.l2; }
+    if Theme.pocket: Rectangle { x: 0; y: 0; width: parent.width; height: parent.height; background: Pk.l0; }
+    if Theme.pocket: PkRing { x: 0; y: 0; width: parent.width; height: parent.height; }
     // Comic Book: a white panel with a thick ink edge and a hard shadow.
-    InkShadow { visible: Theme.comic; off: 5px; }
-    Rectangle { visible: Theme.comic; background: #ffffff; border-width: 3px; border-color: Comic.ink; }
+    if Theme.comic: InkShadow { off: 5px; }
+    if Theme.comic: Rectangle { background: #ffffff; border-width: 3px; border-color: Comic.ink; }
     // Quest Menu: a menu window with the double pixel frame.
-    QFrame { visible: Theme.quest; x: 0; y: 0; }
-    Rectangle { visible: Theme.fighter; x: 0; y: 0; width: parent.width; height: 2px; background: Fi.p1; }
+    if Theme.quest: QFrame { x: 0; y: 0; }
+    if Theme.fighter: Rectangle { x: 0; y: 0; width: parent.width; height: 2px; background: Fi.p1; }
     // Pinball: a dark plate with a plasma top edge.
-    Rectangle { visible: Theme.pinball; x: 0; y: 0; width: parent.width; height: 2px; background: Pb.plasma; }
+    if Theme.pinball: Rectangle { x: 0; y: 0; width: parent.width; height: 2px; background: Pb.plasma; }
     // Cozy Cabin: a parchment note in an ink ring with a hard shadow.
-    Rectangle { visible: Theme.cozy; x: 6px; y: 6px; width: parent.width; height: parent.height; background: #00000059; }
+    if Theme.cozy: Rectangle { x: 6px; y: 6px; width: parent.width; height: parent.height; background: #00000059; }
     // In a box: `visible` on a component makes Slint copy it at every use.
-    Rectangle { visible: Theme.cozy; x: 0; y: 0; width: parent.width; height: parent.height; CzNote { } }
+    if Theme.cozy: Rectangle { x: 0; y: 0; width: parent.width; height: parent.height; CzNote { } }
     // Pocket Synth: a black screen in the grey bezel of its main screens.
-    SynScreen { visible: Theme.synth; x: 4px; y: 4px; width: root.width - 8px; height: root.height - 8px; radius: 8px; }
+    if Theme.synth: SynScreen { x: 4px; y: 4px; width: root.width - 8px; height: root.height - 8px; radius: 8px; }
     // Car Dashboard: a glass sheet with an ice light along its top edge.
-    Rectangle {
-        visible: Theme.dash;
+    if Theme.dash: Rectangle {
         x: 12px;
         y: 0;
         width: parent.width - 24px;
         height: 1px;
         background: @linear-gradient(90deg, #62d2ff00 0%, #62d2ff 50%, #62d2ff00 100%);
     }
-    Rectangle {
-        visible: Theme.tape;
+    if Theme.tape: Rectangle {
         background: #0d0805;
         Rectangle {
             x: 1px;
@@ -1807,15 +1804,14 @@ component MenuCardArt inherits Rectangle {
         Rectangle { x: 1px; y: 3px; width: parent.width - 2px; height: 1px; background: Deck.amber; }
     }
     // Spatial Glass: the light on its top and the bright line along it.
-    Rectangle {
-        visible: Theme.glass;
+    if Theme.glass: Rectangle {
         y: 0;
         height: 18px;
         border-top-left-radius: 18px;
         border-top-right-radius: 18px;
         background: #ffffff12;
     }
-    Rectangle { visible: Theme.glass; x: 14px; y: 1px; width: parent.width - 28px; height: 1px; background: #ffffff73; }
+    if Theme.glass: Rectangle { x: 14px; y: 1px; width: parent.width - 28px; height: 1px; background: #ffffff73; }
 }
 
 // The card a menu sits on: the dark popup, or for Tape Deck a cream J-card insert with
@@ -2003,10 +1999,9 @@ export component PbSwitch inherits Rectangle {
 export component Tip inherits Rectangle {
     in property <string> text;
     // Tape Deck: a cream paper tag with a red edge and a stepped shadow.
-    Rectangle { visible: Theme.tape; x: 1px; y: 2px; background: #00000059; }
-    Rectangle { visible: Theme.tape; x: 1px; y: 4px; height: parent.height - 2px; background: #00000026; }
-    Rectangle {
-        visible: Theme.tape;
+    if Theme.tape: Rectangle { x: 1px; y: 2px; background: #00000059; }
+    if Theme.tape: Rectangle { x: 1px; y: 4px; height: parent.height - 2px; background: #00000026; }
+    if Theme.tape: Rectangle {
         background: Deck.cream-card;
         border-width: 1px;
         border-color: Deck.ink;
@@ -2015,8 +2010,8 @@ export component Tip inherits Rectangle {
     // Phosphor: a small box with a bright edge.
     // Desktop 95: the yellow tip with a black line.
     // Comic Book: a small yellow caption with a hard shadow.
-    InkShadow { visible: Theme.comic; }
-    Rectangle { visible: Theme.comic; background: Comic.yellow; border-width: 2.2px; border-color: Comic.ink; }
+    if Theme.comic: InkShadow { }
+    if Theme.comic: Rectangle { background: Comic.yellow; border-width: 2.2px; border-color: Comic.ink; }
     // Pocket: a dark LCD tag with a light edge.
     // Brick Phone: a small amber label with an ink frame.
     // Answering Machine: a small paper slip.
@@ -2031,9 +2026,9 @@ export component Tip inherits Rectangle {
     width: bubble.preferred-width;
     height: bubble.preferred-height;
     // Car Dashboard: a glass tag with an ice line along its top.
-    Rectangle { visible: Theme.dash; x: 8px; y: 0; width: parent.width - 16px; height: 1px; background: #62d2ff; }
+    if Theme.dash: Rectangle { x: 8px; y: 0; width: parent.width - 16px; height: 1px; background: #62d2ff; }
     // Pinball: a black plate with a plasma top line.
-    Rectangle { visible: Theme.pinball; x: 0; y: 0; width: parent.width; height: 2px; background: Pb.plasma; }
+    if Theme.pinball: Rectangle { x: 0; y: 0; width: parent.width; height: 2px; background: Pb.plasma; }
     bubble := HorizontalLayout {
         padding-left: Theme.os95 ? 6px : Theme.glass ? 11px : Theme.dash ? 10px : Theme.pocket ? 8px : Theme.brick ? 8px : 9px;
         padding-right: Theme.dash ? 10px : Theme.glass ? 11px : Theme.os95 ? 6px : Theme.pocket ? 8px : Theme.brick ? 8px : 9px;
@@ -2118,8 +2113,7 @@ export component Btn inherits Rectangle {
         }
         // Quest Menu: a pixel key, the main action lit with gold words, Delete red, an off key
         // dark with dim words.
-        QFace {
-            visible: Theme.quest;
+        if Theme.quest: QFace {
             x: 0;
             y: 0;
             kind: !root.enabled ? 3 : root.primary && (root.red || root.danger) ? 2 : root.primary ? 1 : root.on ? 4 : 0;
@@ -2139,8 +2133,7 @@ export component Btn inherits Rectangle {
             vertical-alignment: center;
             accessible-role: none;
         }
-        AmKey {
-            visible: Theme.answer;
+        if Theme.answer: AmKey {
             x: 0;
             y: 0;
             width: parent.width;
@@ -2150,8 +2143,7 @@ export component Btn inherits Rectangle {
             hover: t.has-hover;
             enabled: root.enabled;
         }
-        Rectangle {
-            visible: Theme.answer && root.on;
+        if Theme.answer && root.on: Rectangle {
             x: parent.width - 11px;
             y: 5px + (root.am-down ? 2px : 0);
             width: 5px;
@@ -2175,12 +2167,10 @@ export component Btn inherits Rectangle {
             vertical-alignment: center;
             accessible-role: none;
         }
-        OsBevel {
-            visible: Theme.os95;
+        if Theme.os95: OsBevel {
             kind: root.os-down ? 1 : root.primary ? 6 : 0;
         }
-        Text {
-            visible: Theme.os95 && !root.enabled;
+        if Theme.os95 && !root.enabled: Text {
             x: 1px;
             y: 1px;
             width: parent.width;
@@ -2209,9 +2199,8 @@ export component Btn inherits Rectangle {
             vertical-alignment: center;
             accessible-role: none;
         }
-        InkShadow { visible: Theme.comic && root.enabled && !root.ink-down; off: 2px; }
-        Rectangle {
-            visible: Theme.comic;
+        if Theme.comic && root.enabled && !root.ink-down: InkShadow { off: 2px; }
+        if Theme.comic: Rectangle {
             x: root.ink-down ? 2px : 0;
             y: root.ink-down ? 2px : 0;
             background: root.red || root.danger ? Comic.red : root.primary || root.on ? Comic.yellow : #ffffff;
@@ -2232,16 +2221,14 @@ export component Btn inherits Rectangle {
             }
         }
         // Tape Deck: a piano key, amber for the main action, red for deleting.
-        DeckKey {
-            visible: Theme.tape;
+        if Theme.tape: DeckKey {
             kind: root.red ? 2 : root.primary ? 1 : 0;
             down: root.on;
             pressed: t.pressed && t.has-hover;
             hover: t.has-hover;
             enabled: root.enabled;
         }
-        Text {
-            visible: Theme.tape;
+        if Theme.tape: Text {
             y: (t.pressed && t.has-hover && root.enabled) || root.on ? 1px : 0;
             width: parent.width;
             height: parent.height * 0.78;
@@ -2256,8 +2243,7 @@ export component Btn inherits Rectangle {
             vertical-alignment: center;
             accessible-role: none;
         }
-        Rectangle {
-            visible: Theme.phos && root.key == "";
+        if Theme.phos && root.key == "": Rectangle {
             x: 0;
             y: 0;
             background: Ph.bg;
@@ -2314,16 +2300,14 @@ export component Btn inherits Rectangle {
                 }
             }
         }
-        Rectangle {
-            visible: Theme.glass && !root.primary;
+        if Theme.glass && !root.primary: Rectangle {
             x: parent.height * 0.4;
             y: 1px;
             width: parent.width - parent.height * 0.8;
             height: 1px;
             background: #ffffff73;
         }
-        SynKey {
-            visible: Theme.synth;
+        if Theme.synth: SynKey {
             x: 0;
             y: 0;
             width: root.width;
@@ -2457,8 +2441,7 @@ export component IconBtn inherits Rectangle {
         border-width: Theme.pocket || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.quest ? 0 : Theme.answer ? 0 : Theme.synth ? 0 : Theme.glass ? 1px : Theme.brick ? 2px : (outlined || Theme.dash) && !Theme.tape && !filled ? 1px : outlined && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic ? 1px : 0;
         // Answering Machine: a rubber nub, red when filled, held down with an amber icon
         // while it is on.
-        AmKey {
-            visible: Theme.answer;
+        if Theme.answer: AmKey {
             x: 0;
             y: 0;
             width: parent.width;
@@ -2472,8 +2455,7 @@ export component IconBtn inherits Rectangle {
         }
         border-color: Theme.glass ? (filled || active ? #ffffff : #ffffff4d) : Theme.dash ? (active ? #62d2ff59 : #ffffff1f) : Theme.edge;
         opacity: enabled || Theme.tape || Theme.os95 || Theme.pocket ? 1 : Theme.comic || Theme.quest ? 0.45 : Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0.38 : 0.4;
-        Rectangle {
-            visible: Theme.pocket;
+        if Theme.pocket: Rectangle {
             x: 0;
             y: root.pk-dark || (t.pressed && t.has-hover && root.enabled) ? 2px : 0;
             width: parent.width;
@@ -2495,23 +2477,20 @@ export component IconBtn inherits Rectangle {
                 height: root.icon-size;
             }
         }
-        QFace {
-            visible: Theme.quest;
+        if Theme.quest: QFace {
             x: 0;
             y: 0;
             kind: root.filled || root.active ? 4 : 0;
             hover: t.has-hover && root.enabled;
         }
-        QPx {
-            visible: Theme.quest && root.q-icon.width > 0;
+        if Theme.quest && root.q-icon.width > 0: QPx {
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2 + (t.pressed && t.has-hover && root.enabled ? 1px : 0);
             s: root.size >= 26px && root.q-icon.width <= 7 && root.q-icon.height <= 7 ? 3 : 2;
             source: root.q-icon;
             colorize: root.filled || root.active ? Quest.gold : Quest.white;
         }
-        Icon {
-            visible: Theme.quest && root.q-icon.width == 0;
+        if Theme.quest && root.q-icon.width == 0: Icon {
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
             name: root.icon;
@@ -2529,8 +2508,7 @@ export component IconBtn inherits Rectangle {
             shift: t.pressed && t.has-hover ? 1px : 0;
             tint: root.filled || root.active ? Brick.lcd1 : Brick.ink;
         }
-        Image {
-            visible: Theme.os95 && root.active;
+        if Theme.os95 && root.active: Image {
             x: 2px;
             y: 2px;
             width: parent.width - 4px;
@@ -2541,9 +2519,8 @@ export component IconBtn inherits Rectangle {
             horizontal-alignment: left;
             vertical-alignment: top;
         }
-        OsBevel { visible: Theme.os95; kind: root.os-down ? 1 : 0; }
-        OsPx {
-            visible: Theme.os95 && root.os-icon.width > 0;
+        if Theme.os95: OsBevel { kind: root.os-down ? 1 : 0; }
+        if Theme.os95 && root.os-icon.width > 0: OsPx {
             x: (parent.width - self.width) / 2 + (root.os-down ? 1px : 0);
             y: (parent.height - self.height) / 2 + (root.os-down ? 1px : 0);
             source: root.os-icon;
@@ -2557,9 +2534,8 @@ export component IconBtn inherits Rectangle {
             width: root.icon-size;
             height: root.icon-size;
         }
-        InkShadow { visible: Theme.comic && root.enabled && !root.ink-down; off: 2px; radius: root.ink-r; }
-        Rectangle {
-            visible: Theme.comic;
+        if Theme.comic && root.enabled && !root.ink-down: InkShadow { off: 2px; radius: root.ink-r; }
+        if Theme.comic: Rectangle {
             x: root.ink-down ? 2px : 0;
             y: root.ink-down ? 2px : 0;
             border-radius: root.ink-r;
@@ -2575,15 +2551,13 @@ export component IconBtn inherits Rectangle {
             }
         }
         // Tape Deck: a small square key, amber while it is on.
-        DeckKey {
-            visible: Theme.tape;
+        if Theme.tape: DeckKey {
             kind: root.filled || root.active ? 1 : 0;
             pressed: t.pressed && t.has-hover;
             hover: t.has-hover;
             enabled: root.enabled;
         }
-        Icon {
-            visible: Theme.tape;
+        if Theme.tape: Icon {
             y: (parent.height * 0.8 - self.height) / 2 + (t.pressed && t.has-hover && root.enabled ? 1px : 0);
             name: root.icon;
             tint: root.filled || root.active ? #2a1406 : Deck.key-ink;
@@ -2591,8 +2565,7 @@ export component IconBtn inherits Rectangle {
             width: root.icon-size;
             height: root.icon-size;
         }
-        SynKey {
-            visible: Theme.synth;
+        if Theme.synth: SynKey {
             x: 0;
             y: 0;
             width: root.width;
@@ -2746,8 +2719,7 @@ export component Toggle inherits Rectangle {
         // Pinball: a dark slot with a lamp that slides right and lights orange when on.
         if Theme.pinball: PbSwitch { x: 0; y: 0; width: root.width; height: root.height; on: root.on; hover: ph-t.has-hover && root.enabled; }
         // Pocket: a two cell OFF ON switch in a dark ring, the live cell dark; pale when off.
-        Rectangle {
-            visible: Theme.pocket;
+        if Theme.pocket: Rectangle {
             x: 0;
             y: 0;
             width: parent.width;
@@ -2818,8 +2790,7 @@ export component Toggle inherits Rectangle {
             }
         }
         // Quest Menu: the lamp check box.
-        Rectangle {
-            visible: Theme.quest && root.lamp;
+        if Theme.quest && root.lamp: Rectangle {
             x: 0;
             y: 0;
             background: Quest.ink;
@@ -2827,16 +2798,14 @@ export component Toggle inherits Rectangle {
             border-color: root.on ? Quest.gold : Quest.grey;
             Rectangle { visible: root.on; x: 4.5px; y: 4.5px; width: 6px; height: 6px; background: Quest.gold; }
         }
-        Rectangle {
-            visible: Theme.brick;
+        if Theme.brick: Rectangle {
             x: root.on ? parent.width / 2 : 0;
             y: 0;
             width: parent.width / 2;
             height: parent.height;
             background: Brick.ink;
         }
-        Text {
-            visible: Theme.brick;
+        if Theme.brick: Text {
             x: 0;
             y: 0;
             width: parent.width / 2;
@@ -2849,8 +2818,7 @@ export component Toggle inherits Rectangle {
             vertical-alignment: center;
             accessible-role: none;
         }
-        Text {
-            visible: Theme.brick;
+        if Theme.brick: Text {
             x: parent.width / 2;
             y: 0;
             width: parent.width / 2;
@@ -2865,8 +2833,7 @@ export component Toggle inherits Rectangle {
         }
         // Answering Machine: a two way slide switch in a dark slot, its left half red while on,
         // with ON or OFF printed beside it.
-        Rectangle {
-            visible: Theme.answer;
+        if Theme.answer: Rectangle {
             x: 0;
             y: 0;
             width: 34px;
@@ -2896,8 +2863,7 @@ export component Toggle inherits Rectangle {
                 for g in 3: Rectangle { x: 5px + g * 2px; y: 3px; width: 1px; height: 6px; background: #9d917a; }
             }
         }
-        Text {
-            visible: Theme.answer;
+        if Theme.answer: Text {
             x: 40px;
             y: 0;
             height: 16px;
@@ -2912,8 +2878,7 @@ export component Toggle inherits Rectangle {
         }
         // Pocket Synth: a white key that stays down with its LED lit orange while it is on; with
         // a caption, the words in capitals beside the LED (a latching key).
-        SynKey {
-            visible: Theme.synth;
+        if Theme.synth: SynKey {
             x: 0;
             y: 0;
             width: root.width;
@@ -2923,8 +2888,7 @@ export component Toggle inherits Rectangle {
             pressed: ph-t.pressed && ph-t.has-hover;
             hover: ph-t.has-hover;
         }
-        Image {
-            visible: Theme.synth;
+        if Theme.synth: Image {
             x: (root.caption != "" ? 10px : (root.width - 6px) / 2) - 6px;
             y: (root.height - 6px) / 2 - 6px + (root.on ? 1px : 0);
             width: 18px;
@@ -2948,8 +2912,7 @@ export component Toggle inherits Rectangle {
             accessible-role: none;
         }
         // Desktop 95: a checkbox, grey when off, with its words beside it.
-        Rectangle {
-            visible: Theme.os95;
+        if Theme.os95: Rectangle {
             x: 0;
             y: (parent.height - 13px) / 2;
             width: 13px;
@@ -2976,8 +2939,7 @@ export component Toggle inherits Rectangle {
             accessible-role: none;
         }
         // Comic Book: an inked pill, yellow when on, its knob grey or red.
-        Rectangle {
-            visible: Theme.comic;
+        if Theme.comic: Rectangle {
             x: root.on ? 21.5px : 4.5px;
             y: 4.5px;
             width: 13px;
@@ -2989,8 +2951,7 @@ export component Toggle inherits Rectangle {
             animate x { duration: 120ms; easing: ease-out; }
         }
         // Tape Deck: a slide switch in a sunk slot, with a lamp that lights when it is on.
-        Rectangle {
-            visible: Theme.tape;
+        if Theme.tape: Rectangle {
             x: 0;
             y: 5px;
             width: 8px;
@@ -2998,8 +2959,7 @@ export component Toggle inherits Rectangle {
             border-radius: 4px;
             background: root.on ? @radial-gradient(circle, #fff0c8 0%, #f2a64a 45%, #9a5a14 100%) : @radial-gradient(circle, #6a5a48 0%, #3a2f25 60%, #211912 100%);
         }
-        Rectangle {
-            visible: Theme.tape;
+        if Theme.tape: Rectangle {
             x: 15px;
             width: 38px;
             Rectangle { y: 1px; background: #ffffff80; }
@@ -3015,8 +2975,7 @@ export component Toggle inherits Rectangle {
                 animate x { duration: 120ms; easing: ease-out; }
             }
         }
-        Text {
-            visible: Theme.phos && !root.ph-keyed;
+        if Theme.phos && !root.ph-keyed: Text {
             x: 0;
             y: 0;
             width: parent.width;
@@ -3050,8 +3009,7 @@ export component Toggle inherits Rectangle {
                 accessible-role: none;
             }
         }
-        Rectangle {
-            visible: Theme.glass;
+        if Theme.glass: Rectangle {
             x: knob.x;
             y: 4.5px;
             width: knob.width;
@@ -3134,17 +3092,16 @@ export component ExportItem inherits Rectangle {
     accessible-role: button;
     accessible-label: "Export " + text;
     accessible-action-default => { root.clicked(); }
-    PkPx { visible: Theme.pocket && t.has-hover; x: 5px; y: (parent.height - self.height) / 2; s: 1; source: @image-url("skins/px-pocket/chev.png"); colorize: Pk.l0; }
-    Rectangle { visible: Theme.comic && root.current; x: 0; width: 4px; background: Comic.red; }
-    Rectangle { visible: Theme.fighter && root.current; x: 0; width: 3px; background: Fi.gold; }
-    Rectangle { visible: Theme.cozy && root.current; x: 0; width: 3px; background: Cz.ember; }
-    Rectangle { visible: Theme.pinball && (root.current || t.has-hover); x: 0; width: 3px; background: Pb.plasma; }
+    if Theme.pocket && t.has-hover: PkPx { x: 5px; y: (parent.height - self.height) / 2; s: 1; source: @image-url("skins/px-pocket/chev.png"); colorize: Pk.l0; }
+    if Theme.comic && root.current: Rectangle { x: 0; width: 4px; background: Comic.red; }
+    if Theme.fighter && root.current: Rectangle { x: 0; width: 3px; background: Fi.gold; }
+    if Theme.cozy && root.current: Rectangle { x: 0; width: 3px; background: Cz.ember; }
+    if Theme.pinball && (root.current || t.has-hover): Rectangle { x: 0; width: 3px; background: Pb.plasma; }
     // Quest Menu: the lit row with the glove; the current format in gold.
-    QLit { visible: Theme.quest && t.has-hover; x: 0; y: 0; }
-    Rectangle { visible: Theme.answer && t.has-hover; x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
-    Rectangle { visible: Theme.tape && t.has-hover; y: 7px; height: 20px; background: Deck.amber.with-alpha(0.5); }
-    Rectangle {
-        visible: Theme.tape && root.current;
+    if Theme.quest && t.has-hover: QLit { x: 0; y: 0; }
+    if Theme.answer && t.has-hover: Rectangle { x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
+    if Theme.tape && t.has-hover: Rectangle { y: 7px; height: 20px; background: Deck.amber.with-alpha(0.5); }
+    if Theme.tape && root.current: Rectangle {
         x: 3px;
         y: (parent.height - self.height) / 2;
         width: 6px;
@@ -3152,8 +3109,7 @@ export component ExportItem inherits Rectangle {
         border-radius: 3px;
         background: Deck.amber;
     }
-    Text {
-        visible: Theme.phos && root.current;
+    if Theme.phos && root.current: Text {
         x: 8px;
         height: parent.height;
         text: "*";
@@ -3284,8 +3240,7 @@ export component ExportItem inherits Rectangle {
 // rule across the Comic Book's panel.
 export component MenuRule inherits Rectangle {
     height: 9px;
-    Rectangle {
-        visible: !Theme.os95 && !Theme.pocket && !Theme.quest;
+    if !Theme.os95 && !Theme.pocket && !Theme.quest: Rectangle {
         x: Theme.comic ? -2px : Theme.brick ? 4px : Theme.fighter || Theme.pinball ? 0 : 10px;
         y: Theme.comic ? 3px : (parent.height - self.height) / 2;
         width: parent.width + (Theme.comic ? 4px : Theme.brick ? -8px : Theme.fighter || Theme.pinball ? 0 : -20px);
@@ -3293,13 +3248,13 @@ export component MenuRule inherits Rectangle {
         background: Theme.pinball ? Pb.rule : Theme.cozy ? transparent : Theme.fighter ? Fi.line : Theme.tape ? #2a1c1240 : Theme.comic ? Comic.ink : Theme.glass ? Glass.rule : Theme.answer ? Am.paper-line : Theme.synth ? #2b2f2d : Theme.edge;
     }
     // Quest Menu: a 3px blue rule across the window.
-    Rectangle { visible: Theme.quest; x: 0; y: 3px; width: parent.width; height: 3px; background: Quest.sep; }
+    if Theme.quest: Rectangle { x: 0; y: 3px; width: parent.width; height: 3px; background: Quest.sep; }
     // Cozy Cabin: a dotted rule.
-    CzRule { visible: Theme.cozy; x: 12px; y: 3px; width: parent.width - 24px; }
-    Rectangle { visible: Theme.os95; x: 1px; y: 3px; width: parent.width - 2px; height: 1px; background: Os.sh; }
-    Rectangle { visible: Theme.os95; x: 1px; y: 4px; width: parent.width - 2px; height: 1px; background: Os.hi; }
+    if Theme.cozy: CzRule { x: 12px; y: 3px; width: parent.width - 24px; }
+    if Theme.os95: Rectangle { x: 1px; y: 3px; width: parent.width - 2px; height: 1px; background: Os.sh; }
+    if Theme.os95: Rectangle { x: 1px; y: 4px; width: parent.width - 2px; height: 1px; background: Os.hi; }
     // Pocket: a dotted rule in mid green.
-    PkTile { visible: Theme.pocket; x: 4px; y: 4px; width: parent.width - 8px; height: 2px; source: @image-url("skins/px-pocket/rule-row.png"); colorize: Pk.l2; }
+    if Theme.pocket: PkTile { x: 4px; y: 4px; width: parent.width - 8px; height: 2px; source: @image-url("skins/px-pocket/rule-row.png"); colorize: Pk.l2; }
 }
 
 // The name of a group in a Pocket menu: light small caps on a mid green band across the
@@ -3445,7 +3400,7 @@ export component MenuRow inherits Rectangle {
         border-radius: Theme.tape || Theme.os95 || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? 12px : Theme.dash ? 8px : 6px;
         // Answering Machine: the hovered row (and the row of an open submenu) lit with a red
         // edge.
-        Rectangle { visible: Theme.answer && (t.has-hover || root.lit) && root.enabled; x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
+        if Theme.answer && (t.has-hover || root.lit) && root.enabled: Rectangle { x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
         // Pinball: the hovered row and the row of an open submenu lit plasma with an edge.
         Rectangle { visible: root.pb-lit; x: 0; y: 0; width: 3px; height: parent.height; background: Pb.plasma; }
         background: Theme.tape || Theme.quest ? transparent : Theme.pocket ? (root.pk-hot ? Pk.l3 : root.checked ? Pk.l1 : transparent)
@@ -3516,8 +3471,8 @@ export component MenuRow inherits Rectangle {
             }
         }
         // Tape Deck: an amber highlighter stroke under the hovered line.
-        Rectangle { visible: Theme.tape && !root.drawer && (t.has-hover || root.lit) && root.enabled; y: 7px; height: 20px; background: Deck.amber.with-alpha(0.5); }
-        Rectangle { visible: Theme.tape && root.drawer && t.has-hover && root.enabled; background: #00000014; }
+        if Theme.tape && !root.drawer && (t.has-hover || root.lit) && root.enabled: Rectangle { y: 7px; height: 20px; background: Deck.amber.with-alpha(0.5); }
+        if Theme.tape && root.drawer && t.has-hover && root.enabled: Rectangle { background: #00000014; }
         // Desktop 95: navy while hovered; grey etched words when it is off.
         if Theme.os95: HorizontalLayout {
             padding-left: 6px;
@@ -4802,8 +4757,7 @@ export component ExportButton inherits Rectangle {
         : root.state == 1 ? Theme.raised : t.has-hover ? Theme.accent-hover : Theme.accent;
     // Answering Machine: a rubber key, held down while it exports and filling with red,
     // with an amber lamp when done.
-    AmKey {
-        visible: Theme.answer;
+    if Theme.answer: AmKey {
         x: 0;
         y: 0;
         width: parent.width;
@@ -4811,8 +4765,7 @@ export component ExportButton inherits Rectangle {
         down: root.state == 1 || (t.pressed && t.has-hover);
         hover: t.has-hover;
     }
-    Rectangle {
-        visible: Theme.answer && root.state == 1;
+    if Theme.answer && root.state == 1: Rectangle {
         x: 0;
         y: 2px;
         width: max(18px, parent.width * clamp(root.progress, 0, 1));
@@ -4820,8 +4773,7 @@ export component ExportButton inherits Rectangle {
         border-radius: 9px;
         background: #cf3c2873;
     }
-    Rectangle {
-        visible: Theme.answer && root.state == 2;
+    if Theme.answer && root.state == 2: Rectangle {
         x: parent.width - 11px;
         y: 5px;
         width: 5px;
@@ -4834,15 +4786,13 @@ export component ExportButton inherits Rectangle {
     property <bool> ph-lit: root.state == 2 || (root.state == 0 && t.has-hover);
     // Quest Menu: the lit key with an up arrow and gold words; while exporting an ink
     // box with a grey ring filling with gold, the percent in the middle; then Done.
-    QFace {
-        visible: Theme.quest && root.state != 1;
+    if Theme.quest && root.state != 1: QFace {
         x: 0;
         y: 0;
         kind: 1;
         hover: t.has-hover;
     }
-    Rectangle {
-        visible: Theme.quest && root.state == 1;
+    if Theme.quest && root.state == 1: Rectangle {
         x: 0;
         y: 0;
         background: Quest.ink;
@@ -4874,8 +4824,7 @@ export component ExportButton inherits Rectangle {
             }
         }
     }
-    HorizontalLayout {
-        visible: Theme.quest && root.state != 1;
+    if Theme.quest && root.state != 1: HorizontalLayout {
         x: 0;
         y: t.pressed && t.has-hover ? 1px : 0;
         width: parent.width;
@@ -4897,8 +4846,7 @@ export component ExportButton inherits Rectangle {
             accessible-role: none;
         }
     }
-    Rectangle {
-        visible: Theme.phos;
+    if Theme.phos: Rectangle {
         x: 0;
         y: 0;
         background: Ph.bg;
@@ -4956,8 +4904,7 @@ export component ExportButton inherits Rectangle {
     }
     // Pocket: the dark LCD key with the up arrow; while exporting a dithered bar filling
     // dark with the percent on it; then a check and Done.
-    Rectangle {
-        visible: Theme.pocket;
+    if Theme.pocket: Rectangle {
         x: 0;
         y: t.pressed && t.has-hover ? 2px : 0;
         width: parent.width;
@@ -5004,7 +4951,7 @@ export component ExportButton inherits Rectangle {
     // Desktop 95: the Start button of the taskbar, pushed in while its menu is open or an
     // export runs: the logo and Export, an hourglass and a blocky bar, or a tick and Done.
     property <bool> os-down: (t.pressed && t.has-hover) || root.state == 1;
-    OsBevel { visible: Theme.os95; kind: root.os-down ? 1 : 0; }
+    if Theme.os95: OsBevel { kind: root.os-down ? 1 : 0; }
     Rectangle {
         visible: Theme.os95;
         x: root.os-down ? 1px : 0;
@@ -5052,7 +4999,7 @@ export component ExportButton inherits Rectangle {
     // Comic Book: the red ink key; while exporting a white key that fills with red
     // halftone under the percent in a caption; yellow with a check when done.
     property <bool> ink-down: Theme.comic && t.pressed && t.has-hover;
-    InkShadow { visible: Theme.comic && !root.ink-down; off: 2px; }
+    if Theme.comic && !root.ink-down: InkShadow { off: 2px; }
     Rectangle {
         visible: Theme.comic;
         x: root.ink-down ? 2px : 0;
@@ -5135,14 +5082,12 @@ export component ExportButton inherits Rectangle {
     border-width: Theme.glass ? 1px : 0;
     border-color: root.state == 1 ? #ffffff38 : #ffffff;
     // Tape Deck: the amber key; while exporting a dark key that fills with amber.
-    DeckKey {
-        visible: Theme.tape;
+    if Theme.tape: DeckKey {
         kind: root.state == 1 ? 3 : 1;
         pressed: t.pressed && t.has-hover;
         hover: t.has-hover;
     }
-    Rectangle {
-        visible: Theme.tape && root.state == 1;
+    if Theme.tape && root.state == 1: Rectangle {
         x: 0;
         y: 0;
         width: parent.width * clamp(root.progress, 0, 1);
@@ -5189,8 +5134,7 @@ export component ExportButton inherits Rectangle {
     accessible-action-expand => { popup.show(); }
     // Pocket Synth: the orange key in capitals; a dark key that fills orange under the
     // percent while exporting; orange with a check when done.
-    SynKey {
-        visible: Theme.synth;
+    if Theme.synth: SynKey {
         x: 0;
         y: 0;
         width: root.width;
@@ -5200,8 +5144,7 @@ export component ExportButton inherits Rectangle {
         pressed: t.pressed && t.has-hover;
         hover: t.has-hover && root.state == 0;
     }
-    Rectangle {
-        visible: Theme.synth && root.state == 1;
+    if Theme.synth && root.state == 1: Rectangle {
         x: 0;
         y: 0;
         width: max(8px, root.width * clamp(root.progress, 0, 1));
@@ -5212,8 +5155,7 @@ export component ExportButton inherits Rectangle {
         border-bottom-right-radius: root.progress > 0.97 ? 8px : 0;
         background: #ff5a1e8c;
     }
-    HorizontalLayout {
-        visible: Theme.synth;
+    if Theme.synth: HorizontalLayout {
         x: 0;
         y: t.pressed && t.has-hover ? 1px : 0;
         width: root.width;
@@ -7449,8 +7391,7 @@ export component Select inherits Rectangle {
             rim-w: keys.has-focus ? 2px : 1px;
         }
         // Answering Machine: a cream picker chip, framed red while it has the focus.
-        AmChip {
-            visible: Theme.answer;
+        if Theme.answer: AmChip {
             x: 0;
             y: 0;
             width: parent.width;
@@ -7484,14 +7425,13 @@ export component Select inherits Rectangle {
                 colorize: root.enabled ? Quest.gold : Quest.dim;
             }
         }
-        BrickPx {
-            visible: Theme.brick;
+        if Theme.brick: BrickPx {
             x: parent.width - 4px - self.width;
             y: (parent.height - self.height) / 2;
             source: @image-url("skins/dv-brick/x-chev.png");
         }
-        OsBevel { visible: Theme.os95; kind: 2; }
-        PkRing { visible: Theme.pocket && keys.has-focus; x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px; ink: Pk.l1; }
+        if Theme.os95: OsBevel { kind: 2; }
+        if Theme.pocket && keys.has-focus: PkRing { x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px; ink: Pk.l1; }
         Rectangle {
             visible: Theme.os95;
             x: 4px;
@@ -7512,8 +7452,7 @@ export component Select inherits Rectangle {
                 accessible-role: none;
             }
         }
-        Rectangle {
-            visible: Theme.os95;
+        if Theme.os95: Rectangle {
             x: parent.width - self.width - 2px;
             y: 2px;
             width: 16px;
@@ -7528,17 +7467,15 @@ export component Select inherits Rectangle {
             }
         }
         // Comic Book: a yellow caption picker with a hard shadow; red edged while focused.
-        InkShadow { visible: Theme.comic && root.enabled; off: 2px; }
-        Rectangle {
-            visible: Theme.comic;
+        if Theme.comic && root.enabled: InkShadow { off: 2px; }
+        if Theme.comic: Rectangle {
             background: t.has-hover && root.enabled ? #ffe066 : Comic.yellow;
             border-width: 2.5px;
             border-color: keys.has-focus ? Comic.red : Comic.ink;
         }
-        Rectangle { visible: Theme.tape; y: 0; x: 1px; width: parent.width - 2px; height: 1px; background: #3a3a3e; }
-        Rectangle { visible: Theme.glass; x: parent.height * 0.45; y: 1px; width: parent.width - parent.height * 0.9; height: 1px; background: #ffffff66; }
-        Rectangle {
-            visible: Theme.synth;
+        if Theme.tape: Rectangle { y: 0; x: 1px; width: parent.width - 2px; height: 1px; background: #3a3a3e; }
+        if Theme.glass: Rectangle { x: parent.height * 0.45; y: 1px; width: parent.width - parent.height * 0.9; height: 1px; background: #ffffff66; }
+        if Theme.synth: Rectangle {
             x: -1px;
             y: -1px;
             width: root.width + 2px;
@@ -7618,13 +7555,13 @@ export component Select inherits Rectangle {
         height: root.list-height;
         close-policy: close-on-click-outside;
         // Comic Book: a white panel with a thick ink edge and a hard shadow.
-        InkShadow { visible: Theme.comic; off: 5px; }
+        if Theme.comic: InkShadow { off: 5px; }
         // Pocket: an LCD window with a hard mid green shadow.
-        Rectangle { visible: Theme.pocket; x: 4px; y: 4px; width: parent.width; height: parent.height; background: Pk.l2; }
+        if Theme.pocket: Rectangle { x: 4px; y: 4px; width: parent.width; height: parent.height; background: Pk.l2; }
         // Brick Phone: the numbered pick list in a menu box, the setting's name on top.
-        MenuCard { visible: Theme.brick; title: root.label; }
+        if Theme.brick: MenuCard { title: root.label; }
         // Pocket Synth: a black screen in its grey bezel, the current choice orange.
-        SynScreen { visible: Theme.synth; x: 4px; y: 4px; width: parent.width - 8px; height: parent.height - 8px; radius: 8px; }
+        if Theme.synth: SynScreen { x: 4px; y: 4px; width: parent.width - 8px; height: parent.height - 8px; radius: 8px; }
         Rectangle {
             // Tape Deck: a strip of black label tape, the current choice amber. Phosphor: a box
             // with a bright edge, the hovered line inverted, a star by the current one. Desktop 95: a
@@ -7636,11 +7573,11 @@ export component Select inherits Rectangle {
             drop-shadow-blur: Theme.tape || Theme.comic || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.cozy ? 0 : 20px;
             drop-shadow-offset-y: 8px;
             drop-shadow-color: #00000099;
-            QFrame { visible: Theme.quest; x: 0; y: 0; }
-            Rectangle { visible: Theme.fighter; x: 0; y: 0; width: parent.width; height: 2px; background: Fi.p1; }
-            Rectangle { visible: Theme.pinball; x: 0; y: 0; width: parent.width; height: 2px; background: Pb.plasma; }
-            Rectangle { visible: Theme.cozy; x: 6px; y: 6px; width: parent.width; height: parent.height; background: #00000059; }
-            Rectangle { visible: Theme.cozy; x: 0; y: 0; width: parent.width; height: parent.height; CzNote { } }
+            if Theme.quest: QFrame { x: 0; y: 0; }
+            if Theme.fighter: Rectangle { x: 0; y: 0; width: parent.width; height: 2px; background: Fi.p1; }
+            if Theme.pinball: Rectangle { x: 0; y: 0; width: parent.width; height: 2px; background: Pb.plasma; }
+            if Theme.cozy: Rectangle { x: 6px; y: 6px; width: parent.width; height: parent.height; background: #00000059; }
+            if Theme.cozy: Rectangle { x: 0; y: 0; width: parent.width; height: parent.height; CzNote { } }
             FocusScope {
                 init => { self.focus(); }
                 key-pressed(e) => {
@@ -7693,11 +7630,11 @@ export component Select inherits Rectangle {
                         : i == root.current-index ? Theme.hover : it.has-hover ? Theme.hover-soft : transparent;
                     border-width: Theme.glass && i == root.current-index ? 1px : 0;
                     border-color: Glass.lit-edge;
-                    Rectangle { visible: Theme.comic && i == root.current-index; x: 0; width: 4px; background: Comic.red; }
-                    Rectangle { visible: Theme.fighter && i == root.current-index; x: 0; width: 3px; background: Fi.gold; }
-                    Rectangle { visible: Theme.cozy && i == root.current-index; x: 0; width: 3px; background: Cz.ember; }
-                    Rectangle { visible: Theme.pinball && (i == root.current-index || it.has-hover); x: 0; width: 3px; background: Pb.plasma; }
-                    PkPx { visible: Theme.pocket && (it.has-hover || i == root.current-index); x: 5px; y: (parent.height - self.height) / 2; s: 1; source: @image-url("skins/px-pocket/chev.png"); colorize: Pk.l0; }
+                    if Theme.comic && i == root.current-index: Rectangle { x: 0; width: 4px; background: Comic.red; }
+                    if Theme.fighter && i == root.current-index: Rectangle { x: 0; width: 3px; background: Fi.gold; }
+                    if Theme.cozy && i == root.current-index: Rectangle { x: 0; width: 3px; background: Cz.ember; }
+                    if Theme.pinball && (i == root.current-index || it.has-hover): Rectangle { x: 0; width: 3px; background: Pb.plasma; }
+                    if Theme.pocket && (it.has-hover || i == root.current-index): PkPx { x: 5px; y: (parent.height - self.height) / 2; s: 1; source: @image-url("skins/px-pocket/chev.png"); colorize: Pk.l0; }
                     // Quest Menu: the hovered row lit with the glove, the current one gold with a
                     // check.
                     if Theme.quest: Rectangle {
@@ -7722,9 +7659,8 @@ export component Select inherits Rectangle {
                             }
                         }
                     }
-                    Rectangle { visible: Theme.answer && (i == root.current-index || it.has-hover); x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
-                    Text {
-                        visible: Theme.os95;
+                    if Theme.answer && (i == root.current-index || it.has-hover): Rectangle { x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
+                    if Theme.os95: Text {
                         x: 4px;
                         width: parent.width - 8px;
                         text: item;
@@ -7867,8 +7803,7 @@ export component TextField inherits Rectangle {
         border-width: Theme.brick ? 2px : root.edge-width;
         border-color: invalid ? Theme.danger : input.has-focus && !root.bare-focus ? root.focus-edge : root.rest-edge;
         opacity: enabled ? 1 : 0.45;
-        Rectangle {
-            visible: input.has-focus && (!root.invalid || Theme.brick) && !root.bare-focus;
+        if input.has-focus && (!root.invalid || Theme.brick) && !root.bare-focus: Rectangle {
             x: -3px;
             y: -3px;
             width: parent.width + 6px;
@@ -8082,9 +8017,8 @@ export component ShortcutBox inherits Rectangle {
     border-width: Theme.os95 || Theme.brick || Theme.comic || Theme.pocket || Theme.quest || Theme.answer || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.synth ? (listening ? 2px : 0) : 1px;
     // Answering Machine: a small smoked display that reads the keys in red, "NOT SET"
     // dim, and "Press the keys" with a red caret while it listens.
-    AmSmoke { visible: Theme.answer; x: 0; y: 0; width: parent.width; height: parent.height; }
-    Rectangle {
-        visible: Theme.answer && t.has-hover && !root.listening;
+    if Theme.answer: AmSmoke { x: 0; y: 0; width: parent.width; height: parent.height; }
+    if Theme.answer && t.has-hover && !root.listening: Rectangle {
         x: 0;
         y: 0;
         width: parent.width;
@@ -8133,7 +8067,7 @@ export component ShortcutBox inherits Rectangle {
         }
     }
     border-color: listening ? (Theme.glass ? #ffffffa0 : Theme.accent) : transparent;
-    OsBevel { visible: Theme.os95; kind: 2; }
+    if Theme.os95: OsBevel { kind: 2; }
     if Theme.os95: HorizontalLayout {
         padding-left: 6px;
         padding-right: 4px;
@@ -8165,8 +8099,8 @@ export component ShortcutBox inherits Rectangle {
         }
         Rectangle { horizontal-stretch: 1; }
     }
-    Rectangle { visible: Theme.tape; y: 0; height: 2px; background: #00000080; }
-    Rectangle { visible: Theme.tape; y: parent.height; height: 1px; background: #ffffff99; }
+    if Theme.tape: Rectangle { y: 0; height: 2px; background: #00000080; }
+    if Theme.tape: Rectangle { y: parent.height; height: 1px; background: #ffffff99; }
     accessible-role: button;
     accessible-label: label;
     accessible-action-default => { fs.focus(); }
@@ -8229,8 +8163,7 @@ export component ShortcutBox inherits Rectangle {
             pk-press := Text { text: "PRESS THE KEYS"; color: Pk.l0; font-family: Pk.small; font-size: 8px; letter-spacing: 1px; vertical-alignment: center; }
         }
     }
-    Text {
-        visible: !root.listening && root.keys.length == 0 && Theme.pocket;
+    if !root.listening && root.keys.length == 0 && Theme.pocket: Text {
         x: 0;
         y: 0;
         width: parent.width;
@@ -8274,8 +8207,7 @@ export component ShortcutBox inherits Rectangle {
             vertical-alignment: center;
         }
     }
-    Text {
-        visible: !root.listening && root.keys.length == 0 && Theme.quest;
+    if !root.listening && root.keys.length == 0 && Theme.quest: Text {
         x: 0;
         y: 0;
         width: parent.width;
@@ -8328,8 +8260,7 @@ export component ShortcutBox inherits Rectangle {
             Rectangle { x: parent.width - 8px; y: 4px; width: 2px; height: parent.height - 8px; background: Brick.lcd1; }
         }
     }
-    Text {
-        visible: !root.listening && root.keys.length == 0 && Theme.brick;
+    if !root.listening && root.keys.length == 0 && Theme.brick: Text {
         x: 0;
         y: 0;
         width: parent.width;
@@ -8394,8 +8325,7 @@ export component ShortcutBox inherits Rectangle {
         }
     }
     // Phosphor: dim and flush right, where the key caps end.
-    Text {
-        visible: !root.listening && root.keys.length == 0 && Theme.phos;
+    if !root.listening && root.keys.length == 0 && Theme.phos: Text {
         x: 0;
         y: 0;
         width: parent.width;
@@ -8408,8 +8338,7 @@ export component ShortcutBox inherits Rectangle {
         vertical-alignment: center;
     }
     // Pocket Synth: dim mono words flush right; key caps of the sampler.
-    Text {
-        visible: !root.listening && root.keys.length == 0 && Theme.synth;
+    if !root.listening && root.keys.length == 0 && Theme.synth: Text {
         x: 0;
         y: 0;
         width: parent.width - 2px;
@@ -8442,8 +8371,7 @@ export component ShortcutBox inherits Rectangle {
     }
     // Fighter Select: dim bold words flush right, where the key caps end.
     // Cozy Cabin: Not set in parchment brown flush right, or parchment key caps.
-    Text {
-        visible: !root.listening && root.keys.length == 0 && Theme.cozy;
+    if !root.listening && root.keys.length == 0 && Theme.cozy: Text {
         x: 0;
         y: 0;
         width: parent.width;
@@ -8474,8 +8402,7 @@ export component ShortcutBox inherits Rectangle {
             }
         }
     }
-    Text {
-        visible: !root.listening && root.keys.length == 0 && Theme.fighter;
+    if !root.listening && root.keys.length == 0 && Theme.fighter: Text {
         x: 0;
         y: 0;
         width: parent.width;
@@ -8495,8 +8422,7 @@ export component ShortcutBox inherits Rectangle {
         font-size: Theme.tape ? 11px : Theme.phos ? 12px : 13px;
         letter-spacing: Theme.tape ? 2px : 0;
     }
-    Text {
-        visible: !root.listening && root.keys.length == 0 && Theme.comic;
+    if !root.listening && root.keys.length == 0 && Theme.comic: Text {
         x: 0;
         width: parent.width - 4px;
         height: parent.height;

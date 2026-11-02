@@ -190,8 +190,7 @@ component Tile inherits Rectangle {
             }
         }
         // Answering Machine: a red lamp instead of the check.
-        Rectangle {
-            visible: root.on && Theme.answer;
+        if root.on && Theme.answer: Rectangle {
             x: 110px - 14px;
             y: 6px;
             width: 8px;
@@ -1116,8 +1115,7 @@ component Strip inherits VerticalLayout {
             property <length> thumb-w: Theme.pinball ? 13px : max(30px, self.width * root.view-w / max(root.content-w, 1px));
             // Sized from the parent, not in percent: a percent size here made a binding loop
             // with the Car Dashboard's flexbox settings page.
-            Image {
-                visible: Theme.os95;
+            if Theme.os95: Image {
                 x: 0;
                 y: 0;
                 width: parent.width;
@@ -1128,7 +1126,7 @@ component Strip inherits VerticalLayout {
                 horizontal-alignment: left;
                 vertical-alignment: top;
             }
-            PkTile { visible: Theme.pocket; x: 0; y: 0; width: parent.width; height: parent.height; source: @image-url("skins/px-pocket/dith.png"); }
+            if Theme.pocket: PkTile { x: 0; y: 0; width: parent.width; height: parent.height; source: @image-url("skins/px-pocket/dith.png"); }
             property <int> led-on: round(root.x-off / root.pitch);
             for k in Theme.synth ? root.n : 0: Rectangle {
                 x: (parent.width - root.n * 9px + 4px) / 2 + k * 9px;
@@ -1138,8 +1136,7 @@ component Strip inherits VerticalLayout {
                 border-radius: 2.5px;
                 background: k == parent.led-on ? #ff5a1e : #c4c0b6;
             }
-            Rectangle {
-                visible: !Theme.synth;
+            if !Theme.synth: Rectangle {
                 x: Theme.quest ? 3px + (root.max-off > 0 ? root.x-off / root.max-off * (parent.width - 6px - self.width) : 0) : root.max-off > 0 ? root.x-off / root.max-off * (parent.width - self.width) : 0;
                 y: Theme.pinball ? -4px : Theme.tape ? -1px : Theme.quest ? 3px : Theme.answer ? -3px : 0;
                 width: Theme.quest ? max(30px, (parent.width - 6px) * root.view-w / max(root.content-w, 1px)) : parent.thumb-w;
@@ -1148,8 +1145,7 @@ component Strip inherits VerticalLayout {
                 background: Theme.pinball ? transparent : Theme.cozy ? Cz.brown : Theme.fighter ? Fi.p1 : Theme.pocket ? Pk.l3 : Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.phos ? Ph.ph : Theme.os95 ? Os.face : Theme.comic ? Comic.ink : Theme.glass ? #ffffff73
                     : Theme.answer ? @linear-gradient(180deg, #635c56 0%, #4b4540 100%) : Theme.quest ? Quest.grey : Theme.edge;
                 OsBevel { visible: Theme.os95; kind: 0; }
-                Image {
-                    visible: Theme.pinball;
+                if Theme.pinball: Image {
                     x: 0;
                     y: 0;
                     width: 13px;

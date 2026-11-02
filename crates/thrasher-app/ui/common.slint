@@ -4883,9 +4883,9 @@ component PnXKey inherits Rectangle {
         Icon {
             name: "close";
             tint: root.enabled ? Pn.engrave : Pn.ink-soft;
-            stroke-width: 2.6px;
-            width: 11px;
-            height: 11px;
+            stroke-width: 2.4px;
+            width: 15px;
+            height: 15px;
         }
     }
     Rectangle {
@@ -4916,8 +4916,9 @@ component PnXKey inherits Rectangle {
 
 // The Phonograph's row of a merge or a merged clip's parts, as a cylinder tin: brass grip
 // studs, the place on a brass disc, the lid that plays it (wax red while it plays), the
-// label in the colours of the main page's tins with the name and the note under it, and the
-// brass screw (remove) or the studs (the menu). The lifted tin is ringed in bright brass.
+// label in the colours of the main page's tins with the name (a merge row's length at its
+// right end, a part's note under the name), and the brass screw (remove) or the studs (the
+// menu). The lifted tin is ringed in bright brass.
 component PnOrderRow inherits Rectangle {
     in property <OrderRow> item;
     in property <int> place;
@@ -4931,7 +4932,7 @@ component PnOrderRow inherits Rectangle {
     callback remove();
     callback open-menu();
     property <length> body-x: root.playable ? 62px : 46px;
-    property <length> body-h: root.height - 10px;
+    property <length> body-h: root.height - 8px;
     property <color> label: Math.mod(root.place - 1, 3) == 0 ? #eadbb7 : Math.mod(root.place - 1, 3) == 1 ? #dfe0bf : #ead3c0;
     // The grip: two columns of three brass studs.
     for k in 6: Rectangle {
@@ -4966,7 +4967,7 @@ component PnOrderRow inherits Rectangle {
     // The tin: a bright brass ring while lifted, its shadow, the dark rims and the label.
     Rectangle {
         x: root.body-x;
-        y: 5px;
+        y: 4px;
         width: root.width - root.body-x;
         height: root.body-h;
         Rectangle {
@@ -5002,9 +5003,10 @@ component PnOrderRow inherits Rectangle {
             VerticalLayout {
                 alignment: center;
                 horizontal-stretch: 1;
-                spacing: 0;
-                Text { text: root.item.name; color: Pn.ink; font-family: Pn.font; font-size: 16px; font-weight: 600; overflow: elide; }
-                if root.item.note != "": Text {
+                // Garamond's line box is tall: pulled together so the note clears the ruled line.
+                spacing: root.playable ? 0 : -2px;
+                Text { text: root.item.name; color: Pn.ink; font-family: Pn.font; font-size: root.playable ? 16px : 15px; font-weight: 600; overflow: elide; }
+                if root.item.note != "" && !root.playable: Text {
                     text: root.item.note.to-uppercase();
                     color: Pn.ink-soft;
                     font-family: Pn.caps;
@@ -5013,6 +5015,15 @@ component PnOrderRow inherits Rectangle {
                     letter-spacing: 0.8px;
                     overflow: elide;
                 }
+            }
+            // A merge row: the clip's length at the right end, as the mockup's tins.
+            if root.item.note != "" && root.playable: Text {
+                text: root.item.note;
+                color: Pn.ink;
+                font-family: Pn.font;
+                font-size: 14px;
+                font-weight: 600;
+                vertical-alignment: center;
             }
             if root.removable: VerticalLayout {
                 alignment: center;
@@ -5058,8 +5069,8 @@ component PnOrderRow inherits Rectangle {
                 x: (parent.width - self.width) / 2 + (root.playing ? 0 : 1px);
                 name: root.playing ? "pause" : "play";
                 tint: root.playing ? Pn.wax-ink : Pn.ink;
-                width: 12px;
-                height: 12px;
+                width: 16px;
+                height: 16px;
             }
         }
         property <bool> hovering: lt.has-hover;

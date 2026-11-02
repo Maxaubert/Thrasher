@@ -2962,7 +2962,9 @@ export component Drop inherits Rectangle {
         HorizontalLayout {
             alignment: center;
             Rectangle {
-                width: drop-word.preferred-width + 40px;
+                // A fixed width: the spaced capitals measured narrower than they draw, so the
+                // rivets touched the words.
+                width: 186px;
                 height: 24px;
                 border-radius: 3px;
                 background: Pn.plate-face;

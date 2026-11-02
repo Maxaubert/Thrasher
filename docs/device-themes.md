@@ -1391,7 +1391,8 @@ OPTIONS, WRITING).
   page's brass card holder round an ivory card), `PnExportArt` (EXPORT on red wax, the wax
   filling up to the percent, DONE on brass), `PnXKey` and `PnOrderRow` (a merge or part row as
   a cylinder tin: brass studs, the place on a brass disc, the lid that plays it, the label in
-  the main page's tin colours with the note under the name in small capitals, a brass screw to
+  the main page's tin colours, a merge row's length at its right end and a part's note under
+  the name in small capitals, a brass screw to
   remove it or the studs for its menu) and `PnShortcutArt` (Press the keys by an amber jewel,
   Not set in italic, ivory key caps). Each is placed inside the shared widget's own type
   (`if Theme.phono: PnKey { }`). The rest is one more branch in the existing chains: `Btn`
@@ -1459,8 +1460,8 @@ the widget's tree), and fewer `if` blocks in the skins' settings pages.
 **Mockup faults fixed, not copied (Phonograph pages):** the recording widget hid Open window
 behind the RECORDING tag; the tag is set smaller so the brass screw keeps its place top right.
 Deliberate differences: the record card has no ruled
-lines (the words are a flow of chips, so lines would not meet them); the order rows show the
-note under the name and no little waveform (an order row carries none); the Ask key has no
+lines (the words are a flow of chips, so lines would not meet them); the order rows have no
+little waveform (an order row carries none); the Ask key has no
 trumpet (a key holds words only); the answer's footnotes are plain text, not wax seals; the
 models' USED odometer is the used size in italic (it is a string, not a number); the dubbing
 picture shows up to four clips.
@@ -1480,6 +1481,15 @@ picture shows up to four clips.
 - **Components must be declared before use in a file.** `slint-compiler` reported "Unknown
   element" for a key declared under the nameplate that used it.
 - **Git Bash heredocs with quotes broke** in this session; scripts went into files instead.
+- **Fewer cargo jobs do not lower the peak** (review, 2026-11-02): `cargo build --release -j 2`
+  climbed steadily from 4 GB to 30.29 GB in 13 minutes and was stopped at the same point as the
+  full build (30.22 GB). The memory is the one rustc's own front end, not parallel LLVM jobs,
+  so only less generated code helps.
+- **Review fixes:** the order rows were crowded (the note crossed the bottom ruled line and the
+  play, pause and remove glyphs were 3 px specks); merge rows now carry the length at the right
+  end as the mockup does, parts rows sit the note under a 15px name, and the glyphs are 14 to
+  16 px. The drop cover's plate is a fixed 186px: sized from the text's preferred width, its
+  rivets touched the words.
 
 **Built in step 5, Comic Book other pages (2026-10-30):** mockups in
 `docs/mockups/device-themes/x-comic-pages/` (approved by Max 2026-10-30), built as Tape Deck's

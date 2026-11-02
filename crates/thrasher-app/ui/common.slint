@@ -9136,7 +9136,7 @@ export component TranscriptCard inherits Rectangle {
     in property <string> clip-name;
     // Brick Phone: the size of the words on the LCD (bigger in a wide window).
     in property <length> brick-size: 17px;
-    property <length> text-size: Theme.cozy ? 14px : Theme.brick ? root.brick-size : Theme.tape || Theme.synth ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : Theme.comic || Theme.fighter || Theme.cozy ? 13.5px : Theme.glass ? 14px : Theme.answer ? 13px : 15px;
+    property <length> text-size: Theme.cozy ? 14px : Theme.brick ? root.brick-size : Theme.tape || Theme.synth ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : Theme.comic || Theme.fighter ? 13.5px : Theme.glass ? 14px : Theme.answer ? 13px : 15px;
     property <string> text-family: Theme.brick ? Brick.words : Theme.tape || Theme.synth ? Theme.mono : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.fighter ? Fi.body : Theme.cozy ? Cz.font : "Inter Tight";
     property <length> scroll-y;
     property <length> line-h: measure.preferred-height;
@@ -9347,7 +9347,7 @@ export component TranscriptCard inherits Rectangle {
                                         ink: Theme.pocket ? Pk.l3 : Theme.tape ? Deck.ink : Theme.phos ? Ph.hi : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.synth ? #eef3ee : Theme.quest ? Quest.white : Theme.text;
                                         hint: Theme.pocket ? Pk.l2 : Theme.tape ? Deck.ink-soft : Theme.os95 ? #7a7a7a : Theme.comic ? Comic.faint : Theme.glass ? Glass.ink3 : Theme.quest ? Quest.dim : Theme.brick ? Brick.ink2 : Theme.synth ? #8c948e : Theme.dim;
                                         font-size: Theme.pocket ? 18px : Theme.tape || Theme.phos ? 12px : Theme.os95 ? 12.5px : Theme.glass ? 12.5px : Theme.quest ? 14px : Theme.brick ? 16px : Theme.synth ? 11.5px : 13px;
-                                        family: Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.quest ? Quest.font : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : "Inter Tight";
+                                        family: Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.quest ? Quest.font : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : Theme.cozy ? Cz.font : "Inter Tight";
                                         side: Theme.brick ? 6px : 12px;
                                         bare-focus: Theme.phos || Theme.os95 || Theme.pocket || Theme.brick;
                                         edge-width: Theme.quest ? 3px : 1px;
@@ -9374,8 +9374,8 @@ export component TranscriptCard inherits Rectangle {
                                         y: i * Theme.menu-h;
                                         width: parent.width;
                                         height: Theme.menu-h;
-                                        border-radius: Theme.phos || Theme.pocket ? 0 : Theme.os95 ? 0 : Theme.comic ? 0 : Theme.brick ? 0 : Theme.glass ? 12px : Theme.synth ? 0 : 6px;
-                                        background: row-t.has-hover && l.ready ? (Theme.pocket ? Pk.l3 : Theme.tape ? Deck.amber.with-alpha(0.3) : Theme.phos ? Ph.ph : Theme.os95 ? Os.navy : Theme.comic ? Comic.wash : Theme.glass ? Glass.lit : Theme.brick ? Brick.ink : Theme.answer ? Am.lit : Theme.synth ? #232625 : Theme.hover) : transparent;
+                                        border-radius: Theme.phos || Theme.pocket || Theme.cozy ? 0 : Theme.os95 ? 0 : Theme.comic ? 0 : Theme.brick ? 0 : Theme.glass ? 12px : Theme.synth ? 0 : 6px;
+                                        background: row-t.has-hover && l.ready ? (Theme.cozy ? Cz.hover : Theme.pocket ? Pk.l3 : Theme.tape ? Deck.amber.with-alpha(0.3) : Theme.phos ? Ph.ph : Theme.os95 ? Os.navy : Theme.comic ? Comic.wash : Theme.glass ? Glass.lit : Theme.brick ? Brick.ink : Theme.answer ? Am.lit : Theme.synth ? #232625 : Theme.hover) : transparent;
                                         property <bool> brick-lit: Theme.brick && row-t.has-hover && l.ready;
                                         border-width: Theme.glass && row-t.has-hover && l.ready ? 1px : 0;
                                         border-color: Glass.lit-edge;
@@ -9401,16 +9401,17 @@ export component TranscriptCard inherits Rectangle {
                                                 color: Theme.pocket ? (!l.ready ? Pk.l1 : row-t.has-hover ? Pk.l0 : Pk.l3) : Theme.brick ? (lrow.brick-lit ? Brick.lcd1 : Brick.ink.with-alpha(l.ready ? 1 : 0.38)) : Theme.tape ? (l.ready ? Deck.ink : #a99880) : Theme.glass ? (l.ready ? Glass.ink : Glass.ink3) : Theme.comic ? (l.ready ? Comic.ink : Comic.faint) : Theme.os95 ? (!l.ready ? Os.sh : row-t.has-hover ? #ffffff : #000000) : Theme.phos ? (!l.ready ? Ph.dim : row-t.has-hover ? Ph.bg : Ph.hi)
                                                     : Theme.answer ? (l.ready ? Am.ink : #b1a58d)
                                                     : Theme.synth ? (l.ready ? #eef3ee : #565b58)
+                                                    : Theme.cozy ? (l.ready ? Cz.ink : Cz.parch-dd)
                                                     : l.ready ? Theme.text2 : Theme.dim;
-                                                font-family: Theme.pocket ? Pk.big : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : "Inter Tight";
+                                                font-family: Theme.cozy ? Cz.font : Theme.pocket ? Pk.big : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : "Inter Tight";
                                                 font-weight: Theme.comic || Theme.answer ? 700 : Theme.synth ? 500 : 400;
                                                 font-size: Theme.pocket ? 20px : Theme.phos || Theme.answer ? 12.5px : Theme.brick ? 18px : Theme.synth ? 11.5px : 13px;
                                                 vertical-alignment: center;
                                             }
                                             Text {
                                                 text: l.native != l.name ? (Theme.pocket ? l.native.to-uppercase() : l.native) : "";
-                                                color: Theme.pocket ? (row-t.has-hover && l.ready ? Pk.l1 : Pk.l2) : Theme.brick ? (lrow.brick-lit ? Brick.lcd1 : Brick.ink) : Theme.tape ? Deck.ink-soft : Theme.phos && row-t.has-hover && l.ready ? Ph.bg2 : Theme.os95 ? (row-t.has-hover && l.ready ? #d8e2ff : Os.note) : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.dim;
-                                                font-family: Theme.pocket ? Pk.small : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
+                                                color: Theme.pocket ? (row-t.has-hover && l.ready ? Pk.l1 : Pk.l2) : Theme.brick ? (lrow.brick-lit ? Brick.lcd1 : Brick.ink) : Theme.tape ? Deck.ink-soft : Theme.phos && row-t.has-hover && l.ready ? Ph.bg2 : Theme.os95 ? (row-t.has-hover && l.ready ? #d8e2ff : Os.note) : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.cozy ? Cz.brown : Theme.dim;
+                                                font-family: Theme.pocket ? Pk.small : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.cozy ? Cz.font : "Inter Tight";
                                                 opacity: l.ready ? 1 : 0.6;
                                                 font-size: Theme.pocket ? 8px : 11px;
                                                 vertical-alignment: center;
@@ -9431,7 +9432,7 @@ export component TranscriptCard inherits Rectangle {
                                             }
                                             if root.shown-lang == l.code && root.lang-view && !Theme.pocket && !Theme.brick: Icon {
                                                 name: "check";
-                                                tint: Theme.tape ? Deck.red : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.accent;
+                                                tint: Theme.tape ? Deck.red : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.cozy ? Cz.ink : Theme.accent;
                                                 width: 13px;
                                                 height: 13px;
                                                 y: (parent.height - self.height) / 2;

@@ -893,12 +893,6 @@ component Value inherits Mono {
     font-size: 12px;
 }
 
-// The dropdown of a line, as wide as its choice needs.
-component LineSelect inherits Select {
-    width: min(self.natural, 200px);
-    height: 24px;
-}
-
 export component SettingsPage inherits Rectangle {
     in property <bool> wide;
     callback back();
@@ -959,7 +953,9 @@ export component SettingsPage inherits Rectangle {
                                 label: "Microphone";
                                 VerticalLayout {
                                     alignment: center;
-                                    LineSelect {
+                                    Select {
+                                        width: min(self.natural, 200px);
+                                        height: 24px;
                                         label: "Microphone";
                                         model: Pages.mic-devices;
                                         current-index <=> Pages.mic-index;
@@ -983,7 +979,9 @@ export component SettingsPage inherits Rectangle {
                                 label: "Stop recording after";
                                 VerticalLayout {
                                     alignment: center;
-                                    LineSelect {
+                                    Select {
+                                        width: min(self.natural, 200px);
+                                        height: 24px;
                                         label: "Stop recording after";
                                         model: Pages.recording-limits;
                                         current-index <=> Pages.recording-limit-index;
@@ -1097,7 +1095,9 @@ export component SettingsPage inherits Rectangle {
                                 label: "Export format";
                                 VerticalLayout {
                                     alignment: center;
-                                    LineSelect {
+                                    Select {
+                                        width: min(self.natural, 200px);
+                                        height: 24px;
                                         label: "Export format";
                                         model: ["FLAC", "WAV", "MP3"];
                                         current-index <=> Pages.export-format;
@@ -1133,7 +1133,9 @@ export component SettingsPage inherits Rectangle {
                                 label: "Language";
                                 VerticalLayout {
                                     alignment: center;
-                                    LineSelect {
+                                    Select {
+                                        width: min(self.natural, 200px);
+                                        height: 24px;
                                         label: "Language";
                                         model: Pages.languages;
                                         current-index <=> Pages.language-index;
@@ -1169,7 +1171,9 @@ export component SettingsPage inherits Rectangle {
                                 label: "Max pause";
                                 VerticalLayout {
                                     alignment: center;
-                                    LineSelect {
+                                    Select {
+                                        width: min(self.natural, 200px);
+                                        height: 24px;
                                         label: "Max pause";
                                         model: Pages.max-pauses;
                                         current-index <=> Pages.max-pause-index;
@@ -1210,7 +1214,9 @@ export component SettingsPage inherits Rectangle {
                                 label: "Model";
                                 VerticalLayout {
                                     alignment: center;
-                                    LineSelect {
+                                    Select {
+                                        width: min(self.natural, 200px);
+                                        height: 24px;
                                         label: "AI model";
                                         model: Pages.ai-models;
                                         current-index <=> Pages.ai-model-index;

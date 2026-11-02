@@ -2576,6 +2576,9 @@ fn main() -> Result<(), slint::PlatformError> {
                 } else if theme.get_cozy() {
                     // The Cozy Cabin writes them in moss ink.
                     slint::Color::from_rgb_u8(0x4c, 0x6c, 0x20)
+                } else if theme.get_pinball() {
+                    // Pinball types them as the blue chips of its marks.
+                    slint::Color::from_rgb_u8(0x8f, 0xb4, 0xff)
                 } else {
                     theme.get_accent()
                 };

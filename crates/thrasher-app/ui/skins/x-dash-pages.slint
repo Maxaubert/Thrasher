@@ -1235,12 +1235,6 @@ component Value inherits Text {
     vertical-alignment: center;
 }
 
-// The dropdown of a row, as wide as its choice needs.
-component RowSelect inherits Select {
-    width: min(self.natural, 220px);
-    height: 28px;
-}
-
 export component SettingsPage inherits VerticalLayout {
     in property <bool> wide;
     callback back();
@@ -1308,7 +1302,9 @@ export component SettingsPage inherits VerticalLayout {
                             label: "Microphone";
                             VerticalLayout {
                                 alignment: center;
-                                RowSelect {
+                                Select {
+                                    width: min(self.natural, 220px);
+                                    height: 28px;
                                     label: "Microphone";
                                     model: Pages.mic-devices;
                                     current-index <=> Pages.mic-index;
@@ -1332,7 +1328,9 @@ export component SettingsPage inherits VerticalLayout {
                             label: "Stop recording after";
                             VerticalLayout {
                                 alignment: center;
-                                RowSelect {
+                                Select {
+                                    width: min(self.natural, 220px);
+                                    height: 28px;
                                     label: "Stop recording after";
                                     model: Pages.recording-limits;
                                     current-index <=> Pages.recording-limit-index;
@@ -1448,7 +1446,9 @@ export component SettingsPage inherits VerticalLayout {
                             label: "Export format";
                             VerticalLayout {
                                 alignment: center;
-                                RowSelect {
+                                Select {
+                                    width: min(self.natural, 220px);
+                                    height: 28px;
                                     label: "Export format";
                                     model: ["FLAC", "WAV", "MP3"];
                                     current-index <=> Pages.export-format;
@@ -1508,7 +1508,9 @@ export component SettingsPage inherits VerticalLayout {
                             label: "Language";
                             VerticalLayout {
                                 alignment: center;
-                                RowSelect {
+                                Select {
+                                    width: min(self.natural, 220px);
+                                    height: 28px;
                                     label: "Language";
                                     model: Pages.languages;
                                     current-index <=> Pages.language-index;
@@ -1544,7 +1546,9 @@ export component SettingsPage inherits VerticalLayout {
                             label: "Max pause";
                             VerticalLayout {
                                 alignment: center;
-                                RowSelect {
+                                Select {
+                                    width: min(self.natural, 220px);
+                                    height: 28px;
                                     label: "Max pause";
                                     model: Pages.max-pauses;
                                     current-index <=> Pages.max-pause-index;
@@ -1582,7 +1586,9 @@ export component SettingsPage inherits VerticalLayout {
                             label: "Model";
                             VerticalLayout {
                                 alignment: center;
-                                RowSelect {
+                                Select {
+                                    width: min(self.natural, 220px);
+                                    height: 28px;
                                     label: "AI model";
                                     model: Pages.ai-models;
                                     current-index <=> Pages.ai-model-index;

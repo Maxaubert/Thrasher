@@ -1,0 +1,253 @@
+// The Pinball parts the main page (x-pinball.slint), the other pages (x-pinball-pages.slint)
+// and the shared widgets (common.slint) all use: the cabinet's colours, art at 1x or 2x, the
+// small printed capitals, text on the dot matrix, the lamps and the arrow inserts. It imports
+// nothing, so common.slint can import it.
+
+// The cabinet's colours, from the mockup.
+export global Pb {
+    out property <color> plasma: #ff7a1a;
+    out property <color> plasma-hi: #ffb050;
+    out property <color> cab: #0a090c;
+    out property <color> ink: #efe8f2;
+    out property <color> mute: #8f86a0;
+    out property <color> name: #f0eaf4;
+    out property <color> name-sel: #ffe2c2;
+    out property <color> cap: #a9b4e0;
+    out property <color> bump-ink: #e9e4f0;
+    out property <color> icon-dark: #1c1820;
+    out property <color> lane: #8d8a94;
+    out property <color> wave: #6f6880;
+    out property <color> wave-sel: #ffa050;
+    out property <color> dots: #8a8094;
+    out property <color> dots-sel: #ffb070;
+    out property <color> list: #0c0a0f;
+    // The dot matrix: unlit dots, the dim rule, the mic line, the bright lines, the glow.
+    out property <color> dmd-bg: #070302;
+    out property <color> dmd-off: #ff641417;
+    out property <color> dmd-1: #7a300a;
+    out property <color> dmd-2: #e8640f;
+    out property <color> dmd-3: #ffa040;
+    out property <color> dmd-halo: #ff6e1438;
+    // Eight unlit blocks of 8x8 dots (U+2588 in Pinball Dots), for the grid lines.
+    out property <string> blocks: "████████████████████";
+    // The other pages (docs/mockups/device-themes/x-pinball-pages/): chrome edges, the dark
+    // wells and plates, the body text, the menu icons, the four insert colours.
+    out property <color> edge: #6e6876;
+    out property <color> edge2: #5f5866;
+    out property <color> well: #040406;
+    out property <color> pop: #0e0c12;
+    out property <color> card: #0c0a10;
+    out property <color> rule: #2a2530;
+    out property <color> body: #c9bfd6;
+    out property <color> icon: #a49bb0;
+    out property <color> danger: #ff7a6a;
+    out property <color> red: #e5322a;
+    out property <color> yel: #ffc23a;
+    out property <color> blu: #3aa8ff;
+    out property <color> grn: #4be08a;
+    out property <color> chrome: #8d8a94;
+    out property <color> ghost-ink: #e6dfee;
+    out property <color> key-ink: #2a0d00;
+    out property <color> mark: #8fb4ff;
+    out property <string> font: "Barlow Condensed";
+    // The lit row of a menu or list: plasma fading out to the right.
+    out property <brush> lit-row: @linear-gradient(90deg, #ff7a1a4d 0%, #ff7a1a0f 100%);
+    // The words on a key face (see PbKey for `kind`).
+    public pure function ink-of(kind: int) -> color {
+        return kind == 1 ? Pb.key-ink : kind == 2 ? #ffffff : kind == 3 ? Pb.plasma-hi : kind == 4 ? #032810 : Pb.ghost-ink;
+    }
+}
+
+// A piece of art, the 2x cut when the display is dense.
+export component Art inherits Image {
+    in property <image> lo;
+    in property <image> hi;
+    source: 1phx < 0.7px ? root.hi : root.lo;
+    image-fit: fill;
+}
+
+// Small caps printed on the playfield and the cabinet.
+export component Lab inherits Text {
+    color: Pb.cap;
+    font-family: "Barlow Condensed";
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    vertical-alignment: center;
+    accessible-role: none;
+    accessible-label: "";
+}
+
+// Text on the dot matrix: lit dots over their glow, placed on the grid. `align` 0 puts
+// its first dot at column `col`, 1 centres it, 2 ends it `col` columns from the right;
+// `most` is the most columns it may take (it elides past them).
+export component DotText inherits Rectangle {
+    in property <string> text;
+    in property <length> pitch;
+    in property <int> cols;
+    in property <int> at-col;
+    in property <int> at-row;
+    in property <int> align;
+    in property <int> most: root.cols;
+    in property <bool> big;
+    in property <color> ink: Pb.dmd-3;
+    in property <bool> halo: true;
+    // The columns its dots span (the advance less the gap after the last glyph).
+    property <int> span: min(round(lit.preferred-width / root.pitch) - 1, root.most);
+    out property <int> used: root.span;
+    x: (root.align == 0 ? root.at-col : root.align == 1 ? round((root.cols - root.span) / 2) : root.cols - root.at-col - root.span) * root.pitch;
+    y: root.at-row * root.pitch;
+    width: (root.span + 1) * root.pitch;
+    height: (root.big ? 15 : 8) * root.pitch;
+    accessible-role: none;
+    if root.halo: Text {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        color: Pb.dmd-halo;
+        font-family: root.big ? "Pinball Halo Big" : "Pinball Halo";
+        font-size: root.pitch * 8;
+        overflow: elide;
+        accessible-role: none;
+    }
+    lit := Text {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        color: root.ink;
+        font-family: root.big ? "Pinball Dots Big" : "Pinball Dots";
+        font-size: root.pitch * 8;
+        overflow: elide;
+        accessible-role: none;
+    }
+}
+
+// The unlit grid of a dot matrix, `lines` lines of 8 rows, clipped by its display. A
+// plain Text inside, so screen readers do not read the blocks.
+export component DotGrid inherits Rectangle {
+    in property <length> pitch;
+    in property <int> lines: 1;
+    x: 0;
+    y: 0;
+    Text {
+        x: 0;
+        y: 0;
+        text: root.lines == 1 ? Pb.blocks + Pb.blocks + Pb.blocks + Pb.blocks + Pb.blocks
+            : Pb.blocks + "\n" + Pb.blocks + "\n" + Pb.blocks + "\n" + Pb.blocks;
+        color: Pb.dmd-off;
+        font-family: "Pinball Dots";
+        font-size: root.pitch * 8;
+        accessible-role: none;
+    }
+}
+
+// A lamp of the playfield: 0 off, 1 orange, 2 yellow, 3 red. The art has a glow round it, so
+// the picture is larger than the lamp (a 28px cut holds a 12px lamp).
+export component Lamp inherits Image {
+    in property <int> kind;
+    source: 1phx < 0.7px
+        ? (root.kind == 0 ? @image-url("x-pinball/lamp-off-w@2x.png") : root.kind == 1 ? @image-url("x-pinball/lamp-o-w@2x.png") : root.kind == 2 ? @image-url("x-pinball/lamp-y-w@2x.png") : @image-url("x-pinball/lamp-r-w@2x.png"))
+        : (root.kind == 0 ? @image-url("x-pinball/lamp-off-w.png") : root.kind == 1 ? @image-url("x-pinball/lamp-o-w.png") : root.kind == 2 ? @image-url("x-pinball/lamp-y-w.png") : @image-url("x-pinball/lamp-r-w.png"));
+    image-fit: fill;
+    accessible-role: none;
+}
+
+// A row of rollover lanes with a lamp in each: lit orange, then yellow, then red as far as
+// `value` (0 to 1), each lane between chrome posts.
+export component Lanes inherits Rectangle {
+    in property <int> n: 10;
+    in property <float> value;
+    in property <length> lane: 20px;
+    in property <length> lamp: 12px;
+    width: root.n * root.lane + 2px;
+    height: 18px;
+    for k in root.n: Rectangle {
+        x: k * root.lane;
+        width: root.lane;
+        Rectangle { x: 0; width: 1.5px; background: Pb.chrome; }
+        Lamp {
+            x: (parent.width - self.width) / 2 + 1px;
+            y: (parent.height - self.height) / 2;
+            width: root.lamp;
+            height: root.lamp;
+            kind: (k + 0.5) / root.n > root.value ? 0 : k < root.n * 0.66 ? 1 : k < root.n * 0.84 ? 2 : 3;
+        }
+    }
+    Rectangle { x: root.n * root.lane; width: 1.5px; background: Pb.chrome; }
+}
+
+// An arrow insert of the playfield in one of its four colours (by `index`), or lit orange;
+// what it shows (a play mark, a number) are its children.
+export component Insert inherits Rectangle {
+    in property <int> index;
+    in property <bool> lit;
+    property <int> c: Math.mod(root.index, 4);
+    Art {
+        x: -root.width * 6 / 38;
+        y: -root.height * 6 / 28;
+        width: root.width * 50 / 38;
+        height: root.height * 40 / 28;
+        lo: root.lit ? @image-url("x-pinball/ins-s-w.png") : root.c == 0 ? @image-url("x-pinball/ins-0-w.png") : root.c == 1 ? @image-url("x-pinball/ins-1-w.png") : root.c == 2 ? @image-url("x-pinball/ins-2-w.png") : @image-url("x-pinball/ins-3-w.png");
+        hi: root.lit ? @image-url("x-pinball/ins-s-w@2x.png") : root.c == 0 ? @image-url("x-pinball/ins-0-w@2x.png") : root.c == 1 ? @image-url("x-pinball/ins-1-w@2x.png") : root.c == 2 ? @image-url("x-pinball/ins-2-w@2x.png") : @image-url("x-pinball/ins-3-w@2x.png");
+    }
+    @children
+}
+
+// A plain word in the dot matrix font (no grid placement): `size` is the dot pitch.
+export component Dots inherits Rectangle {
+    in property <string> text;
+    in property <length> pitch: 2px;
+    in property <color> ink: Pb.dmd-3;
+    in property <bool> halo: true;
+    width: dots-lit.preferred-width;
+    height: 8 * root.pitch;
+    if root.halo: Text {
+        x: 0;
+        y: 0;
+        text: root.text;
+        color: Pb.dmd-halo;
+        font-family: "Pinball Halo";
+        font-size: root.pitch * 8;
+        accessible-role: none;
+    }
+    dots-lit := Text {
+        x: 0;
+        y: 0;
+        text: root.text;
+        color: root.ink;
+        font-family: "Pinball Dots";
+        font-size: root.pitch * 8;
+        accessible-label: root.text;
+    }
+}
+
+// A small dot matrix box with a word on it (APPEARANCE, DRAIN, PRESS THE KEYS): the dark
+// display in its black and grey rings, the word on the grid.
+export component DotBox inherits Rectangle {
+    in property <string> text;
+    in property <length> pitch: 2px;
+    in property <color> ink: Pb.dmd-3;
+    in property <bool> rings: true;
+    width: box-word.width + 3 * root.pitch;
+    height: 11 * root.pitch;
+    background: Pb.dmd-bg;
+    border-width: 1px;
+    border-color: #2b2420;
+    Rectangle { visible: root.rings; x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px; border-width: 2px; border-color: #000000; }
+    Rectangle { visible: root.rings; x: -4px; y: -4px; width: parent.width + 8px; height: parent.height + 8px; border-width: 2px; border-color: #4d4752; }
+    // The clip in a child: a clip on a component's root makes Slint copy it at every use.
+    Rectangle {
+        clip: true;
+        box-word := Dots {
+            x: 1.5 * root.pitch;
+            y: 1.5 * root.pitch;
+            text: root.text;
+            pitch: root.pitch;
+            ink: root.ink;
+        }
+    }
+}

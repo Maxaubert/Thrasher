@@ -2573,6 +2573,9 @@ fn main() -> Result<(), slint::PlatformError> {
                 } else if theme.get_fighter() {
                     // Fighter Select types them in the cyan of its pause tags.
                     slint::Color::from_rgb_u8(0x27, 0xe0, 0xff)
+                } else if theme.get_cozy() {
+                    // The Cozy Cabin writes them in moss ink.
+                    slint::Color::from_rgb_u8(0x4c, 0x6c, 0x20)
                 } else {
                     theme.get_accent()
                 };

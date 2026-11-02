@@ -972,7 +972,7 @@ visited in turn in one run, Ember on the same exe, 2026-11-01):
 "Cozy Cabin", index 20 in `Theme.names`, after Fighter Select; `fill_gallery` skips empty names,
 should a place ever be held for a skin not in yet), art in `ui/skins/px-cozy/` (35 PNGs at 1x, 18 KB)
 from `tools/skin-art/px-cozy.html` (`sh tools/skin-art/cut.sh px-cozy OUT`, only the 1x cut is
-used). Its other pages are the classic ones in a wood and honey palette (`Theme.pages` 0).
+used). Its other pages were the classic ones in a wood and honey palette until step 5 below gave them their own.
 - Settings gallery: its tile is the Cozy Cabin line in `Gallery.devices` (`ui/gallery.slint`), band #c9822e.
 - The recorder is the cabin wall: the little window (dusk pines and fireflies), the hanging lantern
   with its tag (Record, "Stop and save" while recording; the tag says REC or STOP) and the
@@ -1024,6 +1024,95 @@ used). Its other pages are the classic ones in a wood and honey palette (`Theme.
 - Exe +1.77 MB (65.61 to 67.38 MB): art 18 KB, fonts 8 KB, the rest generated code. Ember, Tape
   Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700 match pixel for
   pixel before and after.
+
+**Built in step 5, Cozy Cabin on every other page (2026-11-02):** mockups in
+`docs/mockups/device-themes/px-cozy-pages/` (approved by Max 2026-10-31, widget variant A,
+flavour labels kept: WRITING, THE PANTRY, FIND A MODEL, WORKBENCH, NEW CLIP, ORDER).
+- `Theme.pages` is 13 for skin 13 (`pages: skin <= 13 ? skin : 0`, still one comparison) and
+  `Theme.cozy` is the flag the shared widgets read. `app.slint` has a `Theme.pages == 13`
+  block next to each Fighter Select one and picks `ui/skins/px-cozy-pages.slint` (`ClipPage`,
+  `SettingsPage`, `ModelsPage`, `MergePage`, `AskPage`, `Widget`, `Dialog`, `Speaking`, `Drop`).
+  No parts file: the pages draw their own small parts and the main page is untouched.
+- `common.slint` gains the `Cz` global (colours, fonts, the key faces by kind), `CzBevel` (the
+  3px bevel), `CzKey` (a key in its ink ring: wood, honey, ember, parchment or dark wood),
+  `CzNote` (a parchment note in its ink ring, honey or ember ringed), `CzWell` (a dark well),
+  `CzBar` (9px honey blocks with 3px gaps), `CzSwitch` (the wooden latch on moss), `CzRule`
+  (the dotted rule, a tile), `CzExportArt` (EXPORT, the blocks under the percent, DONE),
+  `CzSlotKey` and `CzOrderRow` (inventory slot: grip, honey place tile, play slot, name,
+  length in Jersey, a small x or the dots). Each is placed inside the shared widget's own
+  type (`if Theme.cozy: CzKey { }`); the rest is one more branch in the existing chains:
+  `Btn` (capitals, parchment unless main, red or on), `IconBtn`, `Toggle`, `Select` (the
+  Inbox parchment picker, its list a parchment note, the current choice honey with an ember
+  edge, opened flush right), `MenuCard` (parchment note with a hard shadow), `MenuRow`,
+  `ExportItem`, `MenuRule` (dotted), `MenuGroup` (brown capitals), `ShortcutBox` (parchment
+  key caps, PRESS THE KEYS on a honey key, Not set in brown), `Tip` (pale parchment in an ink
+  ring), `TranscriptCard` (Pixel 95 ink on the letter, the spoken word on honey, pause tags
+  and spoken words in moss ink, WRITING count on an ember tag, INSTALL on a wood tag, No
+  transcript yet and Transcribing in Jersey over the block bar), the scroll thumb
+  (parchment brown) and the gallery (`gallery.slint`: tiles on a dark shelf in an ink ring,
+  the current one ringed honey with a honey nub and its name on a honey label, focused pale
+  parchment, the heads in brown capitals). The main page's menus take the look too.
+- The pages draw the rest: the plank wall, the dark plank title bar (flame, name with its
+  ink shadow, the wooden CLIPS key on the clip page), the honey headings with the wooden
+  Back key, parchment cards pinned with ember pins under wooden plaques, the groove
+  waveform with nailed wooden trim tabs, plank speed cells, the pantry's inventory slots
+  with honey pips (ember on the model in use, a moss IN USE tag), the workbench (wide) with
+  the tapes in numbered slots, the answer as a letter, the sources as slots with ember
+  numbers and moss project tags, pinned parchment questions over the dimmed cabin, the
+  speaking card, and the drop cover (dashed honey frame, a wooden crate, DROP TO IMPORT).
+  Messages are dark plank plaques with two nails; the status sits in a dark well.
+- The widget (variant A): the main page's lantern (unlit, lit, and its four frame flame
+  strip while recording, on the Fx clock) on a plank with its REC or STOP tag, beside a
+  pinned readout with the status in the small capitals, Open window, the timer in Cozy
+  Figures and the level as moss blocks; Pause by the level while recording; an ember frame
+  round the widget while recording.
+- Rust: the editor's pause tags are moss ink (#4c6c20).
+- New art via `tools/skin-art/px-cozy.html` (`ONLY="up left x5 pencil bin grip rule dash
+  vdash" sh tools/skin-art/cut.sh px-cozy OUT`, the 1x cut used): Export's arrow, the Back
+  arrow, a small x, pencil, bin, grip, and the dotted rule and dash tiles. No new fonts.
+
+**Mockup faults fixed, not copied (Cozy Cabin pages):** the dropdowns size to their choice
+(the mockup's Export format and Stop recording after chips cut their words), the clip name on
+the delete question sits on a label as wide as the name, the merge sum elides instead of
+running out of the workbench, and the portrait pantry scrolls inside its box instead of
+cutting the last slot. Deliberate differences: the skip keys carry the shared rewind and
+forward glyphs; the workbench shows the parts' lengths, not their total (the page has no
+total); the answer is plain text, so its footnotes are not ember squares; the order rows have
+no little waveform (an order row carries none); the letter has no ruled lines; All projects
+on Ask is the main page's check well with the same name and role as before.
+
+**Lessons from the Cozy Cabin pages:**
+- **List a new skin beside the last one in the shared widgets with a script, then hand edit
+  its own values.** `Theme.cozy` was added next to every `Theme.fighter` in an OR list (radius
+  0, no border, transparent, the classic part hidden) by a small script, and every value that
+  was Fighter Select's own (`Theme.fighter ? X :`) got its own cozy branch by hand.
+- **A font cut to capitals needs capitals.** Tiny5 has no lower case here, so the menu group
+  heads (Audio, Transcript) are put in capitals for the skin.
+- **`visible` on a component instance copies it too**, like an `if`: the parchment note inside
+  `MenuCard` and the panels is placed in a plain box that carries the `visible`.
+- **The base build must not see the new Rust.** With `main.rs` already calling
+  `get_cozy()`, the base build failed after its UI compile; the work was stashed for it.
+- **Git Bash rewrites arguments that start with `//`** for Windows programs (a Slint comment
+  passed to a Python script lost a slash); `MSYS_NO_PATHCONV=1` keeps them.
+- **Checks:** the portrait main page shows six rows, so the drive uses clip_005 and clip_006
+  at 520 wide (clip_105 is out of view there).
+- **The release rustc of the UI now peaks at 29.7 GB**, a hair under the 30 GB stop. The next
+  skin's pages will likely pass it: a size pass (fewer copied panels, the other skins'
+  `inherits TranscriptCard`) should come before them.
+
+**Budgets measured on the Cozy Cabin pages** (test copy, 2.25x display, 10 s samples, pages
+visited in turn in one run, Ember on the same exe, 2026-11-02):
+- CPU idle 0.0 to 0.5% on every page at 520x700 and 1100x700 (Ember 0.0 to 0.3%).
+- Working set against Ember at 520x700: main -1.8, clip -8.7, settings -3.1, merge -2.9, widget
+  -2.4 MB; at 1100x700: -1.2, -4.1, -1.3, -0.8, -1.2 MB.
+- Exe +5.01 MB (110.86 to 115.87 MB), `app.rs` +14.6 MB (201.5 to 216.1 MB); art 1 KB (nine
+  pieces), no new fonts. The release rustc of the UI peaked at 29.7 to 29.8 GB.
+- Ember, Tape Deck and Pocket Synth: every page, menu, dropdown and question at 520x700 and
+  1100x700 (38 shots each) match the Fighter Select build pixel for pixel.
+- Not verified in the app: the models page and Ask (no transcription or AI in the test build;
+  previews only), a merged clip's parts (the test clips carry none; previews only), a model
+  download, the answer while thinking, a real file drop (the cover is shown with
+  `THRASHER_TEST_COVER`), tooltips, dragging an order row.
 
 **Built in step 5, Pinball main page (2026-10-30):** `ui/skins/x-pinball.slint` (skin 14, theme
 "Pinball", index 21 in `Theme.names`, after Cozy Cabin; `EFFECT_FPS` 0 and `RECORDING_FPS` 4

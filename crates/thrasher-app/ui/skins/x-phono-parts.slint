@@ -45,7 +45,6 @@ export global Pn {
     out property <brush> tip: @linear-gradient(180deg, #f6e3a1 0%, #d1a84f 45%, #b58a35 100%);
     out property <brush> plate: @linear-gradient(180deg, #2a120a 0%, #1b0b06 100%);
     // The hovered or open row of a menu: a brass band.
-    out property <brush> rule-fade: @linear-gradient(90deg, #7a571700 0%, #b58a35 50%, #7a571700 100%);
     out property <brush> lit-row: @linear-gradient(90deg, #e9c873 0%, #f3dc93 60%, #ead09a 100%);
     // The words on a key face (see PnKey for `kind`).
     public pure function ink-of(kind: int) -> color {
@@ -152,6 +151,16 @@ export component PnDisc inherits Rectangle {
     Rectangle { x: root.width * 0.42; y: root.height * 0.42; width: root.width * 0.16; height: root.height * 0.16; border-radius: self.width / 2; background: root.at(0.08); }
     Rectangle { border-radius: self.width / 2; border-width: root.edge-width; border-color: root.edge; }
     @children
+}
+
+// A menu's rule: brass fading out at both ends, in two halves of two stops each. As one
+// gradient of three stops the software renderer left out its right half on a rule one or
+// two pixels high (it skips a band that ends up less than a pixel high).
+export component PnRule inherits Rectangle {
+    height: 1px;
+    property <length> half: round(root.width / 2 / 1phx) * 1phx;
+    Rectangle { x: 0; y: 0; width: root.half; height: root.height; background: @linear-gradient(90deg, #7a571700 0%, #b58a35 100%); }
+    Rectangle { x: root.half; y: 0; width: root.width - root.half; height: root.height; background: @linear-gradient(90deg, #b58a35 0%, #7a571700 100%); }
 }
 
 // A small brass rivet (a screw head on a card).

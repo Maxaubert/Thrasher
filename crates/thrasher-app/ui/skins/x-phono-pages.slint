@@ -2246,8 +2246,10 @@ component Dubbing inherits Drawer {
             background: @linear-gradient(90deg, #7b4a20 0%, #9b6630 50%, #7b4a20 100%);
             Tile { x: 0; y: 0; width: parent.width; height: parent.height; source: @image-url("x-phono/groovec.png"); }
             Rectangle { border-radius: 3px; background: @linear-gradient(180deg, #0000008c 0%, #00000000 25%, #ffdcaa47 38%, #00000000 52%, #00000099 100%); }
-            Rectangle { x: -3px; y: 2px; width: 4px; height: parent.height - 4px; border-radius: 1px; background: Pn.brass-face; }
-            Rectangle { x: parent.width - 1px; y: 2px; width: 4px; height: parent.height - 4px; border-radius: 1px; background: Pn.brass-face; }
+            // The end caps: brass under the gradient, so a row the renderer leaves open at a stop
+            // stays brass (it drew a dark line across them).
+            Rectangle { x: -3px; y: 2px; width: 4px; height: parent.height - 4px; border-radius: 1px; background: Pn.brass; Rectangle { border-radius: 1px; background: Pn.brass-face; } }
+            Rectangle { x: parent.width - 1px; y: 2px; width: 4px; height: parent.height - 4px; border-radius: 1px; background: Pn.brass; Rectangle { border-radius: 1px; background: Pn.brass-face; } }
         }
         Text {
             x: 4px;

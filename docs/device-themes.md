@@ -1528,6 +1528,15 @@ picture shows up to four clips.
   ring as a line across the key. PnKey, Plate, Wood, the speed plate and the drop plate now
   have their middle colour under the gradient (as a box under it, or the root's colour with
   the gradient on a child).
+- **A thin rule loses part of a gradient of three or more stops** (review, 2026-11-02). The
+  software renderer works out each pair of stops' band along the height too, and skips a band
+  that ends up under a pixel high: on the 1px menu rules (brass fading out at both ends,
+  `90deg` with three stops) the right half was not drawn, so every Phonograph menu showed half
+  a rule ending in a hard cut. The rule is now `PnRule` (`x-phono-parts.slint`), two halves of
+  two stops each. A gradient of two stops always draws; use only those on anything one or two
+  pixels thick. The same review found the open row of the note above on the merge page's
+  dubbing picture: a dark line across the 4px brass caps of the short cylinders, which now have
+  brass under their gradient too.
 - **Check in the app, not only in previews.** Shoot every page at both widths before calling a
   skin's pages done; zoom in on round parts and keys.
 - **A real merge is needed for the parts list:** the scratch `clip_101 merged` has no `parts`.

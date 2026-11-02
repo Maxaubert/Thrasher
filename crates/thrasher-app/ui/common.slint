@@ -3,7 +3,7 @@
 // widgets. app.slint holds the window itself; ui/skins/ the looks of the main page.
 
 import { Pb, Lamp, Lanes, Insert, DotBox } from "skins/x-pinball-parts.slint";
-import { Pn, PnBar, PnDisc } from "skins/x-phono-parts.slint";
+import { Pn, PnBar, PnDisc, PnRule } from "skins/x-phono-parts.slint";
 
 // One line of the model library: a group heading, or a model in that group's card.
 export struct ModelRow {
@@ -3471,8 +3471,10 @@ export component MenuRule inherits Rectangle {
         y: Theme.comic ? 3px : (parent.height - self.height) / 2;
         width: parent.width + (Theme.comic ? 4px : Theme.brick ? -8px : Theme.fighter || Theme.pinball ? 0 : -20px);
         height: Theme.comic ? 2.5px : 1px;
-        background: Theme.phono ? Pn.rule-fade : Theme.pinball ? Pb.rule : Theme.cozy ? transparent : Theme.fighter ? Fi.line : Theme.tape ? #2a1c1240 : Theme.comic ? Comic.ink : Theme.glass ? Glass.rule : Theme.answer ? Am.paper-line : Theme.synth ? #2b2f2d : Theme.edge;
+        background: Theme.phono ? transparent : Theme.pinball ? Pb.rule : Theme.cozy ? transparent : Theme.fighter ? Fi.line : Theme.tape ? #2a1c1240 : Theme.comic ? Comic.ink : Theme.glass ? Glass.rule : Theme.answer ? Am.paper-line : Theme.synth ? #2b2f2d : Theme.edge;
     }
+    // Phonograph: brass fading out at both ends.
+    if Theme.phono: PnRule { x: 10px; y: 4px; width: parent.width - 20px; }
     // Quest Menu: a 3px blue rule across the window.
     if Theme.quest: Rectangle { x: 0; y: 3px; width: parent.width; height: 3px; background: Quest.sep; }
     // Cozy Cabin: a dotted rule.

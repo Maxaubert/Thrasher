@@ -644,12 +644,14 @@ component Row inherits Rectangle {
         root.refocus();
     }
     // The glow of the inverted row, stepped out above and below it.
-    if root.selected: Rectangle {
+    Rectangle {
+        visible: root.selected;
         y: -6px;
         height: parent.height + 12px;
         background: #4dff7a10;
     }
-    if root.selected: Rectangle {
+    Rectangle {
+        visible: root.selected;
         y: -3px;
         height: parent.height + 6px;
         background: #4dff7a24;
@@ -1135,7 +1137,8 @@ export component MainPage inherits Rectangle {
     }
 
     // Messages float just above the prompt, in a box, so nothing moves when they come and go.
-    if Main.status != "": Rectangle {
+    Rectangle {
+        visible: Main.status != "";
         x: (parent.width - self.width) / 2;
         y: parent.height - 44px - (Main.export-state != 0 ? 30px : 0) - root.prompt-h - self.height - 8px;
         width: min(msg.preferred-width + 24px, parent.width - 32px);

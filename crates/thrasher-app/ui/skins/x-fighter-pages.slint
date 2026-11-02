@@ -230,24 +230,6 @@ component Panel inherits Rectangle {
     Tag { visible: root.tag != ""; x: 10px; y: -9px; text: root.tag; tone: root.tone; }
 }
 
-// A field: a black well with a violet edge; while it has the cursor a gold edge and the
-// P1 brackets at its corners.
-component FieldWell inherits TextField {
-    height: 34px;
-    radius: 0;
-    fill: #07060e;
-    rest-edge: Fi.well;
-    ink: #ffffff;
-    hint: F.faint;
-    font-size: 14px;
-    family: F.body;
-    side: 12px;
-    select-fill: #5a3d00;
-    select-ink: #ffffff;
-    focus-edge: F.gold;
-    bare-focus: true;
-}
-
 // The field and its brackets.
 component Field inherits Rectangle {
     in-out property <string> text;
@@ -261,14 +243,26 @@ component Field inherits Rectangle {
     out property <bool> has-focus: well.has-focus;
     public function grab() { well.grab(); }
     height: 34px;
-    if well.has-focus || root.invalid: Rectangle {
+    Rectangle {
+        visible: well.has-focus || root.invalid;
         x: -1px;
         y: -1px;
         width: parent.width + 2px;
         height: parent.height + 2px;
         background: root.invalid ? F.p1 : F.gold;
     }
-    well := FieldWell {
+    well := TextField {
+        radius: 0;
+        fill: #07060e;
+        rest-edge: Fi.well;
+        ink: #ffffff;
+        hint: F.faint;
+        family: F.body;
+        side: 12px;
+        select-fill: #5a3d00;
+        select-ink: #ffffff;
+        focus-edge: F.gold;
+        bare-focus: true;
         x: 0;
         y: 0;
         width: root.width;
@@ -281,7 +275,8 @@ component Field inherits Rectangle {
         accepted(t) => { root.accepted(t); }
         edited(t) => { root.edited(t); }
     }
-    if well.has-focus && !root.invalid: Rectangle {
+    Rectangle {
+        visible: well.has-focus && !root.invalid;
         x: -5px;
         y: -5px;
         width: root.width + 10px;
@@ -375,7 +370,8 @@ component Toast inherits Rectangle {
     in property <string> text;
     in property <length> above: 14px;
     height: 0;
-    if root.text != "": Rectangle {
+    Rectangle {
+        visible: root.text != "";
         x: (parent.width - self.width) / 2;
         y: -root.above - self.height;
         width: min(msg.preferred-width + 36px, parent.width - 32px);
@@ -529,7 +525,8 @@ component StageWave inherits Rectangle {
             Rectangle { x: 0; y: 0; width: 8px; height: 2px; background: parent.hot ? #fff27a : F.gold; }
             Rectangle { x: 0; y: parent.height - 2px; width: 8px; height: 2px; background: parent.hot ? #fff27a : F.gold; }
         }
-        if root.active: Rectangle {
+        Rectangle {
+            visible: root.active;
             x: root.played * root.inner-w - 1px;
             y: -6px;
             width: 2px;
@@ -1330,38 +1327,43 @@ component Card inherits Panel {
     }
 }
 
+// Split out of SRow, so its copies share it (see docs/device-themes.md, "Generated code size").
+component SRowText inherits VerticalLayout {
+    in property <string> label;
+    in property <string> note;
+    alignment: center;
+    spacing: 1px;
+    horizontal-stretch: 1;
+    Text {
+        text: root.label;
+        color: #ffffff;
+        font-family: F.body;
+        font-size: 13px;
+        font-weight: 700;
+        overflow: elide;
+    }
+    if root.note != "": Text {
+        text: root.note;
+        color: F.dim;
+        font-family: F.body;
+        font-size: 10.5px;
+        font-weight: 600;
+        overflow: elide;
+    }
+}
+
 // One line of a panel: its name (and a note under it) and its controls.
 component SRow inherits Rectangle {
     in property <string> label;
     in property <string> note;
     in property <bool> first;
     min-height: 38px;
-    if !root.first: Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: #1f1a3a; }
+    Rectangle { visible: !root.first; x: 0; y: 0; width: parent.width; height: 1px; background: #1f1a3a; }
     HorizontalLayout {
         padding-top: 5px;
         padding-bottom: 5px;
         spacing: 8px;
-        VerticalLayout {
-            alignment: center;
-            spacing: 1px;
-            horizontal-stretch: 1;
-            Text {
-                text: root.label;
-                color: #ffffff;
-                font-family: F.body;
-                font-size: 13px;
-                font-weight: 700;
-                overflow: elide;
-            }
-            if root.note != "": Text {
-                text: root.note;
-                color: F.dim;
-                font-family: F.body;
-                font-size: 10.5px;
-                font-weight: 600;
-                overflow: elide;
-            }
-        }
+        SRowText { label: root.label; note: root.note; }
         HorizontalLayout {
             alignment: end;
             spacing: 6px;
@@ -2359,7 +2361,8 @@ export component MergePage inherits Page {
                                 name: Pages.merge-rows[i].name;
                                 note: Pages.merge-rows[i].note;
                             }
-                            if i > 0: Text {
+                            Text {
+                                visible: i > 0;
                                 x: -team-row.gap + 4px;
                                 y: (parent.height - 60px) / 2;
                                 width: team-row.gap - 6px;

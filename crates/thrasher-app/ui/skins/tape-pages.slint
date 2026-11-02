@@ -126,7 +126,8 @@ component Toast inherits Rectangle {
     in property <string> text;
     in property <length> above: 54px;
     height: 0;
-    if root.text != "": Rectangle {
+    Rectangle {
+        visible: root.text != "";
         x: (parent.width - self.width) / 2;
         y: -root.above - self.height - 8px;
         width: min(msg.preferred-width + 24px, parent.width - 32px);
@@ -264,7 +265,7 @@ component Spine inherits Rectangle {
     in property <bool> lit;
     in property <length> band-w: 22px;
     property <bool> hi: 1phx < 0.7px;
-    if root.lit: Rectangle { x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px; background: Deck.amber; }
+    Rectangle { visible: root.lit; x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px; background: Deck.amber; }
     Rectangle { y: 1px; background: #00000099; }
     Rectangle { background: root.lit ? Deck.spine-out : Deck.spine; }
     Image {
@@ -311,7 +312,8 @@ component TapeStrip inherits Rectangle {
             }
             Rectangle { x: 0; width: root.start-x; background: #120c08b3; }
             Rectangle { x: root.end-x; width: parent.width - root.end-x; background: #120c08b3; }
-            if root.active: Rectangle {
+            Rectangle {
+                visible: root.active;
                 x: root.played * (parent.width - 2px);
                 width: 2px;
                 background: #f4ead6;
@@ -1064,41 +1066,46 @@ component Rack inherits Plain {
     }
 }
 
+// Split out of RackRow, so its copies share it (see docs/device-themes.md, "Generated code size").
+component RackRowText inherits VerticalLayout {
+    in property <string> label;
+    in property <string> note;
+    alignment: center;
+    spacing: 1px;
+    horizontal-stretch: 1;
+    Text {
+        text: root.label;
+        color: Deck.alu-ink;
+        font-family: "Oswald";
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.4px;
+        overflow: elide;
+    }
+    if root.note != "": Text {
+        text: root.note;
+        color: #6f665a;
+        font-family: Theme.mono;
+        font-size: 10px;
+        overflow: elide;
+    }
+}
+
 // One line of a rack unit: its name (and a note in small type) and its controls.
 component RackRow inherits Rectangle {
     in property <string> label;
     in property <string> note;
     in property <bool> first;
     min-height: 38px;
-    if !root.first: Rectangle { y: 0; height: 1px; background: #3b342c2e; }
-    if !root.first: Rectangle { y: 1px; height: 1px; background: #ffffff59; }
+    Rectangle { visible: !root.first; y: 0; height: 1px; background: #3b342c2e; }
+    Rectangle { visible: !root.first; y: 1px; height: 1px; background: #ffffff59; }
     HorizontalLayout {
         padding-left: 4px;
         padding-right: 4px;
         padding-top: 5px;
         padding-bottom: 5px;
         spacing: 8px;
-        VerticalLayout {
-            alignment: center;
-            spacing: 1px;
-            horizontal-stretch: 1;
-            Text {
-                text: root.label;
-                color: Deck.alu-ink;
-                font-family: "Oswald";
-                font-size: 13px;
-                font-weight: 500;
-                letter-spacing: 0.4px;
-                overflow: elide;
-            }
-            if root.note != "": Text {
-                text: root.note;
-                color: #6f665a;
-                font-family: Theme.mono;
-                font-size: 10px;
-                overflow: elide;
-            }
-        }
+        RackRowText { label: root.label; note: root.note; }
         HorizontalLayout {
             alignment: end;
             spacing: 6px;
@@ -1658,22 +1665,6 @@ component ShelfColumn inherits Rectangle {
     }
 }
 
-// The search slot and the compressed switch of the library.
-component ModelSearch inherits TextField {
-    height: 28px;
-    radius: 14px;
-    fill: Deck.slot;
-    rest-edge: #00000000;
-    ink: #efe3c8;
-    hint: #9a8670;
-    font-size: 12px;
-    family: "Oswald";
-    side: 10px;
-    icon: "search";
-    label: "Search models";
-    placeholder: "Search " + Pages.model-count + " models";
-}
-
 component Compressed inherits HorizontalLayout {
     callback changed();
     spacing: 8px;
@@ -1715,7 +1706,7 @@ export component ModelsPage inherits VerticalLayout {
             padding-top: 10px;
             padding-bottom: 12px;
             spacing: 9px;
-            ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+            TextField { height: 28px; radius: 14px; fill: Deck.slot; rest-edge: #00000000; ink: #efe3c8; hint: #9a8670; font-size: 12px; family: "Oswald"; side: 10px; icon: "search"; label: "Search models"; placeholder: "Search " + Pages.model-count + " models"; text <=> Pages.model-query; edited => { root.filter-changed(); } }
             HorizontalLayout { alignment: start; ShelfRow { changed => { root.filter-changed(); } } }
             Compressed { changed => { root.filter-changed(); } }
         }
@@ -1730,7 +1721,7 @@ export component ModelsPage inherits VerticalLayout {
                 padding: 18px;
                 padding-top: 16px;
                 spacing: 14px;
-                ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+                TextField { height: 28px; radius: 14px; fill: Deck.slot; rest-edge: #00000000; ink: #efe3c8; hint: #9a8670; font-size: 12px; family: "Oswald"; side: 10px; icon: "search"; label: "Search models"; placeholder: "Search " + Pages.model-count + " models"; text <=> Pages.model-query; edited => { root.filter-changed(); } }
                 VerticalLayout {
                     spacing: 5px;
                     vertical-stretch: 0;
@@ -1899,21 +1890,6 @@ export component ModelsPage inherits VerticalLayout {
 
 // ---------- Merge ----------
 
-// The name of the merged clip, written on a blank label.
-component NameField inherits TextField {
-    height: 36px;
-    radius: 0;
-    fill: #fff6e2;
-    rest-edge: #8f8778;
-    ink: Deck.hand;
-    hint: #a99880;
-    font-size: 23px;
-    family: "Caveat";
-    side: 12px;
-    placeholder: "Name";
-    label: "Name of the merged clip";
-}
-
 // A round back knob.
 component BackKnob inherits Rectangle {
     callback clicked;
@@ -1930,7 +1906,7 @@ component BackKnob inherits Rectangle {
         source: 1phx < 0.7px ? @image-url("tape/knob@2x.png") : @image-url("tape/knob.png");
         image-fit: fill;
     }
-    if t.has-hover: Rectangle { border-radius: 16px; background: #ffffff1f; }
+    Rectangle { visible: t.has-hover; border-radius: 16px; background: #ffffff1f; }
     Icon { name: "back"; tint: Deck.key-ink; width: 14px; height: 14px; }
     t := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
 }
@@ -2069,7 +2045,7 @@ export component MergePage inherits VerticalLayout {
                         Cassette { title: Pages.merge-name != "" ? Pages.merge-name : " "; label: "NAME"; turning: false; }
                     }
                     Rectangle { height: 5px; }
-                    NameField { text <=> Pages.merge-name; }
+                    TextField { height: 36px; radius: 0; fill: #fff6e2; rest-edge: #8f8778; ink: Deck.hand; hint: #a99880; font-size: 23px; family: "Caveat"; side: 12px; placeholder: "Name"; label: "Name of the merged clip"; text <=> Pages.merge-name; }
                 }
                 Rectangle {
                     height: 40px;
@@ -2129,7 +2105,7 @@ export component MergePage inherits VerticalLayout {
             padding-bottom: 14px;
             spacing: 6px;
             Engraved { text: "NEW CLIP  ·  NAME"; }
-            NameField { text <=> Pages.merge-name; }
+            TextField { height: 36px; radius: 0; fill: #fff6e2; rest-edge: #8f8778; ink: Deck.hand; hint: #a99880; font-size: 23px; family: "Caveat"; side: 12px; placeholder: "Name"; label: "Name of the merged clip"; text <=> Pages.merge-name; }
         }
     }
     Walnut {
@@ -2192,7 +2168,7 @@ component Source inherits Rectangle {
                 vertical-alignment: center;
             }
         }
-        if t.has-hover: Rectangle { x: 24px; width: parent.width - 24px; background: #ffffff33; }
+        Rectangle { visible: t.has-hover; x: 24px; width: parent.width - 24px; background: #ffffff33; }
         VerticalLayout {
             x: 34px;
             width: parent.width - 44px;
@@ -2462,7 +2438,7 @@ export component AskPage inherits VerticalLayout {
 export component Widget inherits Alu {
     property <bool> hi: 1phx < 0.7px;
     // A red edge while recording.
-    if Main.recording: Rectangle { border-width: 3px; border-color: Deck.red; }
+    Rectangle { visible: Main.recording; border-width: 3px; border-color: Deck.red; }
     Rectangle { border-width: 1px; border-color: #0f0a06; }
     Screw { x: 4px; y: parent.height - 11px; }
     WindowMoveArea {

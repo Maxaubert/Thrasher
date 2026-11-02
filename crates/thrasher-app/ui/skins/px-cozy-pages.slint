@@ -548,7 +548,8 @@ component Groove inherits Rectangle {
             }
             Rectangle { x: 3px; y: (parent.height - 3px) / 2; width: 3px; height: 3px; background: #26160c; }
         }
-        if root.active: Rectangle {
+        Rectangle {
+            visible: root.active;
             x: root.played * root.inner-w - 1px;
             y: -6px;
             width: 3px;
@@ -1329,6 +1330,29 @@ component Card inherits Panel {
     }
 }
 
+// Split out of SRow, so its copies share it (see docs/device-themes.md, "Generated code size").
+component SRowText inherits VerticalLayout {
+    in property <string> label;
+    in property <string> note;
+    alignment: center;
+    spacing: 1px;
+    horizontal-stretch: 1;
+    Text {
+        text: root.label;
+        color: Cz.ink;
+        font-family: Cz.font;
+        font-size: 14px;
+        overflow: elide;
+    }
+    if root.note != "": Text {
+        text: root.note;
+        color: Cz.brown;
+        font-family: Cz.font;
+        font-size: 12px;
+        overflow: elide;
+    }
+}
+
 // One line of a panel: its name (and a note under it) and its controls.
 component SRow inherits Rectangle {
     in property <string> label;
@@ -1341,25 +1365,7 @@ component SRow inherits Rectangle {
         padding-top: 5px;
         padding-bottom: 5px;
         spacing: 8px;
-        VerticalLayout {
-            alignment: center;
-            spacing: 1px;
-            horizontal-stretch: 1;
-            Text {
-                text: root.label;
-                color: Cz.ink;
-                font-family: Cz.font;
-                font-size: 14px;
-                overflow: elide;
-            }
-            if root.note != "": Text {
-                text: root.note;
-                color: Cz.brown;
-                font-family: Cz.font;
-                font-size: 12px;
-                overflow: elide;
-            }
-        }
+        SRowText { label: root.label; note: root.note; }
         HorizontalLayout {
             alignment: end;
             spacing: 6px;
@@ -1374,12 +1380,6 @@ component Value inherits Text {
     font-family: Cz.font;
     font-size: 13px;
     vertical-alignment: center;
-}
-
-// The parchment picker of a row, as wide as its choice needs.
-component RowSelect inherits Select {
-    width: min(self.natural, 220px);
-    height: 33px;
 }
 
 // The Files panel: the folder with Open and Change, the file name with the next name under
@@ -1475,7 +1475,11 @@ component FilesCard inherits Card {
         label: "Export format";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                // The parchment picker of a row, as wide as its choice needs (Select itself: a
+                // component inheriting it copies it).
+                width: min(self.natural, 220px);
+                height: 33px;
                 label: "Export format";
                 model: ["FLAC", "WAV", "MP3"];
                 current-index <=> Pages.export-format;
@@ -1510,7 +1514,11 @@ component TranscriptionCard inherits Card {
         label: "Language";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                // The parchment picker of a row, as wide as its choice needs (Select itself: a
+                // component inheriting it copies it).
+                width: min(self.natural, 220px);
+                height: 33px;
                 label: "Language";
                 model: Pages.languages;
                 current-index <=> Pages.language-index;
@@ -1546,7 +1554,11 @@ component TranscriptionCard inherits Card {
         label: "Max pause";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                // The parchment picker of a row, as wide as its choice needs (Select itself: a
+                // component inheriting it copies it).
+                width: min(self.natural, 220px);
+                height: 33px;
                 label: "Max pause";
                 model: Pages.max-pauses;
                 current-index <=> Pages.max-pause-index;
@@ -1582,7 +1594,11 @@ component AiCard inherits Card {
         label: "AI model";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                // The parchment picker of a row, as wide as its choice needs (Select itself: a
+                // component inheriting it copies it).
+                width: min(self.natural, 220px);
+                height: 33px;
                 label: "AI model";
                 model: Pages.ai-models;
                 current-index <=> Pages.ai-model-index;
@@ -1653,7 +1669,11 @@ component RecordingCard inherits Card {
         label: "Microphone";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                // The parchment picker of a row, as wide as its choice needs (Select itself: a
+                // component inheriting it copies it).
+                width: min(self.natural, 220px);
+                height: 33px;
                 label: "Microphone";
                 model: Pages.mic-devices;
                 current-index <=> Pages.mic-index;
@@ -1677,7 +1697,11 @@ component RecordingCard inherits Card {
         label: "Stop recording after";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                // The parchment picker of a row, as wide as its choice needs (Select itself: a
+                // component inheriting it copies it).
+                width: min(self.natural, 220px);
+                height: 33px;
                 label: "Stop recording after";
                 model: Pages.recording-limits;
                 current-index <=> Pages.recording-limit-index;

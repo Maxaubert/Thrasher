@@ -796,7 +796,8 @@ component Ramp inherits Rectangle {
             border-radius: 1px;
             background: self.f < Pages.trim-start || self.f > Pages.trim-end ? #2a2530 : self.f <= root.played ? #ffa040 : Pb.wave;
         }
-        if root.active: Rectangle {
+        Rectangle {
+            visible: root.active;
             x: root.played * root.inner-w - 1px;
             y: 2px;
             width: 2px;
@@ -1435,6 +1436,30 @@ component SCard inherits Card {
     }
 }
 
+// Split out of SRow, so its copies share it (see docs/device-themes.md, "Generated code size").
+component SRowText inherits VerticalLayout {
+    in property <string> label;
+    in property <string> note;
+    alignment: center;
+    spacing: 0;
+    horizontal-stretch: 1;
+    Text {
+        text: root.label;
+        color: Pb.ink;
+        font-family: Pb.font;
+        font-size: 15px;
+        font-weight: 600;
+        overflow: elide;
+    }
+    if root.note != "": Text {
+        text: root.note;
+        color: Pb.mute;
+        font-family: Pb.font;
+        font-size: 11.5px;
+        overflow: elide;
+    }
+}
+
 // One line of a card: its name (and a note under it) and its controls.
 component SRow inherits Rectangle {
     in property <string> label;
@@ -1446,26 +1471,7 @@ component SRow inherits Rectangle {
         padding-top: 5px;
         padding-bottom: 5px;
         spacing: 8px;
-        VerticalLayout {
-            alignment: center;
-            spacing: 0;
-            horizontal-stretch: 1;
-            Text {
-                text: root.label;
-                color: Pb.ink;
-                font-family: Pb.font;
-                font-size: 15px;
-                font-weight: 600;
-                overflow: elide;
-            }
-            if root.note != "": Text {
-                text: root.note;
-                color: Pb.mute;
-                font-family: Pb.font;
-                font-size: 11.5px;
-                overflow: elide;
-            }
-        }
+        SRowText { label: root.label; note: root.note; }
         HorizontalLayout {
             alignment: end;
             spacing: 6px;

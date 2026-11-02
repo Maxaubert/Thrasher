@@ -73,7 +73,7 @@ component Mini inherits Rectangle {
         height: 6px;
         border-radius: 2px;
         background: r == 1 ? p.raised : p.row;
-        if r == 1: Rectangle { x: 0; width: 2px; background: root.p.accent; }
+        Rectangle { visible: r == 1; x: 0; width: 2px; background: root.p.accent; }
         Rectangle { x: 4px; y: 2px; width: 14px; height: 2px; background: root.p.text; opacity: 0.75; }
         Rectangle { x: 26px; y: 2px; width: 18px; height: 2px; background: root.p.wave; }
     }
@@ -119,7 +119,8 @@ component Tile inherits Rectangle {
         PkRing { x: 1px; y: 1px; width: 108px; height: 68px; }
         if root.on || root.focused: PkRing { x: -1px; y: -1px; width: 112px; height: 72px; ink: Pk.l0; }
         if root.on || root.focused: PkRing { x: -3px; y: -3px; width: 116px; height: 76px; ink: root.on ? Pk.l3 : Pk.l1; }
-        if root.on: Path {
+        Path {
+            visible: root.on;
             x: 110px - 6px - 12px;
             y: 5px;
             width: 12px;
@@ -344,7 +345,8 @@ component Tile inherits Rectangle {
             }
         }
         // The keyboard focus: a red frame round the whole tile, plain on dark and light art.
-        if root.focused: Rectangle {
+        Rectangle {
+            visible: root.focused;
             border-width: 2px;
             border-color: Deck.red;
         }
@@ -453,7 +455,8 @@ component Tile inherits Rectangle {
     // red frame on a hard shadow, its name in a yellow caption and the PICKED stamp; the
     // keyboard focus is a yellow and ink ring.
     if Theme.comic: Rectangle {
-        if root.focused: Rectangle {
+        Rectangle {
+            visible: root.focused;
             x: -5px;
             y: -5px;
             width: 120px;
@@ -483,7 +486,7 @@ component Tile inherits Rectangle {
                     image-fit: fill;
                 }
             }
-            if root.on: Rectangle { border-width: 3.5px; border-color: Comic.red; }
+            Rectangle { visible: root.on; border-width: 3.5px; border-color: Comic.red; }
         }
         Rectangle {
             x: (parent.width - self.width) / 2;
@@ -521,7 +524,8 @@ component Tile inherits Rectangle {
     // Brick Phone: the picture in an ink frame on the LCD, the name under it; the current
     // one on ink in a double frame with its name inverted; a frame round the focused one.
     if Theme.brick: Rectangle {
-        if root.focused || root.hover: Rectangle {
+        Rectangle {
+            visible: root.focused || root.hover;
             x: -4px;
             y: -4px;
             width: 80px;
@@ -529,7 +533,8 @@ component Tile inherits Rectangle {
             border-width: root.focused ? 2px : 1px;
             border-color: root.focused ? Brick.ink : Brick.rule;
         }
-        if root.on: Rectangle {
+        Rectangle {
+            visible: root.on;
             x: -3px;
             y: -3px;
             width: 78px;
@@ -586,7 +591,8 @@ component Tile inherits Rectangle {
     // Pocket Synth: the picture on a pad that sinks while it is held; the current one is an
     // orange pad with a glow, its name orange; an orange ring round the focused one.
     if Theme.synth: Rectangle {
-        if root.focused: Rectangle {
+        Rectangle {
+            visible: root.focused;
             x: -4px;
             y: -4px;
             width: 118px;
@@ -683,7 +689,8 @@ component Tile inherits Rectangle {
                 accessible-role: none;
             }
         }
-        if root.on: Rectangle {
+        Rectangle {
+            visible: root.on;
             x: -6px;
             y: -6px;
             width: 122px;
@@ -1108,8 +1115,7 @@ component Strip inherits VerticalLayout {
             property <length> thumb-w: Theme.pinball ? 13px : max(30px, self.width * root.view-w / max(root.content-w, 1px));
             // Sized from the parent, not in percent: a percent size here made a binding loop
             // with the Car Dashboard's flexbox settings page.
-            Image {
-                visible: Theme.os95;
+            if Theme.os95: Image {
                 x: 0;
                 y: 0;
                 width: parent.width;
@@ -1120,7 +1126,7 @@ component Strip inherits VerticalLayout {
                 horizontal-alignment: left;
                 vertical-alignment: top;
             }
-            PkTile { visible: Theme.pocket; x: 0; y: 0; width: parent.width; height: parent.height; source: @image-url("skins/px-pocket/dith.png"); }
+            if Theme.pocket: PkTile { x: 0; y: 0; width: parent.width; height: parent.height; source: @image-url("skins/px-pocket/dith.png"); }
             property <int> led-on: round(root.x-off / root.pitch);
             for k in Theme.synth ? root.n : 0: Rectangle {
                 x: (parent.width - root.n * 9px + 4px) / 2 + k * 9px;
@@ -1130,8 +1136,7 @@ component Strip inherits VerticalLayout {
                 border-radius: 2.5px;
                 background: k == parent.led-on ? #ff5a1e : #c4c0b6;
             }
-            Rectangle {
-                visible: !Theme.synth;
+            if !Theme.synth: Rectangle {
                 x: Theme.quest ? 3px + (root.max-off > 0 ? root.x-off / root.max-off * (parent.width - 6px - self.width) : 0) : root.max-off > 0 ? root.x-off / root.max-off * (parent.width - self.width) : 0;
                 y: Theme.pinball ? -4px : Theme.tape ? -1px : Theme.quest ? 3px : Theme.answer ? -3px : 0;
                 width: Theme.quest ? max(30px, (parent.width - 6px) * root.view-w / max(root.content-w, 1px)) : parent.thumb-w;
@@ -1140,8 +1145,7 @@ component Strip inherits VerticalLayout {
                 background: Theme.pinball ? transparent : Theme.cozy ? Cz.brown : Theme.fighter ? Fi.p1 : Theme.pocket ? Pk.l3 : Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.phos ? Ph.ph : Theme.os95 ? Os.face : Theme.comic ? Comic.ink : Theme.glass ? #ffffff73
                     : Theme.answer ? @linear-gradient(180deg, #635c56 0%, #4b4540 100%) : Theme.quest ? Quest.grey : Theme.edge;
                 OsBevel { visible: Theme.os95; kind: 0; }
-                Image {
-                    visible: Theme.pinball;
+                if Theme.pinball: Image {
                     x: 0;
                     y: 0;
                     width: 13px;

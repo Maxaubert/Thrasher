@@ -978,14 +978,16 @@ component Row inherits Rectangle {
         Main.pick(root.index, ctrl, shift);
         root.refocus();
     }
-    if root.lit: Rectangle {
+    Rectangle {
+        visible: root.lit;
         opacity: root.selected ? 1 : 0.6;
         background: @linear-gradient(90deg, #ff7a1a42 0%, #ff7a1a0f 70%, #ff7a1a0f 100%);
         border-width: 1px;
         border-color: #ff9632b3;
     }
-    if !root.lit && row-touch.has-hover: Rectangle { background: #ffffff08; }
-    if root.selected: Rectangle {
+    Rectangle { visible: !root.lit && row-touch.has-hover; background: #ffffff08; }
+    Rectangle {
+        visible: root.selected;
         x: 0;
         width: 3px;
         background: Pb.plasma;
@@ -1431,7 +1433,8 @@ component Apron inherits Rectangle {
                     height: 1px;
                     background: #4a4550;
                 }
-                if root.is-active && root.at > 0: Rectangle {
+                Rectangle {
+                    visible: root.is-active && root.at > 0;
                     x: 4px;
                     y: 3px;
                     width: (parent.width - 8px) * root.at;
@@ -1597,7 +1600,8 @@ export component MainPage inherits Rectangle {
     }
 
     // Messages float just above the apron, so nothing moves when they come and go.
-    if Main.status != "": Rectangle {
+    Rectangle {
+        visible: Main.status != "";
         x: (parent.width - self.width) / 2;
         y: parent.height - (root.wide ? 60px : 54px) - self.height - 10px;
         width: min(msg.preferred-width + 28px, parent.width - 32px);

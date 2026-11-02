@@ -221,21 +221,6 @@ component IconPill inherits Rectangle {
     }
 }
 
-// A field on the glass: a dark well with a light edge, white when it has the cursor.
-component GlassField inherits TextField {
-    height: 36px;
-    radius: 12px;
-    fill: #0000003d;
-    rest-edge: #ffffff29;
-    ink: Glass.ink;
-    hint: Glass.ink3;
-    font-size: 13.5px;
-    side: 13px;
-    focus-edge: #ffffffa0;
-    focus-ring: #ffffff1a;
-    select-fill: #9fe3ff52;
-}
-
 // ---------- One clip ----------
 
 // The white glass play orb between Back 5 and Forward 5.
@@ -366,7 +351,8 @@ component WaveStrip inherits Rectangle {
             border-radius: 1px;
             background: self.f < Pages.trim-start || self.f > Pages.trim-end ? #ffffff33 : self.f <= root.played ? #ffffff : #ffffffa6;
         }
-        if root.active: Rectangle {
+        Rectangle {
+            visible: root.active;
             x: root.played * parent.width - 1px;
             y: 2px;
             width: 2px;
@@ -458,7 +444,16 @@ component ClipName inherits VerticalLayout {
     }
     if Pages.renaming: HorizontalLayout {
         spacing: 6px;
-        field := GlassField {
+        field := TextField {
+            radius: 12px;
+            fill: #0000003d;
+            rest-edge: #ffffff29;
+            ink: Glass.ink;
+            hint: Glass.ink3;
+            side: 13px;
+            focus-edge: #ffffffa0;
+            focus-ring: #ffffff1a;
+            select-fill: #9fe3ff52;
             height: 34px;
             font-size: 15px;
             label: "Clip name";
@@ -590,14 +585,19 @@ component Parts inherits VerticalLayout {
         padding-left: 8px;
         Label { text: Pages.parts-busy ? "PARTS  ·  WORKING" : "PARTS"; }
     }
-    OrderList {
-        rows: Pages.parts;
-        menu: true;
-        enabled: !Pages.parts-busy && !Main.recording;
+    // The fade sits on a box: opacity on OrderList itself copies all of it. The box takes
+    // the list's own height: a child's `height` gives its box no height in a layout.
+    Rectangle {
+        height: parts-list.height;
         opacity: Pages.parts-busy ? 0.45 : 1;
-        moved(a, b) => { root.moved(a, b); }
-        act(i) => { root.take-out(i); }
-        rename(i) => { root.rename(i); }
+        parts-list := OrderList {
+            rows: Pages.parts;
+            menu: true;
+            enabled: !Pages.parts-busy && !Main.recording;
+            moved(a, b) => { root.moved(a, b); }
+            act(i) => { root.take-out(i); }
+            rename(i) => { root.rename(i); }
+        }
     }
 }
 
@@ -962,7 +962,7 @@ component Row inherits Rectangle {
     in property <bool> first;
     in property <bool> dim;
     min-height: 42px;
-    if !root.first: Rectangle { x: 16px; y: 0; width: parent.width - 28px; height: 1px; background: #ffffff1a; }
+    Rectangle { visible: !root.first; x: 16px; y: 0; width: parent.width - 28px; height: 1px; background: #ffffff1a; }
     HorizontalLayout {
         padding-left: 16px;
         padding-right: 12px;
@@ -1226,7 +1226,15 @@ export component SettingsPage inherits Rectangle {
                                     font-size: 13px;
                                     font-weight: 500;
                                 }
-                                GlassField {
+                                TextField {
+                                    fill: #0000003d;
+                                    rest-edge: #ffffff29;
+                                    ink: Glass.ink;
+                                    hint: Glass.ink3;
+                                    side: 13px;
+                                    focus-edge: #ffffffa0;
+                                    focus-ring: #ffffff1a;
+                                    select-fill: #9fe3ff52;
                                     height: 32px;
                                     radius: 11px;
                                     font-size: 12.5px;
@@ -1563,16 +1571,6 @@ component ShelfColumn inherits Rectangle {
     }
 }
 
-// The search field and the compressed switch of the library.
-component ModelSearch inherits GlassField {
-    height: 34px;
-    radius: 17px;
-    font-size: 12.5px;
-    icon: "search";
-    label: "Search models";
-    placeholder: "Search " + Pages.model-count + " models";
-}
-
 component Compressed inherits HorizontalLayout {
     callback changed();
     spacing: 10px;
@@ -1630,7 +1628,7 @@ component ModelList inherits Scroller {
                     background: m.active ? #ffffff21 : transparent;
                     border-width: m.active ? 1px : 0;
                     border-color: #ffffff73;
-                    if m.active: Rectangle { x: 14px; y: 1px; width: parent.width - 28px; height: 1px; background: #ffffff8c; }
+                    Rectangle { visible: m.active; x: 14px; y: 1px; width: parent.width - 28px; height: 1px; background: #ffffff8c; }
                     model-row := VerticalLayout {
                         padding-left: 13px;
                         padding-right: 9px;
@@ -1733,7 +1731,7 @@ export component ModelsPage inherits Rectangle {
                 padding-top: 13px;
                 padding-bottom: 13px;
                 spacing: 10px;
-                ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+                TextField { fill: #0000003d; rest-edge: #ffffff29; ink: Glass.ink; hint: Glass.ink3; side: 13px; focus-edge: #ffffffa0; focus-ring: #ffffff1a; select-fill: #9fe3ff52; height: 34px; radius: 17px; font-size: 12.5px; icon: "search"; label: "Search models"; placeholder: "Search " + Pages.model-count + " models"; text <=> Pages.model-query; edited => { root.filter-changed(); } }
                 HorizontalLayout { alignment: start; ShelfRow { changed => { root.filter-changed(); } } }
                 Compressed { changed => { root.filter-changed(); } }
             }
@@ -1762,7 +1760,7 @@ export component ModelsPage inherits Rectangle {
             padding-left: 18px;
             padding-right: 18px;
             spacing: 14px;
-            ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+            TextField { fill: #0000003d; rest-edge: #ffffff29; ink: Glass.ink; hint: Glass.ink3; side: 13px; focus-edge: #ffffffa0; focus-ring: #ffffff1a; select-fill: #9fe3ff52; height: 34px; radius: 17px; font-size: 12.5px; icon: "search"; label: "Search models"; placeholder: "Search " + Pages.model-count + " models"; text <=> Pages.model-query; edited => { root.filter-changed(); } }
             VerticalLayout {
                 spacing: 6px;
                 vertical-stretch: 0;
@@ -1813,14 +1811,6 @@ export component ModelsPage inherits Rectangle {
 }
 
 // ---------- Merge ----------
-
-// The name of the merged clip, on the nearest pane.
-component NameField inherits GlassField {
-    height: 40px;
-    font-size: 15px;
-    placeholder: "Name";
-    label: "Name of the merged clip";
-}
 
 // The new clip in the wide window: the picked clips stacked into one glass card.
 component Stack inherits Rectangle {
@@ -1951,7 +1941,7 @@ export component MergePage inherits Rectangle {
                 padding-bottom: 14px;
                 spacing: 8px;
                 HorizontalLayout { padding-left: 4px; Label { text: "NEW CLIP"; } }
-                NameField { text <=> Pages.merge-name; }
+                TextField { radius: 12px; fill: #0000003d; rest-edge: #ffffff29; ink: Glass.ink; hint: Glass.ink3; side: 13px; focus-edge: #ffffffa0; focus-ring: #ffffff1a; select-fill: #9fe3ff52; height: 40px; font-size: 15px; placeholder: "Name"; label: "Name of the merged clip"; text <=> Pages.merge-name; }
             }
         }
     }
@@ -1971,7 +1961,7 @@ export component MergePage inherits Rectangle {
             Stack { }
             Rectangle { vertical-stretch: 1; }
             HorizontalLayout { padding-left: 4px; Label { text: "NAME"; } }
-            NameField { text <=> Pages.merge-name; }
+            TextField { radius: 12px; fill: #0000003d; rest-edge: #ffffff29; ink: Glass.ink; hint: Glass.ink3; side: 13px; focus-edge: #ffffffa0; focus-ring: #ffffff1a; select-fill: #9fe3ff52; height: 40px; font-size: 15px; placeholder: "Name"; label: "Name of the merged clip"; text <=> Pages.merge-name; }
         }
     }
     if root.wide: Pane {
@@ -2214,7 +2204,15 @@ export component AskPage inherits Rectangle {
             VerticalLayout {
                 alignment: center;
                 horizontal-stretch: 1;
-                GlassField {
+                TextField {
+                    fill: #0000003d;
+                    rest-edge: #ffffff29;
+                    ink: Glass.ink;
+                    hint: Glass.ink3;
+                    side: 13px;
+                    focus-edge: #ffffffa0;
+                    focus-ring: #ffffff1a;
+                    select-fill: #9fe3ff52;
                     height: 34px;
                     radius: 17px;
                     font-size: 13px;
@@ -2531,7 +2529,16 @@ export component Dialog inherits Rectangle {
                 padding-top: 10px;
                 spacing: 6px;
                 HorizontalLayout { padding-left: 4px; Label { text: root.field.to-uppercase(); } }
-                GlassField {
+                TextField {
+                    radius: 12px;
+                    fill: #0000003d;
+                    rest-edge: #ffffff29;
+                    ink: Glass.ink;
+                    hint: Glass.ink3;
+                    side: 13px;
+                    focus-edge: #ffffffa0;
+                    focus-ring: #ffffff1a;
+                    select-fill: #9fe3ff52;
                     height: 38px;
                     font-size: 14px;
                     label: root.field;

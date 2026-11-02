@@ -265,7 +265,8 @@ component Picker inherits Rectangle {
         m2: root.big ? @image-url("dv-answer/pick-w-m@2x.png") : @image-url("dv-answer/pick-p-m@2x.png");
         r2: root.big ? @image-url("dv-answer/pick-w-r@2x.png") : @image-url("dv-answer/pick-p-r@2x.png");
     }
-    if t.has-hover && root.enabled: Rectangle {
+    Rectangle {
+        visible: t.has-hover && root.enabled;
         border-radius: 6px;
         background: #ffffff33;
     }
@@ -612,12 +613,14 @@ component Row inherits Rectangle {
         Main.pick(root.index, ctrl, shift);
         root.refocus();
     }
-    if root.lit: Rectangle {
+    Rectangle {
+        visible: root.lit;
         opacity: root.selected ? 1 : 0.6;
         background: @linear-gradient(90deg, #fbe9dd 0%, #f6ecdc 100%);
     }
-    if !root.lit && row-touch.has-hover: Rectangle { background: #00000008; }
-    if root.selected: Rectangle {
+    Rectangle { visible: !root.lit && row-touch.has-hover; background: #00000008; }
+    Rectangle {
+        visible: root.selected;
         x: 0;
         width: 3px;
         background: Am.rec;
@@ -1113,7 +1116,8 @@ component Player inherits Rectangle {
                     m2: @image-url("dv-answer/track-m@2x.png");
                     r2: @image-url("dv-answer/track-r@2x.png");
                 }
-                if root.is-active && root.at > 0: Rectangle {
+                Rectangle {
+                    visible: root.is-active && root.at > 0;
                     x: 0;
                     width: 6px + (parent.width - 6px) * root.at;
                     border-radius: 3px;
@@ -1277,7 +1281,8 @@ export component MainPage inherits Rectangle {
 
     // Messages float just above the footer, so nothing moves when they come and go: the
     // smoked strip with a green lamp, as on the other pages.
-    if Main.status != "": Rectangle {
+    Rectangle {
+        visible: Main.status != "";
         x: (parent.width - self.width) / 2;
         y: parent.height - 64px - self.height - 10px;
         width: min(msg.preferred-width + 42px, parent.width - 32px);

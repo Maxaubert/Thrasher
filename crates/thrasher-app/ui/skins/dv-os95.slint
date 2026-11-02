@@ -1246,7 +1246,8 @@ export component MainPage inherits Rectangle {
         }
         // Messages float just above the taskbar as a yellow tip, so nothing moves when
         // they come and go.
-        if Main.status != "": Rectangle {
+        Rectangle {
+            visible: Main.status != "";
             x: (parent.width - self.width) / 2;
             y: desk.height - 30px - 8px - self.height;
             width: min(msg.preferred-width + 20px, parent.width - 32px);

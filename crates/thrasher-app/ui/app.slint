@@ -1007,7 +1007,8 @@ export component AppWindow inherits Window {
                                     width: parent.width - wave-box.end-x;
                                     background: Theme.card.with-alpha(0.75);
                                 }
-                                if root.active-clip == root.selected: Rectangle {
+                                Rectangle {
+                                    visible: root.active-clip == root.selected;
                                     x: clamp(root.play-fraction, 0, 1) * (parent.width - 2px);
                                     y: -4px;
                                     width: 2px;
@@ -3089,7 +3090,7 @@ export component AppWindow inherits Window {
                                 }
                             }
                         }
-                        if !m.last: Rectangle { y: parent.height - 1px; height: 1px; background: Theme.divider; }
+                        Rectangle { visible: !m.last; y: parent.height - 1px; height: 1px; background: Theme.divider; }
                     }
                 }
                 }

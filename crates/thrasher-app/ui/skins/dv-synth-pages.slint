@@ -242,7 +242,8 @@ component PxWave inherits Rectangle {
             Rectangle { x: 0; y: 0; width: 8px; height: 3px; background: parent.hot ? #ff8a5a : Ps.or; }
             Rectangle { x: 0; y: parent.height - 3px; width: 8px; height: 3px; background: parent.hot ? #ff8a5a : Ps.or; }
         }
-        if root.active: Rectangle {
+        Rectangle {
+            visible: root.active;
             x: root.played * root.inner-w - 1px;
             y: -2px;
             width: 2px;
@@ -577,32 +578,6 @@ component RenameKeys inherits HorizontalLayout {
     Key { height: 32px; kind: 1; text: "RENAME"; label: "Rename"; clicked => { root.rename(); } }
 }
 
-// The clip's transcript card, with the page's state.
-component Transcript inherits TranscriptCard {
-    in property <string> name;
-    clip-name: root.name;
-    transcript: Pages.transcript;
-    transcribing: Pages.transcribing;
-    translating: Pages.translating;
-    translation: Pages.translation;
-    shown-lang <=> Pages.shown-lang;
-    langs: Pages.langs;
-    summary: Pages.summary;
-    summarising: Pages.summarising;
-    can-ai: Main.can-ai;
-    show-summary <=> Pages.show-summary;
-    transcribe-progress: Pages.transcribe-progress;
-    words: Pages.words;
-    current-word: Pages.current-word;
-    show-marks <=> Pages.show-marks;
-    can-transcribe: Pages.can-transcribe;
-    recording: Main.recording;
-    editing: Pages.editing;
-    edit-draft <=> Pages.edit-draft;
-    edit-badge: Pages.edit-badge;
-    speaking: Pages.speaking;
-}
-
 // The footer of the clip page: the latest message (or the export running) on its screen
 // strip, and the orange Export key.
 component ClipFooter inherits Footer {
@@ -752,9 +727,29 @@ export component ClipPage inherits Alu {
             padding-right: 14px;
             padding-top: 8px;
             padding-bottom: 12px;
-            Transcript {
+            TranscriptCard {
+                clip-name: root.name;
+                transcript: Pages.transcript;
+                transcribing: Pages.transcribing;
+                translating: Pages.translating;
+                translation: Pages.translation;
+                shown-lang <=> Pages.shown-lang;
+                langs: Pages.langs;
+                summary: Pages.summary;
+                summarising: Pages.summarising;
+                can-ai: Main.can-ai;
+                show-summary <=> Pages.show-summary;
+                transcribe-progress: Pages.transcribe-progress;
+                words: Pages.words;
+                current-word: Pages.current-word;
+                show-marks <=> Pages.show-marks;
+                can-transcribe: Pages.can-transcribe;
+                recording: Main.recording;
+                editing: Pages.editing;
+                edit-draft <=> Pages.edit-draft;
+                edit-badge: Pages.edit-badge;
+                speaking: Pages.speaking;
                 vertical-stretch: 1;
-                name: root.name;
                 choose-lang(c) => { root.choose-lang(c); }
                 lang-filter(t) => { root.lang-filter(t); }
                 install-for(k) => { root.install-for(k); }
@@ -844,9 +839,29 @@ export component ClipPage inherits Alu {
                     take-out(i) => { root.part-take-out(i); }
                     rename(i) => { root.rename-part(i); }
                 }
-                Transcript {
+                TranscriptCard {
+                    clip-name: root.name;
+                    transcript: Pages.transcript;
+                    transcribing: Pages.transcribing;
+                    translating: Pages.translating;
+                    translation: Pages.translation;
+                    shown-lang <=> Pages.shown-lang;
+                    langs: Pages.langs;
+                    summary: Pages.summary;
+                    summarising: Pages.summarising;
+                    can-ai: Main.can-ai;
+                    show-summary <=> Pages.show-summary;
+                    transcribe-progress: Pages.transcribe-progress;
+                    words: Pages.words;
+                    current-word: Pages.current-word;
+                    show-marks <=> Pages.show-marks;
+                    can-transcribe: Pages.can-transcribe;
+                    recording: Main.recording;
+                    editing: Pages.editing;
+                    edit-draft <=> Pages.edit-draft;
+                    edit-badge: Pages.edit-badge;
+                    speaking: Pages.speaking;
                     vertical-stretch: 1;
-                    name: root.name;
                     choose-lang(c) => { root.choose-lang(c); }
                     lang-filter(t) => { root.lang-filter(t); }
                     install-for(k) => { root.install-for(k); }
@@ -912,38 +927,43 @@ component Card inherits Rectangle {
     }
 }
 
+// Split out of SRow, so its copies share it (see docs/device-themes.md, "Generated code size").
+component SRowText inherits VerticalLayout {
+    in property <string> label;
+    in property <string> note;
+    alignment: center;
+    spacing: 2px;
+    horizontal-stretch: 1;
+    Text {
+        text: root.label;
+        color: Ps.ink;
+        font-family: "Inter Tight";
+        font-size: 13px;
+        font-weight: 500;
+        overflow: elide;
+    }
+    if root.note != "": Text {
+        text: root.note;
+        color: Ps.mute;
+        font-family: "JetBrains Mono";
+        font-size: 9px;
+        font-weight: 500;
+        overflow: elide;
+    }
+}
+
 // One line of a panel: its name (and a note in small mono type) and its controls.
 component SRow inherits Rectangle {
     in property <string> label;
     in property <string> note;
     in property <bool> first;
     min-height: 40px;
-    if !root.first: Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: #dedbd3; }
+    Rectangle { visible: !root.first; x: 0; y: 0; width: parent.width; height: 1px; background: #dedbd3; }
     HorizontalLayout {
         padding-top: 6px;
         padding-bottom: 6px;
         spacing: 8px;
-        VerticalLayout {
-            alignment: center;
-            spacing: 2px;
-            horizontal-stretch: 1;
-            Text {
-                text: root.label;
-                color: Ps.ink;
-                font-family: "Inter Tight";
-                font-size: 13px;
-                font-weight: 500;
-                overflow: elide;
-            }
-            if root.note != "": Text {
-                text: root.note;
-                color: Ps.mute;
-                font-family: "JetBrains Mono";
-                font-size: 9px;
-                font-weight: 500;
-                overflow: elide;
-            }
-        }
+        SRowText { label: root.label; note: root.note; }
         HorizontalLayout {
             alignment: end;
             spacing: 6px;

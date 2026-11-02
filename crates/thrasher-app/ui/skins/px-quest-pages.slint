@@ -69,24 +69,6 @@ component Art inherits Rectangle {
     }
 }
 
-// A text field: the ink well with a blue rim, gold while it has the cursor.
-component Field inherits TextField {
-    height: 27px;
-    radius: 0;
-    fill: Q.ink;
-    rest-edge: Q.rule;
-    edge-width: 3px;
-    focus-edge: Q.gold;
-    focus-ring: transparent;
-    ink: Q.white;
-    hint: Q.dim;
-    font-size: 14px;
-    family: Q.font;
-    side: 9px;
-    select-fill: Q.sel;
-    select-ink: Q.gold;
-}
-
 // The bar of a running job: an ink well in a grey rim, gold (or blue) filling it.
 component Bar inherits Rectangle {
     in property <float> value;
@@ -302,7 +284,21 @@ component ItemCard inherits Win {
     if Pages.renaming: VerticalLayout {
         spacing: 9px;
         Label { text: "ITEM"; }
-        field := Field {
+        field := TextField {
+            height: 27px;
+            radius: 0;
+            fill: Q.ink;
+            rest-edge: Q.rule;
+            edge-width: 3px;
+            focus-edge: Q.gold;
+            focus-ring: transparent;
+            ink: Q.white;
+            hint: Q.dim;
+            font-size: 14px;
+            family: Q.font;
+            side: 9px;
+            select-fill: Q.sel;
+            select-ink: Q.gold;
             label: "Clip name";
             text: root.name;
             init => { self.grab(); }
@@ -349,7 +345,8 @@ component Strip inherits Rectangle {
         height: self.fit * 3px;
         background: self.f < Pages.trim-start || self.f > Pages.trim-end ? Q.rule : self.f < root.played ? Q.gold : Q.pale;
     }
-    if root.active: Rectangle {
+    Rectangle {
+        visible: root.active;
         x: 6px + round(root.played * (root.iw - 3px) / 3px) * 3px;
         y: 3px;
         width: 3px;
@@ -869,37 +866,43 @@ component Card inherits Win {
     }
 }
 
+// Split out of SRow, so its copies share it (see docs/device-themes.md, "Generated code size").
+component SRowText inherits VerticalLayout {
+    in property <string> label;
+    in property <string> note;
+    alignment: center;
+    spacing: 2px;
+    horizontal-stretch: 1;
+    Text {
+        text: root.label;
+        color: Q.white;
+        font-family: Q.font;
+        font-size: 14px;
+        overflow: elide;
+    }
+    if root.note != "": Text {
+        text: root.note;
+        color: Q.grey;
+        font-family: Q.font;
+        font-size: 11px;
+        overflow: elide;
+    }
+}
+
 // One row of a card: its name (and a note under it) and its control; a rule above it
 // unless it is the first.
 component SRow inherits VerticalLayout {
     in property <string> label;
     in property <string> note;
     in property <bool> first;
-    if !root.first: Rule { }
+    // Zero high on the first row (an `if` here was copied into every use of the row).
+    Rule { height: root.first ? 0 : 3px; }
     HorizontalLayout {
         min-height: root.note != "" ? 42px : 30px;
         padding-top: 3px;
         padding-bottom: 3px;
         spacing: 9px;
-        VerticalLayout {
-            alignment: center;
-            spacing: 2px;
-            horizontal-stretch: 1;
-            Text {
-                text: root.label;
-                color: Q.white;
-                font-family: Q.font;
-                font-size: 14px;
-                overflow: elide;
-            }
-            if root.note != "": Text {
-                text: root.note;
-                color: Q.grey;
-                font-family: Q.font;
-                font-size: 11px;
-                overflow: elide;
-            }
-        }
+        SRowText { label: root.label; note: root.note; }
         HorizontalLayout {
             alignment: end;
             spacing: 6px;
@@ -1125,7 +1128,21 @@ export component SettingsPage inherits Page {
                                 font-family: Q.font;
                                 font-size: 14px;
                             }
-                            Field {
+                            TextField {
+                                height: 27px;
+                                radius: 0;
+                                fill: Q.ink;
+                                rest-edge: Q.rule;
+                                edge-width: 3px;
+                                focus-edge: Q.gold;
+                                focus-ring: transparent;
+                                ink: Q.white;
+                                hint: Q.dim;
+                                font-size: 14px;
+                                family: Q.font;
+                                side: 9px;
+                                select-fill: Q.sel;
+                                select-ink: Q.gold;
                                 label: "File name";
                                 text: Pages.name-template;
                                 invalid: Pages.name-invalid;
@@ -1410,7 +1427,7 @@ component ShelfList inherits VerticalLayout {
             Rectangle { y: parent.height - 3px; height: 3px; background: Q.sel-lo; }
             Px { x: 3px; y: (parent.height - self.height) / 2; source: @image-url("px-quest/hand.png"); }
         }
-        if Pages.model-filter != i && st.has-hover: Rectangle { background: Q.win-lo; }
+        Rectangle { visible: Pages.model-filter != i && st.has-hover; background: Q.win-lo; }
         Text {
             x: 30px;
             text: f;
@@ -1426,12 +1443,6 @@ component ShelfList inherits VerticalLayout {
             clicked => { Pages.model-filter = i; root.changed(); }
         }
     }
-}
-
-component ModelSearch inherits Field {
-    icon: "search";
-    label: "Search models";
-    placeholder: "Search " + Pages.model-count + " models";
 }
 
 component Compressed inherits HorizontalLayout {
@@ -1486,7 +1497,8 @@ component Shelf inherits Scroller {
             if !m.header && k > 0 && !Pages.models[k - 1].header: Rule { }
             if !m.header: Rectangle {
                 height: ware.preferred-height;
-                if m.active: Rectangle {
+                Rectangle {
+                    visible: m.active;
                     background: Q.sel;
                     Rectangle { y: 0; height: 3px; background: Q.sel-hi; }
                     Rectangle { y: parent.height - 3px; height: 3px; background: Q.sel-lo; }
@@ -1603,7 +1615,7 @@ export component ModelsPage inherits Page {
         pad-y: 3px;
         VerticalLayout {
             spacing: 8px;
-            ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+            TextField { height: 27px; radius: 0; fill: Q.ink; rest-edge: Q.rule; edge-width: 3px; focus-edge: Q.gold; focus-ring: transparent; ink: Q.white; hint: Q.dim; font-size: 14px; family: Q.font; side: 9px; select-fill: Q.sel; select-ink: Q.gold; icon: "search"; label: "Search models"; placeholder: "Search " + Pages.model-count + " models"; text <=> Pages.model-query; edited => { root.filter-changed(); } }
             Chips { changed => { root.filter-changed(); } }
             Compressed { changed => { root.filter-changed(); } }
         }
@@ -1630,7 +1642,7 @@ export component ModelsPage inherits Page {
                     alignment: start;
                     spacing: 12px;
                     Label { text: "FIND"; }
-                    ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+                    TextField { height: 27px; radius: 0; fill: Q.ink; rest-edge: Q.rule; edge-width: 3px; focus-edge: Q.gold; focus-ring: transparent; ink: Q.white; hint: Q.dim; font-size: 14px; family: Q.font; side: 9px; select-fill: Q.sel; select-ink: Q.gold; icon: "search"; label: "Search models"; placeholder: "Search " + Pages.model-count + " models"; text <=> Pages.model-query; edited => { root.filter-changed(); } }
                     VerticalLayout {
                         spacing: 6px;
                         Label { text: "SHELF"; color: Q.grey; }
@@ -1737,7 +1749,7 @@ component NameWin inherits Win {
     VerticalLayout {
         spacing: 6px;
         Label { text: "NEW CLIP"; }
-        Field { text <=> Pages.merge-name; placeholder: "Name"; label: "Name of the merged clip"; }
+        TextField { height: 27px; radius: 0; fill: Q.ink; rest-edge: Q.rule; edge-width: 3px; focus-edge: Q.gold; focus-ring: transparent; ink: Q.white; hint: Q.dim; font-size: 14px; family: Q.font; side: 9px; select-fill: Q.sel; select-ink: Q.gold; text <=> Pages.merge-name; placeholder: "Name"; label: "Name of the merged clip"; }
     }
 }
 
@@ -2022,7 +2034,21 @@ export component AskPage inherits Page {
         pad-x: 3px;
         HorizontalLayout {
             spacing: 6px;
-            Field {
+            TextField {
+                height: 27px;
+                radius: 0;
+                fill: Q.ink;
+                rest-edge: Q.rule;
+                edge-width: 3px;
+                focus-edge: Q.gold;
+                focus-ring: transparent;
+                ink: Q.white;
+                hint: Q.dim;
+                font-size: 14px;
+                family: Q.font;
+                side: 9px;
+                select-fill: Q.sel;
+                select-ink: Q.gold;
                 horizontal-stretch: 1;
                 icon: "message";
                 placeholder: "Ask about your clips";
@@ -2297,7 +2323,21 @@ export component Dialog inherits Rectangle {
                 padding-top: 6px;
                 spacing: 6px;
                 Label { text: root.field.to-uppercase(); }
-                Field {
+                TextField {
+                    height: 27px;
+                    radius: 0;
+                    fill: Q.ink;
+                    rest-edge: Q.rule;
+                    edge-width: 3px;
+                    focus-edge: Q.gold;
+                    focus-ring: transparent;
+                    ink: Q.white;
+                    hint: Q.dim;
+                    font-size: 14px;
+                    family: Q.font;
+                    side: 9px;
+                    select-fill: Q.sel;
+                    select-ink: Q.gold;
                     label: root.field;
                     text <=> Main.dialog-text;
                     init => { self.grab(); }
@@ -2323,7 +2363,8 @@ export component Dialog inherits Rectangle {
         }
         }
         // The tag on the top of the frame.
-        if root.tag != "": Rectangle {
+        Rectangle {
+            visible: root.tag != "";
             x: 21px;
             y: -3px;
             width: tag-text.preferred-width + 10px;

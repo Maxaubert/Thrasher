@@ -188,7 +188,8 @@ component Wheel inherits Rectangle {
             lo: Main.recording ? @image-url("dash/rec-on.png") : @image-url("dash/rec.png");
             hi: Main.recording ? @image-url("dash/rec-on@2x.png") : @image-url("dash/rec@2x.png");
         }
-        if rt.has-hover: Rectangle {
+        Rectangle {
+            visible: rt.has-hover;
             border-radius: parent.width / 2;
             background: rt.pressed ? #00000026 : #ffffff1a;
         }
@@ -477,7 +478,8 @@ component Row inherits Rectangle {
     }
     // The highlight: a gradient from blue to ice. Gradients ignore rounded corners in
     // the software renderer, so the round ends are solid caps.
-    if root.lit: Rectangle {
+    Rectangle {
+        visible: root.lit;
         opacity: root.selected ? 1 : 0.6;
         Rectangle {
             x: 0;
@@ -504,12 +506,14 @@ component Row inherits Rectangle {
             border-color: #62d2ff4d;
         }
     }
-    if !root.lit && row-touch.has-hover: Rectangle {
+    Rectangle {
+        visible: !root.lit && row-touch.has-hover;
         border-radius: 10px;
         background: #ffffff08;
     }
     // The lit edge on the left, with its glow.
-    if root.selected: Rectangle {
+    Rectangle {
+        visible: root.selected;
         x: -3px;
         y: 7px;
         width: 7px;
@@ -517,7 +521,8 @@ component Row inherits Rectangle {
         border-radius: 3.5px;
         background: #62d2ff33;
     }
-    if root.selected: Rectangle {
+    Rectangle {
+        visible: root.selected;
         x: -1px;
         y: 9px;
         width: 3px;
@@ -1144,7 +1149,8 @@ export component MainPage inherits VerticalLayout {
     // Messages float just above the media card, so nothing moves when they come and go.
     Rectangle {
         height: 0;
-        if Main.status != "": Rectangle {
+        Rectangle {
+            visible: Main.status != "";
             x: (parent.width - self.width) / 2;
             y: -(root.wide ? 68px : 66px) - self.height - 8px;
             width: min(msg.preferred-width + 28px, parent.width - 32px);

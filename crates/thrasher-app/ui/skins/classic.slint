@@ -482,7 +482,8 @@ export component MainPage inherits VerticalLayout {
     // and go.
     Rectangle {
         height: 0;
-        if Main.status != "": Rectangle {
+        Rectangle {
+            visible: Main.status != "";
             x: (parent.width - self.width) / 2;
             y: -64px - self.height - 8px;
             width: min(msg.preferred-width + 24px, parent.width - 32px);

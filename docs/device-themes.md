@@ -2153,14 +2153,62 @@ Rules for new skins and widgets:
 - Per-skin variants of a shared widget: one skin-only component inside the widget's
   single shared type (`if Theme.x: XArt {}`), never new `if` branches in a widget that is
   inlined.
-- For a tiny absolutely positioned per-skin piece, `visible:` (about 1 to 2 KB) is
-  cheaper than `if` (13 to 24 KB), but never inside a layout: invisible items still take
-  layout space there.
+- For a tiny absolutely positioned piece in a widget or page used a few times,
+  `visible:` (about 1 to 2 KB) is cheaper than `if` (13 to 24 KB), but never inside a
+  layout: invisible items still take layout space there. In a shared widget used many
+  times it is the other way round (see the second pass below).
 - No component that inherits a shared widget (`component RowSelect inherits Select`): it
   copies the widget's whole tree; set its size at each use (2026-11-02).
 - Check `app.rs` after a skin's pages land (the newest
   `target/release/build/thrasher-ui-*/out/app.rs`): a skin's pages should cost about 3 to
   5 MB of exe, not 20 MB.
+
+**Second pass (2026-11-02, after the Pinball pages):** `app.rs` 215.8 MB to 170.8 MB, exe
+115.7 MB to 107.5 MB, the release rustc of the UI 29.4 GB to 25.4 GB at its peak. Where
+the code went, measured with `slint-compiler` (see "Lessons from the Pinball pages"):
+- **Item arrays were the biggest single part (56 MB).** Every `if` or `for` body and the
+  window list every item they hold, through all their sub-components, in two constant
+  tables (`item_array`, `item_tree`, about 500 bytes per item). A settings page alone held
+  1,000 to 1,900 items. Most of them were the other skins' pieces inside the shared widgets:
+  `OsBevel { visible: Theme.os95; }` in Btn is in every Btn on every page, whatever the skin,
+  and Btn, IconBtn, Toggle, Select and ExportButton put about 90,000 items into those tables.
+  As `if Theme.os95: OsBevel { }` the piece is one body, once, in the widget's shared type,
+  and in no table: 27 MB less, fewer items in memory too.
+- **The if and for bodies were 151 MB of 216.** A body costs about 17 KB before its
+  bindings. 3,089 bodies became 2,611; many were copies: a component used with children,
+  inherited, or given `opacity` or `visible` at a use is copied, with its bodies, every time.
+  OrderList (96 bodies) had two extra copies through an `opacity` on its use in two skins'
+  parts lists; each settings row copied its note's `if` into all of its 20 or so uses.
+- Checks: every theme's main page, delete question, clip page and settings (top, a dropdown
+  open, scrolled) at 520x700 and 1100x700 (276 shots) match the Pinball build pixel for
+  pixel, but for run to run noise seen between two runs of that build (the moving
+  backgrounds of the classic themes, a gallery arrow edge in Car Dashboard's scrolled
+  settings, two pixels in Fighter Select's, Phonograph's scrolled settings). Idle CPU is
+  unchanged (0.0 to 0.6% both), the working set 0.2 to 1.8 MB lower on every page measured.
+
+Rules (added to the ones above):
+- **A skin's piece in a shared widget is an `if`, not `visible`,** when it sits in a plain
+  parent (not a layout) and sets x or y or adds no layout constraints (a repeated child adds
+  none to its parent, a visible one without x and y does; so check both before switching).
+  `visible` stays right for a piece of a widget used a handful of times.
+- **No `opacity`, `visible` or `drop-shadow-*` on a use of a big component:** put it on a
+  box around the use (`Rectangle { height: list.height; opacity: x; list := OrderList { } }`).
+  A component that sets its own `height` (OrderList does) gives the box no height in a
+  layout: the box must take it (`height: list.height`), or the box stretches or collapses.
+  This broke the merged clip's parts list in Phosphor (stretched) and Spatial Glass
+  (collapsed under the transcript) until the second pass review (2026-11-02).
+- **Nothing inherits a shared widget,** also not to set a few looks (`component Field
+  inherits TextField { height: 24px; }`): use the widget with those bindings at each use.
+- **A container used with children holds no `if` or `for`:** move the part that has them
+  into a component of its own (the settings rows' label and note: `SRowText`; Brick Phone's
+  keys: `PhoneKeys`; MenuCard's frames: `MenuCardArt`). Several pieces in a plain parent move
+  together into a component placed with `x: 0; y: 0; width: parent.width; height:
+  parent.height`.
+- In a layout with no spacing, a rule that only some rows show can be zero high
+  (`height: root.first ? 0 : 3px`) instead of an `if`.
+- After a skin's pages, run `slint-compiler` on `app.slint` and compare the bodies
+  (`struct InnerComponent_`) and the item counts (`ITEM_TREE : [...; N]`) with the last
+  build: a page body's item count shows what its widgets carry.
 
 ## 4. Theme picker
 

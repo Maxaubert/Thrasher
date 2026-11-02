@@ -291,7 +291,8 @@ component Toast inherits Rectangle {
     in property <string> text;
     in property <length> above: 8px;
     height: 0;
-    if root.text != "": Rectangle {
+    Rectangle {
+        visible: root.text != "";
         x: (parent.width - self.width) / 2;
         y: -root.above - self.height;
         width: min(msg.preferred-width + 38px, parent.width - 32px);
@@ -320,20 +321,6 @@ component Toast inherits Rectangle {
             overflow: elide;
         }
     }
-}
-
-// A field in the search well: dark, an ice frame while it has the cursor.
-component Field inherits TextField {
-    height: 34px;
-    radius: 9px;
-    fill: Dash.well;
-    rest-edge: Dash.line2;
-    ink: Dash.text;
-    hint: Dash.faint;
-    font-size: 12.5px;
-    family: root.mono ? Theme.mono : "Manrope";
-    side: 12px;
-    select-fill: #3a8dff73;
 }
 
 // The arc of the gauge on the 200 unit box: the scale is a PNG, the value arc a path to
@@ -365,7 +352,8 @@ component Arc inherits Rectangle {
         stroke-line-cap: round;
         commands: "M 43.4315 156.5685 A 80 80 0 " + (root.v > 2 / 3 ? "1" : "0") + " 1 " + root.ex + " " + root.ey;
     }
-    if root.tip: Rectangle {
+    Rectangle {
+        visible: root.tip;
         x: root.ex * root.u * 1px - self.width / 2;
         y: root.ey * root.u * 1px - self.height / 2;
         width: max(9px, 15px * root.u);
@@ -491,7 +479,8 @@ component RouteStrip inherits Rectangle {
         }
         Rectangle { x: 0; width: root.start-x; background: #0e1115c0; }
         Rectangle { x: root.end-x; width: parent.width - root.end-x; background: #0e1115c0; }
-        if root.active: Rectangle {
+        Rectangle {
+            visible: root.active;
             x: root.played * (parent.width - 2px);
             width: 2px;
             background: #ffffff;
@@ -708,7 +697,15 @@ component RenameField inherits VerticalLayout {
     callback cancel();
     spacing: 8px;
     alignment: center;
-    field := Field {
+    field := TextField {
+        radius: 9px;
+        fill: Dash.well;
+        rest-edge: Dash.line2;
+        ink: Dash.text;
+        hint: Dash.faint;
+        family: self.mono ? Theme.mono : "Manrope";
+        side: 12px;
+        select-fill: #3a8dff73;
         height: 32px;
         font-size: 13px;
         label: "Clip name";
@@ -1186,38 +1183,43 @@ component Card inherits Rectangle {
     }
 }
 
+// Split out of SRow, so its copies share it (see docs/device-themes.md, "Generated code size").
+component SRowText inherits VerticalLayout {
+    in property <string> label;
+    in property <string> note;
+    alignment: center;
+    spacing: 1px;
+    horizontal-stretch: 1;
+    Text {
+        text: root.label;
+        color: Dash.text;
+        font-family: "Manrope";
+        font-size: 12.5px;
+        font-weight: 700;
+        overflow: elide;
+    }
+    if root.note != "": Text {
+        text: root.note;
+        color: Dash.faint;
+        font-family: "Manrope";
+        font-size: 10px;
+        font-weight: 500;
+        overflow: elide;
+    }
+}
+
 // One line of a card: its name (and a note in small type) and its controls.
 component SRow inherits Rectangle {
     in property <string> label;
     in property <string> note;
     in property <bool> first;
     min-height: 36px;
-    if !root.first: Rectangle { y: 0; height: 1px; background: Dash.line; }
+    Rectangle { visible: !root.first; y: 0; height: 1px; background: Dash.line; }
     HorizontalLayout {
         padding-top: 5px;
         padding-bottom: 5px;
         spacing: 8px;
-        VerticalLayout {
-            alignment: center;
-            spacing: 1px;
-            horizontal-stretch: 1;
-            Text {
-                text: root.label;
-                color: Dash.text;
-                font-family: "Manrope";
-                font-size: 12.5px;
-                font-weight: 700;
-                overflow: elide;
-            }
-            if root.note != "": Text {
-                text: root.note;
-                color: Dash.faint;
-                font-family: "Manrope";
-                font-size: 10px;
-                font-weight: 500;
-                overflow: elide;
-            }
-        }
+        SRowText { label: root.label; note: root.note; }
         HorizontalLayout {
             alignment: end;
             spacing: 6px;
@@ -1422,7 +1424,15 @@ export component SettingsPage inherits VerticalLayout {
                                     font-size: 12.5px;
                                     font-weight: 700;
                                 }
-                                Field {
+                                TextField {
+                                    radius: 9px;
+                                    fill: Dash.well;
+                                    rest-edge: Dash.line2;
+                                    ink: Dash.text;
+                                    hint: Dash.faint;
+                                    family: self.mono ? Theme.mono : "Manrope";
+                                    side: 12px;
+                                    select-fill: #3a8dff73;
                                     height: 32px;
                                     mono: true;
                                     font-size: 12px;
@@ -1716,7 +1726,7 @@ component ShelfList inherits VerticalLayout {
         accessible-label: f;
         accessible-checked: Pages.model-filter == i;
         accessible-action-default => { Pages.model-filter = i; root.changed(); }
-        if Pages.model-filter == i: Rectangle { x: 8px; y: 9px; width: 3px; height: parent.height - 18px; border-radius: 1.5px; background: Dash.ice; }
+        Rectangle { visible: Pages.model-filter == i; x: 8px; y: 9px; width: 3px; height: parent.height - 18px; border-radius: 1.5px; background: Dash.ice; }
         Text {
             x: 18px;
             text: f;
@@ -1733,13 +1743,6 @@ component ShelfList inherits VerticalLayout {
             clicked => { Pages.model-filter = i; root.changed(); }
         }
     }
-}
-
-component ModelSearch inherits Field {
-    height: 32px;
-    icon: "search";
-    label: "Search models";
-    placeholder: "Search " + Pages.model-count + " models";
 }
 
 component Compressed inherits HorizontalLayout {
@@ -1778,7 +1781,7 @@ export component ModelsPage inherits VerticalLayout {
         padding-right: 12px;
         padding-bottom: 6px;
         spacing: 9px;
-        ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+        TextField { radius: 9px; fill: Dash.well; rest-edge: Dash.line2; ink: Dash.text; hint: Dash.faint; font-size: 12.5px; family: self.mono ? Theme.mono : "Manrope"; side: 12px; select-fill: #3a8dff73; height: 32px; icon: "search"; label: "Search models"; placeholder: "Search " + Pages.model-count + " models"; text <=> Pages.model-query; edited => { root.filter-changed(); } }
         ShelfChips { changed => { root.filter-changed(); } }
         Compressed { changed => { root.filter-changed(); } }
     }
@@ -1792,7 +1795,7 @@ export component ModelsPage inherits VerticalLayout {
                 padding: 14px;
                 padding-top: 12px;
                 spacing: 12px;
-                ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+                TextField { radius: 9px; fill: Dash.well; rest-edge: Dash.line2; ink: Dash.text; hint: Dash.faint; font-size: 12.5px; family: self.mono ? Theme.mono : "Manrope"; side: 12px; select-fill: #3a8dff73; height: 32px; icon: "search"; label: "Search models"; placeholder: "Search " + Pages.model-count + " models"; text <=> Pages.model-query; edited => { root.filter-changed(); } }
                 VerticalLayout {
                     vertical-stretch: 0;
                     spacing: 6px;
@@ -2060,7 +2063,7 @@ export component MergePage inherits VerticalLayout {
                 VerticalLayout {
                     spacing: 6px;
                     Caps { text: "NEW CLIP"; }
-                    Field { text <=> Pages.merge-name; placeholder: "Name"; label: "Name of the merged clip"; }
+                    TextField { height: 34px; radius: 9px; fill: Dash.well; rest-edge: Dash.line2; ink: Dash.text; hint: Dash.faint; font-size: 12.5px; family: self.mono ? Theme.mono : "Manrope"; side: 12px; select-fill: #3a8dff73; text <=> Pages.merge-name; placeholder: "Name"; label: "Name of the merged clip"; }
                 }
             }
         }
@@ -2107,7 +2110,7 @@ export component MergePage inherits VerticalLayout {
         padding-bottom: 12px;
         spacing: 6px;
         Caps { text: "NEW CLIP"; }
-        Field { text <=> Pages.merge-name; placeholder: "Name"; label: "Name of the merged clip"; }
+        TextField { height: 34px; radius: 9px; fill: Dash.well; rest-edge: Dash.line2; ink: Dash.text; hint: Dash.faint; font-size: 12.5px; family: self.mono ? Theme.mono : "Manrope"; side: 12px; select-fill: #3a8dff73; text <=> Pages.merge-name; placeholder: "Name"; label: "Name of the merged clip"; }
     }
     Footer {
         // Portrait has no room for the message beside the keys: it floats above the
@@ -2346,7 +2349,16 @@ export component AskPage inherits VerticalLayout {
         padding-right: 12px;
         padding-bottom: 10px;
         spacing: 8px;
-        Field {
+        TextField {
+            radius: 9px;
+            fill: Dash.well;
+            rest-edge: Dash.line2;
+            ink: Dash.text;
+            hint: Dash.faint;
+            font-size: 12.5px;
+            family: self.mono ? Theme.mono : "Manrope";
+            side: 12px;
+            select-fill: #3a8dff73;
             height: 36px;
             horizontal-stretch: 1;
             icon: "message";
@@ -2641,7 +2653,17 @@ export component Dialog inherits Rectangle {
                 padding-top: 10px;
                 spacing: 6px;
                 Caps { text: root.field.to-uppercase(); font-size: 8.5px; }
-                Field {
+                TextField {
+                    height: 34px;
+                    radius: 9px;
+                    fill: Dash.well;
+                    rest-edge: Dash.line2;
+                    ink: Dash.text;
+                    hint: Dash.faint;
+                    font-size: 12.5px;
+                    family: self.mono ? Theme.mono : "Manrope";
+                    side: 12px;
+                    select-fill: #3a8dff73;
                     label: root.field;
                     text <=> Main.dialog-text;
                     init => { self.grab(); }

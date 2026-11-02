@@ -259,7 +259,8 @@ export component Cassette inherits Rectangle {
             source-clip-height: root.frame-px;
             image-fit: fill;
         }
-        if root.named: Text {
+        Text {
+            visible: root.named;
             x: 24px * root.s;
             y: 16.5px * root.s;
             width: 232px * root.s;
@@ -381,7 +382,7 @@ export component Key inherits Rectangle {
         background: root.rec ? (root.latched ? Deck.rec-down : Deck.rec-face) : root.amber ? Deck.amber-face : Deck.key-face;
         opacity: root.enabled ? 1 : 0.55;
         Rectangle { y: 0; height: 1px; background: root.rec ? #ff9a7f : root.amber ? #ffe0b0 : #ffffff; }
-        if t.has-hover && root.enabled && !root.down: Rectangle { background: #ffffff12; }
+        Rectangle { visible: t.has-hover && root.enabled && !root.down; background: #ffffff12; }
         VerticalLayout {
             height: parent.height * 0.78;
             y: 0;
@@ -409,7 +410,8 @@ export component Key inherits Rectangle {
             }
         }
         // The REC key's lamp, bright while recording.
-        if root.rec: Rectangle {
+        Rectangle {
+            visible: root.rec;
             x: parent.width - 13px;
             y: 6px;
             width: 6px;
@@ -464,7 +466,7 @@ export component Knob inherits Rectangle {
             : (root.hi ? @image-url("tape/knob@2x.png") : @image-url("tape/knob.png"));
         image-fit: fill;
     }
-    if t.has-hover: Rectangle { border-radius: root.width / 2; background: #ffffff1f; }
+    Rectangle { visible: t.has-hover; border-radius: root.width / 2; background: #ffffff1f; }
     Icon {
         x: (parent.width - self.width) / 2 + (root.pause ? 0 : 1px);
         y: (parent.height - self.height) / 2 + (t.pressed ? 1px : 0);

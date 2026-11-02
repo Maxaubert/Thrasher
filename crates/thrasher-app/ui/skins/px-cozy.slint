@@ -97,12 +97,12 @@ component Bevel inherits Rectangle {
     in property <bool> br-top;
     x: 0;
     y: 0;
-    if !root.br-top: Rectangle { x: 0; y: parent.height - 3px; width: parent.width; height: 3px; background: root.br; }
-    if !root.br-top: Rectangle { x: parent.width - 3px; y: 0; width: 3px; height: parent.height; background: root.br; }
+    Rectangle { visible: !root.br-top; x: 0; y: parent.height - 3px; width: parent.width; height: 3px; background: root.br; }
+    Rectangle { visible: !root.br-top; x: parent.width - 3px; y: 0; width: 3px; height: parent.height; background: root.br; }
     Rectangle { x: 0; y: 0; width: parent.width; height: 3px; background: root.tl; }
     Rectangle { x: 0; y: 0; width: 3px; height: parent.height; background: root.tl; }
-    if root.br-top: Rectangle { x: 0; y: parent.height - 3px; width: parent.width; height: 3px; background: root.br; }
-    if root.br-top: Rectangle { x: parent.width - 3px; y: 0; width: 3px; height: parent.height; background: root.br; }
+    Rectangle { visible: root.br-top; x: 0; y: parent.height - 3px; width: parent.width; height: 3px; background: root.br; }
+    Rectangle { visible: root.br-top; x: parent.width - 3px; y: 0; width: 3px; height: parent.height; background: root.br; }
 }
 
 // A nail head: dark with a light top left.
@@ -939,7 +939,8 @@ component Row inherits Rectangle {
         root.refocus();
     }
     // The honey nub at the list's edge, beside the highlighted clip.
-    if root.selected: Rectangle {
+    Rectangle {
+        visible: root.selected;
         x: -9px;
         y: 3px + root.box-h / 2 - 3px;
         width: 3px;

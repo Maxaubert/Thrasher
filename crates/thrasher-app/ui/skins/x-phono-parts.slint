@@ -1,0 +1,175 @@
+// The Phonograph parts the other pages (x-phono-pages.slint) and the shared widgets
+// (common.slint) use: the machine's colours and fonts, art at 1x or 2x, the mahogany, the
+// engraved brass plates and the rivets. The main page (x-phono.slint) keeps its own copies.
+// It imports nothing, so common.slint can import it.
+
+// The machine's colours, from the mockups (docs/mockups/device-themes/x-phono-pages/).
+export global Pn {
+    out property <color> brass-hi: #f6e3a1;
+    out property <color> brass: #d1a84f;
+    out property <color> brass-mid: #b58a35;
+    out property <color> brass-lo: #7a5717;
+    out property <color> engrave: #3a2709;
+    out property <color> ivory: #f1e6c9;
+    out property <color> ivory-lo: #d9c9a1;
+    out property <color> ivory-l: #fbf4df;
+    out property <color> ink: #2b1a0e;
+    out property <color> ink-soft: #6a4c30;
+    // Hints and faded words on ivory.
+    out property <color> faded: #9a8462;
+    out property <color> wax: #a3261c;
+    out property <color> wax-hi: #d0463a;
+    out property <color> wax-lo: #5e1209;
+    out property <color> wax-ink: #fbe6cf;
+    // Words on the wood and in the drawers.
+    out property <color> plate-ink: #efdcb2;
+    out property <color> np: #d9c49a;
+    out property <color> hint: #a88d63;
+    out property <color> soot: #2a1408;
+    out property <color> rule: #b58a35;
+    // The ruled lines of a record card.
+    out property <color> card-line: #78552829;
+    out property <string> font: "Phono Garamond";
+    out property <string> caps: "Cinzel";
+    out property <brush> card: @linear-gradient(180deg, #f7eed6 0%, #ece0bd 100%);
+    out property <brush> brass-face: @linear-gradient(180deg, #f6e3a1 0%, #d1a84f 45%, #b58a35 75%, #7a5717 100%);
+    out property <brush> plate-face: @linear-gradient(180deg, #f6e3a1 0%, #d1a84f 45%, #7a5717 100%);
+    out property <brush> ivory-face: @linear-gradient(180deg, #fbf3dc 0%, #f1e6c9 45%, #d9c9a1 100%);
+    out property <brush> ivory-sunk: @linear-gradient(180deg, #e3d3a8 0%, #efe2bf 100%);
+    out property <brush> wax-face: @linear-gradient(180deg, #d0463a 0%, #a3261c 55%, #5e1209 100%);
+    out property <brush> slot: @linear-gradient(180deg, #fbf4df 0%, #efe3c2 100%);
+    out property <brush> well: @linear-gradient(180deg, #1b0c06 0%, #130804 100%);
+    out property <brush> drawer: @linear-gradient(180deg, #2e130b 0%, #1f0d07 100%);
+    out property <brush> wood: @linear-gradient(180deg, #5e2614 0%, #4a1c10 45%, #3a150b 100%);
+    out property <brush> wood-dark: @linear-gradient(180deg, #2e130b 0%, #1f0d07 100%);
+    out property <brush> tip: @linear-gradient(180deg, #f6e3a1 0%, #d1a84f 45%, #b58a35 100%);
+    out property <brush> plate: @linear-gradient(180deg, #2a120a 0%, #1b0b06 100%);
+    // The hovered or open row of a menu: a brass band.
+    out property <brush> rule-fade: @linear-gradient(90deg, #7a571700 0%, #b58a35 50%, #7a571700 100%);
+    out property <brush> lit-row: @linear-gradient(90deg, #e9c873 0%, #f3dc93 60%, #ead09a 100%);
+    // The words on a key face (see PnKey for `kind`).
+    public pure function ink-of(kind: int) -> color {
+        return kind == 1 ? Pn.engrave : kind == 2 ? Pn.wax-ink : Pn.ink;
+    }
+}
+
+// A piece of art, the 2x cut when the display is dense.
+export component Art inherits Image {
+    in property <image> lo;
+    in property <image> hi;
+    source: 1phx < 0.7px ? root.hi : root.lo;
+    image-fit: fill;
+}
+
+// A tile repeated from the box's top left, one image pixel per logical pixel.
+export component Tile inherits Image {
+    horizontal-tiling: repeat;
+    vertical-tiling: repeat;
+    horizontal-alignment: left;
+    vertical-alignment: top;
+}
+
+// Mahogany: its gradient with the grain over it; `dark` is the darker wood of the
+// drawers, the shelf and the foot of a page.
+export component Wood inherits Rectangle {
+    in property <bool> dark;
+    background: root.dark ? Pn.wood-dark : Pn.wood;
+    Tile {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.height;
+        source: root.dark ? @image-url("x-phono/woodd.png") : @image-url("x-phono/wood.png");
+    }
+}
+
+// Progress as the wax being cut: the uncut cylinder, the cut part darker and finely
+// grooved, and the brass carriage at its head.
+export component PnBar inherits Rectangle {
+    in property <float> value;
+    height: 12px;
+    property <length> at: clamp(root.value, 0, 1) * root.width;
+    Rectangle {
+        border-radius: 3px;
+        background: @linear-gradient(90deg, #7b4a20 0%, #9b6630 50%, #7b4a20 100%);
+        border-width: 1px;
+        border-color: #160904;
+    }
+    Rectangle {
+        x: 0;
+        width: root.at;
+        border-radius: 3px;
+        background: #5d3414;
+        clip: true;
+        Tile {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            source: @image-url("x-phono/groovec.png");
+        }
+    }
+    Rectangle {
+        border-radius: 3px;
+        background: @linear-gradient(180deg, #00000080 0%, #00000000 25%, #ffdcaa40 38%, #00000000 52%, #0000008c 100%);
+    }
+    Rectangle {
+        x: root.at - 5px;
+        y: -4px;
+        width: 10px;
+        height: root.height + 8px;
+        border-radius: 3px;
+        background: @linear-gradient(90deg, #7a5717 0%, #f6e3a1 45%, #b58a35 100%);
+        border-width: 0.5px;
+        border-color: #00000099;
+    }
+}
+
+// A small brass rivet (a screw head on a card).
+export component Rivet inherits Rectangle {
+    width: 7px;
+    height: 7px;
+    border-radius: 3.5px;
+    background: @linear-gradient(135deg, #fff3c8 0%, #a07a2a 60%, #4d360c 100%);
+    border-width: 0.5px;
+    border-color: #00000080;
+}
+
+// Small capitals engraved in brass colour on the wood (COUNTER, SPEED, ORDER).
+export component Lbl inherits Text {
+    color: Pn.brass;
+    font-family: "Cinzel";
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 1.7px;
+    vertical-alignment: center;
+    accessible-role: none;
+}
+
+// An engraved brass plate: the name of a drawer or a card in small capitals.
+export component Plate inherits Rectangle {
+    in property <string> text;
+    in property <bool> red;
+    in property <bool> round-top;
+    width: word.preferred-width + 24px;
+    height: 18px;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+    border-top-left-radius: root.round-top ? 3px : 0;
+    border-top-right-radius: root.round-top ? 3px : 0;
+    background: root.red ? @linear-gradient(180deg, #d0463a 0%, #a3261c 55%, #7e1a12 100%) : Pn.plate-face;
+    word := Text {
+        x: 12px;
+        y: root.red ? 0 : 0.5px;
+        width: self.preferred-width;
+        height: root.height;
+        text: root.text.to-uppercase();
+        color: root.red ? Pn.wax-ink : Pn.engrave;
+        font-family: "Cinzel";
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 2.2px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+}

@@ -254,9 +254,11 @@ component StateTag inherits Rectangle {
 // The counter: brass around ivory figure wheels, one per digit, with the separators
 // engraved between them. "Phono Figures" lays the digits out one advance apart and the
 // separators take no room, so each wheel shows its digit by clipping the whole string.
-component Odometer inherits Rectangle {
+export component Odometer inherits Rectangle {
     in property <bool> big;
     in property <string> text: Main.elapsed + Main.elapsed-tenth;
+    // The text ends in a tenth after a point ("00:00.0"); off for "0:47" (the other pages).
+    in property <bool> tenth: true;
     property <length> size: root.big ? 22px : 15px;
     property <length> cw: root.big ? 15px : 10px;
     property <length> ch: root.big ? 25px : 17px;
@@ -266,8 +268,8 @@ component Odometer inherits Rectangle {
     // Not character-count alone: as a repeater count it generated Rust that did not compile.
     property <int> count: root.text == "" ? 0 : root.text.character-count;
     // Counted from the end, every third character from the second is a separator:
-    // "00:00.0", "1:02:03.4".
-    property <int> m: root.count - 2;
+    // "00:00.0", "1:02:03.4" (without a tenth, from the third: "0:47").
+    property <int> m: root.count - (root.tenth ? 2 : 3);
     function is-sep(i: int) -> bool {
         return i <= root.m && Math.mod(root.m - i, 3) == 0;
     }
@@ -306,7 +308,7 @@ component Odometer inherits Rectangle {
         }
         Text {
             visible: cell.sep;
-            text: i == root.m ? "." : ":";
+            text: i == root.m && root.tenth ? "." : ":";
             color: Ph.engrave;
             font-family: "Phono Garamond";
             font-size: root.size * 0.9;
@@ -457,7 +459,7 @@ component Cylinder inherits Rectangle {
 
 // The flyball governor: 12 frames from still to full spread, picked by the input level
 // while recording (the scale runs from -40 dB, pp, to 0, ff).
-component Governor inherits Rectangle {
+export component Governor inherits Rectangle {
     in property <bool> big;
     property <bool> hi: 1phx < 0.7px;
     property <float> level: Main.recording && !Main.paused && Main.live.length > 0 ? Main.live[Main.live.length - 1] : 0;

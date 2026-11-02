@@ -2579,6 +2579,9 @@ fn main() -> Result<(), slint::PlatformError> {
                 } else if theme.get_pinball() {
                     // Pinball types them as the blue chips of its marks.
                     slint::Color::from_rgb_u8(0x8f, 0xb4, 0xff)
+                } else if theme.get_phono() {
+                    // The Phonograph writes them in red ink, as its record card shows them.
+                    slint::Color::from_rgb_u8(0xa3, 0x26, 0x1c)
                 } else {
                     theme.get_accent()
                 };

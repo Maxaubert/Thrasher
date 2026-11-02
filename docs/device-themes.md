@@ -1300,8 +1300,8 @@ there), art in `ui/skins/x-pinball/` (87 PNGs, 1.0 MB) from `tools/skin-art/x-pi
 **Built in step 5, Phonograph main page (2026-10-30):** `ui/skins/x-phono.slint` (skin 15,
 theme "Phonograph", index 22 in `Theme.names`, after Pinball), art in `ui/skins/x-phono/` (172 PNGs, 0.76 MB) from
 `tools/skin-art/x-phono.html` (`sh tools/skin-art/cut.sh x-phono OUT`; the four tiles use only
-their 1x cut). Its other pages are the classic ones in a mahogany and brass palette
-(`Theme.pages` 0).
+their 1x cut). Its other pages are written since 2026-11-02 (`Theme.pages` 15, see "Step 5,
+Phonograph on every other page" below), but not built yet.
 - Settings gallery: its tile is the Phonograph line in `Gallery.devices` (`ui/gallery.slint`), band #b48c4b.
 - The recorder is the machine: the state tag with its jewel lamp, the brass counter of figure
   wheels, the wax cylinder on its mandrel with the reproducer, the flyball governor (the level,
@@ -1366,6 +1366,120 @@ their 1x cut). Its other pages are the classic ones in a mahogany and brass pale
 - Exe +2.62 MB (65.61 to 68.23 MB): fonts 0.15 MB, art 0.76 MB, the rest generated code.
   Ember, Tape Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700
   match before and after.
+
+**Step 5, Phonograph on every other page (2026-11-02, written, not built):** mockups in
+`docs/mockups/device-themes/x-phono-pages/` (approved by Max 2026-10-31, widget variant A, the
+horn; flavour labels kept: DUBBING, THE CYLINDER SHELF, FIND A MODEL, NEW CLIP, ORDER,
+OPTIONS, WRITING).
+- `Theme.pages` is 15 for skin 15 (`pages: skin <= 15 ? skin : 0`, still one comparison; every
+  skin now has its own pages) and `Theme.phono` is the flag the shared widgets read.
+  `app.slint` has a `Theme.pages == 15` block next to each Pinball one and picks
+  `ui/skins/x-phono-pages.slint` (`ClipPage`, `SettingsPage`, `ModelsPage`, `MergePage`,
+  `AskPage`, `Widget`, `Dialog`, `Speaking`, `Drop`).
+- `ui/skins/x-phono-parts.slint` (imports nothing, so `common.slint` imports it): `Pn`, the
+  machine's colours, brushes and fonts (Cinzel capitals, Phono Garamond), `Art`, `Tile`,
+  `Wood`, `Rivet`, `Lbl`, `Plate` (an engraved brass plate, red wax for WRITING) and `PnBar`
+  (progress as the wax being cut, the brass carriage at its head). The main page keeps its own
+  copies; `Odometer` (with a new `tenth`, on by default, off for "0:47") and `Governor` are
+  exported from `x-phono.slint` and reused by the clip page and the widget. The main page did
+  not change.
+- `common.slint` gains `PnKey` (ivory, brass for the main action, red wax, ivory held down;
+  a dark rim with the key's depth under it), `PnKnob` (a round brass knob, red wax with a brass
+  ring when filled), `PnIconFace` (a knob when the IconBtn is round, else a small ivory key),
+  `PnLever` (the lever switch: a brass ringed slot that turns wax red, the brass ball sliding
+  right), `PnPointer` (the red pointer of a menu's lit row), `PnHolder` (a dropdown as the main
+  page's brass card holder round an ivory card), `PnExportArt` (EXPORT on red wax, the wax
+  filling up to the percent, DONE on brass), `PnXKey` and `PnOrderRow` (a merge or part row as
+  a cylinder tin: brass studs, the place on a brass disc, the lid that plays it, the label in
+  the main page's tin colours with the note under the name in small capitals, a brass screw to
+  remove it or the studs for its menu) and `PnShortcutArt` (Press the keys by an amber jewel,
+  Not set in italic, ivory key caps). Each is placed inside the shared widget's own type
+  (`if Theme.phono: PnKey { }`). The rest is one more branch in the existing chains: `Btn`
+  (Cinzel capitals), `IconBtn`, `Toggle`, `Select` (its list an ivory card in a brass ring, the
+  current and the hovered choice on a brass band with the red pointer, the current one in red
+  ink, opened flush right), `MenuCard`, `MenuRow` (the current project in red ink, Delete red),
+  `ExportItem`, `MenuRule` (a brass rule fading at both ends), `MenuGroup` (brass capitals),
+  `Tip` (a brass tag in italic), `TranscriptCard` (Garamond, the spoken word on brass, pause
+  tags in red italic, the change count on a wax label, EDIT on an ivory key, No transcript yet
+  and Transcribing in italic over the cut wax), the scroll bar (a brass rod with a brass
+  carriage for the thumb) and the gallery (`gallery.slint`: tiles in a brass frame on the
+  drawer, bright brass round the current and the focused one, a second ring round the focus,
+  a red wax seal with the check and the name on an ivory label on the current one, the heads
+  in brass capitals, a brass rod and an ivory thumb under each strip). The main page's menus
+  take the look too.
+- The pages draw the rest: the title bar with the brass name plate and, on the clip page, the
+  small brass CLIPS key; a heading on the wood for Settings, Models, Merge and Ask (the round
+  Back knob, the name in brass capitals, a note in italic); the clip's name on the tin's ivory
+  label with the pencil and bin keys (RENAME and DELETE wide), the line about it in small
+  capitals with the file in italic, the counter on the figure wheels with OF the length; the
+  waveform cut into the wax cylinder between brass end caps, the played part lit, the trims as
+  brass clamps and the reproducer riding the play position; the transport (brass knobs for 5 s,
+  the red wax Play, the speed as a brass plate of five stops with an ivory window, Loop on a
+  small ivory key); the record card for the transcript (WRITING on wax and a wax rim while it
+  is edited); dark drawers under engraved brass plates for the parts, the settings, the
+  options, the order, the new clip and the model filters; the models as cylinder tin labels
+  with amber jewels for quality and speed (the one in use bright, ringed in brass, with a wax
+  IN USE label); the dubbing bench (wide: a short cylinder per clip feeding the long one);
+  the answer on a riveted ivory card (Thinking by the governor, turning on the Fx clock); the
+  sources as tin labels with wax numbers and project stamps; questions and Speaking on an ivory
+  card in a riveted brass frame; the drop cover (a bright brass frame inset 12px, the crank on
+  an ivory disc in a brass ring, DROP TO IMPORT on a riveted brass plate). Messages sit on a
+  dark plate in the foot (clip, merge) or float on one ringed in brass (settings, models, Ask).
+- The widget (variant A, the horn): the main page's bell with its wax seal (Record, Stop and
+  save while recording), the state tag with its jewel (green READY, red RECORDING, amber
+  PAUSED), the governor for the level and the counter beside it, Pause on a small ivory key
+  by the counter while recording, Open window as a brass screw top right; the brass rim turns
+  wax red while recording.
+- Rust: the editor's pause tags are red ink (#a3261c).
+- No new art and no new fonts: the brass, ivory and wax are drawn in Slint; the pictures are
+  the main page's (the plate, the screws, the bell and seal, the end caps, the grooves, the
+  jewels, the crank and the governor strip).
+
+**Status (2026-11-02): written, not built.** The Slint compiles (`slint-compiler`, no errors) and
+every page was checked as a `slint-viewer` preview at 520x700 and 1100x700 (clip page with the
+editor, parts, transcribing, renaming, no transcript and exporting; settings; models; merge;
+Ask; the widget ready, recording and paused; the delete and unsaved questions; Speaking; the
+drop cover). The release build was stopped: the rustc of `thrasher-ui` passed 30 GB (30.22 GB,
+stopped by the watch, per the rule). Not done for that reason: shots of the app, the drive of
+each page's controls, the Ember, Tape Deck and Pocket Synth comparison against the Pinball build
+(its reference shots are taken), CPU and memory, clippy and the tests.
+
+**Generated code size, Phonograph pages:** `app.rs` from `slint-compiler` grew 185.05 to
+195.47 MB (+10.4 MB: about 1.35 MB for the shared widgets' Phonograph branches and parts, the
+rest the pages), as much as the Pinball pages cost (about 10 MB, about 4 MB of exe). The build's
+`app.rs` was 227.88 MB (215.81 MB for the Pinball build). The Pinball build stayed under 30 GB
+only because it gave the same 10 MB back (the eleven skins' row pickers); this one gave nothing
+back, so the rustc went past the limit. Biggest growths: `if` and `for` sub-components
+(`Component_empty`, +4.0 MB), `Component_rectangle` (+1.1 MB), the settings page (+0.6 MB with
+its drawers). Before the build can run, about 12 MB of `app.rs` has to go elsewhere, for example:
+the Cozy Cabin's `RowSelect inherits Select` (about 0.9 MB), the Pocket Synth's
+`Transcript inherits TranscriptCard` and the nine fields that inherit `TextField` (each copies
+the widget's tree), and fewer `if` blocks in the skins' settings pages.
+
+**Mockup faults fixed, not copied (Phonograph pages):** the recording widget hid Open window
+behind the RECORDING tag; the tag is set smaller so the brass screw keeps its place top right.
+Deliberate differences: the record card has no ruled
+lines (the words are a flow of chips, so lines would not meet them); the order rows show the
+note under the name and no little waveform (an order row carries none); the Ask key has no
+trumpet (a key holds words only); the answer's footnotes are plain text, not wax seals; the
+models' USED odometer is the used size in italic (it is a string, not a number); the dubbing
+picture shows up to four clips.
+
+**Lessons from the Phonograph pages:**
+- **Watch the memory of the right rustc.** The watch keeps rustc processes started after it;
+  another project's rustc was running at the same time, so the log has to name the process
+  (`--crate-name thrasher_ui`) to be read with confidence.
+- **The total matters, not one skin.** A skin's pages at a normal cost (10 MB of `app.rs`)
+  still pushed the release rustc past 30 GB, because the build was already at 28 to 29.5 GB.
+  Every new skin's pages now need a size pass that gives back at least what they add.
+- **Reuse the main page's parts by exporting them.** `Odometer` and `Governor` from
+  `x-phono.slint` serve the clip page and the widget with an `export` and one new property with
+  a default, so the main page is unchanged.
+- **A Rectangle does not pass the height of its `if` children to a layout.** The portrait
+  nameplate overlapped the wax until it became a `VerticalLayout` (a layout does count them).
+- **Components must be declared before use in a file.** `slint-compiler` reported "Unknown
+  element" for a key declared under the nameplate that used it.
+- **Git Bash heredocs with quotes broke** in this session; scripts went into files instead.
 
 **Built in step 5, Comic Book other pages (2026-10-30):** mockups in
 `docs/mockups/device-themes/x-comic-pages/` (approved by Max 2026-10-30), built as Tape Deck's
@@ -2321,6 +2435,9 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      on every other page").
      Pinball built 2026-11-02 (`Theme.pages` 14, see "Built in step 5, Pinball on every other
      page").
+     Phonograph written 2026-11-02 (`Theme.pages` 15, see "Step 5, Phonograph on every other
+     page"), not built yet: its release rustc of the UI passed 30 GB and was stopped, so a size
+     pass has to come first.
    - Size (Max, 2026-10-31): the nine would bring the exe to about 235 MB. Build all nine,
      then one size pass (palette PNGs, shared frames deduped) to pull it back toward 200 MB.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

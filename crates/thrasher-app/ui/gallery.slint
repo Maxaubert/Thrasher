@@ -14,6 +14,7 @@
 
 import { Theme, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Glass, Quest, QPx, Brick, Am, Palette, Icon, IconBtn, Win, Pk, PkRing, PkTile, SynKey, Fi, FiSkew, Cz, CzWell } from "common.slint";
 import { Pb } from "skins/x-pinball-parts.slint";
+import { Pn } from "skins/x-phono-parts.slint";
 
 export struct ThemeTile {
     // As in Theme.names.
@@ -166,12 +167,13 @@ component Tile inherits Rectangle {
         Rectangle {
             y: 0;
             height: 70px;
-            border-radius: Theme.pinball ? 0 : Theme.answer ? 6px : 8px;
-            border-width: root.on || root.focused ? 2px : 1px;
-            border-color: Theme.glass ? (root.focused ? Glass.cyan : root.on ? #ffffff : root.hover || root.down ? #ffffff73 : #ffffff2e)
+            border-radius: Theme.phono ? 2px : Theme.pinball ? 0 : Theme.answer ? 6px : 8px;
+            border-width: root.on || root.focused || Theme.phono ? 2px : 1px;
+            border-color: Theme.phono ? (root.focused || root.on ? Pn.brass-hi : root.hover || root.down ? Pn.brass : Pn.brass-mid)
+                : Theme.glass ? (root.focused ? Glass.cyan : root.on ? #ffffff : root.hover || root.down ? #ffffff73 : #ffffff2e)
                 : Theme.answer ? (root.focused ? Am.amber : root.on ? Am.rec : root.hover || root.down ? Am.print-soft : Am.edge)
                 : root.focused ? Theme.text : root.on ? Theme.accent : root.hover || root.down ? Theme.edge : Theme.divider;
-            background: Theme.glass ? (root.down ? #ffffff26 : root.hover ? #ffffff1a : #0000002e)
+            background: Theme.phono ? #160904 : Theme.glass ? (root.down ? #ffffff26 : root.hover ? #ffffff1a : #0000002e)
                 : Theme.answer ? (root.on ? Am.lit : root.down ? #e1d7c1 : root.hover ? #e8dfcb : Am.paper)
                 : root.down ? Theme.raised : root.hover ? Theme.hover : Theme.bg;
         }
@@ -189,6 +191,17 @@ component Tile inherits Rectangle {
                 image-fit: fill;
             }
         }
+        // Phonograph: a second bright brass ring round the keyboard focus.
+        Rectangle {
+            visible: Theme.phono && root.focused;
+            x: -3px;
+            y: -3px;
+            width: 116px;
+            height: 76px;
+            border-radius: 4px;
+            border-width: 1px;
+            border-color: #4a3209;
+        }
         // Answering Machine: a red lamp instead of the check.
         if root.on && Theme.answer: Rectangle {
             x: 110px - 14px;
@@ -205,23 +218,37 @@ component Tile inherits Rectangle {
             width: 18px;
             height: 18px;
             border-radius: 9px;
-            background: Theme.glass ? #ffffff : Theme.accent;
+            background: Theme.glass ? #ffffff : Theme.phono ? @radial-gradient(circle, #d0463a 0%, #a3261c 55%, #5e1209 100%) : Theme.accent;
+            border-width: Theme.phono ? 1px : 0;
+            border-color: Pn.wax-lo;
             Icon {
                 name: "check";
-                tint: Theme.glass ? #24222b : Theme.on-accent;
+                tint: Theme.glass ? #24222b : Theme.phono ? Pn.wax-ink : Theme.on-accent;
                 stroke-width: 1.8px;
                 width: 11px;
                 height: 11px;
             }
         }
-        Text {
+        // Phonograph: the current one's name on an ivory label.
+        Rectangle {
+            visible: Theme.phono && root.on;
+            x: (110px - self.width) / 2;
+            y: 74px;
+            width: min(110px, pn-name.preferred-width + 14px);
+            height: 17px;
+            border-radius: 2px;
+            background: @linear-gradient(180deg, #fbf4df 0%, #e8dab6 100%);
+            border-width: 1px;
+            border-color: Pn.brass-mid;
+        }
+        pn-name := Text {
             y: 75px;
             height: 15px;
             text: root.tile.name;
-            color: Theme.glass ? (root.on || root.hover ? Glass.ink : Glass.ink2) : Theme.answer ? (root.on ? Am.rec : Am.print) : root.on ? Theme.accent : root.hover ? Theme.text : Theme.muted;
-            font-family: Theme.pinball ? Pb.font : Theme.answer ? "Courier Prime" : Theme.pages == 6 ? "Manrope" : "Inter Tight";
-            font-size: Theme.answer ? 11px : 12px;
-            font-weight: Theme.pinball ? 600 : Theme.answer ? 700 : root.on ? 600 : 500;
+            color: Theme.phono ? (root.on ? Pn.ink : root.hover ? Pn.brass-hi : Pn.plate-ink) : Theme.glass ? (root.on || root.hover ? Glass.ink : Glass.ink2) : Theme.answer ? (root.on ? Am.rec : Am.print) : root.on ? Theme.accent : root.hover ? Theme.text : Theme.muted;
+            font-family: Theme.phono ? Pn.font : Theme.pinball ? Pb.font : Theme.answer ? "Courier Prime" : Theme.pages == 6 ? "Manrope" : "Inter Tight";
+            font-size: Theme.answer ? 11px : Theme.phono ? 13px : 12px;
+            font-weight: Theme.phono ? 600 : Theme.pinball ? 600 : Theme.answer ? 700 : root.on ? 600 : 500;
             horizontal-alignment: center;
             vertical-alignment: center;
             overflow: elide;
@@ -794,7 +821,7 @@ component Fade inherits Rectangle {
         x: self.from;
         width: self.to - self.from;
         // Phosphor's strips sit on the window's black, not on a card.
-        background: (Theme.phos ? Theme.bg : Theme.answer ? Am.paper : Theme.fighter ? Fi.panel : Theme.cozy ? Cz.well : Theme.card).with-alpha(root.to-right ? (i + 0.5) / root.strips : 1 - (i + 0.5) / root.strips);
+        background: (Theme.phos ? Theme.bg : Theme.answer ? Am.paper : Theme.fighter ? Fi.panel : Theme.cozy ? Cz.well : Theme.phono ? #26100a : Theme.card).with-alpha(root.to-right ? (i + 0.5) / root.strips : 1 - (i + 0.5) / root.strips);
     }
 }
 
@@ -880,12 +907,12 @@ component Strip inherits VerticalLayout {
         spacing: Theme.brick ? 6px : 8px;
         // Car Dashboard: small caps, as the cards' names. Brick Phone: the LCD's small caps.
         if !Theme.tape && !Theme.comic: Text {
-            text: Theme.dash || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? root.title.to-uppercase() : root.title;
-            color: Theme.pinball ? Pb.plasma-hi : Theme.cozy ? Cz.brown : Theme.fighter ? #ffffff : Theme.pocket ? Pk.l3 : Theme.phos ? Ph.hi : Theme.glass ? Glass.ink : Theme.dash ? Theme.muted : Theme.quest ? Quest.white : Theme.answer ? Am.print : Theme.synth ? #7a766d : Theme.text;
-            font-family: Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : Theme.fighter ? Fi.lean : Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.dash ? "Manrope" : Theme.synth ? Theme.mono : Theme.answer ? "Barlow Condensed" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
-            font-size: Theme.pinball ? 11px : Theme.cozy ? 11px : Theme.fighter ? 13px : Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.os95 ? 12.5px : Theme.dash ? 9px : Theme.quest ? 11px : Theme.brick ? 8px : Theme.answer ? 10px : Theme.synth ? 8px : 12px;
-            font-weight: Theme.pinball ? 700 : Theme.phos || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy ? 400 : Theme.os95 ? 700 : Theme.dash ? 800 : Theme.answer ? 700 : Theme.synth ? 700 : 600;
-            letter-spacing: Theme.pinball ? 3px : Theme.cozy ? 2.5px : Theme.fighter ? 2px : Theme.dash ? 2.3px : Theme.quest ? 0.5px : Theme.brick ? 0.5px : Theme.answer ? 2.4px : Theme.synth ? 1.9px : 0;
+            text: Theme.dash || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? root.title.to-uppercase() : root.title;
+            color: Theme.phono ? Pn.brass : Theme.pinball ? Pb.plasma-hi : Theme.cozy ? Cz.brown : Theme.fighter ? #ffffff : Theme.pocket ? Pk.l3 : Theme.phos ? Ph.hi : Theme.glass ? Glass.ink : Theme.dash ? Theme.muted : Theme.quest ? Quest.white : Theme.answer ? Am.print : Theme.synth ? #7a766d : Theme.text;
+            font-family: Theme.phono ? Pn.caps : Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : Theme.fighter ? Fi.lean : Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.dash ? "Manrope" : Theme.synth ? Theme.mono : Theme.answer ? "Barlow Condensed" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
+            font-size: Theme.phono ? 10px : Theme.pinball ? 11px : Theme.cozy ? 11px : Theme.fighter ? 13px : Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.os95 ? 12.5px : Theme.dash ? 9px : Theme.quest ? 11px : Theme.brick ? 8px : Theme.answer ? 10px : Theme.synth ? 8px : 12px;
+            font-weight: Theme.phono ? 700 : Theme.pinball ? 700 : Theme.phos || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy ? 400 : Theme.os95 ? 700 : Theme.dash ? 800 : Theme.answer ? 700 : Theme.synth ? 700 : 600;
+            letter-spacing: Theme.phono ? 2.4px : Theme.pinball ? 3px : Theme.cozy ? 2.5px : Theme.fighter ? 2px : Theme.dash ? 2.3px : Theme.quest ? 0.5px : Theme.brick ? 0.5px : Theme.answer ? 2.4px : Theme.synth ? 1.9px : 0;
             vertical-alignment: center;
         }
         if Theme.answer: VerticalLayout {
@@ -947,9 +974,9 @@ component Strip inherits VerticalLayout {
         }
         if !Theme.answer && !Theme.synth: Text {
             text: root.n;
-            color: Theme.pinball ? Pb.mute : Theme.cozy ? Cz.brown : Theme.fighter ? Fi.dim : Theme.pocket ? Pk.l2 : Theme.tape ? #6f665a : Theme.os95 ? Os.note : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.dash ? #56606c : Theme.brick ? Brick.ink2 : Theme.quest ? Quest.grey : Theme.dim;
-            font-family: Theme.pinball ? Theme.mono : Theme.cozy ? Cz.title : Theme.fighter ? Fi.body : Theme.pocket ? Pk.small : Theme.tape || Theme.dash ? Theme.mono : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
-            font-size: Theme.pinball ? 11px : Theme.cozy ? 16px : Theme.fighter ? 9.5px : Theme.pocket ? 8px : Theme.tape ? 10px : Theme.phos ? 11px : Theme.comic ? 14px : Theme.dash ? 10px : Theme.quest ? 11px : Theme.brick ? 7px : 12px;
+            color: Theme.phono ? Pn.brass : Theme.pinball ? Pb.mute : Theme.cozy ? Cz.brown : Theme.fighter ? Fi.dim : Theme.pocket ? Pk.l2 : Theme.tape ? #6f665a : Theme.os95 ? Os.note : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.dash ? #56606c : Theme.brick ? Brick.ink2 : Theme.quest ? Quest.grey : Theme.dim;
+            font-family: Theme.phono ? Pn.caps : Theme.pinball ? Theme.mono : Theme.cozy ? Cz.title : Theme.fighter ? Fi.body : Theme.pocket ? Pk.small : Theme.tape || Theme.dash ? Theme.mono : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
+            font-size: Theme.phono ? 10px : Theme.pinball ? 11px : Theme.cozy ? 16px : Theme.fighter ? 9.5px : Theme.pocket ? 8px : Theme.tape ? 10px : Theme.phos ? 11px : Theme.comic ? 14px : Theme.dash ? 10px : Theme.quest ? 11px : Theme.brick ? 7px : 12px;
             letter-spacing: Theme.comic ? 1px : Theme.fighter ? 1.5px : 0;
             font-weight: Theme.fighter ? 700 : 400;
             vertical-alignment: center;
@@ -1107,11 +1134,11 @@ component Strip inherits VerticalLayout {
         padding-bottom: Theme.tape ? 6px : 0;
         Rectangle {
             visible: root.scrolls;
-            height: Theme.pinball ? 7px : Theme.tape ? 4px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.synth ? 5px : Theme.answer ? 6px : Theme.brick ? 5px : Theme.pocket ? 6px : Theme.quest ? 9px : Theme.fighter ? 4px : 3px;
-            border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.brick || Theme.quest || Theme.pocket || Theme.fighter || Theme.cozy ? 0 : Theme.pinball ? 3.5px : Theme.answer ? 3px : 2px;
-            background: Theme.pinball ? #050507 : Theme.cozy ? Cz.parch-d : Theme.fighter ? #1b1733 : Theme.pocket ? transparent : Theme.tape ? #1b1410 : Theme.phos ? Ph.faint : Theme.os95 ? Os.face : Theme.comic ? #ffffff : Theme.glass ? #ffffff1f : Theme.quest ? Quest.ink : Theme.brick ? Brick.ghost : Theme.answer ? #c7bba1 : Theme.synth ? transparent : Theme.divider;
-            border-width: Theme.pinball ? 1px : Theme.comic ? 1.5px : Theme.quest ? 3px : Theme.brick ? 1px : 0;
-            border-color: Theme.pinball ? #5e5866 : Theme.quest ? Quest.rule : Theme.brick ? Brick.ink : Comic.ink;
+            height: Theme.phono ? 4px : Theme.pinball ? 7px : Theme.tape ? 4px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.synth ? 5px : Theme.answer ? 6px : Theme.brick ? 5px : Theme.pocket ? 6px : Theme.quest ? 9px : Theme.fighter ? 4px : 3px;
+            border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.brick || Theme.quest || Theme.pocket || Theme.fighter || Theme.cozy ? 0 : Theme.phono ? 2px : Theme.pinball ? 3.5px : Theme.answer ? 3px : 2px;
+            background: Theme.phono ? @linear-gradient(180deg, #4a3209 0%, #b58a35 50%, #4a3209 100%) : Theme.pinball ? #050507 : Theme.cozy ? Cz.parch-d : Theme.fighter ? #1b1733 : Theme.pocket ? transparent : Theme.tape ? #1b1410 : Theme.phos ? Ph.faint : Theme.os95 ? Os.face : Theme.comic ? #ffffff : Theme.glass ? #ffffff1f : Theme.quest ? Quest.ink : Theme.brick ? Brick.ghost : Theme.answer ? #c7bba1 : Theme.synth ? transparent : Theme.divider;
+            border-width: Theme.phono ? 0 : Theme.pinball ? 1px : Theme.comic ? 1.5px : Theme.quest ? 3px : Theme.brick ? 1px : 0;
+            border-color: Theme.phono ? #5e5866 : Theme.pinball ? #5e5866 : Theme.quest ? Quest.rule : Theme.brick ? Brick.ink : Comic.ink;
             property <length> thumb-w: Theme.pinball ? 13px : max(30px, self.width * root.view-w / max(root.content-w, 1px));
             // Sized from the parent, not in percent: a percent size here made a binding loop
             // with the Car Dashboard's flexbox settings page.
@@ -1138,11 +1165,11 @@ component Strip inherits VerticalLayout {
             }
             if !Theme.synth: Rectangle {
                 x: Theme.quest ? 3px + (root.max-off > 0 ? root.x-off / root.max-off * (parent.width - 6px - self.width) : 0) : root.max-off > 0 ? root.x-off / root.max-off * (parent.width - self.width) : 0;
-                y: Theme.pinball ? -4px : Theme.tape ? -1px : Theme.quest ? 3px : Theme.answer ? -3px : 0;
+                y: Theme.phono ? -2px : Theme.pinball ? -4px : Theme.tape ? -1px : Theme.quest ? 3px : Theme.answer ? -3px : 0;
                 width: Theme.quest ? max(30px, (parent.width - 6px) * root.view-w / max(root.content-w, 1px)) : parent.thumb-w;
-                height: Theme.pinball ? 13px : Theme.tape ? 6px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.pocket ? 6px : Theme.brick ? 5px : Theme.answer ? 12px : Theme.fighter ? 4px : 3px;
-                border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.brick || Theme.quest || Theme.pocket || Theme.fighter || Theme.cozy ? 0 : Theme.answer ? 3px : 2px;
-                background: Theme.pinball ? transparent : Theme.cozy ? Cz.brown : Theme.fighter ? Fi.p1 : Theme.pocket ? Pk.l3 : Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.phos ? Ph.ph : Theme.os95 ? Os.face : Theme.comic ? Comic.ink : Theme.glass ? #ffffff73
+                height: Theme.phono ? 8px : Theme.pinball ? 13px : Theme.tape ? 6px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.pocket ? 6px : Theme.brick ? 5px : Theme.answer ? 12px : Theme.fighter ? 4px : 3px;
+                border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.brick || Theme.quest || Theme.pocket || Theme.fighter || Theme.cozy ? 0 : Theme.answer || Theme.phono ? 3px : 2px;
+                background: Theme.phono ? @linear-gradient(180deg, #fbf4df 0%, #d9c9a1 100%) : Theme.pinball ? transparent : Theme.cozy ? Cz.brown : Theme.fighter ? Fi.p1 : Theme.pocket ? Pk.l3 : Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.phos ? Ph.ph : Theme.os95 ? Os.face : Theme.comic ? Comic.ink : Theme.glass ? #ffffff73
                     : Theme.answer ? @linear-gradient(180deg, #635c56 0%, #4b4540 100%) : Theme.quest ? Quest.grey : Theme.edge;
                 OsBevel { visible: Theme.os95; kind: 0; }
                 if Theme.pinball: Image {

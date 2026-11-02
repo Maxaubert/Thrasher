@@ -1157,8 +1157,8 @@ IN PLAY).
   the disk on a big dot matrix); MULTIBALL with the ball count and the total, and the balls'
   shares of the length in insert colours (wide); WIZARD MODE; small backglass sheets for the
   questions and Speaking; the drop cover (chrome rails, a lit arrow, the red Import bumper,
-  DROP TO IMPORT on the dot matrix). Messages run on a dot matrix strip in the apron, or float
-  on a small one.
+  DROP TO IMPORT on the dot matrix). Messages run on a dot matrix strip in the apron (clip,
+  settings, merge), or float on a small one (models, Ask).
 - The widget (variant A, the mini backglass): READY, REC or PAUSED with the blinking lamp and
   the timer big on the dot matrix, the input level on eight lane lamps, the red plunger knob
   (REC, STOP while recording), Pause by the lanes while recording, Open window top right; the
@@ -1177,11 +1177,19 @@ skin); the shared Open window icon; the new clip's well has no merge icon (the a
 icon); the model rows' inserts are coloured by their place in the catalogue; the current
 choice of a dropdown is lit like the hovered one and keeps the check, not a lamp.
 
+**Review fixes (Pinball pages, 2026-11-02):** the scroll ball sat in the middle of a long
+invisible thumb, so it never reached the ends of its rail (half way down at the top of a
+page); the thumb is now the 13 px ball itself (`ScrollDecor.thumb-h`), top at the start and
+bottom at the end, as the mockup. The transcript's words ran under the rail and the ball;
+its text keeps 16 px clear on the right. Settings shows its last message on a dot matrix in
+a 40 px apron, as the settings mockup, not in a floating box. Exe 115.73 MB, `app.rs`
+215.81 MB (+0.03 MB); release rustc of the UI peaked at 27.3 and 29.5 GB in two builds.
+
 **Generated code size, Pinball pages:** the pages add about 10 MB of `app.rs` on their own.
 Before the build, the row pickers of eleven skins that inherited `Select` (RowSelect, Combo,
 LineSelect, RackSelect, GroupSelect) became `Select` with the same width and height at each
 use: a component that inherits `Select` copies its whole tree and popup (about 0.87 MB of
-`app.rs` per skin). With that, `app.rs` grew only nothing in all: it is 0.3 MB smaller (216.1 to 215.8 MB) and the
+`app.rs` per skin). With that, `app.rs` did not grow at all: it is 0.3 MB smaller (216.1 to 215.8 MB) and the
 release rustc of the UI peaked at 28.0 to 28.2 GB (the Cozy Cabin build: 29.7). The Cozy Cabin's pages keep their RowSelect
 (they were not to change in this step); changing it would save the same again.
 

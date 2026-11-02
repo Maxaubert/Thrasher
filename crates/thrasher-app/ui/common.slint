@@ -8833,7 +8833,8 @@ component ScrollDecor inherits Rectangle {
     property <length> at-x: Win.width > 0 && Win.height > 0 && root.width > 0 ? self.absolute-position.x : self.absolute-position.x;
     property <length> at-y: Win.width > 0 && Win.height > 0 && root.height > 0 ? self.absolute-position.y : self.absolute-position.y;
     property <length> range: root.content-height - root.view-height;
-    property <length> thumb-h: max(28px, root.view-height * root.view-height / max(root.content-height, 1px));
+    // Pinball: the thumb is the 13 px ball, so it runs the whole rail, top to bottom.
+    property <length> thumb-h: Theme.pinball ? 13px : max(28px, root.view-height * root.view-height / max(root.content-height, 1px));
     property <length> track-h: root.view-height - 32px;
     property <length> thumb95: max(14px, root.track-h * root.view-height / max(root.content-height, 1px));
     for i in root.top-depth > 0 ? root.strips : 0: Rectangle {
@@ -10508,7 +10509,7 @@ export component TranscriptCard inherits Rectangle {
                 init => { root.scroll-y = self.content-y; }
                 VerticalLayout {
                     padding-left: 0;
-                    padding-right: Theme.os95 ? 22px : Theme.quest ? 18px : 10px;
+                    padding-right: Theme.os95 ? 22px : Theme.quest ? 18px : Theme.pinball ? 16px : 10px;
                     padding-top: 2px;
                     padding-bottom: 6px;
                     Rectangle {
@@ -10588,7 +10589,7 @@ export component TranscriptCard inherits Rectangle {
                 changed content-y => { root.scroll-y = self.content-y; }
                 init => { root.scroll-y = self.content-y; }
                 VerticalLayout {
-                    padding-right: Theme.os95 ? 22px : Theme.pocket ? 14px : Theme.quest ? 18px : 10px;
+                    padding-right: Theme.os95 ? 22px : Theme.pocket ? 14px : Theme.quest ? 18px : Theme.pinball ? 16px : 10px;
                     spacing: 8px;
                     if root.summarising && root.summary == "": Text {
                         text: "Summarising";
@@ -10615,7 +10616,7 @@ export component TranscriptCard inherits Rectangle {
                 changed content-y => { root.scroll-y = self.content-y; }
                 init => { root.scroll-y = self.content-y; }
                 VerticalLayout {
-                    padding-right: Theme.os95 ? 22px : Theme.pocket ? 14px : Theme.quest ? 18px : 10px;
+                    padding-right: Theme.os95 ? 22px : Theme.pocket ? 14px : Theme.quest ? 18px : Theme.pinball ? 16px : 10px;
                     Text {
                         text: root.translation != "" ? root.translation : "Translating";
                         color: Theme.quest ? (root.translation != "" ? Quest.white : Quest.grey) : Theme.tape ? (root.translation != "" ? #2f2117 : Deck.ink-soft) : Theme.phos ? (root.translation != "" ? Ph.ph : Ph.dim)
@@ -10643,7 +10644,8 @@ export component TranscriptCard inherits Rectangle {
                 changed content-y => { root.scroll-y = self.content-y; }
                 FlexboxLayout {
                     spacing: Theme.pocket ? 0 : 1px;
-                    padding-right: Theme.os95 ? 20px : Theme.pocket ? 14px : Theme.quest ? 18px : Theme.brick ? 9px : 0;
+                    // Pinball: clear of the wire rail and its 13 px ball.
+                    padding-right: Theme.os95 ? 20px : Theme.pocket ? 14px : Theme.quest ? 18px : Theme.brick ? 9px : Theme.pinball ? 16px : 0;
                     flex-wrap: wrap;
                     alignment: start;
                     // Lines sit at the top; the default spreads them over the card.

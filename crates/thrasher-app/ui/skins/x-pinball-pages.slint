@@ -2057,7 +2057,15 @@ export component SettingsPage inherits Page {
                 }
             }
         }
-        Toast { text: Main.status; }
+        // The last message runs on the dot matrix in the apron.
+        Apron {
+            height: 40px;
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                Strip { pitch: root.wide ? 2px : 1.6px; text: Main.status; }
+            }
+        }
     }
 }
 

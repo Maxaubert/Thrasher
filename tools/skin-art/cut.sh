@@ -139,7 +139,8 @@ px-cozy) PIECES="gear:gear:7:7 min:min:7:6 close:close:7:5 play:play:5:9 pause:p
   mic:mic:5:7 micsm:micsm:3:4 scroll:scroll:5:5 check:check:5:5 stop:stop:5:5 flame:flame:5:6 plant:plant:7:7
   mug:mug:7:7 candle:candle:5:7 books:books:9:6 jar:jar:6:7 tape:tape:8:6 lantern:lantern:18:23
   lantern-hot:lantern-hot:18:23 lantern-lit:lantern-lit:72:23 glow-p:glow-p:38:38 glow-w:glow-w:72:72
-  wood:wood:192:144 wood-d:wood-d:192:144 parch:parch:96:96 scene-p:scene-p:1296:36 scene-w:scene-w:1872:66" ;;
+  wood:wood:192:144 wood-d:wood-d:192:144 parch:parch:96:96 scene-p:scene-p:1296:36 scene-w:scene-w:1872:66
+  up:up:7:7 left:left:7:7 x5:x5:5:5 pencil:pencil:7:7 bin:bin:6:7 grip:grip:3:5 rule:rule:6:3 dash:dash:18:6 vdash:vdash:6:18" ;;
 # Pinball: the backglass and playfield pictures (stretched to the window in Slint; the
 # playfields and the display's nine-slice glow are used at 1x only, they are soft), the Monoton words, the display case,
 # the shooter lane, the bumpers, lamps and inserts, the flipper button, the ball and the

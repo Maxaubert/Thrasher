@@ -1118,12 +1118,6 @@ component Ready inherits HorizontalLayout {
     Value { text: "Ready"; }
 }
 
-// The picker chip of a row, as wide as its choice needs.
-component RowSelect inherits Select {
-    width: min(self.natural, 200px);
-    height: 26px;
-}
-
 // The settings cards: each group a card of message paper.
 component Appearance inherits Paper {
     callback picked(int);
@@ -1149,7 +1143,9 @@ component Recording inherits Paper {
         label: "Microphone";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                width: min(self.natural, 200px);
+                height: 26px;
                 label: "Microphone";
                 model: Pages.mic-devices;
                 current-index <=> Pages.mic-index;
@@ -1173,7 +1169,9 @@ component Recording inherits Paper {
         label: "Stop recording after";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                width: min(self.natural, 200px);
+                height: 26px;
                 label: "Stop recording after";
                 model: Pages.recording-limits;
                 current-index <=> Pages.recording-limit-index;
@@ -1301,7 +1299,9 @@ component Files inherits Paper {
         label: "Export format";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                width: min(self.natural, 200px);
+                height: 26px;
                 label: "Export format";
                 model: ["FLAC", "WAV", "MP3"];
                 current-index <=> Pages.export-format;
@@ -1364,7 +1364,9 @@ component Transcription inherits Paper {
         label: "Language";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                width: min(self.natural, 200px);
+                height: 26px;
                 label: "Language";
                 model: Pages.languages;
                 current-index <=> Pages.language-index;
@@ -1400,7 +1402,9 @@ component Transcription inherits Paper {
         label: "Max pause";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                width: min(self.natural, 200px);
+                height: 26px;
                 label: "Max pause";
                 model: Pages.max-pauses;
                 current-index <=> Pages.max-pause-index;
@@ -1433,7 +1437,9 @@ component Ai inherits Paper {
         label: "Model";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                width: min(self.natural, 200px);
+                height: 26px;
                 label: "AI model";
                 model: Pages.ai-models;
                 current-index <=> Pages.ai-model-index;

@@ -1132,12 +1132,6 @@ component Value inherits Big {
     vertical-alignment: center;
 }
 
-// The dark picker of a row, as wide as its choice needs.
-component RowSelect inherits Select {
-    width: min(self.natural, 200px);
-    height: 22px;
-}
-
 // A card: a box with a dark tag.
 component Card inherits Box {
     vertical-stretch: 0;
@@ -1202,7 +1196,9 @@ component FilesRows inherits VerticalLayout {
         label: "Export format";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                width: min(self.natural, 200px);
+                height: 22px;
                 label: "Export format";
                 model: ["FLAC", "WAV", "MP3"];
                 current-index <=> Pages.export-format;
@@ -1236,7 +1232,9 @@ component TranscriptionRows inherits VerticalLayout {
         label: "Language";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                width: min(self.natural, 200px);
+                height: 22px;
                 label: "Language";
                 model: Pages.languages;
                 current-index <=> Pages.language-index;
@@ -1272,7 +1270,9 @@ component TranscriptionRows inherits VerticalLayout {
         label: "Max pause";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                width: min(self.natural, 200px);
+                height: 22px;
                 label: "Max pause";
                 model: Pages.max-pauses;
                 current-index <=> Pages.max-pause-index;
@@ -1305,7 +1305,9 @@ component AiRows inherits VerticalLayout {
         label: "AI model";
         VerticalLayout {
             alignment: center;
-            RowSelect {
+            Select {
+                width: min(self.natural, 200px);
+                height: 22px;
                 label: "AI model";
                 model: Pages.ai-models;
                 current-index <=> Pages.ai-model-index;
@@ -1410,7 +1412,9 @@ export component SettingsPage inherits Shell {
                                     label: "Microphone";
                                     VerticalLayout {
                                         alignment: center;
-                                        RowSelect {
+                                        Select {
+                                            width: min(self.natural, 200px);
+                                            height: 22px;
                                             label: "Microphone";
                                             model: Pages.mic-devices;
                                             current-index <=> Pages.mic-index;
@@ -1434,7 +1438,9 @@ export component SettingsPage inherits Shell {
                                     label: "Stop recording after";
                                     VerticalLayout {
                                         alignment: center;
-                                        RowSelect {
+                                        Select {
+                                            width: min(self.natural, 200px);
+                                            height: 22px;
                                             label: "Stop recording after";
                                             model: Pages.recording-limits;
                                             current-index <=> Pages.recording-limit-index;

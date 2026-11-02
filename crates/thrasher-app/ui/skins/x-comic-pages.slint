@@ -1350,12 +1350,6 @@ component Plain inherits Text {
     vertical-alignment: center;
 }
 
-// The caption picker of a card row.
-component RowSelect inherits Select {
-    width: min(self.natural, 210px);
-    height: 32px;
-}
-
 // The WINDOW card. It ends the first column of a wide window and the page of a narrow
 // one, as the mockup stacks the cards (docs/mockups/device-themes/x-comic-pages).
 component WindowCard inherits Card {
@@ -1469,7 +1463,9 @@ export component SettingsPage inherits VerticalLayout {
                                     label: "Microphone";
                                     VerticalLayout {
                                         alignment: center;
-                                        RowSelect {
+                                        Select {
+                                            width: min(self.natural, 210px);
+                                            height: 32px;
                                             label: "Microphone";
                                             model: Pages.mic-devices;
                                             current-index <=> Pages.mic-index;
@@ -1493,7 +1489,9 @@ export component SettingsPage inherits VerticalLayout {
                                     label: "Stop recording after";
                                     VerticalLayout {
                                         alignment: center;
-                                        RowSelect {
+                                        Select {
+                                            width: min(self.natural, 210px);
+                                            height: 32px;
                                             label: "Stop recording after";
                                             model: Pages.recording-limits;
                                             current-index <=> Pages.recording-limit-index;
@@ -1635,7 +1633,9 @@ export component SettingsPage inherits VerticalLayout {
                                     label: "Export format";
                                     VerticalLayout {
                                         alignment: center;
-                                        RowSelect {
+                                        Select {
+                                            width: min(self.natural, 210px);
+                                            height: 32px;
                                             label: "Export format";
                                             model: ["FLAC", "WAV", "MP3"];
                                             current-index <=> Pages.export-format;
@@ -1668,7 +1668,9 @@ export component SettingsPage inherits VerticalLayout {
                                     label: "Language";
                                     VerticalLayout {
                                         alignment: center;
-                                        RowSelect {
+                                        Select {
+                                            width: min(self.natural, 210px);
+                                            height: 32px;
                                             label: "Language";
                                             model: Pages.languages;
                                             current-index <=> Pages.language-index;
@@ -1704,7 +1706,9 @@ export component SettingsPage inherits VerticalLayout {
                                     label: "Max pause";
                                     VerticalLayout {
                                         alignment: center;
-                                        RowSelect {
+                                        Select {
+                                            width: min(self.natural, 210px);
+                                            height: 32px;
                                             label: "Max pause";
                                             model: Pages.max-pauses;
                                             current-index <=> Pages.max-pause-index;
@@ -1743,7 +1747,9 @@ export component SettingsPage inherits VerticalLayout {
                                     label: "Model";
                                     VerticalLayout {
                                         alignment: center;
-                                        RowSelect {
+                                        Select {
+                                            width: min(self.natural, 210px);
+                                            height: 32px;
                                             label: "AI model";
                                             model: Pages.ai-models;
                                             current-index <=> Pages.ai-model-index;

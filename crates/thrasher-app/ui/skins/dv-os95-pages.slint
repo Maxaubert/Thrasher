@@ -145,12 +145,6 @@ component Line inherits HorizontalLayout {
     @children
 }
 
-// A drop down box of a group line.
-component Combo inherits Select {
-    width: clamp(self.natural + 8px, 96px, 170px);
-    height: 21px;
-}
-
 // A centred control for a line.
 component Mid95 inherits VerticalLayout {
     alignment: center;
@@ -1132,7 +1126,9 @@ export component SettingsPage inherits Frame {
                                     Line {
                                         label: "Microphone";
                                         Mid95 {
-                                            Combo {
+                                            Select {
+                                                width: clamp(self.natural + 8px, 96px, 170px);
+                                                height: 21px;
                                                 label: "Microphone";
                                                 model: Pages.mic-devices;
                                                 current-index <=> Pages.mic-index;
@@ -1153,7 +1149,9 @@ export component SettingsPage inherits Frame {
                                     Line {
                                         label: "Stop recording after";
                                         Mid95 {
-                                            Combo {
+                                            Select {
+                                                width: clamp(self.natural + 8px, 96px, 170px);
+                                                height: 21px;
                                                 label: "Stop recording after";
                                                 model: Pages.recording-limits;
                                                 current-index <=> Pages.recording-limit-index;
@@ -1226,7 +1224,9 @@ export component SettingsPage inherits Frame {
                                     Line {
                                         label: "Export format";
                                         Mid95 {
-                                            Combo {
+                                            Select {
+                                                width: clamp(self.natural + 8px, 96px, 170px);
+                                                height: 21px;
                                                 label: "Export format";
                                                 model: ["FLAC", "WAV", "MP3"];
                                                 current-index <=> Pages.export-format;
@@ -1255,7 +1255,9 @@ export component SettingsPage inherits Frame {
                                     if Pages.can-transcribe: Line {
                                         label: "Language";
                                         Mid95 {
-                                            Combo {
+                                            Select {
+                                                width: clamp(self.natural + 8px, 96px, 170px);
+                                                height: 21px;
                                                 label: "Language";
                                                 model: Pages.languages;
                                                 current-index <=> Pages.language-index;
@@ -1287,7 +1289,9 @@ export component SettingsPage inherits Frame {
                                     if Pages.can-transcribe: Line {
                                         label: "Max pause";
                                         Mid95 {
-                                            Combo {
+                                            Select {
+                                                width: clamp(self.natural + 8px, 96px, 170px);
+                                                height: 21px;
                                                 label: "Max pause";
                                                 model: Pages.max-pauses;
                                                 current-index <=> Pages.max-pause-index;
@@ -1321,7 +1325,9 @@ export component SettingsPage inherits Frame {
                                     Line {
                                         label: "Model";
                                         Mid95 {
-                                            Combo {
+                                            Select {
+                                                width: clamp(self.natural + 8px, 96px, 170px);
+                                                height: 21px;
                                                 label: "AI model";
                                                 model: Pages.ai-models;
                                                 current-index <=> Pages.ai-model-index;

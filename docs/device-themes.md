@@ -1114,6 +1114,127 @@ visited in turn in one run, Ember on the same exe, 2026-11-02):
   download, the answer while thinking, a real file drop (the cover is shown with
   `THRASHER_TEST_COVER`), tooltips, dragging an order row.
 
+**Built in step 5, Pinball on every other page (2026-11-02):** mockups in
+`docs/mockups/device-themes/x-pinball-pages/` (approved by Max 2026-10-31, widget variant A,
+flavour labels kept: MULTIBALL, WIZARD MODE, DRAIN, TILT, NEW GAME, BONUS, SHELF, DISK, BALLS
+IN PLAY).
+- `Theme.pages` is 14 for skin 14 (`pages: skin <= 14 ? skin : 0`, still one comparison) and
+  `Theme.pinball` is the flag the shared widgets read. `app.slint` has a `Theme.pages == 14`
+  block next to each Cozy Cabin one and picks `ui/skins/x-pinball-pages.slint` (`ClipPage`,
+  `SettingsPage`, `ModelsPage`, `MergePage`, `AskPage`, `Widget`, `Dialog`, `Speaking`, `Drop`).
+- `ui/skins/x-pinball-parts.slint`: the main page's `Pb` colours, `Art`, `Lab`, `DotText` and
+  `DotGrid`, moved out of `x-pinball.slint` unchanged and exported, plus `Lamp` (a playfield
+  lamp, off, orange, yellow or red), `Lanes` (rollover lanes lit up to a value), `Insert` (an
+  arrow insert in its colour or lit), `Dots` (a word in the dot font) and `DotBox` (a word on a
+  small dot matrix). It imports nothing, so `common.slint` imports it too.
+- `common.slint` gains `PbKey` (the lit plasma start button, the dark chrome plate, red, lit
+  plate, green), `PbRing` (a round chrome ring, plasma ringed when on), `PbSwitch` (a dark slot
+  with a lamp sliding right and lighting), `PbExportArt` (EXPORT, the ball running along a rail
+  with the percent, DONE in green), `PbOrderRow` (grip, numbered arrow insert, play ring, name
+  with its length under it, an x or the dots), `PbXKey` and `PbShortcutArt` (PRESS THE KEYS on
+  a small dot matrix, NOT SET on a dark plate, plasma key caps joined by plus signs). Each is
+  placed inside the shared widget's own type (`if Theme.pinball: PbKey { }`). The rest is one
+  more branch in the existing chains: `Btn`, `IconBtn`, `Toggle`, `Select` (a dark well with a
+  chrome edge and a plasma chevron, its list a dark plate with a plasma top edge, the current
+  and the hovered choice lit plasma with an edge, opened flush right), `MenuCard`, `MenuRow`
+  (the hovered and the open row lit plasma), `ExportItem`, `MenuRule`, `MenuGroup` (blue
+  capitals), `Tip` (a black plate with a plasma top line), `TranscriptCard` (Barlow Condensed,
+  played words brighter, the spoken word on a plasma plate, pause tags as blue mono chips, the
+  change count on a plasma tag, EDIT on a chrome plate, TRANSCRIBING in the dot font over the
+  lane lamps), the scroll bar (a wire rail with the ball as its thumb) and the gallery
+  (`gallery.slint`: the Ember tile, square, with plasma heads and the ball on its rail). The
+  main page's menus and list take the look too.
+- The pages draw the rest: the title bar with the neon brand and, on the clip page, the lit
+  CLIPS insert; slim backglass bands with the lit Back insert for Settings, Models and Ask; the
+  clip's backglass (PLAYING, PAUSED or STOPPED with OF the length on the dot matrix, the time
+  big, wide with the speakers and a dotted line of where the ball is); the nameplate with
+  Rename and Delete as yellow and red drop targets; the waveform as a wire ramp with chrome trim
+  posts and the ball on the play head; the transport on the playfield (the red flipper button,
+  chrome rings for 5 s with their 5, the speed as five rollover lanes, Loop with a lamp; wide
+  with the guides and flippers); instruction cards with screws for the transcript, the parts,
+  the settings (their names on a small dot matrix), the order, the answer and the sources; the
+  parts catalogue with lamp pips (wide on the playfield with the shelves as a lit column and
+  the disk on a big dot matrix); MULTIBALL with the ball count and the total, and the balls'
+  shares of the length in insert colours (wide); WIZARD MODE; small backglass sheets for the
+  questions and Speaking; the drop cover (chrome rails, a lit arrow, the red Import bumper,
+  DROP TO IMPORT on the dot matrix). Messages run on a dot matrix strip in the apron (clip,
+  settings, merge), or float on a small one (models, Ask).
+- The widget (variant A, the mini backglass): READY, REC or PAUSED with the blinking lamp and
+  the timer big on the dot matrix, the input level on eight lane lamps, the red plunger knob
+  (REC, STOP while recording), Pause by the lanes while recording, Open window top right; the
+  frame red while recording.
+- Rust: the editor's pause tags are the blue of the mark chips (#8fb4ff).
+- New art via `tools/skin-art/x-pinball.html` (`ONLY="back-w" sh tools/skin-art/cut.sh
+  x-pinball OUT`): back-w, the lit insert pointing left (1x and 2x, 13 KB). No new fonts.
+
+**Mockup faults fixed, not copied (Pinball pages):** the wide clip page's Export sat in the
+middle of the apron; it is flush right, after a dot matrix strip that takes the rest. The
+portrait main-page overlaps of the chrome mockup are popups over the page in the app, which
+places them itself. Small fixes: the order and source inserts carry their numbers, the wide
+speakers sit inside the backglass, the sources card is only as tall as its rows. Deliberate
+differences: the export menu has no icons before the formats (`ExportItem` draws none in any
+skin); the shared Open window icon; the new clip's well has no merge icon (the app has no such
+icon); the model rows' inserts are coloured by their place in the catalogue; the current
+choice of a dropdown is lit like the hovered one and keeps the check, not a lamp.
+
+**Review fixes (Pinball pages, 2026-11-02):** the scroll ball sat in the middle of a long
+invisible thumb, so it never reached the ends of its rail (half way down at the top of a
+page); the thumb is now the 13 px ball itself (`ScrollDecor.thumb-h`), top at the start and
+bottom at the end, as the mockup. The transcript's words ran under the rail and the ball;
+its text keeps 16 px clear on the right. Settings shows its last message on a dot matrix in
+a 40 px apron, as the settings mockup, not in a floating box. Exe 115.73 MB, `app.rs`
+215.81 MB (+0.03 MB); release rustc of the UI peaked at 27.3 and 29.5 GB in two builds.
+
+**Generated code size, Pinball pages:** the pages add about 10 MB of `app.rs` on their own.
+Before the build, the row pickers of eleven skins that inherited `Select` (RowSelect, Combo,
+LineSelect, RackSelect, GroupSelect) became `Select` with the same width and height at each
+use: a component that inherits `Select` copies its whole tree and popup (about 0.87 MB of
+`app.rs` per skin). With that, `app.rs` did not grow at all: it is 0.3 MB smaller (216.1 to 215.8 MB) and the
+release rustc of the UI peaked at 28.0 to 28.2 GB (the Cozy Cabin build: 29.7). The Cozy Cabin's pages keep their RowSelect
+(they were not to change in this step); changing it would save the same again.
+
+**Lessons from the Pinball pages:**
+- **`slint-compiler` measures a change in seconds.** `cargo install slint-compiler --version
+  1.18.1` (into a scratch folder, on the shared target) and `slint-compiler -f rust --style
+  fluent-dark --embed-resources as-absolute-path app.slint -o app.rs` give the generated code
+  without a build (about 32 MB smaller than the build's, the images are not in it). Comparing
+  the sizes of the `struct Inner<Name>` sections before and after shows what a change costs.
+- **A component that inherits a shared widget copies it** (`component RowSelect inherits
+  Select`): bind the width and height at the uses instead.
+- **A property named `right` hides the alignment word:** in a component with `in property
+  <string> right`, `horizontal-alignment: right` reads the property and fails; write
+  `TextHorizontalAlignment.right`.
+- **A layout cannot carry an accessible role:** the speed lanes are a box (`accessible-role:
+  list`) with the lanes placed by x.
+- **Insert after a block, not after its first line:** an edit script that added a line after
+  `if Theme.cozy: CzBar {` put the Pinball lanes inside the Cozy bar, where they never showed;
+  only the preview caught it.
+- **A text in a box with only an `x`** keeps its preferred width, so a centred number stuck to
+  the left of its insert; give it the box's width and height.
+- **Checks:** the scratch clips copied without their times show in another order (their
+  creation time is the copy's), so the drive uses clip_106 and clip_108, which are in view in
+  every theme at both sizes.
+
+**Budgets measured on the Pinball pages** (test copy, 2.25x display, 10 s samples, pages
+visited in turn in one run, Ember on the same exe, 2026-11-02):
+- CPU idle 0.0 to 0.6% on every page at 520x700 and 1100x700 (Ember 0.0 to 0.3%).
+- Working set against Ember at 520x700: main +6.0, clip -0.3, settings +2.6, merge +3.5, widget
+  +3.8 MB; at 1100x700: +6.0, +2.2, +4.9, +5.7, +3.9 MB (the backglass pictures).
+- Exe -0.14 MB (115.87 to 115.72 MB), `app.rs` -0.3 MB (216.1 to 215.8 MB): the Pinball pages
+  cost about 10 MB of `app.rs` (about 4 MB of exe) and the eleven skins' pickers gave back
+  as much. Art 13 KB (back-w), no new fonts. The release rustc of the UI peaked at 28.0 to
+  28.2 GB.
+- Ember, Tape Deck and Pocket Synth: every page, menu, dropdown and question at 520x700 and
+  1100x700 (38 shots each) match the Cozy Cabin build pixel for pixel, but for run to run
+  noise seen in two runs of the same build (the search caret blinking in one translate menu,
+  the anti-aliased end of Tape Deck's settings scroll thumb). The settings of the nine other
+  skins whose pickers changed (top, dropdown open, middle, end, both sizes) match too, but
+  for one Car Dashboard shot scrolled a pixel differently.
+- Not verified in the app: the models page and Ask (no transcription or AI in the test build;
+  previews only), a merged clip's parts and their menu (the test clips carry none; previews
+  only), a model download, the answer while thinking, a real file drop (the cover is shown
+  with `THRASHER_TEST_COVER`), tooltips, dragging an order row.
+
 **Built in step 5, Pinball main page (2026-10-30):** `ui/skins/x-pinball.slint` (skin 14, theme
 "Pinball", index 21 in `Theme.names`, after Cozy Cabin; `EFFECT_FPS` 0 and `RECORDING_FPS` 4
 there), art in `ui/skins/x-pinball/` (87 PNGs, 1.0 MB) from `tools/skin-art/x-pinball.html`
@@ -1137,7 +1258,8 @@ there), art in `ui/skins/x-pinball/` (87 PNGs, 1.0 MB) from `tools/skin-art/x-pi
   faces drawn by `python tools/skin-art/x-pinball-fonts.py SRC OUT` from the mockup's own 5x7
   table (127 KB). Monoton is backglass art only: the brand and the titles are PNGs, and the
   font sits in `tools/skin-art/fonts/` with its OFL for the element page, not in the app.
-- Its other pages are the classic ones in a black and plasma orange palette (`Theme.pages` 0).
+- Its other pages are its own since 2026-11-02 (`Theme.pages` 14, see "Built in step 5, Pinball
+  on every other page" above).
 
 **Lessons from Pinball:**
 - **A dot matrix is a font.** The mockup draws it on a canvas. "Pinball Dots" puts each glyph
@@ -2034,6 +2156,8 @@ Rules for new skins and widgets:
 - For a tiny absolutely positioned per-skin piece, `visible:` (about 1 to 2 KB) is
   cheaper than `if` (13 to 24 KB), but never inside a layout: invisible items still take
   layout space there.
+- No component that inherits a shared widget (`component RowSelect inherits Select`): it
+  copies the widget's whole tree; set its size at each use (2026-11-02).
 - Check `app.rs` after a skin's pages land (the newest
   `target/release/build/thrasher-ui-*/out/app.rs`): a skin's pages should cost about 3 to
   5 MB of exe, not 20 MB.
@@ -2147,6 +2271,8 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      every other page").
      Fighter Select built 2026-11-01 (`Theme.pages` 12, see "Built in step 5, Fighter Select
      on every other page").
+     Pinball built 2026-11-02 (`Theme.pages` 14, see "Built in step 5, Pinball on every other
+     page").
    - Size (Max, 2026-10-31): the nine would bring the exe to about 235 MB. Build all nine,
      then one size pass (palette PNGs, shared frames deduped) to pull it back toward 200 MB.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

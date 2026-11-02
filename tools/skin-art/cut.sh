@@ -144,7 +144,7 @@ px-cozy) PIECES="gear:gear:7:7 min:min:7:6 close:close:7:5 play:play:5:9 pause:p
 # Pinball: the backglass and playfield pictures (stretched to the window in Slint; the
 # playfields and the display's nine-slice glow are used at 1x only, they are soft), the Monoton words, the display case,
 # the shooter lane, the bumpers, lamps and inserts, the flipper button, the ball and the
-# wide flippers.
+# wide flippers; back-w is the other pages' Back key (ONLY="back-w" cuts just it).
 x-pinball) PIECES="brand:brand:139:40 title-p:title-p:202:52 title-w:title-w:334:78 bg-p:bg-p:520:146 bg-w:bg-w:400:212
   dmd-glow:dmd-glow:92:92 spk:spk:26:78 pf-p:pf-p:520:100 pf-w:pf-w:395:316
   arr-p:arr-p:24:30 arr-w1:arr-w1:26:34 arr-w2:arr-w2:22:28 arr-w3:arr-w3:20:25 rod-p:rod-p:18:22 rod-w:rod-w:18:120
@@ -154,7 +154,8 @@ x-pinball) PIECES="brand:brand:139:40 title-p:title-p:202:52 title-w:title-w:334
   lamp-off-w:lamp-off-w:28:28 lamp-o-w:lamp-o-w:28:28 lamp-y-w:lamp-y-w:28:28 lamp-r-w:lamp-r-w:28:28
   ins-0-p:ins-0-p:42:34 ins-1-p:ins-1-p:42:34 ins-2-p:ins-2-p:42:34 ins-3-p:ins-3-p:42:34 ins-s-p:ins-s-p:42:34
   ins-0-w:ins-0-w:50:40 ins-1-w:ins-1-w:50:40 ins-2-w:ins-2-w:50:40 ins-3-w:ins-3-w:50:40 ins-s-w:ins-s-w:50:40
-  flip-p:flip-p:72:72 flip-w:flip-w:78:78 ball:ball:19:19 flippers:flippers:290:132" ;;
+  flip-p:flip-p:72:72 flip-w:flip-w:78:78 ball:ball:19:19 flippers:flippers:290:132
+  back-w:back-w:50:40" ;;
 # Phonograph: parts of variable width in three slices (-l, -m, -r); the textures and the
 # grooves are tiles (only the 1x cut is used); hub and gov are frame strips.
 x-phono) PIECES="wood:wood:100:4 woodd:woodd:31:4 groove:groove:3:4 groovec:groovec:2:4

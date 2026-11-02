@@ -1,0 +1,290 @@
+// The parts the Fighter Select main page (x-fighter.slint) and its other pages
+// (x-fighter-pages.slint) share, moved out of x-fighter.slint unchanged: the colours and
+// fonts, the icons, the skewed box and key, the label, the title keys, the health bar and
+// the P1 tag.
+
+import { Main, Tips, Fx } from "../common.slint";
+
+// The mockup's colours and fonts.
+export global F {
+    out property <color> ink: #07070d;
+    out property <color> bg: #0d0b16;
+    out property <color> panel: #15122a;
+    out property <color> panel2: #1d1838;
+    out property <color> line: #2c2650;
+    out property <color> edge: #3a3266;
+    out property <color> text: #f2eefc;
+    out property <color> text2: #cfc8ea;
+    out property <color> dim: #9a92bf;
+    out property <color> faint: #5e578a;
+    out property <color> p1: #ff2d4a;
+    out property <color> p1d: #9c0f25;
+    out property <color> gold: #ffcc1f;
+    out property <color> gold2: #ff8a00;
+    out property <color> cyan: #27e0ff;
+    out property <color> green: #3dff7a;
+    out property <string> body: "Chakra Petch";
+    out property <string> disp: "Anton";
+    out property <string> lean: "Fighter Oblique";
+    out property <string> figures: "Fighter Figures";
+    // tan of the mockup's skews: 14 degrees (chips, keys), 12 (the play keys), 24 (bars).
+    out property <float> k14: 0.2493;
+    out property <float> k12: 0.2126;
+    out property <float> k24: 0.4452;
+    // Dimmed every other half second while recording (the Fx clock steps four times a
+    // second and runs twice as fast then): the P1 cursor and the status dot blink.
+    out property <bool> blink: !Main.recording || Main.paused || Math.mod(Math.floor(Fx.t), 2) == 0;
+    // The live level, -60 dB (0) to 0 dB (1), and a slower peak behind it (the health
+    // bar's red lag): the loudest of the last half second.
+    property <int> n: Main.live.length;
+    out property <float> level: Main.recording && !Main.paused && root.n > 0 ? clamp(Main.live[root.n - 1], 0, 1) : 0;
+    out property <float> peak: Main.recording && !Main.paused && root.n >= 16
+        ? clamp(max(max(max(Main.live[root.n - 1], Main.live[root.n - 4]), max(Main.live[root.n - 8], Main.live[root.n - 12])), Main.live[root.n - 16]), 0, 1)
+        : root.level;
+    out property <string> db: Main.recording && !Main.paused ? round(root.level * 60 - 60) + " DB" : "-- DB";
+
+    // A band leaning `k` px across per px of height: from x `l` to `r` as they are on row
+    // `c`, between rows `t` and `b`. Path commands in px (fit: preserve).
+    public pure function band(l: float, r: float, t: float, b: float, k: float, c: float) -> string {
+        return "M " + (l + k * (c - t)) + " " + t + " L " + (r + k * (c - t)) + " " + t + " L " + (r + k * (c - b)) + " " + b + " L " + (l + k * (c - b)) + " " + b + " Z";
+    }
+}
+
+// The mockup's icons on their own grids.
+export global G {
+    out property <string> gear: "M 15.2 12 A 3.2 3.2 0 1 1 8.8 12 A 3.2 3.2 0 1 1 15.2 12 Z M 12 2 L 12 5 M 12 19 L 12 22 M 2 12 L 5 12 M 19 12 L 22 12 M 4.9 4.9 L 7 7 M 17 17 L 19.1 19.1 M 4.9 19.1 L 7 17 M 17 7 L 19.1 4.9";
+    out property <string> min: "M 4 18 L 20 18";
+    out property <string> close: "M 5 5 L 19 19 M 19 5 L 5 19";
+    out property <string> import: "M 12 3 L 12 14 M 7 9 L 12 14 L 17 9 M 4 15 L 4 20 L 20 20 L 20 15";
+    out property <string> ask: "M 3 4 L 21 4 L 21 16 L 10 16 L 5 20 L 5 16 L 3 16 Z";
+    out property <string> widget: "M 3 4 L 21 4 L 21 20 L 3 20 Z M 3 9 L 21 9";
+    out property <string> widget-fill: "M 12 12 L 18 12 L 18 17 L 12 17 Z";
+    out property <string> search: "M 16 10 A 6 6 0 1 1 4 10 A 6 6 0 1 1 16 10 Z M 15 15 L 21 21";
+    out property <string> check: "M 5 12 L 10 17 L 19 7";
+    // Solid, on a 12 unit grid.
+    out property <string> play: "M 2.5 1.5 L 10.5 6 L 2.5 10.5 Z";
+    out property <string> pause: "M 2.5 1.5 L 5 1.5 L 5 10.5 L 2.5 10.5 Z M 7 1.5 L 9.5 1.5 L 9.5 10.5 L 7 10.5 Z";
+    out property <string> rec: "M 1.5 6 A 4.5 4.5 0 1 0 10.5 6 A 4.5 4.5 0 1 0 1.5 6 Z";
+    // Solid, on a 10 unit grid.
+    out property <string> down: "M 0 2 L 10 2 L 5 8 Z";
+}
+
+// An icon: `d` stroked (`sw` units wide) and `solid` filled, on a `view` unit grid. The
+// stroked path's box is larger by the stroke and moved back by half, since Slint fits a
+// path into its box less the stroke width.
+export component Glyph inherits Rectangle {
+    in property <string> d;
+    in property <string> solid;
+    in property <float> view: 24;
+    in property <float> sw: 2.4;
+    in property <color> tint: F.text;
+    in property <bool> square;
+    property <length> s: self.width * root.sw / root.view;
+    width: 15px;
+    height: 15px;
+    Path {
+        visible: root.d != "";
+        x: -root.s / 2;
+        y: -root.s / 2;
+        width: root.width + root.s;
+        height: root.height + root.s;
+        viewbox-width: root.view;
+        viewbox-height: root.view;
+        stroke: root.tint;
+        stroke-width: root.s;
+        stroke-line-cap: root.square ? LineCap.square : LineCap.butt;
+        fill: transparent;
+        commands: root.d != "" ? root.d : "M 0 0";
+    }
+    Path {
+        visible: root.solid != "";
+        width: root.width;
+        height: root.height;
+        viewbox-width: root.view;
+        viewbox-height: root.view;
+        fill: root.tint;
+        commands: root.solid != "" ? root.solid : "M 0 0";
+    }
+}
+
+// A skewed box filling its own box: the top edge `k` px of slant per px of height to the
+// right of the bottom one, with a rim inside it.
+export component Skew inherits Path {
+    in property <float> k: F.k14;
+    in property <brush> body;
+    in property <color> rim: transparent;
+    in property <length> rim-w: 1px;
+    property <float> w: self.width / 1px;
+    property <float> h: self.height / 1px;
+    property <float> e: root.rim-w / 1px / 2;
+    property <float> s: root.k * (root.h - 2 * root.e);
+    fit: preserve;
+    fill: root.body;
+    stroke: root.rim;
+    stroke-width: root.rim-w;
+    commands: "M " + (root.e + root.s) + " " + root.e + " L " + (root.w - root.e) + " " + root.e + " L " + (root.w - root.e - root.s) + " " + (root.h - root.e) + " L " + root.e + " " + (root.h - root.e) + " Z";
+}
+
+// A clickable skewed key with a tooltip: the title keys, the toolbar keys, the play keys.
+export component Key inherits Rectangle {
+    in property <string> label;
+    in property <string> tip;
+    in property <bool> enabled: true;
+    in property <float> k: F.k14;
+    in property <color> body: F.panel2;
+    in property <color> hot-body: #2a2350;
+    in property <color> rim: F.edge;
+    in property <length> rim-w: 1px;
+    in property <bool> hand: true;
+    out property <bool> hot: t.has-hover && root.enabled;
+    out property <bool> down: t.pressed && t.has-hover;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    Skew {
+        width: 100%;
+        height: 100%;
+        k: root.k;
+        body: root.hot ? root.hot-body : root.body;
+        rim: root.rim;
+        rim-w: root.rim-w;
+    }
+    @children
+    property <bool> hovering: t.has-hover;
+    changed hovering => { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); }
+    t := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: root.hand ? pointer : default;
+        clicked => { Tips.hide(); root.clicked(); }
+    }
+}
+
+// A label in the bold body type, spaced out.
+export component Label inherits Text {
+    color: F.gold;
+    font-family: F.body;
+    font-weight: 700;
+    font-size: 9px;
+    letter-spacing: 2px;
+    vertical-alignment: center;
+}
+
+// Settings, minimise and close: a skewed dark key with a dim glyph, white when hovered;
+// close turns red.
+export component TitleKey inherits Key {
+    in property <string> icon;
+    in property <length> size: 12px;
+    in property <float> sw;
+    in property <bool> danger;
+    in property <bool> plain;
+    tip: root.label;
+    hand: !root.plain;
+    width: 30px;
+    height: 24px;
+    body: #1b1733;
+    hot-body: root.danger ? F.p1 : #2a2350;
+    rim: #2e2850;
+    Glyph {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.size;
+        height: root.size;
+        d: root.icon;
+        sw: root.sw;
+        tint: root.hot ? #ffffff : F.dim;
+    }
+}
+
+// P1's health bar: the input level in gold over a red lag that falls behind it, slanted
+// ticks and a gloss, in a black frame with a violet rim. 18px as in the mockup plus the
+// 1px rim outside it.
+export component Health inherits Rectangle {
+    in property <float> level;
+    in property <float> lag;
+    property <float> w: self.width / 1px;
+    property <float> k: F.k24;
+    // The inside, between the 2px black frame: rows 3 to 17, slanting about row 10.
+    property <float> l: 3 + 3 * root.k;
+    property <float> r: root.w - 3 - 3 * root.k;
+    property <float> span: max(0, root.r - root.l);
+    height: 20px;
+    // The rim and the frame.
+    Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: #000000;
+        stroke: #4d3a64;
+        stroke-width: 1px;
+        commands: F.band(0.5 + 9.5 * root.k, root.w - 0.5 - 9.5 * root.k, 0.5, 19.5, root.k, 10);
+    }
+    Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: #2a0a12;
+        commands: F.band(root.l, root.r, 3, 17, root.k, 10);
+    }
+    if root.lag > 0.005: Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: #ff4d5e;
+        commands: F.band(root.l, root.l + root.span * root.lag, 3, 17, root.k, 10);
+    }
+    if root.level > 0.005: Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: @linear-gradient(180deg, #fff27a 0%, F.gold 35%, F.gold2 100%);
+        commands: F.band(root.l, root.l + root.span * root.level, 3, 17, root.k, 10);
+    }
+    // The ticks: a 2px dark band every 12px, slanted with the bar, kept off its ends.
+    Path {
+        x: (root.l + 7 * root.k) * 1px;
+        y: 3px;
+        width: max(0, root.span - 14 * root.k) * 1px;
+        height: 14px;
+        fit: preserve;
+        clip: true;
+        fill: #00000073;
+        commands: "M 10 0 L 12 0 L 5.8 14 L 3.8 14 Z M 22 0 L 24 0 L 17.8 14 L 15.8 14 Z M 34 0 L 36 0 L 29.8 14 L 27.8 14 Z M 46 0 L 48 0 L 41.8 14 L 39.8 14 Z M 58 0 L 60 0 L 53.8 14 L 51.8 14 Z M 70 0 L 72 0 L 65.8 14 L 63.8 14 Z M 82 0 L 84 0 L 77.8 14 L 75.8 14 Z M 94 0 L 96 0 L 89.8 14 L 87.8 14 Z M 106 0 L 108 0 L 101.8 14 L 99.8 14 Z M 118 0 L 120 0 L 113.8 14 L 111.8 14 Z M 130 0 L 132 0 L 125.8 14 L 123.8 14 Z M 142 0 L 144 0 L 137.8 14 L 135.8 14 Z M 154 0 L 156 0 L 149.8 14 L 147.8 14 Z M 166 0 L 168 0 L 161.8 14 L 159.8 14 Z M 178 0 L 180 0 L 173.8 14 L 171.8 14 Z M 190 0 L 192 0 L 185.8 14 L 183.8 14 Z M 202 0 L 204 0 L 197.8 14 L 195.8 14 Z M 214 0 L 216 0 L 209.8 14 L 207.8 14 Z M 226 0 L 228 0 L 221.8 14 L 219.8 14 Z M 238 0 L 240 0 L 233.8 14 L 231.8 14 Z M 250 0 L 252 0 L 245.8 14 L 243.8 14 Z M 262 0 L 264 0 L 257.8 14 L 255.8 14 Z M 274 0 L 276 0 L 269.8 14 L 267.8 14 Z M 286 0 L 288 0 L 281.8 14 L 279.8 14 Z M 298 0 L 300 0 L 293.8 14 L 291.8 14 Z M 310 0 L 312 0 L 305.8 14 L 303.8 14 Z M 322 0 L 324 0 L 317.8 14 L 315.8 14 Z M 334 0 L 336 0 L 329.8 14 L 327.8 14 Z M 346 0 L 348 0 L 341.8 14 L 339.8 14 Z M 358 0 L 360 0 L 353.8 14 L 351.8 14 Z M 370 0 L 372 0 L 365.8 14 L 363.8 14 Z M 382 0 L 384 0 L 377.8 14 L 375.8 14 Z M 394 0 L 396 0 L 389.8 14 L 387.8 14 Z M 406 0 L 408 0 L 401.8 14 L 399.8 14 Z M 418 0 L 420 0 L 413.8 14 L 411.8 14 Z M 430 0 L 432 0 L 425.8 14 L 423.8 14 Z M 442 0 L 444 0 L 437.8 14 L 435.8 14 Z M 454 0 L 456 0 L 449.8 14 L 447.8 14 Z M 466 0 L 468 0 L 461.8 14 L 459.8 14 Z M 478 0 L 480 0 L 473.8 14 L 471.8 14 Z M 490 0 L 492 0 L 485.8 14 L 483.8 14 Z M 502 0 L 504 0 L 497.8 14 L 495.8 14 Z M 514 0 L 516 0 L 509.8 14 L 507.8 14 Z M 526 0 L 528 0 L 521.8 14 L 519.8 14 Z M 538 0 L 540 0 L 533.8 14 L 531.8 14 Z M 550 0 L 552 0 L 545.8 14 L 543.8 14 Z M 562 0 L 564 0 L 557.8 14 L 555.8 14 Z M 574 0 L 576 0 L 569.8 14 L 567.8 14 Z M 586 0 L 588 0 L 581.8 14 L 579.8 14 Z M 598 0 L 600 0 L 593.8 14 L 591.8 14 Z M 610 0 L 612 0 L 605.8 14 L 603.8 14 Z M 622 0 L 624 0 L 617.8 14 L 615.8 14 Z M 634 0 L 636 0 L 629.8 14 L 627.8 14 Z M 646 0 L 648 0 L 641.8 14 L 639.8 14 Z M 658 0 L 660 0 L 653.8 14 L 651.8 14 Z M 670 0 L 672 0 L 665.8 14 L 663.8 14 Z M 682 0 L 684 0 L 677.8 14 L 675.8 14 Z M 694 0 L 696 0 L 689.8 14 L 687.8 14 Z M 706 0 L 708 0 L 701.8 14 L 699.8 14 Z M 718 0 L 720 0 L 713.8 14 L 711.8 14 Z M 730 0 L 732 0 L 725.8 14 L 723.8 14 Z M 742 0 L 744 0 L 737.8 14 L 735.8 14 Z M 754 0 L 756 0 L 749.8 14 L 747.8 14 Z M 766 0 L 768 0 L 761.8 14 L 759.8 14 Z M 778 0 L 780 0 L 773.8 14 L 771.8 14 Z M 790 0 L 792 0 L 785.8 14 L 783.8 14 Z";
+    }
+    // The gloss over the top 40%.
+    Path {
+        width: 100%;
+        height: 100%;
+        fit: preserve;
+        fill: #ffffff47;
+        commands: F.band(root.l, root.r, 3, 8.6, root.k, 10);
+    }
+}
+
+// The P1 tag: a skewed red box with P1 in the slanted type.
+export component P1Tag inherits Rectangle {
+    in property <length> size: 13px;
+    in property <length> rim: 0;
+    width: p1.preferred-width + 14px + 2 * root.rim;
+    height: root.size * 1.5 + 2 * root.rim;
+    Skew {
+        width: 100%;
+        height: 100%;
+        body: F.p1;
+        rim: root.rim > 0 ? #000000 : transparent;
+        rim-w: max(root.rim, 1px);
+    }
+    p1 := Text {
+        x: 7px + root.rim;
+        width: self.preferred-width;
+        height: parent.height;
+        text: "P1";
+        color: #ffffff;
+        font-family: F.lean;
+        font-size: root.size;
+        letter-spacing: 1px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+}

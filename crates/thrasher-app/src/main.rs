@@ -2570,6 +2570,9 @@ fn main() -> Result<(), slint::PlatformError> {
                     slint::Color::from_rgb_u8(0x86, 0x79, 0x5f)
                 } else if theme.get_synth() {
                     slint::Color::from_rgb_u8(0xff, 0x5a, 0x1e)
+                } else if theme.get_fighter() {
+                    // Fighter Select types them in the cyan of its pause tags.
+                    slint::Color::from_rgb_u8(0x27, 0xe0, 0xff)
                 } else {
                     theme.get_accent()
                 };

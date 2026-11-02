@@ -9,9 +9,10 @@
 // current one, and a gold ring round the keyboard focus.
 // Phone draws smaller framed tiles on its LCD, the current one inverted in a double frame.
 // Pocket Synth draws its tiles as pads, the current one lit orange, and a row of LEDs for
-// where the strip is.
+// where the strip is. Fighter Select draws select rows: name plates, the current tile in a
+// red frame with the P1 cursor and tag, a red scroll bar.
 
-import { Theme, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Glass, Quest, QPx, Brick, Am, Palette, Icon, IconBtn, Win, Pk, PkRing, PkTile, SynKey } from "common.slint";
+import { Theme, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Glass, Quest, QPx, Brick, Am, Palette, Icon, IconBtn, Win, Pk, PkRing, PkTile, SynKey, Fi, FiSkew } from "common.slint";
 
 export struct ThemeTile {
     // As in Theme.names.
@@ -159,7 +160,7 @@ component Tile inherits Rectangle {
     }
 
     // Ember: a framed picture, the name under it, a check on the current one.
-    if !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.synth: Rectangle {
+    if !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.synth && !Theme.fighter: Rectangle {
         Rectangle {
             y: 0;
             height: 70px;
@@ -632,6 +633,88 @@ component Tile inherits Rectangle {
         }
     }
 
+    // Fighter Select: a fighter tile of the select grid: the picture over a name plate in a
+    // violet rim; hovered violet, focused gold, the current one in a red frame and plate with
+    // the P1 cursor and tag.
+    if Theme.fighter: Rectangle {
+        property <length> rim: root.on ? 3px : root.focused || root.hover ? 2px : 1px;
+        Rectangle {
+            x: -parent.rim;
+            y: -parent.rim;
+            width: 110px + 2 * parent.rim;
+            height: 84px + 2 * parent.rim;
+            background: root.on ? Fi.p1 : root.focused ? Fi.gold : root.hover ? #6d64a3 : Fi.edge;
+        }
+        Rectangle { x: 0; y: 0; width: 110px; height: 84px; background: #000000; }
+        Rectangle {
+            x: 2px;
+            y: 2px;
+            width: 106px;
+            height: 60px;
+            clip: true;
+            if root.classic: Mini { x: 1px; y: -2px; p: Theme.palettes[root.tile.index]; }
+            if !root.classic: Image {
+                x: 1px;
+                y: -2px;
+                width: 104px;
+                height: 64px;
+                source: root.hi ? root.tile.art2 : root.tile.art;
+                image-fit: fill;
+            }
+        }
+        Rectangle {
+            x: 2px;
+            y: 64px;
+            width: 106px;
+            height: 18px;
+            background: root.on ? @linear-gradient(180deg, #5a0f22 0%, #2a0712 100%) : @linear-gradient(180deg, #221c40 0%, #16122c 100%);
+            Text {
+                x: 5px;
+                width: parent.width - 10px;
+                height: parent.height;
+                text: root.tile.name;
+                color: #ffffff;
+                font-family: Fi.body;
+                font-size: 10.5px;
+                font-weight: 700;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+        }
+        if root.on: Rectangle {
+            x: -6px;
+            y: -6px;
+            width: 122px;
+            height: 96px;
+            Rectangle { x: 0; y: 0; width: 10px; height: 2px; background: Fi.gold; }
+            Rectangle { x: 0; y: 0; width: 2px; height: 10px; background: Fi.gold; }
+            Rectangle { x: parent.width - 10px; y: 0; width: 10px; height: 2px; background: Fi.gold; }
+            Rectangle { x: parent.width - 2px; y: 0; width: 2px; height: 10px; background: Fi.gold; }
+            Rectangle { x: 0; y: parent.height - 2px; width: 10px; height: 2px; background: Fi.gold; }
+            Rectangle { x: 0; y: parent.height - 10px; width: 2px; height: 10px; background: Fi.gold; }
+            Rectangle { x: parent.width - 10px; y: parent.height - 2px; width: 10px; height: 2px; background: Fi.gold; }
+            Rectangle { x: parent.width - 2px; y: parent.height - 10px; width: 2px; height: 10px; background: Fi.gold; }
+        }
+        if root.on: Rectangle {
+            x: (110px - self.width) / 2;
+            y: -11px;
+            width: 26px;
+            height: 15px;
+            FiSkew { x: 0; y: 0; width: parent.width; height: parent.height; body: Fi.p1; rim: #000000; rim-w: 2px; }
+            Text {
+                text: "P1";
+                color: #ffffff;
+                font-family: Fi.lean;
+                font-size: 10px;
+                letter-spacing: 1px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+    }
+
     t := TouchArea {
         mouse-cursor: pointer;
         clicked => { root.picked(); }
@@ -658,7 +741,7 @@ component Fade inherits Rectangle {
         x: self.from;
         width: self.to - self.from;
         // Phosphor's strips sit on the window's black, not on a card.
-        background: (Theme.phos ? Theme.bg : Theme.answer ? Am.paper : Theme.card).with-alpha(root.to-right ? (i + 0.5) / root.strips : 1 - (i + 0.5) / root.strips);
+        background: (Theme.phos ? Theme.bg : Theme.answer ? Am.paper : Theme.fighter ? Fi.panel : Theme.card).with-alpha(root.to-right ? (i + 0.5) / root.strips : 1 - (i + 0.5) / root.strips);
     }
 }
 
@@ -730,7 +813,7 @@ component Strip inherits VerticalLayout {
 
     // Its head.
     if root.divided && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.quest && !Theme.brick: Rectangle { height: 6px; }
-    if root.divided && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.quest && !Theme.brick: Rectangle { height: Theme.comic ? 2.5px : 1px; background: Theme.comic ? Comic.ink : Theme.glass ? #ffffff1a : Theme.divider; }
+    if root.divided && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.quest && !Theme.brick && !Theme.fighter: Rectangle { height: Theme.comic ? 2.5px : 1px; background: Theme.comic ? Comic.ink : Theme.glass ? #ffffff1a : Theme.divider; }
     if root.divided && Theme.brick: Rectangle { height: 6px; }
     if root.divided && Theme.phos: Rectangle { height: 8px; }
     if Theme.tape: Rectangle { height: 4px; }
@@ -744,12 +827,12 @@ component Strip inherits VerticalLayout {
         spacing: Theme.brick ? 6px : 8px;
         // Car Dashboard: small caps, as the cards' names. Brick Phone: the LCD's small caps.
         if !Theme.tape && !Theme.comic: Text {
-            text: Theme.dash || Theme.quest || Theme.brick || Theme.answer || Theme.synth ? root.title.to-uppercase() : root.title;
-            color: Theme.pocket ? Pk.l3 : Theme.phos ? Ph.hi : Theme.glass ? Glass.ink : Theme.dash ? Theme.muted : Theme.quest ? Quest.white : Theme.answer ? Am.print : Theme.synth ? #7a766d : Theme.text;
-            font-family: Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.dash ? "Manrope" : Theme.synth ? Theme.mono : Theme.answer ? "Barlow Condensed" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
-            font-size: Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.os95 ? 12.5px : Theme.dash ? 9px : Theme.quest ? 11px : Theme.brick ? 8px : Theme.answer ? 10px : Theme.synth ? 8px : 12px;
-            font-weight: Theme.phos || Theme.quest || Theme.brick ? 400 : Theme.os95 ? 700 : Theme.dash ? 800 : Theme.answer ? 700 : Theme.synth ? 700 : 600;
-            letter-spacing: Theme.dash ? 2.3px : Theme.quest ? 0.5px : Theme.brick ? 0.5px : Theme.answer ? 2.4px : Theme.synth ? 1.9px : 0;
+            text: Theme.dash || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter ? root.title.to-uppercase() : root.title;
+            color: Theme.fighter ? #ffffff : Theme.pocket ? Pk.l3 : Theme.phos ? Ph.hi : Theme.glass ? Glass.ink : Theme.dash ? Theme.muted : Theme.quest ? Quest.white : Theme.answer ? Am.print : Theme.synth ? #7a766d : Theme.text;
+            font-family: Theme.fighter ? Fi.lean : Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.dash ? "Manrope" : Theme.synth ? Theme.mono : Theme.answer ? "Barlow Condensed" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
+            font-size: Theme.fighter ? 13px : Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.os95 ? 12.5px : Theme.dash ? 9px : Theme.quest ? 11px : Theme.brick ? 8px : Theme.answer ? 10px : Theme.synth ? 8px : 12px;
+            font-weight: Theme.phos || Theme.quest || Theme.brick || Theme.fighter ? 400 : Theme.os95 ? 700 : Theme.dash ? 800 : Theme.answer ? 700 : Theme.synth ? 700 : 600;
+            letter-spacing: Theme.fighter ? 2px : Theme.dash ? 2.3px : Theme.quest ? 0.5px : Theme.brick ? 0.5px : Theme.answer ? 2.4px : Theme.synth ? 1.9px : 0;
             vertical-alignment: center;
         }
         if Theme.answer: VerticalLayout {
@@ -811,10 +894,11 @@ component Strip inherits VerticalLayout {
         }
         if !Theme.answer && !Theme.synth: Text {
             text: root.n;
-            color: Theme.pocket ? Pk.l2 : Theme.tape ? #6f665a : Theme.os95 ? Os.note : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.dash ? #56606c : Theme.brick ? Brick.ink2 : Theme.quest ? Quest.grey : Theme.dim;
-            font-family: Theme.pocket ? Pk.small : Theme.tape || Theme.dash ? Theme.mono : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
-            font-size: Theme.pocket ? 8px : Theme.tape ? 10px : Theme.phos ? 11px : Theme.comic ? 14px : Theme.dash ? 10px : Theme.quest ? 11px : Theme.brick ? 7px : 12px;
-            letter-spacing: Theme.comic ? 1px : 0;
+            color: Theme.fighter ? Fi.dim : Theme.pocket ? Pk.l2 : Theme.tape ? #6f665a : Theme.os95 ? Os.note : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.dash ? #56606c : Theme.brick ? Brick.ink2 : Theme.quest ? Quest.grey : Theme.dim;
+            font-family: Theme.fighter ? Fi.body : Theme.pocket ? Pk.small : Theme.tape || Theme.dash ? Theme.mono : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : "Inter Tight";
+            font-size: Theme.fighter ? 9.5px : Theme.pocket ? 8px : Theme.tape ? 10px : Theme.phos ? 11px : Theme.comic ? 14px : Theme.dash ? 10px : Theme.quest ? 11px : Theme.brick ? 7px : 12px;
+            letter-spacing: Theme.comic ? 1px : Theme.fighter ? 1.5px : 0;
+            font-weight: Theme.fighter ? 700 : 400;
             vertical-alignment: center;
             accessible-role: none;
         }
@@ -838,7 +922,13 @@ component Strip inherits VerticalLayout {
                 }
             }
         }
-        Rectangle { horizontal-stretch: 1; }
+        // Fighter Select: a red rule fading out to the right.
+        if Theme.fighter: VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            Rectangle { height: 2px; background: @linear-gradient(90deg, Fi.p1 0%, #ff2d4a00 100%); }
+        }
+        Rectangle { horizontal-stretch: Theme.fighter ? 0 : 1; }
         // Always in the layout, so the width does not depend on whether it scrolls.
         HorizontalLayout {
             visible: root.scrolls;
@@ -922,7 +1012,7 @@ component Strip inherits VerticalLayout {
             }
             for tile[i] in root.tiles: Tile {
                 x: root.pad + i * root.pitch - root.x-off;
-                y: Theme.tape ? 2px : Theme.os95 ? 4px : Theme.brick ? 5px : 6px;
+                y: Theme.tape ? 2px : Theme.os95 ? 4px : Theme.brick ? 5px : Theme.fighter ? 12px : 6px;
                 tile: tile;
                 classic: root.classic;
                 focused: keys.has-focus && i == root.cursor;
@@ -962,9 +1052,9 @@ component Strip inherits VerticalLayout {
         padding-bottom: Theme.tape ? 6px : 0;
         Rectangle {
             visible: root.scrolls;
-            height: Theme.tape ? 4px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.synth ? 5px : Theme.answer ? 6px : Theme.brick ? 5px : Theme.pocket ? 6px : Theme.quest ? 9px : 3px;
-            border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.brick || Theme.quest || Theme.pocket ? 0 : Theme.answer ? 3px : 2px;
-            background: Theme.pocket ? transparent : Theme.tape ? #1b1410 : Theme.phos ? Ph.faint : Theme.os95 ? Os.face : Theme.comic ? #ffffff : Theme.glass ? #ffffff1f : Theme.quest ? Quest.ink : Theme.brick ? Brick.ghost : Theme.answer ? #c7bba1 : Theme.synth ? transparent : Theme.divider;
+            height: Theme.tape ? 4px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.synth ? 5px : Theme.answer ? 6px : Theme.brick ? 5px : Theme.pocket ? 6px : Theme.quest ? 9px : Theme.fighter ? 4px : 3px;
+            border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.brick || Theme.quest || Theme.pocket || Theme.fighter ? 0 : Theme.answer ? 3px : 2px;
+            background: Theme.fighter ? #1b1733 : Theme.pocket ? transparent : Theme.tape ? #1b1410 : Theme.phos ? Ph.faint : Theme.os95 ? Os.face : Theme.comic ? #ffffff : Theme.glass ? #ffffff1f : Theme.quest ? Quest.ink : Theme.brick ? Brick.ghost : Theme.answer ? #c7bba1 : Theme.synth ? transparent : Theme.divider;
             border-width: Theme.comic ? 1.5px : Theme.quest ? 3px : Theme.brick ? 1px : 0;
             border-color: Theme.quest ? Quest.rule : Theme.brick ? Brick.ink : Comic.ink;
             property <length> thumb-w: max(30px, self.width * root.view-w / max(root.content-w, 1px));
@@ -997,9 +1087,9 @@ component Strip inherits VerticalLayout {
                 x: Theme.quest ? 3px + (root.max-off > 0 ? root.x-off / root.max-off * (parent.width - 6px - self.width) : 0) : root.max-off > 0 ? root.x-off / root.max-off * (parent.width - self.width) : 0;
                 y: Theme.tape ? -1px : Theme.quest ? 3px : Theme.answer ? -3px : 0;
                 width: Theme.quest ? max(30px, (parent.width - 6px) * root.view-w / max(root.content-w, 1px)) : parent.thumb-w;
-                height: Theme.tape ? 6px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.pocket ? 6px : Theme.brick ? 5px : Theme.answer ? 12px : 3px;
-                border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.brick || Theme.quest || Theme.pocket ? 0 : Theme.answer ? 3px : 2px;
-                background: Theme.pocket ? Pk.l3 : Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.phos ? Ph.ph : Theme.os95 ? Os.face : Theme.comic ? Comic.ink : Theme.glass ? #ffffff73
+                height: Theme.tape ? 6px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.pocket ? 6px : Theme.brick ? 5px : Theme.answer ? 12px : Theme.fighter ? 4px : 3px;
+                border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.brick || Theme.quest || Theme.pocket || Theme.fighter ? 0 : Theme.answer ? 3px : 2px;
+                background: Theme.fighter ? Fi.p1 : Theme.pocket ? Pk.l3 : Theme.tape ? @linear-gradient(180deg, #e3c58a 0%, #9c7538 100%) : Theme.phos ? Ph.ph : Theme.os95 ? Os.face : Theme.comic ? Comic.ink : Theme.glass ? #ffffff73
                     : Theme.answer ? @linear-gradient(180deg, #635c56 0%, #4b4540 100%) : Theme.quest ? Quest.grey : Theme.edge;
                 OsBevel { visible: Theme.os95; kind: 0; }
             }

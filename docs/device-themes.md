@@ -810,8 +810,8 @@ visited in turn in one run, Ember on the same exe, 2026-10-31):
 **Built in step 5, Fighter Select main page (2026-10-30):** `ui/skins/x-fighter.slint` (skin 12,
 theme "Fighter Select", index 19 in `Theme.names`, after Pocket Synth), art in
 `ui/skins/x-fighter/` (12 PNGs, 0.10 MB) from `tools/skin-art/x-fighter.html`
-(`sh tools/skin-art/cut.sh x-fighter OUT`). Its other pages are the classic ones in its violet
-palette (`Theme.pages` 0).
+(`sh tools/skin-art/cut.sh x-fighter OUT`). Its other pages are its own since 2026-11-01
+(`Theme.pages` 12, see "Built in step 5, Fighter Select on every other page" below).
 - Settings gallery: its tile is the Fighter Select line in `Gallery.devices` (`ui/gallery.slint`), band #d63a2a.
 - The recorder is P1's HUD: the microphone, the health bar (the live level in gold over a red
   peak that falls behind it, -60 to 0 dB), the round clock and READY (RECORDING, PAUSED), and
@@ -872,6 +872,101 @@ palette (`Theme.pages` 0).
 - Exe +2.33 MB (65.61 to 67.94 MB): fonts 48 KB, art 0.10 MB, the rest generated code. Ember,
   Tape Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700 match
   before and after.
+
+**Built in step 5, Fighter Select on every other page (2026-11-01):** mockups in
+`docs/mockups/device-themes/x-fighter-pages/` (approved by Max 2026-10-31, widget variant A,
+flavour labels kept: PROFILE, OPTIONS, ROSTER, TAG TEAM, STORY MODE, STAGE SELECT, K.O., WAIT,
+NEW STAGE, LOADING, NEW CHALLENGER).
+- `Theme.pages` is 12 for skin 12 (`pages: skin <= 12 ? skin : 0`, still one comparison) and
+  `Theme.fighter` is the flag the shared widgets read. `app.slint` has a `Theme.pages == 12`
+  block next to each Pocket Synth one and picks `ui/skins/x-fighter-pages.slint` (`ClipPage`,
+  `SettingsPage`, `ModelsPage`, `MergePage`, `AskPage`, `Widget`, `Dialog`, `Speaking`, `Drop`).
+- `ui/skins/x-fighter-parts.slint`: the parts the main page and the other pages share, moved
+  out of `x-fighter.slint` unchanged (`F`, `G`, `Glyph`, `Skew`, `Key`, `Label`, `TitleKey`,
+  `Health`, `P1Tag`). The fighters (`Pose`, `Fighter`) moved to `common.slint`, as the merge
+  rows draw them too, with `FiPortrait` (a fighter in its backdrop, cut to its box).
+- `common.slint` gains the `Fi` global (colours, fonts, the lit red plate), `FiSkew` (a
+  slanted box in px), `FiKey` (a slanted key: dark, gold, red, cyan or gold rimmed),
+  `FiSwitch` (the two cell switch), `FiExportArt` (EXPORT, the gold bar filling under the
+  percent, DONE) and `FiOrderRow` (grip, red place tag, name plate with the fighter, play key,
+  length, x or dots). Each is one skin-only component placed inside the shared widget's own
+  type (`if Theme.fighter: FiKey { }`); the rest of the look is one more branch in the
+  existing chains: `Btn` (Anton capitals on a slanted key, `red` the red one), `IconBtn`,
+  `Toggle`, `Select` (the Stage chip's face with the gold arrow, its list a dark panel with a
+  red top edge, the current choice on the red plate with a gold edge, opened flush right so it
+  stays in the window), `MenuCard`, `MenuRow` (projects in Fighter Oblique capitals, the open
+  row and the current project on the red plate, icons before the project actions),
+  `ProjectMenu` (STAGE SELECT over it), `ExportItem`, `MenuRule`, `MenuGroup`, `ShortcutBox`
+  (white slanted key caps, Press the keys in gold by a red square), `Tip` (black, framed gold),
+  `TranscriptCard` (Chakra Petch, the playing word on gold, pause tags cyan, the change count
+  on a red tag, EDIT on a slanted key, No transcript yet and Transcribing in the slanted type
+  over a health bar), the scroll thumb (red) and the gallery (`gallery.slint`: fighter tiles in
+  select rows, the current one red framed with the P1 cursor and tag, gold when focused, the
+  heads in the slanted type with a red rule, a red scroll bar).
+- The pages draw the rest: the title bar with the gold Back key, tagged panels (red tags, gold
+  for STAGE, OPTIONS and NEW CLIP, gold frame and tag while editing), the clip's profile
+  (portrait in a red frame, the name in the slanted type, the counter in Fighter Figures gold),
+  the stage waveform (gold played part, gold trim brackets, red head), slanted speed cells,
+  the roster with quality and speed as slanted pips and a health bar while downloading, the tag
+  team cards joined by gold plus signs (wide), the answer in a dialogue box with a portrait,
+  announcer panels for the questions and the speaking cover, and the drop cover with NEW
+  CHALLENGER. Messages are dark plates with a gold edge.
+- The widget (variant A): the main page's FIGHT diamond (its `rec-p`/`stop-p` art), the status
+  word and dot, the round clock and a health bar, Pause while recording, Open window; the top
+  edge red while recording.
+- Rust: the editor's pause tags are the cyan of the tags (#27e0ff).
+- No new art or fonts: the pages reuse the main page's FIGHT art and its four fonts; everything
+  else is drawn.
+
+**Mockup faults fixed, not copied (Fighter Select pages):** the portrait clip page did not fit
+700px with a merged clip's parts, so the transcript panel shrinks (to 60px) and cuts its words
+to the panel; the wide profile's counter sits beside OF 2:03 instead of under the name so the
+stage heading is not covered; a short dropdown list opens flush with the chip's right edge,
+not past the window. Deliberate differences: the merge rows show the fighter of their place,
+not of the clip's tile; the widget's Open window key is the shared expand icon; the Ask key is
+a cyan slanted key without the dim state's own colour (it fades when off, as every key).
+Review fixes (2026-11-01): the translate menu's INSTALL is the mockup's cyan tag (it was the
+classic red word); on the wide clip page the counter sits in a start aligned row (its fixed
+width capped the name column at about 170px, so "clip_101 merged" and the file name were cut
+short and RENAME and DELETE sat mid panel), and a name over 10 characters steps down from 40px
+to 30px. Lesson: a child with a fixed `width` in a layout caps the whole layout's width.
+
+**Lessons from the Fighter Select pages:**
+- **An `if` whose root is a component copies that component.** `if !root.wide: FilesCard { }`
+  made a second FilesCard inside the `if` (266 KB of `app.rs`), as did the cards, the parts,
+  the answer and the sources. Wrapping them, `if !root.wide: VerticalLayout { FilesCard { } }`,
+  keeps one shared type; with that and the next point the pages went from +17.0 MB of
+  `app.rs` (exe +5.98 MB) to +13.6 MB (exe +4.74 MB).
+- **`component Transcript inherits TranscriptCard` copies the whole transcript card** (its
+  popups and loops, about 0.8 MB of `app.rs`). The pages use `TranscriptCard { }` with the
+  bindings at each use instead. The other skins still inherit it; changing them would save the
+  same again per skin.
+- **A panel used with children is copied into every use,** so its tag is `visible:` rather
+  than `if` (about 1 KB instead of 15 KB per panel).
+- **A chain edit can move a classic look:** giving the classic ShortcutBox's "Not set" an
+  explicit size and alignment moved it in Ember and Tape Deck; Fighter Select got its own
+  Text instead. Comparing the classic settings shots before and after caught it.
+- **`slint-viewer --check app.slint` and `--screenshot`** of a preview wrapper (sample state
+  through `--load-data`, run on the hidden desktop) check and show every page in seconds, so
+  only three release builds (about 30 minutes each) were needed.
+- **Checks:** the test build has no transcription and no local AI, so the models page and Ask
+  were checked in the previews only; the clip list here has no clip_005, so the state script
+  used clip_100. A hidden desktop run started with a plain `&` from the agent's shell was cut
+  off after about 19 minutes; long runs go through the tool's own background mode.
+
+**Budgets measured on the Fighter Select pages** (test copy, 2.25x display, 10 s samples, pages
+visited in turn in one run, Ember on the same exe, 2026-11-01):
+- CPU idle 0.0 to 0.5% on every page at 520x700 and 1100x700 (Ember 0.0 to 0.6%).
+- Working set over Ember at 520x700: main +2.7, clip -6.0, settings -1.2, merge 0.0, widget
+  -1.2 MB; at 1100x700: +2.3, -0.1, +3.0, +4.1, -0.2 MB.
+- Exe +4.74 MB (106.12 to 110.85 MB), `app.rs` +13.6 MB (187.9 to 201.5 MB); no new art or
+  fonts. The release rustc of the UI peaked at 26.7 to 28.2 GB.
+- Ember, Tape Deck and Pocket Synth: every page, menu, dropdown and question at 520x700 and
+  1100x700 (38 shots each) match the main build pixel for pixel. The Fighter Select main page
+  differs only by its scroll thumb, now red, and its menus.
+- Not verified in the app: the models page and Ask (no transcription or AI in the test build;
+  previews only), a merged clip's parts (the test clips carry none; previews only), a model
+  download, the answer while thinking.
 
 **Built in step 5, Cozy Cabin main page (2026-10-30):** `ui/skins/px-cozy.slint` (skin 13, theme
 "Cozy Cabin", index 20 in `Theme.names`, after Fighter Select; `fill_gallery` skips empty names,
@@ -1961,6 +2056,8 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      Machine on every other page").
      Pocket Synth built 2026-10-31 (`Theme.pages` 11, see "Built in step 5, Pocket Synth on
      every other page").
+     Fighter Select built 2026-11-01 (`Theme.pages` 12, see "Built in step 5, Fighter Select
+     on every other page").
    - Size (Max, 2026-10-31): the nine would bring the exe to about 235 MB. Build all nine,
      then one size pass (palette PNGs, shared frames deduped) to pull it back toward 200 MB.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

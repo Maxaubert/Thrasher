@@ -1300,8 +1300,8 @@ there), art in `ui/skins/x-pinball/` (87 PNGs, 1.0 MB) from `tools/skin-art/x-pi
 **Built in step 5, Phonograph main page (2026-10-30):** `ui/skins/x-phono.slint` (skin 15,
 theme "Phonograph", index 22 in `Theme.names`, after Pinball), art in `ui/skins/x-phono/` (172 PNGs, 0.76 MB) from
 `tools/skin-art/x-phono.html` (`sh tools/skin-art/cut.sh x-phono OUT`; the four tiles use only
-their 1x cut). Its other pages are written since 2026-11-02 (`Theme.pages` 15, see "Step 5,
-Phonograph on every other page" below), but not built yet.
+their 1x cut). Its other pages are built since 2026-11-02 (`Theme.pages` 15, see "Built in
+step 5, Phonograph on every other page" below).
 - Settings gallery: its tile is the Phonograph line in `Gallery.devices` (`ui/gallery.slint`), band #b48c4b.
 - The recorder is the machine: the state tag with its jewel lamp, the brass counter of figure
   wheels, the wax cylinder on its mandrel with the reproducer, the flyball governor (the level,
@@ -1367,7 +1367,7 @@ Phonograph on every other page" below), but not built yet.
   Ember, Tape Deck, Phosphor and Pocket main pages at 520x700, 420x560, 700x700 and 1100x700
   match before and after.
 
-**Step 5, Phonograph on every other page (2026-11-02, written, not built):** mockups in
+**Built in step 5, Phonograph on every other page (2026-11-02):** mockups in
 `docs/mockups/device-themes/x-phono-pages/` (approved by Max 2026-10-31, widget variant A, the
 horn; flavour labels kept: DUBBING, THE CYLINDER SHELF, FIND A MODEL, NEW CLIP, ORDER,
 OPTIONS, WRITING).
@@ -1436,26 +1436,50 @@ OPTIONS, WRITING).
   the main page's (the plate, the screws, the bell and seal, the end caps, the grooves, the
   jewels, the crank and the governor strip).
 
-**Status (2026-11-02): written, not built.** The Slint compiles (`slint-compiler`, no errors) and
-every page was checked as a `slint-viewer` preview at 520x700 and 1100x700 (clip page with the
-editor, parts, transcribing, renaming, no transcript and exporting; settings; models; merge;
-Ask; the widget ready, recording and paused; the delete and unsaved questions; Speaking; the
-drop cover). The release build was stopped: the rustc of `thrasher-ui` passed 30 GB (30.22 GB,
-stopped by the watch, per the rule). Not done for that reason: shots of the app, the drive of
-each page's controls, the Ember, Tape Deck and Pocket Synth comparison against the Pinball build
-(its reference shots are taken), CPU and memory, clippy and the tests.
+**Built (2026-11-02), on the second size pass.** The first build of these pages (on the Pinball
+branch) was stopped at 30.22 GB of rustc; the pages were then rebased onto the second size pass
+(`fix/ui-code-size-2`, see "Generated code size") and follow its rules: the shared widgets' skin
+pieces are `if` (MenuRow's pointer too), MenuCard's frame is in `MenuCardArt`, SRow's label and
+note are `SRowText`, and the models' search slot is a `Slot` at each use (it was
+`ModelSearch inherits Slot`, a copy).
+- Checks, all in the app on the hidden desktop (test copy, scratch clips and settings):
+  - Every page and state at 520x700 and 1100x700: main page with the project menu, a row's menu
+    and its Export submenu; the rename, delete and new project questions; the clip page (plain,
+    playing, paused, marks, the export menu, exporting and exported, translate, editing,
+    renaming, no transcript); a real merge of two clips and the merged clip's parts with a
+    part's menu; settings (top, a dropdown open, scrolled, the end, the hotkey listening); the
+    merge page; the widget ready, recording and paused; the Speaking and drop covers. Compared
+    by eye with the approved mockups.
+  - Controls driven: speed, Loop, Play, Pause, back and forward 5 s, typing a new name, copy the
+    transcript, Clean voice, a dropdown pick by keys, the tray switch, a three clip merge with
+    a part played and one removed, the widget's Record, Pause, Resume and Stop.
+  - Ember, Tape Deck and Pocket Synth (main page, delete question, clip page, settings top, a
+    dropdown open, scrolled) at both sizes match the `fix/ui-code-size-2` build pixel for
+    pixel (36 of 36); the only difference between two runs of that build is 9 px of Tape
+    Deck's scrolled settings at 520, run to run noise.
+  - `cargo test --release -p thrasher-app` (18 passed), `cargo fmt --all` and
+    `cargo clippy --release -p thrasher-app -- -D warnings` clean (its clippy-driver peaked at
+    18.52 GB).
+- Not reachable in this build: the models page and Ask (no transcription and no local AI, as
+  for every skin), so they were checked only as `slint-viewer` previews; tooltips do not show
+  headless.
 
-**Generated code size, Phonograph pages:** `app.rs` from `slint-compiler` grew 185.05 to
-195.47 MB (+10.4 MB: about 1.35 MB for the shared widgets' Phonograph branches and parts, the
-rest the pages), as much as the Pinball pages cost (about 10 MB, about 4 MB of exe). The build's
-`app.rs` was 227.88 MB (215.81 MB for the Pinball build). The Pinball build stayed under 30 GB
-only because it gave the same 10 MB back (the eleven skins' row pickers); this one gave nothing
-back, so the rustc went past the limit. Biggest growths: `if` and `for` sub-components
-(`Component_empty`, +4.0 MB), `Component_rectangle` (+1.1 MB), the settings page (+0.6 MB with
-its drawers). Before the build can run, about 12 MB of `app.rs` has to go elsewhere, for example:
-the Cozy Cabin's `RowSelect inherits Select` (about 0.9 MB), the Pocket Synth's
-`Transcript inherits TranscriptCard` and the nine fields that inherit `TextField` (each copies
-the widget's tree), and fewer `if` blocks in the skins' settings pages.
+**Budgets measured on the Phonograph pages** (test copy, 1.125x display, 520x700, 10 s
+samples, two runs each, Ember in the same build beside it):
+- CPU idle 0.0 to 0.8% on every page (main, clip, settings, merge, widget), Ember 0.0 to 0.8%.
+- Working set vs Ember: main 39.1 to 43.1 vs 36.6 to 36.7 MB, settings 56.3 to 59.5 vs 52.8 to
+  53.1, merge 56.1 to 59.6 vs 52.6 to 52.7, widget 50.3 to 53.7 vs 45.8 to 46.4 (+2.5 to +7 MB);
+  the clip page with the hour long transcript 167.1 to 171.1 vs 172.2 to 172.3 MB.
+- Exe 107.47 to 111.21 MB (+3.74 MB), release `app.rs` 170.81 to 179.84 MB (+9.0 MB); the
+  release rustc of the UI peaked at 26.96 and 26.39 GB in two builds (24.80 GB for the size
+  pass alone).
+
+**Generated code size, Phonograph pages:** on the second size pass `app.rs` from
+`slint-compiler` grew 144.50 to 152.16 MB (+7.7 MB; it was +10.4 MB on the Pinball branch).
+Biggest growths: `if` and `for` bodies (`Component_empty` +2.3 MB, `Component_rectangle`
++1.0 MB), then one more copy of each settings card and page. The first build (on the Pinball
+branch, `app.rs` 227.88 MB) passed 30 GB; the size pass gave back 45 MB, so this one stays
+about 3 GB under the limit. The next skin's pages need their own size pass first.
 
 **Mockup faults fixed, not copied (Phonograph pages):** the recording widget hid Open window
 behind the RECORDING tag; the tag is set smaller so the brass screw keeps its place top right.
@@ -1490,6 +1514,26 @@ picture shows up to four clips.
   end as the mockup does, parts rows sit the note under a 15px name, and the glyphs are 14 to
   16 px. The drop cover's plate is a fixed 186px: sized from the text's preferred width, its
   rivets touched the words.
+- **Previews do not show the software renderer's limits** (build, 2026-11-02). The
+  `slint-viewer` previews drew every knob round; in the app the round brass knobs, Play, the
+  lever's ball and slot, the jewels, the wax seals, the order rows' discs and lids and the drop
+  cover's crank disc were squares, because the software renderer fills a gradient as a square
+  whatever its `border-radius` (see "Software renderer limits" above). They are now `PnDisc`
+  (`x-phono-parts.slint`): seven solid round rings shaded from `c0` in the middle through `c1`
+  at `mid` to `c2` at the edge, with an optional edge ring and children. The lever's slot is
+  solid round ends with a square gradient between them.
+- **A gradient of three or more stops can leave a row open.** The software renderer draws it as
+  one band per pair of stops, cut on whole pixels; on a half pixel position a row at a stop is
+  left out and what is under it shows. On the 520 wide clip page that drew the EDIT key's brass
+  ring as a line across the key. PnKey, Plate, Wood, the speed plate and the drop plate now
+  have their middle colour under the gradient (as a box under it, or the root's colour with
+  the gradient on a child).
+- **Check in the app, not only in previews.** Shoot every page at both widths before calling a
+  skin's pages done; zoom in on round parts and keys.
+- **A real merge is needed for the parts list:** the scratch `clip_101 merged` has no `parts`.
+  Merge Meeting (2) and Meeting (3) (select one, shift click the other, Merge 2 clips twice);
+  the new clip opens on its page with the parts. The scratch clips copied in one go sort in
+  any order; copy them one by one a second apart so the list order is fixed.
 
 **Built in step 5, Comic Book other pages (2026-10-30):** mockups in
 `docs/mockups/device-themes/x-comic-pages/` (approved by Max 2026-10-30), built as Tape Deck's
@@ -2445,9 +2489,8 @@ Each step is one PR, tested on the headless test copy, and merged only after Max
      on every other page").
      Pinball built 2026-11-02 (`Theme.pages` 14, see "Built in step 5, Pinball on every other
      page").
-     Phonograph written 2026-11-02 (`Theme.pages` 15, see "Step 5, Phonograph on every other
-     page"), not built yet: its release rustc of the UI passed 30 GB and was stopped, so a size
-     pass has to come first.
+     Phonograph built 2026-11-02 (`Theme.pages` 15, see "Built in step 5, Phonograph on every
+     other page"), after the second size pass (its first build passed 30 GB of rustc).
    - Size (Max, 2026-10-31): the nine would bring the exe to about 235 MB. Build all nine,
      then one size pass (palette PNGs, shared frames deduped) to pull it back toward 200 MB.
    - Build tip (Max, 2026-10-30): parallel worktrees share one `CARGO_TARGET_DIR`

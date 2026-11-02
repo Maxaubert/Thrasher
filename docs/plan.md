@@ -380,3 +380,20 @@ The old colour themes (Volt, Glacier, Mint, Violet, Signal, Chalk) are removed (
   Japanese font.
 - Sumi must not use the orange red accent (Max, 2026-10-27). Slint's software renderer has
   no backdrop blur, so the translucent cards sit over soft glows instead.
+
+### Device themes (2026-10-28 to 2026-11-02)
+
+Spec and per-skin notes: [device-themes.md](device-themes.md). 15 device skins on top of
+the classic themes, each with its own main page and the full device look on every other
+page (clip, settings, models, merge, Ask, dialogs, menus, widget), chosen in a theme
+gallery in Settings.
+
+- Main pages built 2026-10-28 to 2026-10-30. Other pages: Tape Deck first, then Phosphor,
+  Desktop 95, Comic Book, Spatial Glass, Car Dashboard (#120 to #125), Pocket, Quest Menu,
+  Brick Phone, Answering Machine, Pocket Synth (#126 to #130), Fighter Select, Cozy Cabin,
+  Pinball and Phonograph (#132 to #134, #136). Widget variant A for every skin.
+- Generated code: by the eleventh skin Slint's output was 467 MB of Rust, the exe 246 MB,
+  and one rustc needed over 30 GB. Two size passes (#131, #135) brought it to about 180 MB
+  and 111 MB with all 15 skins, every theme pixel identical. The rules new UI code must
+  follow are in device-themes.md, "Generated code size".
+- Builds: one cargo command at a time, tests in release (docs/building.md).

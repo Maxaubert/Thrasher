@@ -30,6 +30,10 @@ passed 30 GB at that point, also with `-j 4` (2026-11-01), so run the app's test
 `cargo test --release -p thrasher-app`, which reuses the release UI build. Building `--bin thrasher-transcribe` also needs thrasher-ui;
 after the app's own build it is already compiled. What makes Slint's output large and the
 rules that keep it small: docs/device-themes.md, "Generated code size" (2026-11-01).
+After the second size pass and the last four skins' pages (#132 to #136, 2026-11-02) it is
+about 180 MB, the exe 111 MB, and a release rustc peaks near 25 to 27 GB (clippy about
+19 GB). GitHub's Windows runners have 16 GB, so CI cannot build the UI
+(docs/open-questions.md, question 21).
 
 ## With transcription (whisper.cpp)
 

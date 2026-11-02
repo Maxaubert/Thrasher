@@ -75,3 +75,14 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
     or raise the budget?
     **Answered 2026-10-28:** raise it to 35 MB. **2026-10-29:** after the other pages added
     10.35 MB, Max chose the full look everywhere and accepts an exe near 200 MB.
+
+## Added 2026-11-02 (device skins finished)
+
+20. **Phosphor's bracketed keys** (`[r]ename`, `[t]r`, `[m]arks`) look like keyboard
+    shortcuts, but most of those letters do nothing. Add the shortcuts, or draw them
+    without the bracketed letter? For now they stay as mocked up.
+21. **CI cannot build the UI any more.** Besides the billing block (question 1), a release
+    rustc of the generated UI needs about 25 to 27 GB and a debug one over 30 GB; GitHub's
+    Windows runners have 16 GB. Options: a self-hosted runner on this PC, CI for
+    `thrasher-core` only, or fmt plus core tests only. Until then the checks are run
+    locally on every PR (release tests, fmt, clippy).

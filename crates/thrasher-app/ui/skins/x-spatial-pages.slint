@@ -585,10 +585,12 @@ component Parts inherits VerticalLayout {
         padding-left: 8px;
         Label { text: Pages.parts-busy ? "PARTS  ·  WORKING" : "PARTS"; }
     }
-    // The fade sits on a box: opacity on OrderList itself copies all of it.
+    // The fade sits on a box: opacity on OrderList itself copies all of it. The box takes
+    // the list's own height: a child's `height` gives its box no height in a layout.
     Rectangle {
+        height: parts-list.height;
         opacity: Pages.parts-busy ? 0.45 : 1;
-        OrderList {
+        parts-list := OrderList {
             rows: Pages.parts;
             menu: true;
             enabled: !Pages.parts-busy && !Main.recording;

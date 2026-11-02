@@ -2192,8 +2192,11 @@ Rules (added to the ones above):
   none to its parent, a visible one without x and y does; so check both before switching).
   `visible` stays right for a piece of a widget used a handful of times.
 - **No `opacity`, `visible` or `drop-shadow-*` on a use of a big component:** put it on a
-  box around the use (`Rectangle { opacity: x; OrderList { } }`; a box without x, y or size
-  takes the inner element's layout constraints, so nothing moves).
+  box around the use (`Rectangle { height: list.height; opacity: x; list := OrderList { } }`).
+  A component that sets its own `height` (OrderList does) gives the box no height in a
+  layout: the box must take it (`height: list.height`), or the box stretches or collapses.
+  This broke the merged clip's parts list in Phosphor (stretched) and Spatial Glass
+  (collapsed under the transcript) until the second pass review (2026-11-02).
 - **Nothing inherits a shared widget,** also not to set a few looks (`component Field
   inherits TextField { height: 24px; }`): use the widget with those bindings at each use.
 - **A container used with children holds no `if` or `for`:** move the part that has them

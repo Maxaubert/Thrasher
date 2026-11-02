@@ -3,6 +3,7 @@
 // widgets. app.slint holds the window itself; ui/skins/ the looks of the main page.
 
 import { Pb, Lamp, Lanes, Insert, DotBox } from "skins/x-pinball-parts.slint";
+import { Pn, PnBar, PnDisc, PnRule } from "skins/x-phono-parts.slint";
 
 // One line of the model library: a group heading, or a model in that group's card.
 export struct ModelRow {
@@ -271,13 +272,14 @@ export global Theme {
     // Menu's (skins/px-quest-pages.slint), 9 the Brick Phone's (skins/dv-brick-pages.slint), 10 the
     // Answering Machine's (skins/dv-answer-pages.slint), 11 the Pocket Synth's
     // (skins/dv-synth-pages.slint), 12 Fighter Select's (skins/x-fighter-pages.slint), 13 the
-    // Cozy Cabin's (skins/px-cozy-pages.slint), 14 Pinball's
-    // (skins/x-pinball-pages.slint), else 0, the classic pages in the theme's palette
+    // Cozy Cabin's (skins/px-cozy-pages.slint), 14 Pinball's (skins/x-pinball-pages.slint),
+    // 15 the Phonograph's (skins/x-phono-pages.slint), else 0, the classic pages in the
+    // theme's palette
     // (also for skins whose pages are not built yet).
     // One comparison, not a chain of 13: Slint pastes a cheap global binding into every
     // read, so a long chain here was copied 36,000 times into the generated code (see
-    // docs/device-themes.md, Generated code size). Skins 1 to 14 have their own pages.
-    out property <int> pages: root.skin <= 14 ? root.skin : 0;
+    // docs/device-themes.md, Generated code size). Skins 1 to 15 have their own pages.
+    out property <int> pages: root.skin <= 15 ? root.skin : 0;
     // The Tape Deck skin: the shared widgets below draw their deck look for it.
     out property <bool> tape: root.skin == 1;
     // The Phosphor skin: the shared widgets below draw their terminal look for it.
@@ -285,7 +287,7 @@ export global Theme {
     // Desktop 95's pages: the shared widgets draw grey 95 bevels, checkboxes and menus.
     out property <bool> os95: root.pages == 3;
     // The height of a menu row: Desktop 95's and the Brick Phone's menus are tighter.
-    out property <length> menu-h: root.os95 || root.pocket || root.brick ? 22px : root.quest ? 27px : root.answer ? 28px : root.synth ? 28px : root.fighter || root.cozy || root.pinball ? 30px : 34px;
+    out property <length> menu-h: root.os95 || root.pocket || root.brick ? 22px : root.quest ? 27px : root.answer ? 28px : root.synth ? 28px : root.fighter || root.cozy || root.pinball || root.phono ? 30px : 34px;
     // The space round a menu's rows: the Quest Menu's window frame is 9px.
     out property <length> menu-pad: root.quest ? 9px : 5px;
     // The Brick Phone's pages: the shared widgets draw ink on its amber LCD, menus as
@@ -318,6 +320,9 @@ export global Theme {
     // Pinball's pages: the shared widgets draw chrome plates, the lit plasma key, lamp
     // switches and dark plates with a plasma top edge (the Pb parts below).
     out property <bool> pinball: root.pages == 14;
+    // The Phonograph's pages: the shared widgets draw brass and ivory keys, lever switches
+    // and ivory cards in a brass frame (the Pn parts below).
+    out property <bool> phono: root.pages == 15;
 }
 
 // Pocket's colours and fonts (docs/mockups/device-themes/px-pocket.html and
@@ -1777,6 +1782,8 @@ component MenuCardArt inherits Rectangle {
     if Theme.fighter: Rectangle { x: 0; y: 0; width: parent.width; height: 2px; background: Fi.p1; }
     // Pinball: a dark plate with a plasma top edge.
     if Theme.pinball: Rectangle { x: 0; y: 0; width: parent.width; height: 2px; background: Pb.plasma; }
+    // Phonograph: an ivory card in a brass ring with a dark edge.
+    if Theme.phono: Rectangle { x: -1px; y: -1px; width: parent.width + 2px; height: parent.height + 2px; border-radius: 5px; border-width: 1px; border-color: Pn.soot; }
     // Cozy Cabin: a parchment note in an ink ring with a hard shadow.
     if Theme.cozy: Rectangle { x: 6px; y: 6px; width: parent.width; height: parent.height; background: #00000059; }
     // In a box: `visible` on a component makes Slint copy it at every use.
@@ -1828,10 +1835,10 @@ export component MenuCard inherits Rectangle {
     in property <length> title-indent;
     // Answering Machine: a card of message paper.
     // Fighter Select: a dark panel with a red top edge.
-    background: Theme.tape || Theme.comic || Theme.synth || Theme.pocket || Theme.quest || Theme.cozy ? transparent : Theme.pinball ? Pb.pop : Theme.fighter ? Fi.menu : Theme.brick ? Brick.lcd1 : Theme.phos ? Ph.bg2 : Theme.os95 ? (root.list ? #ffffff : Os.face) : Theme.glass ? Glass.menu : Theme.dash ? #171b21 : Theme.answer ? Am.paper : root.sub ? Theme.raised : Theme.popup;
-    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? 18px : Theme.dash ? 12px : Theme.answer ? 6px : Theme.synth ? 12px : 10px;
-    border-width: Theme.cozy ? 0 : Theme.tape || Theme.comic || Theme.pocket || Theme.quest || Theme.synth ? 0 : Theme.os95 ? (root.list ? 1px : 0) : Theme.brick ? 2px : 1px;
-    border-color: Theme.pinball ? Pb.edge : Theme.os95 ? #000000 : Theme.phos ? Ph.ph : Theme.glass ? #ffffff57 : Theme.dash ? #ffffff33 : Theme.answer ? Am.chip-lip : Theme.edge;
+    background: Theme.tape || Theme.comic || Theme.synth || Theme.pocket || Theme.quest || Theme.cozy ? transparent : Theme.phono ? Pn.card : Theme.pinball ? Pb.pop : Theme.fighter ? Fi.menu : Theme.brick ? Brick.lcd1 : Theme.phos ? Ph.bg2 : Theme.os95 ? (root.list ? #ffffff : Os.face) : Theme.glass ? Glass.menu : Theme.dash ? #171b21 : Theme.answer ? Am.paper : root.sub ? Theme.raised : Theme.popup;
+    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.phono ? 4px : Theme.glass ? 18px : Theme.dash ? 12px : Theme.answer ? 6px : Theme.synth ? 12px : 10px;
+    border-width: Theme.cozy ? 0 : Theme.phono ? 2px : Theme.tape || Theme.comic || Theme.pocket || Theme.quest || Theme.synth ? 0 : Theme.os95 ? (root.list ? 1px : 0) : Theme.brick ? 2px : 1px;
+    border-color: Theme.phono ? Pn.brass-mid : Theme.pinball ? Pb.edge : Theme.os95 ? #000000 : Theme.phos ? Ph.ph : Theme.glass ? #ffffff57 : Theme.dash ? #ffffff33 : Theme.answer ? Am.chip-lip : Theme.edge;
     drop-shadow-blur: Theme.cozy ? 0 : Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : 20px;
     drop-shadow-offset-y: root.shadow-y;
     drop-shadow-color: #00000099;
@@ -1943,6 +1950,194 @@ export component Icon inherits Path {
         : "";
 }
 
+// The Phonograph's keys and switches (docs/mockups/device-themes/x-phono-pages/), drawn by
+// the shared widgets for it; its colours and plates are in skins/x-phono-parts.slint.
+
+// A Phonograph key: `kind` 0 ivory, 1 brass (the main action), 2 red wax, 3 ivory held down
+// (a key that is on). A dark rim with the key's depth under it, a brass ring round ivory.
+export component PnKey inherits Rectangle {
+    in property <int> kind;
+    in property <bool> hover;
+    in property <bool> pressed;
+    property <bool> down: root.pressed || root.kind == 3;
+    Rectangle {
+        x: -2.5px;
+        y: -2.5px;
+        width: root.width + 5px;
+        height: root.height + 5px + (root.down ? 1px : 3px);
+        border-radius: 7px;
+        background: Pn.soot;
+    }
+    Rectangle {
+        x: -1.5px;
+        y: -1.5px;
+        width: root.width + 3px;
+        height: root.height + 3px;
+        border-radius: 6px;
+        background: root.kind == 1 ? #4a3209 : root.kind == 2 ? Pn.wax-lo : Pn.brass-mid;
+    }
+    // The face's middle colour under its gradient: the software renderer draws a gradient of
+    // three or more stops in bands that can leave a row open at a stop when the key sits on a
+    // half pixel, and the brass ring showed through it as a line across the key.
+    Rectangle {
+        border-radius: 5px;
+        background: root.kind == 1 ? Pn.brass : root.kind == 2 ? Pn.wax : root.down ? #e9dcb8 : Pn.ivory;
+    }
+    Rectangle {
+        border-radius: 5px;
+        background: root.kind == 1 ? Pn.brass-face : root.kind == 2 ? Pn.wax-face : root.down ? Pn.ivory-sunk : Pn.ivory-face;
+    }
+    Rectangle { visible: root.hover && !root.pressed; border-radius: 5px; background: #ffffff2e; }
+    Rectangle { visible: root.pressed; border-radius: 5px; background: #00000024; }
+}
+
+// A round brass knob holding an icon (back and forward 5, Back): red wax when filled (Play),
+// sunk darker while it is on.
+export component PnKnob inherits Rectangle {
+    in property <bool> on;
+    in property <bool> filled;
+    in property <bool> hover;
+    in property <bool> pressed;
+    Rectangle {
+        x: -2px;
+        y: -2px;
+        width: root.width + 4px;
+        height: root.height + 4px;
+        border-radius: self.width / 2;
+        background: root.filled ? #4a3209 : Pn.soot;
+    }
+    Rectangle {
+        visible: root.filled;
+        x: -1px;
+        y: -1px;
+        width: root.width + 2px;
+        height: root.height + 2px;
+        border-radius: self.width / 2;
+        background: #e8c86e;
+    }
+    // Rings, not a radial gradient: the software renderer fills a gradient as a square.
+    PnDisc {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.height;
+        c0: root.filled ? #d0463a : root.on || root.pressed ? #b58a35 : #f6e3a1;
+        c1: root.filled ? #a3261c : #d1a84f;
+        c2: root.filled ? #5e1209 : #7a5717;
+        mid: !root.filled && (root.on || root.pressed) ? 0.55 : 0.5;
+    }
+    Rectangle { visible: root.hover && !root.pressed; border-radius: self.width / 2; background: #ffffff2e; }
+}
+
+// The red pointer before the hovered or current line of a Phonograph menu.
+export component PnPointer inherits Path {
+    width: 5px;
+    height: 7px;
+    viewbox-width: 5;
+    viewbox-height: 7;
+    commands: "M 0 0 L 5 3.5 L 0 7 Z";
+    fill: Pn.wax;
+    accessible-role: none;
+}
+
+// A Phonograph dropdown: a brass card holder round an ivory card (as the main page's project
+// holder), a bright brass ring while it has the focus.
+export component PnHolder inherits Rectangle {
+    in property <bool> hot;
+    in property <bool> hover;
+    Rectangle {
+        visible: root.hot;
+        x: -2px;
+        y: -2px;
+        width: root.width + 4px;
+        height: root.height + 4px;
+        border-radius: 5px;
+        border-width: 2px;
+        border-color: Pn.brass-hi;
+    }
+    Rectangle {
+        x: 3px;
+        y: 3px;
+        width: root.width - 6px;
+        height: root.height - 6px;
+        border-radius: 2px;
+        background: root.hover ? @linear-gradient(180deg, #fffaea 0%, #f1e4c2 100%) : @linear-gradient(180deg, #fbf4df 0%, #e8dab6 100%);
+        Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: #00000026; }
+    }
+}
+
+// The face of a Phonograph IconBtn: a knob when it is round, else a key.
+component PnIconFace inherits Rectangle {
+    in property <bool> round;
+    in property <bool> on;
+    in property <bool> filled;
+    in property <bool> hover;
+    in property <bool> pressed;
+    if root.round: PnKnob { on: root.on; filled: root.filled; hover: root.hover; pressed: root.pressed; }
+    if !root.round: PnKey { kind: root.filled ? 1 : root.on ? 3 : 0; hover: root.hover; pressed: root.pressed; }
+}
+
+// The Phonograph's lever switch: a dark slot ringed in brass with a brass ball, the slot
+// wax red and the ball at the right while it is on.
+export component PnLever inherits Rectangle {
+    in property <bool> on;
+    in property <bool> hover;
+    Rectangle {
+        x: -2.5px;
+        y: -2.5px;
+        width: root.width + 5px;
+        height: root.height + 5px;
+        border-radius: self.height / 2;
+        background: #160904;
+    }
+    Rectangle {
+        x: -1.5px;
+        y: -1.5px;
+        width: root.width + 3px;
+        height: root.height + 3px;
+        border-radius: self.height / 2;
+        background: root.hover ? Pn.brass : Pn.brass-mid;
+    }
+    // The slot: the software renderer fills a gradient as a square, so the shading runs only
+    // between two solid round ends (dark wax on the left, bright on the right, when on).
+    Rectangle {
+        border-radius: self.height / 2;
+        background: root.on ? #5e1209 : #1b0d07;
+    }
+    Rectangle {
+        visible: root.on;
+        x: root.width - root.height;
+        width: root.height;
+        border-radius: self.height / 2;
+        background: #a3261c;
+    }
+    Rectangle {
+        visible: root.on;
+        x: root.height / 2;
+        width: root.width - root.height;
+        background: @linear-gradient(90deg, #5e1209 0%, #a3261c 100%);
+    }
+    // The ball and the shadow under it, in rings.
+    Rectangle {
+        x: root.on ? root.width - root.height + 2px : 2px;
+        y: 3px;
+        width: root.height - 4px;
+        height: root.height - 4px;
+        border-radius: self.width / 2;
+        background: #00000080;
+    }
+    PnDisc {
+        x: root.on ? root.width - root.height + 2px : 2px;
+        y: 2px;
+        width: root.height - 4px;
+        height: root.height - 4px;
+        c0: #fff3c8;
+        c1: #d1a84f;
+        c2: #7a5717;
+        mid: 0.45;
+    }
+}
+
 // Pinball's keys and switches (docs/mockups/device-themes/x-pinball-pages/), drawn by the
 // shared widgets for it; its colours, lamps, inserts and dot matrix are in
 // skins/x-pinball-parts.slint.
@@ -2016,10 +2211,10 @@ export component Tip inherits Rectangle {
     // Brick Phone: a small amber label with an ink frame.
     // Answering Machine: a small paper slip.
     // Fighter Select: a small black label framed gold.
-    background: Theme.tape || Theme.comic ? transparent : Theme.fighter ? #000000 : Theme.pinball ? #050507 : Theme.cozy ? Cz.parch-hl : Theme.pocket ? Pk.l3 : Theme.quest ? Quest.ink : Theme.brick ? Brick.lcd1 : Theme.phos ? Ph.bg2 : Theme.os95 ? Os.tip : Theme.glass ? #1e1c24eb : Theme.dash ? #20262e : Theme.answer ? Am.paper : Theme.synth ? #0b0c0c : Theme.popup.with-alpha(0.95);
-    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? self.height / 2 : Theme.answer ? 4px : Theme.synth ? 5px : 7px;
+    background: Theme.tape || Theme.comic ? transparent : Theme.fighter ? #000000 : Theme.phono ? Pn.tip : Theme.pinball ? #050507 : Theme.cozy ? Cz.parch-hl : Theme.pocket ? Pk.l3 : Theme.quest ? Quest.ink : Theme.brick ? Brick.lcd1 : Theme.phos ? Ph.bg2 : Theme.os95 ? Os.tip : Theme.glass ? #1e1c24eb : Theme.dash ? #20262e : Theme.answer ? Am.paper : Theme.synth ? #0b0c0c : Theme.popup.with-alpha(0.95);
+    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.phono ? 3px : Theme.glass ? self.height / 2 : Theme.answer ? 4px : Theme.synth ? 5px : 7px;
     border-width: Theme.cozy ? 3px : Theme.tape || Theme.comic ? 0 : Theme.brick ? 2px : Theme.pocket ? 2px : Theme.quest ? 3px : 1px;
-    border-color: Theme.pinball ? Pb.edge : Theme.cozy ? Cz.ink : Theme.pocket ? Pk.l0 : Theme.quest || Theme.fighter ? Fi.gold : Theme.phos ? Ph.ph : Theme.os95 ? #000000 : Theme.glass ? #ffffff42 : Theme.dash ? #ffffff33 : Theme.answer ? #8d8168 : Theme.synth ? #9a968c : Theme.popup-edge;
+    border-color: Theme.phono ? #4a3209 : Theme.pinball ? Pb.edge : Theme.cozy ? Cz.ink : Theme.pocket ? Pk.l0 : Theme.quest || Theme.fighter ? Fi.gold : Theme.phos ? Ph.ph : Theme.os95 ? #000000 : Theme.glass ? #ffffff42 : Theme.dash ? #ffffff33 : Theme.answer ? #8d8168 : Theme.synth ? #9a968c : Theme.popup-edge;
     drop-shadow-blur: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy ? 0 : 14px;
     drop-shadow-offset-y: 4px;
     drop-shadow-color: #00000099;
@@ -2036,11 +2231,12 @@ export component Tip inherits Rectangle {
         padding-bottom: Theme.os95 ? 2px : Theme.comic || Theme.quest ? 4px : Theme.pocket ? 4px : Theme.brick ? 2px : 5px;
         Text {
             text: root.text;
-            color: Theme.pinball ? #f3ecf7 : Theme.cozy ? Cz.ink : Theme.pocket ? Pk.l0 : Theme.tape ? Deck.ink : Theme.phos ? Ph.hi : Theme.os95 ? #000000 : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.dash ? #eef2f6 : Theme.quest ? Quest.white : Theme.answer ? Am.ink : Theme.synth ? #eef3ee : Theme.fighter ? #ffffff : Theme.text2;
-            font-family: Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : Theme.pocket ? Pk.small : Theme.tape ? "Oswald" : Theme.comic ? "Comic Neue" : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.dash ? "Manrope" : Theme.answer ? "Barlow Condensed" : Theme.quest ? Quest.font : Theme.brick ? Brick.words : Theme.synth ? Theme.mono : Theme.fighter ? Fi.body : "Inter Tight";
-            font-size: Theme.pinball ? 13px : Theme.pocket ? 8px : Theme.tape || Theme.phos || Theme.glass || Theme.fighter || Theme.cozy ? 11.5px : Theme.dash ? 11px : Theme.synth ? 10.5px : Theme.brick ? 16px : Theme.quest ? 13px : 12px;
-            font-weight: Theme.pinball ? 600 : Theme.os95 || Theme.pocket || Theme.quest || Theme.cozy ? 400 : Theme.comic || Theme.fighter ? 700 : Theme.dash || Theme.answer ? 700 : 500;
+            color: Theme.phono ? Pn.engrave : Theme.pinball ? #f3ecf7 : Theme.cozy ? Cz.ink : Theme.pocket ? Pk.l0 : Theme.tape ? Deck.ink : Theme.phos ? Ph.hi : Theme.os95 ? #000000 : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.dash ? #eef2f6 : Theme.quest ? Quest.white : Theme.answer ? Am.ink : Theme.synth ? #eef3ee : Theme.fighter ? #ffffff : Theme.text2;
+            font-family: Theme.phono ? Pn.font : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : Theme.pocket ? Pk.small : Theme.tape ? "Oswald" : Theme.comic ? "Comic Neue" : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.dash ? "Manrope" : Theme.answer ? "Barlow Condensed" : Theme.quest ? Quest.font : Theme.brick ? Brick.words : Theme.synth ? Theme.mono : Theme.fighter ? Fi.body : "Inter Tight";
+            font-size: Theme.phono ? 13.5px : Theme.pinball ? 13px : Theme.pocket ? 8px : Theme.tape || Theme.phos || Theme.glass || Theme.fighter || Theme.cozy ? 11.5px : Theme.dash ? 11px : Theme.synth ? 10.5px : Theme.brick ? 16px : Theme.quest ? 13px : 12px;
+            font-weight: Theme.phono ? 500 : Theme.pinball ? 600 : Theme.os95 || Theme.pocket || Theme.quest || Theme.cozy ? 400 : Theme.comic || Theme.fighter ? 700 : Theme.dash || Theme.answer ? 700 : 500;
             letter-spacing: Theme.tape ? 0.6px : Theme.pocket ? 1px : Theme.answer ? 1.2px : 0;
+            font-italic: Theme.phono;
         }
     }
 }
@@ -2066,26 +2262,26 @@ export component Btn inherits Rectangle {
     height: 36px;
     // At least this wide (the 95 message box keys are 74px).
     in property <length> least;
-    min-width: Theme.phos ? (root.key != "" ? ph-key.preferred-width + 6px : ph-word.preferred-width + 22px) : max(root.least, Theme.os95 ? os-label.preferred-width + 16px : Theme.pocket ? pk-word.preferred-width + 16px : Theme.quest ? q-word.preferred-width + 20px : Theme.answer ? am-word.preferred-width + 24px : label.preferred-width + (Theme.tape ? 24px : Theme.glass ? 30px : Theme.comic ? 20px : Theme.dash ? 28px : Theme.brick ? 16px : Theme.synth ? (root.height < 30px ? 20px : 28px) : Theme.fighter ? 30px : Theme.cozy || Theme.pinball ? 28px : 26px));
+    min-width: Theme.phos ? (root.key != "" ? ph-key.preferred-width + 6px : ph-word.preferred-width + 22px) : max(root.least, Theme.os95 ? os-label.preferred-width + 16px : Theme.pocket ? pk-word.preferred-width + 16px : Theme.quest ? q-word.preferred-width + 20px : Theme.answer ? am-word.preferred-width + 24px : label.preferred-width + (Theme.tape ? 24px : Theme.glass ? 30px : Theme.comic ? 20px : Theme.dash ? 28px : Theme.brick ? 16px : Theme.synth ? (root.height < 30px ? 20px : 28px) : Theme.fighter ? 30px : Theme.cozy || Theme.pinball || Theme.phono ? 28px : 26px));
     // Drawn in body, not on the root: a root opacity, visible, shadow or border makes
     // Slint inline the whole widget at every use (docs/device-themes.md, Generated code size).
     // No x, y or size: it fills the root and passes its children's layout constraints on.
     body := Rectangle {
         // Car Dashboard: a glass pill; the main one ice, Delete red.
-        border-radius: Theme.tape || Theme.os95 || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? self.height / 2 : Theme.dash ? self.height / 2 : 9px;
+        border-radius: Theme.tape || Theme.os95 || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.glass ? self.height / 2 : Theme.dash ? self.height / 2 : 9px;
         // Spatial Glass: a glass pill; the main action white, deleting and merging red.
         // Brick Phone: an LCD button in an ink frame, inverted for the main action.
         // Pocket Synth: a white key in capitals, the main action orange, `red` the dark key.
-        background: Theme.tape || Theme.comic || Theme.phos || Theme.pocket || Theme.quest || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? transparent
+        background: Theme.tape || Theme.comic || Theme.phos || Theme.pocket || Theme.quest || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? transparent
             : Theme.brick ? (primary || on ? Brick.ink : t.has-hover && enabled ? Brick.ghost : transparent)
             : Theme.os95 ? Os.face
             : Theme.glass ? (primary ? (root.red ? (t.has-hover && enabled ? #ff6371 : Glass.rec) : (t.has-hover && enabled ? #ffffff : #ececf2))
                 : on ? #ffffff59 : t.has-hover && enabled ? #ffffff3d : #ffffff29)
             : Theme.dash ? (primary && red ? (t.has-hover && enabled ? #ff6b78 : #ff4d5e) : primary ? (t.has-hover && enabled ? Theme.accent-hover : Theme.accent) : on ? #62d2ff1f : t.has-hover && enabled ? #1f252d : #181d23)
             : primary ? (t.has-hover && enabled ? Theme.accent-hover : Theme.accent) : (t.has-hover && enabled ? Theme.raised : transparent);
-        border-width: Theme.glass ? 1px : Theme.brick ? 2px : primary || Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : 1px;
+        border-width: Theme.glass ? 1px : Theme.brick ? 2px : primary || Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : 1px;
         border-color: Theme.glass ? (primary ? (root.red ? #ffffff73 : #ffffff) : on ? #ffffffb3 : #ffffff4d) : on ? Theme.accent : Theme.dash ? #ffffff1f : Theme.edge;
-        opacity: enabled || Theme.tape || Theme.os95 || Theme.pocket || Theme.quest || Theme.answer ? 1 : Theme.comic ? 0.45 : Theme.glass || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0.38 : 0.4;
+        opacity: enabled || Theme.tape || Theme.os95 || Theme.pocket || Theme.quest || Theme.answer ? 1 : Theme.comic || Theme.phono ? 0.45 : Theme.glass || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0.38 : 0.4;
         Rectangle {
             visible: Theme.pocket;
             x: 0;
@@ -2342,6 +2538,17 @@ export component Btn inherits Rectangle {
             hover: t.has-hover && root.enabled;
             pressed: t.pressed && t.has-hover && root.enabled;
         }
+        // Phonograph: a brass key for the main action, red wax for `red`, ivory held down
+        // while it is on, else ivory.
+        if Theme.phono: PnKey {
+            x: 0;
+            y: 0;
+            width: root.width;
+            height: root.height;
+            kind: root.pn-kind;
+            hover: t.has-hover && root.enabled;
+            pressed: t.pressed && t.has-hover && root.enabled;
+        }
         if Theme.fighter: FiKey {
             x: 0;
             y: 0;
@@ -2353,16 +2560,16 @@ export component Btn inherits Rectangle {
         }
         label := Text {
             visible: !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.answer;
-            text: Theme.tape || Theme.comic || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? root.text.to-uppercase() : root.text;
-            color: Theme.pinball ? (root.danger && root.pb-kind == 0 ? Pb.danger : Pb.ink-of(root.pb-kind)) : Theme.cozy ? (root.danger && root.cz-kind == 3 ? Cz.ember-d : Cz.ink-of(root.cz-kind)) : Theme.fighter ? (root.danger && root.btn-kind == 0 ? Fi.danger : Fi.ink-of(root.btn-kind))
+            text: Theme.tape || Theme.comic || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? root.text.to-uppercase() : root.text;
+            color: Theme.phono ? (root.danger && root.pn-kind == 0 ? Pn.wax : Pn.ink-of(root.pn-kind)) : Theme.pinball ? (root.danger && root.pb-kind == 0 ? Pb.danger : Pb.ink-of(root.pb-kind)) : Theme.cozy ? (root.danger && root.cz-kind == 3 ? Cz.ember-d : Cz.ink-of(root.cz-kind)) : Theme.fighter ? (root.danger && root.btn-kind == 0 ? Fi.danger : Fi.ink-of(root.btn-kind))
                 : Theme.glass ? (primary ? (root.red ? #ffffff : #211f28) : danger ? Glass.rec-hi : Glass.ink)
                 : Theme.brick ? (primary || on ? Brick.lcd1 : Brick.ink)
                 : Theme.synth ? (root.red ? #ecebe6 : primary ? #ffffff : danger ? #e94a12 : #2a2a28)
                 : Theme.dash && primary && red ? #ffffff : primary ? Theme.on-accent : danger ? Theme.danger : on ? Theme.accent : Theme.text;
-            font-family: Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.synth ? Theme.mono : Theme.fighter ? Fi.disp : Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : "Inter Tight";
-            font-size: Theme.pinball ? (root.height < 28px ? 11px : 13px) : Theme.cozy ? (root.height < 30px ? 10px : 11px) : Theme.fighter ? (root.height < 30px ? 11.5px : 12.5px) : Theme.tape ? 10px : Theme.comic ? 14px : Theme.glass ? min(root.font-size, 12.5px) : Theme.brick ? (root.height >= 24px ? 19px : 16px) : Theme.synth ? (root.height < 30px ? 8.5px : 9.5px) : root.font-size;
-            font-weight: Theme.pinball ? 700 : Theme.tape || Theme.glass ? 600 : Theme.comic || Theme.brick || Theme.fighter || Theme.cozy ? 400 : Theme.synth ? 700 : primary ? 800 : Theme.dash ? 700 : 500;
-            letter-spacing: Theme.pinball ? 2px : Theme.tape ? 2.2px : Theme.comic ? 1px : Theme.synth ? (root.height < 30px ? 1.36px : 1.52px) : Theme.fighter ? 1.4px : Theme.cozy ? 2px : 0;
+            font-family: Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.synth ? Theme.mono : Theme.fighter ? Fi.disp : Theme.phono ? Pn.caps : Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : "Inter Tight";
+            font-size: Theme.phono ? (root.height < 28px ? 9px : 10.5px) : Theme.pinball ? (root.height < 28px ? 11px : 13px) : Theme.cozy ? (root.height < 30px ? 10px : 11px) : Theme.fighter ? (root.height < 30px ? 11.5px : 12.5px) : Theme.tape ? 10px : Theme.comic ? 14px : Theme.glass ? min(root.font-size, 12.5px) : Theme.brick ? (root.height >= 24px ? 19px : 16px) : Theme.synth ? (root.height < 30px ? 8.5px : 9.5px) : root.font-size;
+            font-weight: Theme.phono ? 700 : Theme.pinball ? 700 : Theme.tape || Theme.glass ? 600 : Theme.comic || Theme.brick || Theme.fighter || Theme.cozy ? 400 : Theme.synth ? 700 : primary ? 800 : Theme.dash ? 700 : 500;
+            letter-spacing: Theme.phono ? (root.height < 28px ? 1.4px : 1.7px) : Theme.pinball ? 2px : Theme.tape ? 2.2px : Theme.comic ? 1px : Theme.synth ? (root.height < 30px ? 1.36px : 1.52px) : Theme.fighter ? 1.4px : Theme.cozy ? 2px : 0;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
@@ -2379,6 +2586,8 @@ export component Btn inherits Rectangle {
     property <int> cz-kind: root.red ? 2 : root.primary ? 1 : root.on ? 4 : 3;
     // Pinball: which key face (see PbKey).
     property <int> pb-kind: root.red ? 2 : root.primary ? 1 : root.on ? 3 : 0;
+    // Phonograph: which key face (see PnKey).
+    property <int> pn-kind: root.red ? 2 : root.primary ? 1 : root.on ? 3 : 0;
     property <bool> pk-down: root.on || (t.pressed && t.has-hover && root.enabled);
     // Answering Machine: a rubber key, red for the main action and for deleting, held
     // down while it is on (with an amber lamp), grey when off.
@@ -2427,18 +2636,18 @@ export component IconBtn inherits Rectangle {
     // Slint inline the whole widget at every use (docs/device-themes.md, Generated code size).
     // No x, y or size: it fills the root and passes its children's layout constraints on.
     body := Rectangle {
-        border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? size / 2 : radius;
+        border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.glass ? size / 2 : radius;
         // Spatial Glass: a round glass button, white while it is on.
         // Car Dashboard: a glass key, lit ice while it is on.
         // Brick Phone: a square LCD button in an ink frame with a pixel glyph, inverted while on.
         // Pocket Synth: a white key (round when the button is round), orange while it is on.
-        background: Theme.tape || Theme.comic || Theme.pocket || Theme.quest || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? transparent : Theme.phos ? (root.ph-lit ? Ph.ph : transparent) : Theme.os95 ? Os.face
+        background: Theme.tape || Theme.comic || Theme.pocket || Theme.quest || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? transparent : Theme.phos ? (root.ph-lit ? Ph.ph : transparent) : Theme.os95 ? Os.face
             : Theme.brick ? (filled || active ? Brick.ink : t.has-hover && enabled ? Brick.ghost : transparent)
             : Theme.glass ? (filled || active ? (t.has-hover ? #ffffff : #f0f0f5) : t.has-hover && enabled ? #ffffff3d : #ffffff26)
             : filled ? (t.has-hover ? Theme.accent-hover : Theme.accent)
             : Theme.dash ? (active ? #62d2ff1f : t.has-hover && enabled ? #1f252d : #181d23)
             : t.has-hover && enabled ? Theme.raised : transparent;
-        border-width: Theme.pocket || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.quest ? 0 : Theme.answer ? 0 : Theme.synth ? 0 : Theme.glass ? 1px : Theme.brick ? 2px : (outlined || Theme.dash) && !Theme.tape && !filled ? 1px : outlined && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic ? 1px : 0;
+        border-width: Theme.pocket || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.quest ? 0 : Theme.answer ? 0 : Theme.synth ? 0 : Theme.glass ? 1px : Theme.brick ? 2px : (outlined || Theme.dash) && !Theme.tape && !filled ? 1px : outlined && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic ? 1px : 0;
         // Answering Machine: a rubber nub, red when filled, held down with an amber icon
         // while it is on.
         if Theme.answer: AmKey {
@@ -2454,7 +2663,7 @@ export component IconBtn inherits Rectangle {
             enabled: root.enabled;
         }
         border-color: Theme.glass ? (filled || active ? #ffffff : #ffffff4d) : Theme.dash ? (active ? #62d2ff59 : #ffffff1f) : Theme.edge;
-        opacity: enabled || Theme.tape || Theme.os95 || Theme.pocket ? 1 : Theme.comic || Theme.quest ? 0.45 : Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0.38 : 0.4;
+        opacity: enabled || Theme.tape || Theme.os95 || Theme.pocket ? 1 : Theme.comic || Theme.quest || Theme.phono ? 0.45 : Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0.38 : 0.4;
         if Theme.pocket: Rectangle {
             x: 0;
             y: root.pk-dark || (t.pressed && t.has-hover && root.enabled) ? 2px : 0;
@@ -2599,6 +2808,19 @@ export component IconBtn inherits Rectangle {
             hover: t.has-hover && root.enabled;
             pressed: t.pressed && t.has-hover && root.enabled;
         }
+        // Phonograph: a round brass knob (red wax when filled) when the button is round, else
+        // a small ivory key, brass when filled, held down while it is on.
+        if Theme.phono: PnIconFace {
+            x: 0;
+            y: 0;
+            width: root.width;
+            height: root.height;
+            round: root.round;
+            on: root.active;
+            filled: root.filled;
+            hover: t.has-hover && root.enabled;
+            pressed: t.pressed && t.has-hover && root.enabled;
+        }
         if Theme.fighter: FiKey {
             x: 0;
             y: 0;
@@ -2615,7 +2837,7 @@ export component IconBtn inherits Rectangle {
                 : Theme.answer ? (root.active ? Am.amber : root.filled ? Am.rec-ink : #e7dfd2)
                 : Theme.synth ? (root.filled || root.active ? #ffffff : root.round ? #55524c : #2a2a28)
                 : Theme.fighter ? (root.filled ? #000000 : root.active ? Fi.gold : t.has-hover && root.enabled ? #ffffff : #e9e4ff)
-                : Theme.pinball ? (root.filled ? Pb.key-ink : root.active ? Pb.plasma-hi : t.has-hover && root.enabled ? #ffffff : #d8d2de) : Theme.cozy ? (root.active && !root.filled ? Cz.honey-l : Cz.ink)
+                : Theme.phono ? (root.round ? (root.filled ? Pn.wax-ink : Pn.engrave) : root.active ? Pn.wax : Pn.ink) : Theme.pinball ? (root.filled ? Pb.key-ink : root.active ? Pb.plasma-hi : t.has-hover && root.enabled ? #ffffff : #d8d2de) : Theme.cozy ? (root.active && !root.filled ? Cz.honey-l : Cz.ink)
                 : t.has-hover && !root.filled && !root.active ? Theme.text : root.tint;
             stroke-width: Theme.synth ? 1.6px : 2px;
             width: root.icon-size;
@@ -2705,19 +2927,21 @@ export component Toggle inherits Rectangle {
     property <bool> on: root.checked && root.enabled;
     property <bool> ph-keyed: Theme.phos && root.key != "";
     property <bool> ph-key-lit: root.on || (ph-t.has-hover && root.enabled);
-    width: Theme.pinball ? 36px : Theme.cozy ? 42px : Theme.fighter ? 46px : Theme.quest ? (root.lamp ? 15px : q-pair.preferred-width) : Theme.os95 ? 13px + (root.caption != "" ? 6px + cap.preferred-width : 0) : Theme.synth ? (root.caption != "" ? syn-cap.preferred-width + 33px : 36px) : Theme.tape ? 53px : Theme.glass ? 40px : Theme.comic ? 42px : root.ph-keyed ? ph-key.preferred-width + 6px : Theme.phos ? 44px : Theme.pocket ? 44px : Theme.brick ? 40px : Theme.answer ? 58px : 38px;
-    height: Theme.pinball ? 18px : Theme.cozy ? 24px : Theme.fighter ? 20px : Theme.quest ? (root.lamp ? 15px : 18px) : Theme.os95 ? 16px : Theme.synth ? (root.caption != "" ? 26px : 24px) : Theme.tape ? 18px : Theme.phos ? 20px : Theme.glass ? 24px : Theme.pocket ? 18px : Theme.brick ? 15px : Theme.answer ? 16px : 22px;
+    width: Theme.phono ? 40px : Theme.pinball ? 36px : Theme.cozy ? 42px : Theme.fighter ? 46px : Theme.quest ? (root.lamp ? 15px : q-pair.preferred-width) : Theme.os95 ? 13px + (root.caption != "" ? 6px + cap.preferred-width : 0) : Theme.synth ? (root.caption != "" ? syn-cap.preferred-width + 33px : 36px) : Theme.tape ? 53px : Theme.glass ? 40px : Theme.comic ? 42px : root.ph-keyed ? ph-key.preferred-width + 6px : Theme.phos ? 44px : Theme.pocket ? 44px : Theme.brick ? 40px : Theme.answer ? 58px : 38px;
+    height: Theme.phono ? 20px : Theme.pinball ? 18px : Theme.cozy ? 24px : Theme.fighter ? 20px : Theme.quest ? (root.lamp ? 15px : 18px) : Theme.os95 ? 16px : Theme.synth ? (root.caption != "" ? 26px : 24px) : Theme.tape ? 18px : Theme.phos ? 20px : Theme.glass ? 24px : Theme.pocket ? 18px : Theme.brick ? 15px : Theme.answer ? 16px : 22px;
     // Drawn in body, not on the root: a root opacity, visible, shadow or border makes
     // Slint inline the whole widget at every use (docs/device-themes.md, Generated code size).
     // No x, y or size: it fills the root and passes its children's layout constraints on.
     body := Rectangle {
-        border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? 12px : 11px;
+        border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.glass ? 12px : 11px;
         // Fighter Select: a slanted two cell key, the right cell lit gold while it is on.
         if Theme.fighter: FiSwitch { x: 0; y: 0; width: root.width; height: root.height; on: root.on; hover: ph-t.has-hover && root.enabled; }
         // Cozy Cabin: a wooden latch in a dark slot, on moss when on.
         if Theme.cozy: CzSwitch { x: 0; y: 0; width: root.width; height: root.height; on: root.on; hover: ph-t.has-hover && root.enabled; }
         // Pinball: a dark slot with a lamp that slides right and lights orange when on.
         if Theme.pinball: PbSwitch { x: 0; y: 0; width: root.width; height: root.height; on: root.on; hover: ph-t.has-hover && root.enabled; }
+        // Phonograph: a lever in a brass ringed slot that turns wax red when on.
+        if Theme.phono: PnLever { x: 0; y: 0; width: root.width; height: root.height; on: root.on; hover: ph-t.has-hover && root.enabled; }
         // Pocket: a two cell OFF ON switch in a dark ring, the live cell dark; pale when off.
         if Theme.pocket: Rectangle {
             x: 0;
@@ -2758,10 +2982,10 @@ export component Toggle inherits Rectangle {
         // Car Dashboard: a blue track with a white knob when on, a dark one with a grey knob
         // when off.
         // Brick Phone: an OFF ON pair in an ink frame, the live side inverted.
-        background: Theme.tape || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? transparent : Theme.phos ? (on || (root.ph-keyed && ph-t.has-hover && root.enabled) ? Ph.ph : transparent) : Theme.comic ? (on ? Comic.yellow : #ffffff) : Theme.glass ? (on ? #5ae49c : #00000047) : on ? (Theme.dash ? #3a8dff : Theme.accent) : Theme.track;
-        border-width: Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.pocket ? 0 : Theme.quest ? 0 : Theme.dash ? (on ? 0 : 1px) : Theme.glass ? 1px : Theme.comic ? 2.5px : Theme.brick ? 2px : Theme.phos && !root.ph-keyed && !root.on ? 1px : 0;
+        background: Theme.tape || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? transparent : Theme.phos ? (on || (root.ph-keyed && ph-t.has-hover && root.enabled) ? Ph.ph : transparent) : Theme.comic ? (on ? Comic.yellow : #ffffff) : Theme.glass ? (on ? #5ae49c : #00000047) : on ? (Theme.dash ? #3a8dff : Theme.accent) : Theme.track;
+        border-width: Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.pocket ? 0 : Theme.quest ? 0 : Theme.dash ? (on ? 0 : 1px) : Theme.glass ? 1px : Theme.comic ? 2.5px : Theme.brick ? 2px : Theme.phos && !root.ph-keyed && !root.on ? 1px : 0;
         border-color: Theme.dash ? #ffffff1f : Theme.glass ? (on ? #ffffff73 : #ffffff33) : Theme.comic ? Comic.ink : Theme.brick ? Brick.ink : Ph.dim;
-        opacity: root.enabled || Theme.os95 || Theme.pocket ? 1 : Theme.comic || Theme.quest ? 0.4 : Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0.38 : Theme.answer ? 0.5 : 0.45;
+        opacity: root.enabled || Theme.os95 || Theme.pocket ? 1 : Theme.comic || Theme.quest ? 0.4 : Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0.38 : Theme.answer ? 0.5 : 0.45;
         // Quest Menu: ON and OFF side by side, the current one gold with the cursor before it.
         q-pair := HorizontalLayout {
             visible: Theme.quest && !root.lamp;
@@ -3018,7 +3242,7 @@ export component Toggle inherits Rectangle {
             background: #0000003d;
         }
         knob := Rectangle {
-            visible: !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball;
+            visible: !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball && !Theme.phono;
             x: root.on ? root.width - self.width - 3px : 3px;
             y: 3px;
             width: Theme.glass ? 18px : 16px;
@@ -3075,7 +3299,7 @@ export component ExportItem inherits Rectangle {
     in property <int> num;
     callback clicked;
     height: Theme.menu-h;
-    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? 12px : Theme.dash ? 8px : 6px;
+    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.glass ? 12px : Theme.dash ? 8px : 6px;
     // Tape Deck: an amber highlighter stroke under the hovered line. Phosphor: the line in
     // inverted video, a star by the current format. Desktop 95: navy. Comic Book: a pale
     // yellow line, the current format yellow with a red edge. Car Dashboard: ice
@@ -3084,7 +3308,7 @@ export component ExportItem inherits Rectangle {
     // Pocket: a dark row with the arrow cursor under the pointer, the current format mid
     // green.
     // Fighter Select: the current format on the red plate with a gold edge, the hovered line violet.
-    background: Theme.tape || Theme.quest ? transparent : Theme.fighter ? (root.current ? Fi.lit : t.has-hover ? Fi.hover : transparent) : Theme.pinball ? (t.has-hover ? Pb.lit-row : transparent) : Theme.cozy ? (root.current ? Cz.honey : t.has-hover ? Cz.hover : transparent) : Theme.pocket ? (t.has-hover ? Pk.l3 : root.current ? Pk.l1 : transparent) : Theme.synth ? (t.has-hover ? #232625 : transparent) : Theme.dash ? (t.has-hover || root.current ? #62d2ff1f : transparent) : Theme.phos ? (t.has-hover ? Ph.ph : transparent) : Theme.os95 ? (t.has-hover ? Os.navy : transparent) : Theme.comic ? (root.current ? Comic.yellow : t.has-hover ? Comic.wash : transparent)
+    background: Theme.tape || Theme.quest ? transparent : Theme.fighter ? (root.current ? Fi.lit : t.has-hover ? Fi.hover : transparent) : Theme.phono ? (t.has-hover || root.current ? Pn.lit-row : transparent) : Theme.pinball ? (t.has-hover ? Pb.lit-row : transparent) : Theme.cozy ? (root.current ? Cz.honey : t.has-hover ? Cz.hover : transparent) : Theme.pocket ? (t.has-hover ? Pk.l3 : root.current ? Pk.l1 : transparent) : Theme.synth ? (t.has-hover ? #232625 : transparent) : Theme.dash ? (t.has-hover || root.current ? #62d2ff1f : transparent) : Theme.phos ? (t.has-hover ? Ph.ph : transparent) : Theme.os95 ? (t.has-hover ? Os.navy : transparent) : Theme.comic ? (root.current ? Comic.yellow : t.has-hover ? Comic.wash : transparent)
         : Theme.brick ? (t.has-hover ? Brick.ink : transparent)
         : t.has-hover ? (Theme.glass ? Glass.lit : Theme.answer ? Am.lit : Theme.hover) : transparent;
     border-width: Theme.glass && t.has-hover ? 1px : 0;
@@ -3097,6 +3321,8 @@ export component ExportItem inherits Rectangle {
     if Theme.fighter && root.current: Rectangle { x: 0; width: 3px; background: Fi.gold; }
     if Theme.cozy && root.current: Rectangle { x: 0; width: 3px; background: Cz.ember; }
     if Theme.pinball && (root.current || t.has-hover): Rectangle { x: 0; width: 3px; background: Pb.plasma; }
+    // Phonograph: the brass band with a red pointer on the hovered line and the current format.
+    if Theme.phono && (root.current || t.has-hover): PnPointer { x: 5px; y: (parent.height - 7px) / 2; }
     // Quest Menu: the lit row with the glove; the current format in gold.
     if Theme.quest && t.has-hover: QLit { x: 0; y: 0; }
     if Theme.answer && t.has-hover: Rectangle { x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
@@ -3201,27 +3427,27 @@ export component ExportItem inherits Rectangle {
         }
     }
     if !Theme.os95 && !Theme.quest && !Theme.brick: HorizontalLayout {
-        padding-left: Theme.tape ? 12px : Theme.phos ? 22px : Theme.pocket ? 16px : 10px;
-        padding-right: Theme.tape ? 12px : 10px;
+        padding-left: Theme.tape ? 12px : Theme.phos ? 22px : Theme.pocket || Theme.phono ? 16px : 10px;
+        padding-right: Theme.tape || Theme.phono ? 12px : 10px;
         spacing: 10px;
         Text {
             text: root.text;
-            color: Theme.pocket ? (t.has-hover ? Pk.l0 : Pk.l3) : Theme.tape ? Deck.ink : Theme.phos ? (t.has-hover ? Ph.bg : Ph.hi) : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.synth ? #eef3ee : Theme.fighter ? Fi.text : Theme.pinball ? (root.current ? Pb.name-sel : Pb.ink) : Theme.cozy ? Cz.ink : Theme.dash && root.current ? Theme.accent
+            color: Theme.pocket ? (t.has-hover ? Pk.l0 : Pk.l3) : Theme.tape ? Deck.ink : Theme.phos ? (t.has-hover ? Ph.bg : Ph.hi) : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.synth ? #eef3ee : Theme.fighter ? Fi.text : Theme.phono ? Pn.ink : Theme.pinball ? (root.current ? Pb.name-sel : Pb.ink) : Theme.cozy ? Cz.ink : Theme.dash && root.current ? Theme.accent
                 : Theme.answer ? (root.current ? Am.rec : Am.ink) : t.has-hover || root.current ? Theme.text : Theme.text2;
-            font-family: Theme.pocket ? Pk.big : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : Theme.fighter ? Fi.body : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
-            font-size: Theme.pinball ? 15px : Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.comic ? 13.5px : Theme.dash || Theme.answer ? 12.5px : Theme.synth ? 11.5px : 13px;
-            font-weight: Theme.pocket || Theme.cozy || Theme.pinball ? 400 : Theme.dash || Theme.answer || Theme.fighter ? 700 : Theme.comic ? 700 : Theme.synth ? 500 : root.current && !Theme.phos ? 600 : Theme.glass ? 500 : 400;
+            font-family: Theme.pocket ? Pk.big : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : Theme.fighter ? Fi.body : Theme.phono ? Pn.font : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
+            font-size: Theme.phono ? 15px : Theme.pinball ? 15px : Theme.pocket ? 20px : Theme.phos ? 12.5px : Theme.comic ? 13.5px : Theme.dash || Theme.answer ? 12.5px : Theme.synth ? 11.5px : 13px;
+            font-weight: Theme.pocket || Theme.cozy || Theme.pinball ? 400 : Theme.phono ? 600 : Theme.dash || Theme.answer || Theme.fighter ? 700 : Theme.comic ? 700 : Theme.synth ? 500 : root.current && !Theme.phos ? 600 : Theme.glass ? 500 : 400;
             letter-spacing: Theme.tape ? 0.5px : 0;
             vertical-alignment: center;
             horizontal-stretch: 1;
         }
         Text {
-            text: Theme.comic || Theme.pocket || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? root.tag.to-uppercase() : root.tag;
-            color: Theme.pinball ? Pb.mute : Theme.cozy ? (root.current ? Cz.brown : Cz.parch-dd) : Theme.fighter ? (root.current ? #ff8a96 : Fi.faint) : Theme.pocket ? (t.has-hover ? Pk.l1 : Pk.l2) : Theme.tape ? Deck.ink-soft : Theme.phos ? (t.has-hover ? Ph.bg2 : Ph.dim) : Theme.comic ? (root.current ? Comic.sub-on-yellow : Comic.sub) : Theme.glass ? Glass.ink3 : Theme.answer ? Am.print-soft : Theme.synth ? #7d857f : Theme.dim;
-            font-family: Theme.pocket ? Pk.small : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : Theme.glass ? "Inter Tight" : Theme.answer ? "Barlow Condensed" : Theme.fighter ? Fi.body : Theme.cozy ? Cz.caps : Theme.mono;
-            font-size: Theme.pinball ? 10px : Theme.pocket ? 8px : Theme.tape ? 10.5px : Theme.comic ? 12px : Theme.answer ? 9px : Theme.synth ? 7.5px : Theme.fighter ? 9.5px : Theme.cozy ? 10px : 11px;
-            font-weight: Theme.answer || Theme.synth || Theme.fighter || Theme.cozy ? 700 : 400;
-            letter-spacing: Theme.comic || Theme.pocket ? 1px : Theme.answer ? 1.44px : Theme.synth ? 1.1px : Theme.fighter ? 1.8px : Theme.cozy ? 1.5px : 0;
+            text: Theme.comic || Theme.pocket || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? root.tag.to-uppercase() : root.tag;
+            color: Theme.phono ? Pn.ink-soft : Theme.pinball ? Pb.mute : Theme.cozy ? (root.current ? Cz.brown : Cz.parch-dd) : Theme.fighter ? (root.current ? #ff8a96 : Fi.faint) : Theme.pocket ? (t.has-hover ? Pk.l1 : Pk.l2) : Theme.tape ? Deck.ink-soft : Theme.phos ? (t.has-hover ? Ph.bg2 : Ph.dim) : Theme.comic ? (root.current ? Comic.sub-on-yellow : Comic.sub) : Theme.glass ? Glass.ink3 : Theme.answer ? Am.print-soft : Theme.synth ? #7d857f : Theme.dim;
+            font-family: Theme.pocket ? Pk.small : Theme.phos ? Ph.mono : Theme.comic ? "Bangers" : Theme.glass ? "Inter Tight" : Theme.answer ? "Barlow Condensed" : Theme.fighter ? Fi.body : Theme.cozy ? Cz.caps : Theme.phono ? Pn.caps : Theme.mono;
+            font-size: Theme.phono ? 8.5px : Theme.pinball ? 10px : Theme.pocket ? 8px : Theme.tape ? 10.5px : Theme.comic ? 12px : Theme.answer ? 9px : Theme.synth ? 7.5px : Theme.fighter ? 9.5px : Theme.cozy ? 10px : 11px;
+            font-weight: Theme.answer || Theme.synth || Theme.fighter || Theme.cozy ? 700 : Theme.phono ? 600 : 400;
+            letter-spacing: Theme.comic || Theme.pocket ? 1px : Theme.answer ? 1.44px : Theme.synth ? 1.1px : Theme.fighter ? 1.8px : Theme.cozy || Theme.phono ? 1.5px : 0;
             vertical-alignment: center;
         }
         // Pocket Synth: the current format marked by an orange square.
@@ -3245,8 +3471,10 @@ export component MenuRule inherits Rectangle {
         y: Theme.comic ? 3px : (parent.height - self.height) / 2;
         width: parent.width + (Theme.comic ? 4px : Theme.brick ? -8px : Theme.fighter || Theme.pinball ? 0 : -20px);
         height: Theme.comic ? 2.5px : 1px;
-        background: Theme.pinball ? Pb.rule : Theme.cozy ? transparent : Theme.fighter ? Fi.line : Theme.tape ? #2a1c1240 : Theme.comic ? Comic.ink : Theme.glass ? Glass.rule : Theme.answer ? Am.paper-line : Theme.synth ? #2b2f2d : Theme.edge;
+        background: Theme.phono ? transparent : Theme.pinball ? Pb.rule : Theme.cozy ? transparent : Theme.fighter ? Fi.line : Theme.tape ? #2a1c1240 : Theme.comic ? Comic.ink : Theme.glass ? Glass.rule : Theme.answer ? Am.paper-line : Theme.synth ? #2b2f2d : Theme.edge;
     }
+    // Phonograph: brass fading out at both ends.
+    if Theme.phono: PnRule { x: 10px; y: 4px; width: parent.width - 20px; }
     // Quest Menu: a 3px blue rule across the window.
     if Theme.quest: Rectangle { x: 0; y: 3px; width: parent.width; height: 3px; background: Quest.sep; }
     // Cozy Cabin: a dotted rule.
@@ -3313,19 +3541,19 @@ component MenuTag inherits Rectangle {
 // The name of a group of choices in a menu (an ink tag in the Comic Book).
 component MenuGroup inherits HorizontalLayout {
     in property <string> text;
-    padding-left: Theme.os95 ? 30px : Theme.pocket ? 0 : Theme.quest ? 27px : Theme.brick ? 27px : 10px;
+    padding-left: Theme.os95 ? 30px : Theme.pocket ? 0 : Theme.quest ? 27px : Theme.brick ? 27px : Theme.phono ? 16px : 10px;
     height: 24px;
     MenuTag { text: root.text; }
     MenuBand { text: root.text; }
     Text {
         visible: !Theme.comic && !Theme.pocket;
-        text: Theme.pocket ? "" : Theme.cozy || Theme.pinball ? root.text.to-uppercase() : root.text;
+        text: Theme.pocket ? "" : Theme.cozy || Theme.pinball || Theme.phono ? root.text.to-uppercase() : root.text;
         max-width: Theme.pocket ? 0px : 100000px;
-        color: Theme.pinball ? Pb.cap : Theme.tape ? Deck.ink-soft : Theme.os95 ? Os.note : Theme.glass ? Glass.ink3 : Theme.dash ? #56606c : Theme.quest ? Quest.gold : Theme.fighter ? Fi.gold : Theme.cozy ? Cz.brown : Theme.answer ? Am.print-soft : Theme.synth ? #7d857f : Theme.dim;
-        font-family: Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.glass ? "Inter Tight" : Theme.dash ? "Manrope" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : Theme.answer ? "Barlow Condensed" : Theme.fighter ? Fi.body : Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : Theme.mono;
-        font-size: Theme.pinball ? 10px : Theme.tape || Theme.glass || Theme.fighter || Theme.cozy ? 9.5px : Theme.os95 ? 11px : Theme.dash || Theme.answer ? 8.5px : Theme.brick ? 7px : Theme.synth ? 7.5px : 10px;
-        font-weight: Theme.glass ? 600 : Theme.dash ? 800 : Theme.answer || Theme.fighter || Theme.cozy || Theme.pinball ? 700 : Theme.synth ? 700 : 400;
-        letter-spacing: Theme.pinball ? 3px : Theme.tape ? 1.7px : Theme.phos || Theme.glass ? 2px : Theme.os95 ? 1px : Theme.dash || Theme.answer ? 2.2px : Theme.synth ? 1.9px : Theme.fighter ? 2.5px : Theme.cozy ? 2px : 0;
+        color: Theme.phono ? Pn.brass-lo : Theme.pinball ? Pb.cap : Theme.tape ? Deck.ink-soft : Theme.os95 ? Os.note : Theme.glass ? Glass.ink3 : Theme.dash ? #56606c : Theme.quest ? Quest.gold : Theme.fighter ? Fi.gold : Theme.cozy ? Cz.brown : Theme.answer ? Am.print-soft : Theme.synth ? #7d857f : Theme.dim;
+        font-family: Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.glass ? "Inter Tight" : Theme.dash ? "Manrope" : Theme.quest ? Quest.label : Theme.brick ? Brick.caps : Theme.answer ? "Barlow Condensed" : Theme.fighter ? Fi.body : Theme.phono ? Pn.caps : Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : Theme.mono;
+        font-size: Theme.phono ? 8.5px : Theme.pinball ? 10px : Theme.tape || Theme.glass || Theme.fighter || Theme.cozy ? 9.5px : Theme.os95 ? 11px : Theme.dash || Theme.answer ? 8.5px : Theme.brick ? 7px : Theme.synth ? 7.5px : 10px;
+        font-weight: Theme.glass ? 600 : Theme.dash ? 800 : Theme.answer || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 700 : Theme.synth ? 700 : 400;
+        letter-spacing: Theme.phono ? 2px : Theme.pinball ? 3px : Theme.tape ? 1.7px : Theme.phos || Theme.glass ? 2px : Theme.os95 ? 1px : Theme.dash || Theme.answer ? 2.2px : Theme.synth ? 1.9px : Theme.fighter ? 2.5px : Theme.cozy ? 2px : 0;
         vertical-alignment: center;
     }
 }
@@ -3397,15 +3625,19 @@ export component MenuRow inherits Rectangle {
     // Slint inline the whole widget at every use (docs/device-themes.md, Generated code size).
     // No x, y or size: it fills the root and passes its children's layout constraints on.
     body := Rectangle {
-        border-radius: Theme.tape || Theme.os95 || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? 12px : Theme.dash ? 8px : 6px;
+        border-radius: Theme.tape || Theme.os95 || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.glass ? 12px : Theme.dash ? 8px : 6px;
         // Answering Machine: the hovered row (and the row of an open submenu) lit with a red
         // edge.
         if Theme.answer && (t.has-hover || root.lit) && root.enabled: Rectangle { x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
         // Pinball: the hovered row and the row of an open submenu lit plasma with an edge.
         Rectangle { visible: root.pb-lit; x: 0; y: 0; width: 3px; height: parent.height; background: Pb.plasma; }
+        // Phonograph: the hovered row and the row of an open submenu on a brass band with a
+        // red pointer.
+        if root.pn-lit: PnPointer { x: 5px; y: (parent.height - 7px) / 2; }
         background: Theme.tape || Theme.quest ? transparent : Theme.pocket ? (root.pk-hot ? Pk.l3 : root.checked ? Pk.l1 : transparent)
             : Theme.fighter ? (root.fi-lit ? Fi.lit : t.has-hover && root.enabled ? Fi.hover : transparent)
             : Theme.pinball ? (root.pb-lit ? Pb.lit-row : transparent)
+            : Theme.phono ? (root.pn-lit ? Pn.lit-row : transparent)
             : Theme.cozy ? (root.cz-lit ? Cz.honey : t.has-hover && root.enabled ? Cz.hover : transparent)
             : Theme.phos ? (t.has-hover && root.enabled ? (root.danger ? Ph.amber : Ph.ph) : root.lit ? Ph.faint : transparent)
             : Theme.os95 || Theme.brick ? (root.os-hot ? (Theme.brick ? Brick.ink : Os.navy) : transparent)
@@ -3561,9 +3793,9 @@ export component MenuRow inherits Rectangle {
             }
         }
         if !Theme.os95 && !Theme.pocket && !Theme.quest && !Theme.brick: HorizontalLayout {
-            padding-left: Theme.phos ? 8px : 10px;
-            padding-right: 8px;
-            spacing: (Theme.tape || Theme.comic || Theme.answer || Theme.fighter || Theme.cozy || Theme.pinball) && root.icon != "" ? 9px : Theme.phos ? 6px : 10px;
+            padding-left: Theme.phos ? 8px : Theme.phono ? 16px : 10px;
+            padding-right: Theme.phono ? 12px : 8px;
+            spacing: (Theme.tape || Theme.comic || Theme.answer || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono) && root.icon != "" ? 9px : Theme.phos ? 6px : 10px;
             if Theme.phos: Text {
                 width: 8px;
                 text: root.checked ? "*" : "";
@@ -3573,9 +3805,9 @@ export component MenuRow inherits Rectangle {
                 vertical-alignment: center;
                 accessible-role: none;
             }
-            if (Theme.tape || Theme.comic || Theme.answer || Theme.fighter || Theme.cozy || Theme.pinball) && root.icon != "": Icon {
+            if (Theme.tape || Theme.comic || Theme.answer || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono) && root.icon != "": Icon {
                 name: root.icon;
-                tint: Theme.pinball ? (root.danger ? Pb.danger : Pb.icon) : Theme.cozy ? (root.danger ? Cz.ember-d : Cz.ink) : Theme.fighter ? (root.danger ? Fi.danger : Fi.text) : Theme.comic ? (root.danger ? Comic.red : Comic.ink) : Theme.answer ? (root.danger ? Am.rec : Am.print) : root.danger ? Deck.red : Deck.alu-ink;
+                tint: Theme.phono ? (root.danger ? Pn.wax : Pn.ink) : Theme.pinball ? (root.danger ? Pb.danger : Pb.icon) : Theme.cozy ? (root.danger ? Cz.ember-d : Cz.ink) : Theme.fighter ? (root.danger ? Fi.danger : Fi.text) : Theme.comic ? (root.danger ? Comic.red : Comic.ink) : Theme.answer ? (root.danger ? Am.rec : Am.print) : root.danger ? Deck.red : Deck.alu-ink;
                 width: 13px;
                 height: 13px;
                 y: (parent.height - self.height) / 2;
@@ -3625,18 +3857,19 @@ export component MenuRow inherits Rectangle {
                     : Theme.synth ? (root.syn-lit ? #ffffff : root.danger ? #ff7a48 : #eef3ee)
                     : Theme.fighter ? (root.danger ? Fi.danger : !root.enabled && root.checked ? Fi.faint : Fi.text)
                     : Theme.pinball ? (root.danger ? Pb.danger : !root.enabled && root.checked ? Pb.mute : root.checked ? Pb.name-sel : Pb.ink)
+                    : Theme.phono ? (root.danger || root.checked ? Pn.wax : Pn.ink)
                     : Theme.cozy ? (root.danger ? Cz.ember-d : !root.enabled && root.checked ? Cz.parch-dd : Cz.ink)
                     : root.danger ? Theme.danger : t.has-hover ? Theme.text : Theme.text2;
-                font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? (root.caption ? "Bangers" : "Comic Neue") : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : Theme.fighter ? (root.caption ? Fi.lean : Fi.body) : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
-                font-size: Theme.pinball ? 15px : Theme.cozy ? 13px : Theme.fighter ? (root.caption ? 14px : 13px) : Theme.phos ? 12.5px : Theme.comic ? (root.caption ? 15px : 13.5px) : Theme.dash || Theme.answer ? 12.5px : Theme.synth ? 11.5px : 13px;
-                font-weight: Theme.cozy || Theme.pinball ? 400 : Theme.comic || Theme.fighter ? (root.caption ? 400 : 700) : Theme.dash || Theme.answer ? 700 : Theme.synth ? 500 : Theme.tape && root.checked ? 600 : Theme.glass ? (root.checked ? 600 : 500) : 400;
+                font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? (root.caption ? "Bangers" : "Comic Neue") : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : Theme.fighter ? (root.caption ? Fi.lean : Fi.body) : Theme.phono ? Pn.font : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
+                font-size: Theme.phono ? 15px : Theme.pinball ? 15px : Theme.cozy ? 13px : Theme.fighter ? (root.caption ? 14px : 13px) : Theme.phos ? 12.5px : Theme.comic ? (root.caption ? 15px : 13.5px) : Theme.dash || Theme.answer ? 12.5px : Theme.synth ? 11.5px : 13px;
+                font-weight: Theme.cozy || Theme.pinball ? 400 : Theme.phono ? 600 : Theme.comic || Theme.fighter ? (root.caption ? 400 : 700) : Theme.dash || Theme.answer ? 700 : Theme.synth ? 500 : Theme.tape && root.checked ? 600 : Theme.glass ? (root.checked ? 600 : 500) : 400;
                 letter-spacing: Theme.tape ? 0.5px : Theme.comic && root.caption ? 1px : Theme.fighter && root.caption ? 1.5px : 0;
                 vertical-alignment: center;
                 horizontal-stretch: 1;
             }
             if root.more: Icon {
                 name: "chevron";
-                tint: Theme.pinball ? Pb.plasma : Theme.cozy ? Cz.brown : Theme.fighter ? (root.fi-lit ? Fi.gold : Fi.dim) : Theme.tape ? Deck.ink-soft : Theme.phos ? (t.has-hover ? Ph.bg : Ph.dim) : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink3 : Theme.synth ? (root.syn-lit ? #ffffff : #b9c0ba) : Theme.dim;
+                tint: Theme.phono ? Pn.ink : Theme.pinball ? Pb.plasma : Theme.cozy ? Cz.brown : Theme.fighter ? (root.fi-lit ? Fi.gold : Fi.dim) : Theme.tape ? Deck.ink-soft : Theme.phos ? (t.has-hover ? Ph.bg : Ph.dim) : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink3 : Theme.synth ? (root.syn-lit ? #ffffff : #b9c0ba) : Theme.dim;
                 width: 13px;
                 height: 13px;
                 y: (parent.height - self.height) / 2;
@@ -3648,7 +3881,7 @@ export component MenuRow inherits Rectangle {
             }
             if root.checked && !Theme.phos && !(Theme.synth && !root.enabled): Icon {
                 name: "check";
-                tint: Theme.tape ? Deck.red : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? (root.enabled ? Am.rec : Am.print-soft) : Theme.synth ? #ffffff : Theme.fighter ? (root.enabled ? Fi.gold : Fi.faint) : Theme.pinball ? (root.enabled ? Pb.plasma : Pb.mute) : Theme.cozy ? (root.enabled ? Cz.ink : Cz.parch-dd) : Theme.accent;
+                tint: Theme.tape ? Deck.red : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? (root.enabled ? Am.rec : Am.print-soft) : Theme.synth ? #ffffff : Theme.fighter ? (root.enabled ? Fi.gold : Fi.faint) : Theme.phono ? Pn.ink : Theme.pinball ? (root.enabled ? Pb.plasma : Pb.mute) : Theme.cozy ? (root.enabled ? Cz.ink : Cz.parch-dd) : Theme.accent;
                 width: 13px;
                 height: 13px;
                 y: (parent.height - self.height) / 2;
@@ -3667,6 +3900,8 @@ export component MenuRow inherits Rectangle {
     property <bool> cz-lit: Theme.cozy && root.enabled && (root.lit || root.checked);
     // Pinball: the hovered row and the open row lit plasma.
     property <bool> pb-lit: Theme.pinball && root.enabled && (root.lit || t.has-hover);
+    // Phonograph: the hovered row and the open row on a brass band.
+    property <bool> pn-lit: Theme.phono && root.enabled && (root.lit || t.has-hover);
     // Comic Book: a pale yellow line on hover; the open row and the current project
     // yellow with a red edge.
     property <bool> ink-lit: Theme.comic && root.enabled && (root.lit || root.checked);
@@ -4593,6 +4828,361 @@ component PbShortcutArt inherits Rectangle {
     }
 }
 
+// The Phonograph's Export key: red wax with EXPORT and an up arrow; while exporting the key
+// darkens and fills with brighter wax up to the percent; brass with a check and DONE when done.
+component PnExportArt inherits Rectangle {
+    in property <int> state;
+    in property <float> progress;
+    in property <bool> hover;
+    in property <bool> pressed;
+    PnKey {
+        kind: root.state == 2 ? 1 : 2;
+        hover: root.hover && root.state == 0;
+        pressed: root.pressed && root.state == 0;
+    }
+    if root.state == 1: Rectangle {
+        border-radius: 5px;
+        background: #4a0e07;
+        Rectangle {
+            x: 0;
+            width: clamp(root.progress, 0, 1) * parent.width;
+            border-radius: 5px;
+            background: Pn.wax-face;
+        }
+        Text {
+            text: round(root.progress * 100) + "%";
+            color: Pn.wax-ink;
+            font-family: Pn.caps;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+    if root.state != 1: HorizontalLayout {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.height;
+        alignment: center;
+        spacing: 7px;
+        if root.state == 2: Icon {
+            y: (parent.height - self.height) / 2;
+            name: "check";
+            tint: Pn.engrave;
+            stroke-width: 2.4px;
+            width: 13px;
+            height: 13px;
+        }
+        Text {
+            text: root.state == 2 ? "DONE" : "EXPORT";
+            color: root.state == 2 ? Pn.engrave : Pn.wax-ink;
+            font-family: Pn.caps;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 1.7px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        if root.state == 0: Icon {
+            y: (parent.height - self.height) / 2;
+            name: "up";
+            tint: Pn.wax-ink;
+            stroke-width: 2.4px;
+            width: 13px;
+            height: 13px;
+        }
+    }
+}
+
+// The end of a Phonograph order row: a brass screw with an x (remove), or the three brass
+// studs (the part's menu).
+component PnXKey inherits Rectangle {
+    in property <bool> dots;
+    in property <string> label;
+    in property <string> tip;
+    in property <bool> enabled: true;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    if !root.dots: PnDisc {
+        x: (parent.width - 20px) / 2;
+        y: (parent.height - 20px) / 2;
+        width: 20px;
+        height: 20px;
+        c0: t.has-hover && root.enabled ? #fff3c8 : #f6e3a1;
+        c1: t.has-hover && root.enabled ? #e3c069 : #d1a84f;
+        c2: #7a5717;
+        edge-width: 1px;
+        edge: #4a3209;
+        Icon {
+            name: "close";
+            tint: root.enabled ? Pn.engrave : Pn.ink-soft;
+            stroke-width: 2.4px;
+            width: 15px;
+            height: 15px;
+        }
+    }
+    Rectangle {
+        visible: root.dots && t.has-hover && root.enabled;
+        border-radius: 3px;
+        background: #f6d27873;
+    }
+    for k in (root.dots ? 3 : 0): Rectangle {
+        x: (parent.width - 3.5px) / 2;
+        y: (parent.height - 15.5px) / 2 + k * 6px;
+        width: 3.5px;
+        height: 3.5px;
+        border-radius: 1.75px;
+        // Solid: the software renderer fills a gradient as a square.
+        background: #a07a2a;
+    }
+    property <bool> hovering: t.has-hover;
+    changed hovering => { if (root.tip != "") { Tips.hover(self.hovering, root.tip, self.absolute-position, self.width, self.height); } }
+    t := TouchArea {
+        mouse-cursor: root.enabled ? pointer : default;
+        clicked => {
+            if (root.enabled) {
+                Tips.hide();
+                root.clicked();
+            }
+        }
+    }
+}
+
+// The Phonograph's row of a merge or a merged clip's parts, as a cylinder tin: brass grip
+// studs, the place on a brass disc, the lid that plays it (wax red while it plays), the
+// label in the colours of the main page's tins with the name (a merge row's length at its
+// right end, a part's note under the name), and the brass screw (remove) or the studs (the
+// menu). The lifted tin is ringed in bright brass.
+component PnOrderRow inherits Rectangle {
+    in property <OrderRow> item;
+    in property <int> place;
+    in property <bool> lifted;
+    in property <bool> playing;
+    in property <bool> playable;
+    in property <bool> removable;
+    in property <bool> menu;
+    in property <bool> enabled;
+    callback play();
+    callback remove();
+    callback open-menu();
+    property <length> body-x: root.playable ? 62px : 46px;
+    property <length> body-h: root.height - 8px;
+    property <color> label: Math.mod(root.place - 1, 3) == 0 ? #eadbb7 : Math.mod(root.place - 1, 3) == 1 ? #dfe0bf : #ead3c0;
+    // The grip: two columns of three brass studs.
+    for k in 6: Rectangle {
+        x: 6px + Math.mod(k, 2) * 5px;
+        y: (root.height - 14px) / 2 + floor(k / 2) * 5px;
+        width: 3.5px;
+        height: 3.5px;
+        border-radius: 1.75px;
+        background: root.lifted ? Pn.brass-hi : #a07a2a;
+    }
+    // The place on a brass disc.
+    PnDisc {
+        x: 20px;
+        y: (root.height - 20px) / 2;
+        width: 20px;
+        height: 20px;
+        c0: #f6e3a1;
+        c1: #d1a84f;
+        c2: #7a5717;
+        edge-width: 1px;
+        edge: #4a3209;
+        Text {
+            text: root.place;
+            color: Pn.engrave;
+            font-family: Pn.font;
+            font-size: 12px;
+            font-weight: 600;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+    // The tin: a bright brass ring while lifted, its shadow, the dark rims and the label.
+    Rectangle {
+        x: root.body-x;
+        y: 4px;
+        width: root.width - root.body-x;
+        height: root.body-h;
+        Rectangle {
+            visible: root.lifted;
+            x: -3px;
+            y: -3px;
+            width: parent.width + 6px;
+            height: parent.height + 6px;
+            border-radius: 6px;
+            background: #4a3209;
+            Rectangle { x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px; border-radius: 5px; background: Pn.brass-hi; }
+        }
+        Rectangle { visible: !root.lifted; y: 2px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; background: #00000059; }
+        Rectangle { border-top-right-radius: 4px; border-bottom-right-radius: 4px; background: #1c0f08; }
+        Rectangle {
+            y: 3px;
+            height: parent.height - 6px;
+            border-top-right-radius: 1px;
+            border-bottom-right-radius: 1px;
+            background: root.label;
+        }
+        Rectangle {
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
+            background: @linear-gradient(180deg, #00000059 0%, #00000000 26%, #ffffff2e 38%, #00000000 55%, #00000052 100%);
+        }
+        Rectangle { x: 8px; y: 5px; width: parent.width - 16px; height: 1px; background: #5a371473; }
+        Rectangle { x: 8px; y: parent.height - 6px; width: parent.width - 16px; height: 1px; background: #5a371473; }
+        HorizontalLayout {
+            padding-left: root.playable ? 18px : 12px;
+            padding-right: 6px;
+            spacing: 8px;
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+                // Garamond's line box is tall: pulled together so the note clears the ruled line.
+                spacing: root.playable ? 0 : -2px;
+                Text { text: root.item.name; color: Pn.ink; font-family: Pn.font; font-size: root.playable ? 16px : 15px; font-weight: 600; overflow: elide; }
+                if root.item.note != "" && !root.playable: Text {
+                    text: root.item.note.to-uppercase();
+                    color: Pn.ink-soft;
+                    font-family: Pn.caps;
+                    font-size: 8px;
+                    font-weight: 600;
+                    letter-spacing: 0.8px;
+                    overflow: elide;
+                }
+            }
+            // A merge row: the clip's length at the right end, as the mockup's tins.
+            if root.item.note != "" && root.playable: Text {
+                text: root.item.note;
+                color: Pn.ink;
+                font-family: Pn.font;
+                font-size: 14px;
+                font-weight: 600;
+                vertical-alignment: center;
+            }
+            if root.removable: VerticalLayout {
+                alignment: center;
+                PnXKey {
+                    width: 24px;
+                    height: 24px;
+                    label: "Remove " + root.item.name;
+                    tip: "Remove";
+                    enabled: root.enabled;
+                    clicked => { root.remove(); }
+                }
+            }
+            if root.menu: VerticalLayout {
+                alignment: center;
+                PnXKey {
+                    width: 16px;
+                    height: 26px;
+                    dots: true;
+                    label: "Options for " + root.item.name;
+                    tip: "Options";
+                    enabled: root.enabled;
+                    clicked => { root.open-menu(); }
+                }
+            }
+        }
+    }
+    // The lid over the tin's left end: play, pause while it plays.
+    if root.playable: Rectangle {
+        x: root.body-x - 14px;
+        y: (root.height - 28px) / 2;
+        width: 28px;
+        height: 28px;
+        accessible-role: button;
+        accessible-label: (root.playing ? "Pause " : "Play ") + root.item.name;
+        accessible-action-default => { root.play(); }
+        // A brass ring round a dark rim and the lid's face, in solid rings (the software
+        // renderer fills a gradient as a square).
+        PnDisc {
+            x: 0;
+            y: lt.pressed ? 1px : 0;
+            width: 28px;
+            height: 28px;
+            c0: #e7c66f;
+            c1: #a07326;
+            c2: #4d360c;
+            mid: 0.72;
+            Rectangle { x: 6.5px; y: 6.5px; width: 15px; height: 15px; border-radius: 7.5px; background: root.playing ? #5e1209 : #7a5717; }
+            Rectangle { x: 7.5px; y: 7.5px; width: 13px; height: 13px; border-radius: 6.5px; background: root.playing ? #d0463a : #d8b35c; }
+            Rectangle { visible: lt.has-hover; border-radius: 14px; background: #fff6d826; }
+            Icon {
+                x: (parent.width - self.width) / 2 + (root.playing ? 0 : 1px);
+                name: root.playing ? "pause" : "play";
+                tint: root.playing ? Pn.wax-ink : Pn.ink;
+                width: 16px;
+                height: 16px;
+            }
+        }
+        property <bool> hovering: lt.has-hover;
+        changed hovering => { Tips.hover(self.hovering, root.playing ? "Pause" : "Play", self.absolute-position, self.width, self.height); }
+        lt := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { Tips.hide(); root.play(); }
+        }
+    }
+}
+
+// The Phonograph's record hotkey: Press the keys in italic by an amber jewel while it
+// listens, Not set in italic, or the keys as small ivory key caps; flush right.
+component PnShortcutArt inherits Rectangle {
+    in property <bool> listening;
+    in property <[string]> keys;
+    if root.listening || root.keys.length == 0: HorizontalLayout {
+        alignment: end;
+        spacing: 8px;
+        if root.listening: VerticalLayout {
+            alignment: center;
+            PnDisc {
+                width: 9px;
+                height: 9px;
+                c0: #fff0c0;
+                c1: #e9a52c;
+                c2: #6a420a;
+                mid: 0.45;
+            }
+        }
+        Text {
+            text: root.listening ? "Press the keys" : "Not set";
+            color: root.listening ? Pn.plate-ink : Pn.hint;
+            font-family: Pn.font;
+            font-size: 14.5px;
+            font-weight: 500;
+            font-italic: true;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+    if !root.listening && root.keys.length > 0: HorizontalLayout {
+        alignment: end;
+        spacing: 8px;
+        for k in root.keys: Rectangle {
+            width: max(30px, kc.preferred-width + 16px);
+            height: 22px;
+            y: (parent.height - self.height) / 2 - 1px;
+            PnKey { kind: 0; }
+            kc := Text {
+                text: k.to-uppercase();
+                color: Pn.ink;
+                font-family: Pn.caps;
+                font-size: 8.5px;
+                font-weight: 700;
+                letter-spacing: 1.3px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+    }
+}
+
 // The Cozy Cabin's Export key: honey with EXPORT and an up arrow; while exporting a dark
 // well filling with honey blocks under the percent; honey with a check and DONE when done.
 component CzExportArt inherits Rectangle {
@@ -4750,10 +5340,10 @@ export component ExportButton inherits Rectangle {
     }
     height: 36px;
     width: Theme.os95 ? os-row.preferred-width : Theme.pocket ? 96px : Theme.answer ? label.preferred-width + 58px : max(label.preferred-width + 60px, 128px);
-    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? self.height / 2 : Theme.dash ? self.height / 2 : 9px;
-    clip: !Theme.tape && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.pocket && !Theme.quest && !Theme.answer && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball;
+    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.glass ? self.height / 2 : Theme.dash ? self.height / 2 : 9px;
+    clip: !Theme.tape && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.pocket && !Theme.quest && !Theme.answer && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball && !Theme.phono;
     // Spatial Glass: the white pill; while exporting a dark pill that fills with light.
-    background: Theme.tape || Theme.comic || Theme.phos || Theme.pocket || Theme.quest || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? transparent : Theme.os95 ? Os.face : Theme.glass ? (root.state == 1 ? #00000040 : t.has-hover ? #ffffff : #ececf2)
+    background: Theme.tape || Theme.comic || Theme.phos || Theme.pocket || Theme.quest || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? transparent : Theme.os95 ? Os.face : Theme.glass ? (root.state == 1 ? #00000040 : t.has-hover ? #ffffff : #ececf2)
         : root.state == 1 ? Theme.raised : t.has-hover ? Theme.accent-hover : Theme.accent;
     // Answering Machine: a rubber key, held down while it exports and filling with red,
     // with an amber lamp when done.
@@ -5209,6 +5799,16 @@ export component ExportButton inherits Rectangle {
         hover: t.has-hover;
         pressed: t.pressed && t.has-hover;
     }
+    if Theme.phono: PnExportArt {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.height;
+        state: root.state;
+        progress: root.progress;
+        hover: t.has-hover;
+        pressed: t.pressed && t.has-hover;
+    }
     if Theme.fighter: FiExportArt {
         x: 0;
         y: 0;
@@ -5219,7 +5819,7 @@ export component ExportButton inherits Rectangle {
         hover: t.has-hover;
         pressed: t.pressed && t.has-hover;
     }
-    if root.state == 1 && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.pocket && !Theme.quest && !Theme.answer && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball: Rectangle {
+    if root.state == 1 && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.pocket && !Theme.quest && !Theme.answer && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball && !Theme.phono: Rectangle {
         x: 0;
         width: parent.width * clamp(root.progress, 0, 1);
         background: Theme.accent.with-alpha(0.35);
@@ -5235,7 +5835,7 @@ export component ExportButton inherits Rectangle {
         animate width { duration: 150ms; }
     }
     HorizontalLayout {
-        visible: !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball;
+        visible: !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball && !Theme.phono;
         alignment: root.state == 0 && !Theme.glass ? LayoutAlignment.stretch : LayoutAlignment.center;
         padding-left: Theme.glass ? 12px : 18px;
         padding-right: Theme.glass ? 12px : 14px;
@@ -5668,7 +6268,7 @@ export component OrderList inherits Rectangle {
     callback moved(int, int);
     callback act(int);
     callback play(int);
-    property <length> row-h: Theme.tape ? 48px : Theme.phos || Theme.quest ? 36px : Theme.os95 ? 34px : Theme.comic ? 44px : Theme.pocket ? (root.menu ? 38px : 34px) : Theme.brick ? 32px : Theme.answer ? 40px : Theme.synth ? 54px : Theme.fighter ? 52px : Theme.cozy ? 51px : Theme.pinball ? 51px : 50px;
+    property <length> row-h: Theme.tape ? 48px : Theme.phos || Theme.quest ? 36px : Theme.os95 ? 34px : Theme.comic ? 44px : Theme.pocket ? (root.menu ? 38px : 34px) : Theme.brick ? 32px : Theme.answer ? 40px : Theme.synth ? 54px : Theme.fighter ? 52px : Theme.cozy ? 51px : Theme.phono ? 48px : Theme.pinball ? 51px : 50px;
     property <bool> hi: 1phx < 0.7px;
     property <int> dragging: -1;
     property <length> drag-dy;
@@ -5752,6 +6352,18 @@ export component OrderList inherits Rectangle {
         border-width: 1.5px;
         border-color: #5a2a0a;
     }
+    // Phonograph: an empty slot on the shelf where the dragged tin will land.
+    Rectangle {
+        visible: Theme.phono && root.dragging >= 0;
+        x: 46px;
+        y: root.target * root.row-h + 5px;
+        width: root.width - 46px;
+        height: root.row-h - 10px;
+        border-radius: 4px;
+        background: #00000040;
+        border-width: 1px;
+        border-color: #d1a84f59;
+    }
     Rectangle {
         visible: Theme.cozy && root.dragging >= 0;
         x: 0;
@@ -5806,10 +6418,10 @@ export component OrderList inherits Rectangle {
         border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest ? 0 : Theme.glass ? 16px : Theme.answer ? 4px : 10px;
         // Phosphor: the dragged row lifts as inverted video. Answering Machine: it lifts off
         // the paper.
-        background: i == root.dragging && !Theme.tape && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball ? (Theme.phos ? Ph.ph : Theme.glass ? #ffffff2b : Theme.answer ? #f9f1e3 : Theme.raised) : transparent;
-        border-width: i == root.dragging && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball ? 1px : 0;
+        background: i == root.dragging && !Theme.tape && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball && !Theme.phono ? (Theme.phos ? Ph.ph : Theme.glass ? #ffffff2b : Theme.answer ? #f9f1e3 : Theme.raised) : transparent;
+        border-width: i == root.dragging && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball && !Theme.phono ? 1px : 0;
         border-color: Theme.glass ? #ffffff8c : Theme.edge;
-        drop-shadow-blur: i == root.dragging && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball ? 16px : 0;
+        drop-shadow-blur: i == root.dragging && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball && !Theme.phono ? 16px : 0;
         drop-shadow-offset-y: i == root.dragging && !Theme.tape && !Theme.phos && !Theme.comic && !Theme.pocket && !Theme.brick ? 6px : 0;
         // Brick Phone: a grip, the place inverted, a play glyph, the clip and its length and
         // an x (or the dots of the parts' menu); the dragged one lifts inverted.
@@ -7146,6 +7758,29 @@ export component OrderList inherits Rectangle {
                 row-menu.show();
             }
         }
+        if Theme.phono: PnOrderRow {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: root.row-h;
+            item: r;
+            place: (i == root.dragging ? root.target
+                : root.dragging >= 0 && i > root.dragging && i <= root.target ? i - 1
+                : root.dragging >= 0 && i < root.dragging && i >= root.target ? i + 1
+                : i) + 1;
+            lifted: i == root.dragging;
+            playing: r.name == root.playing-name;
+            playable: root.playable;
+            removable: root.removable;
+            menu: root.menu;
+            enabled: root.enabled;
+            play => { root.play(i); }
+            remove => { root.act(i); }
+            open-menu => {
+                root.menu-row = i;
+                row-menu.show();
+            }
+        }
         if Theme.fighter: FiOrderRow {
             x: 0;
             y: 0;
@@ -7169,7 +7804,7 @@ export component OrderList inherits Rectangle {
                 row-menu.show();
             }
         }
-        if !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.dash && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball: HorizontalLayout {
+        if !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.dash && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball && !Theme.phono: HorizontalLayout {
             padding-left: 10px;
             padding-right: 8px;
             spacing: 10px;
@@ -7254,7 +7889,7 @@ export component OrderList inherits Rectangle {
             }
         }
         Rectangle {
-            visible: i < root.rows.length - 1 && root.dragging < 0 && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.dash && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball;
+            visible: i < root.rows.length - 1 && root.dragging < 0 && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.dash && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball && !Theme.phono;
             x: 10px;
             y: parent.height - 1px;
             width: parent.width - 20px;
@@ -7347,8 +7982,8 @@ export component Select inherits Rectangle {
         popup.show();
     }
     // The width the current choice needs, for skins that size the box to it.
-    out property <length> natural: Theme.os95 ? os-shown.preferred-width + 30px : Theme.quest ? q-shown.preferred-width + 31px : shown.preferred-width + (Theme.tape ? 46px : Theme.phos ? 40px : Theme.glass ? 44px : Theme.pocket ? 56px : Theme.brick ? 26px : Theme.fighter ? 46px : Theme.pinball ? 40px : Theme.cozy ? 56px : 42px);
-    property <length> row-h: Theme.cozy || Theme.pinball ? 30px : Theme.fighter ? 30px : Theme.tape || Theme.phos || Theme.answer ? 26px : Theme.os95 ? 18px : Theme.comic ? 30px : Theme.pocket ? 22px : Theme.quest ? 27px : Theme.brick ? 22px : Theme.synth ? 28px : 32px;
+    out property <length> natural: Theme.os95 ? os-shown.preferred-width + 30px : Theme.quest ? q-shown.preferred-width + 31px : shown.preferred-width + (Theme.tape ? 46px : Theme.phos ? 40px : Theme.glass ? 44px : Theme.pocket ? 56px : Theme.brick ? 26px : Theme.fighter ? 46px : Theme.phono ? 40px : Theme.pinball ? 40px : Theme.cozy ? 56px : 42px);
+    property <length> row-h: Theme.cozy || Theme.pinball || Theme.phono ? 30px : Theme.fighter ? 30px : Theme.tape || Theme.phos || Theme.answer ? 26px : Theme.os95 ? 18px : Theme.comic ? 30px : Theme.pocket ? 22px : Theme.quest ? 27px : Theme.brick ? 22px : Theme.synth ? 28px : 32px;
     property <int> os-hot: -1;
     width: 200px;
     height: 32px;
@@ -7357,17 +7992,17 @@ export component Select inherits Rectangle {
     // Generated code size).
     // No x, y or size: it fills the root and passes its children's layout constraints on.
     body := Rectangle {
-        border-radius: Theme.pinball ? 3px : Theme.tape ? 2px : Theme.phos || Theme.fighter || Theme.cozy ? 0 : Theme.os95 ? 0 : Theme.comic || Theme.pocket || Theme.quest ? 0 : Theme.brick ? 0 : Theme.glass ? self.height / 2 : Theme.synth ? 6px : 8px;
+        border-radius: Theme.phono ? 3px : Theme.pinball ? 3px : Theme.tape ? 2px : Theme.phos || Theme.fighter || Theme.cozy ? 0 : Theme.os95 ? 0 : Theme.comic || Theme.pocket || Theme.quest ? 0 : Theme.brick ? 0 : Theme.glass ? self.height / 2 : Theme.synth ? 6px : 8px;
         // Phosphor: a boxed value with a "v", the edge bright while hovered or focused.
         // Pocket: the dark picker, a light ring inside while it has the focus.
         // Brick Phone: a boxed value with a pixel arrow; its list is a numbered pick list.
         // Pocket Synth: a small black screen in a dark bezel and grey rim, orange while focused.
-        border-width: Theme.pinball ? 1.5px : Theme.comic || Theme.answer || Theme.pocket || Theme.quest || Theme.fighter || Theme.cozy ? 0 : Theme.brick ? 2px : Theme.synth ? 2px : Theme.glass || Theme.dash ? 1px : (keys.has-focus || Theme.phos) && !Theme.os95 ? 1px : 0;
+        border-width: Theme.phono ? 0 : Theme.pinball ? 1.5px : Theme.comic || Theme.answer || Theme.pocket || Theme.quest || Theme.fighter || Theme.cozy ? 0 : Theme.brick ? 2px : Theme.synth ? 2px : Theme.glass || Theme.dash ? 1px : (keys.has-focus || Theme.phos) && !Theme.os95 ? 1px : 0;
         border-color: Theme.pinball ? (keys.has-focus ? Pb.plasma : t.has-hover && enabled ? #c9c3cf : Pb.edge) : Theme.tape ? Deck.amber : Theme.phos ? (keys.has-focus || (t.has-hover && enabled) ? Ph.ph : Ph.dim) : Theme.glass ? (keys.has-focus ? #ffffffb3 : #ffffff47) : Theme.dash ? (keys.has-focus ? Theme.accent : #ffffff1f) : Theme.synth ? (keys.has-focus ? #ff5a1e : #262625) : Theme.edge;
         // Tape Deck: a black Dymo label strip. Desktop 95: a sunken white drop down box, the
         // choice navy while it has the focus. Spatial Glass: a glass capsule. Car Dashboard: a
         // glass chip with a chevron.
-        background: Theme.pinball ? Pb.well : Theme.fighter || Theme.cozy ? transparent : Theme.tape ? (t.has-hover && enabled ? @linear-gradient(180deg, #2a2a2d 0%, #141416 100%) : Deck.dymo)
+        background: Theme.phono ? Pn.plate-face : Theme.pinball ? Pb.well : Theme.fighter || Theme.cozy ? transparent : Theme.tape ? (t.has-hover && enabled ? @linear-gradient(180deg, #2a2a2d 0%, #141416 100%) : Deck.dymo)
             : Theme.pocket ? (!root.enabled ? Pk.l1 : t.has-hover ? Pk.l2 : Pk.l3)
             : Theme.dash ? (t.has-hover && enabled ? #1f252d : #181d23)
             : Theme.synth ? (t.has-hover && enabled ? #1a1c1c : #0b0c0c)
@@ -7378,6 +8013,9 @@ export component Select inherits Rectangle {
             : Theme.os95 ? (root.enabled ? #ffffff : Os.face)
             : Theme.phos ? transparent : t.has-hover && enabled ? Theme.hover-soft : Theme.raised;
         opacity: enabled || Theme.os95 || Theme.pocket || Theme.quest ? 1 : Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0.38 : Theme.answer ? 0.55 : 0.45;
+        // Phonograph: a brass card holder round an ivory card, a bright brass ring while it
+        // has the focus.
+        if Theme.phono: PnHolder { x: 0; y: 0; width: root.width; height: root.height; hot: keys.has-focus; hover: t.has-hover && root.enabled; }
         // Fighter Select: the Stage chip's slanted face, gold rimmed while it has the focus.
         // Cozy Cabin: the parchment picker in its ink ring, ringed honey while it has the focus.
         if Theme.cozy: CzNote { x: 0; y: 0; width: root.width; height: root.height; hot: keys.has-focus; tile: false; }
@@ -7492,10 +8130,10 @@ export component Select inherits Rectangle {
             shown := Text {
                 text: root.current-index >= 0 && root.current-index < root.model.length
                     ? (Theme.tape ? root.model[root.current-index].to-uppercase() : root.model[root.current-index]) : "";
-                color: Theme.pocket ? Pk.l0 : Theme.tape ? #f5f1e8 : Theme.phos ? Ph.hi : Theme.os95 ? transparent : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? Am.name-ink : Theme.synth ? #eef3ee : Theme.fighter ? #ffffff : Theme.pinball ? Pb.ink : Theme.cozy ? Cz.ink : Theme.text;
-                font-family: Theme.pocket ? Pk.big : Theme.tape || Theme.synth ? Theme.mono : Theme.comic ? "Comic Neue" : Theme.phos ? Ph.mono : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.brick ? Brick.words : Theme.fighter ? Fi.body : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
-                font-size: Theme.pinball ? 14px : Theme.pocket ? 20px : Theme.tape ? 11px : Theme.phos ? 12px : Theme.glass ? 12.5px : Theme.dash ? 12px : Theme.brick ? 16px : Theme.answer ? 12.5px : Theme.synth ? 11px : 13px;
-                font-weight: Theme.tape || Theme.dash || Theme.comic || Theme.answer || Theme.fighter ? 700 : Theme.glass || Theme.synth || Theme.cozy ? 500 : 400;
+                color: Theme.pocket ? Pk.l0 : Theme.tape ? #f5f1e8 : Theme.phos ? Ph.hi : Theme.os95 ? transparent : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? Am.name-ink : Theme.synth ? #eef3ee : Theme.fighter ? #ffffff : Theme.phono ? Pn.ink : Theme.pinball ? Pb.ink : Theme.cozy ? Cz.ink : Theme.text;
+                font-family: Theme.pocket ? Pk.big : Theme.tape || Theme.synth ? Theme.mono : Theme.comic ? "Comic Neue" : Theme.phos ? Ph.mono : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.brick ? Brick.words : Theme.fighter ? Fi.body : Theme.phono ? Pn.font : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
+                font-size: Theme.phono ? 14px : Theme.pinball ? 14px : Theme.pocket ? 20px : Theme.tape ? 11px : Theme.phos ? 12px : Theme.glass ? 12.5px : Theme.dash ? 12px : Theme.brick ? 16px : Theme.answer ? 12.5px : Theme.synth ? 11px : 13px;
+                font-weight: Theme.tape || Theme.dash || Theme.comic || Theme.answer || Theme.fighter ? 700 : Theme.phono ? 600 : Theme.glass || Theme.synth || Theme.cozy ? 500 : 400;
                 letter-spacing: Theme.tape ? 1px : 0;
                 vertical-alignment: center;
                 horizontal-stretch: 1;
@@ -7514,11 +8152,11 @@ export component Select inherits Rectangle {
             }
             Icon {
                 visible: !Theme.os95 && !Theme.pocket && !Theme.brick && !Theme.fighter && !Theme.cozy;
-                name: Theme.pinball || Theme.tape || Theme.phos || Theme.comic || Theme.glass || Theme.dash || Theme.answer || Theme.synth ? "down" : "updown";
-                tint: Theme.pinball ? Pb.plasma : Theme.tape ? #f5f1e8 : Theme.phos ? Ph.dim : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.dash ? Theme.dim : Theme.answer ? Am.print : Theme.synth ? #b9c0ba : Theme.muted;
+                name: Theme.pinball || Theme.phono || Theme.tape || Theme.phos || Theme.comic || Theme.glass || Theme.dash || Theme.answer || Theme.synth ? "down" : "updown";
+                tint: Theme.phono ? Pn.ink : Theme.pinball ? Pb.plasma : Theme.tape ? #f5f1e8 : Theme.phos ? Ph.dim : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.dash ? Theme.dim : Theme.answer ? Am.print : Theme.synth ? #b9c0ba : Theme.muted;
                 stroke-width: Theme.comic ? 2.8px : 2px;
-                width: Theme.pinball ? 10px : Theme.pocket || Theme.fighter || Theme.cozy ? 0 : Theme.phos || Theme.dash || Theme.synth ? 10px : Theme.brick ? 8px : 12px;
-                height: Theme.pinball || Theme.phos || Theme.dash || Theme.synth ? 10px : Theme.brick ? 8px : 12px;
+                width: Theme.phono ? 10px : Theme.pinball ? 10px : Theme.pocket || Theme.fighter || Theme.cozy ? 0 : Theme.phos || Theme.dash || Theme.synth ? 10px : Theme.brick ? 8px : 12px;
+                height: Theme.pinball || Theme.phono || Theme.phos || Theme.dash || Theme.synth ? 10px : Theme.brick ? 8px : 12px;
                 y: (parent.height - self.height) / 2;
             }
         }
@@ -7548,7 +8186,7 @@ export component Select inherits Rectangle {
     property <bool> upwards: root.absolute-position.y + root.height + 4px + self.list-height > Win.height
         && root.absolute-position.y - 4px - self.list-height >= 0;
     popup := PopupWindow {
-        x: Theme.phos || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? root.width - self.width : 0;
+        x: Theme.phos || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? root.width - self.width : 0;
         y: root.upwards ? -root.list-height - 4px : root.height + 4px;
         // Brick Phone: wide enough for the longest setting's name in its title bar.
         width: Theme.brick ? max(root.width, 180px) : max(root.width, Theme.quest ? 180px : 120px);
@@ -7566,16 +8204,17 @@ export component Select inherits Rectangle {
             // Tape Deck: a strip of black label tape, the current choice amber. Phosphor: a box
             // with a bright edge, the hovered line inverted, a star by the current one. Desktop 95: a
             // white list with a black line, the current choice navy.
-            background: Theme.pinball ? Pb.pop : Theme.pocket ? Pk.l0 : Theme.quest ? transparent : Theme.brick || Theme.cozy ? transparent : Theme.fighter ? Fi.menu : Theme.tape ? #0b0b0c : Theme.phos ? Ph.bg2 : Theme.os95 ? #ffffff : Theme.comic ? #ffffff : Theme.glass ? Glass.menu : Theme.dash ? #171b21 : Theme.synth ? transparent : Theme.popup;
-            border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? 16px : Theme.dash ? 12px : Theme.answer ? 6px : Theme.synth ? 12px : 10px;
-            border-width: Theme.cozy ? 0 : Theme.comic ? 3px : Theme.synth ? 0 : Theme.quest ? 0 : Theme.pocket ? 2px : Theme.brick ? 0 : 1px;
-            border-color: Theme.pinball ? Pb.edge : Theme.pocket ? Pk.l3 : Theme.tape || Theme.os95 ? #000000 : Theme.phos ? Ph.ph : Theme.comic ? Comic.ink : Theme.glass ? #ffffff57 : Theme.dash ? #ffffff33 : Theme.answer ? Am.chip-lip : Theme.edge;
+            background: Theme.phono ? Pn.card : Theme.pinball ? Pb.pop : Theme.pocket ? Pk.l0 : Theme.quest ? transparent : Theme.brick || Theme.cozy ? transparent : Theme.fighter ? Fi.menu : Theme.tape ? #0b0b0c : Theme.phos ? Ph.bg2 : Theme.os95 ? #ffffff : Theme.comic ? #ffffff : Theme.glass ? Glass.menu : Theme.dash ? #171b21 : Theme.synth ? transparent : Theme.popup;
+            border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.phono ? 4px : Theme.glass ? 16px : Theme.dash ? 12px : Theme.answer ? 6px : Theme.synth ? 12px : 10px;
+            border-width: Theme.cozy ? 0 : Theme.phono ? 2px : Theme.comic ? 3px : Theme.synth ? 0 : Theme.quest ? 0 : Theme.pocket ? 2px : Theme.brick ? 0 : 1px;
+            border-color: Theme.phono ? Pn.brass-mid : Theme.pinball ? Pb.edge : Theme.pocket ? Pk.l3 : Theme.tape || Theme.os95 ? #000000 : Theme.phos ? Ph.ph : Theme.comic ? Comic.ink : Theme.glass ? #ffffff57 : Theme.dash ? #ffffff33 : Theme.answer ? Am.chip-lip : Theme.edge;
             drop-shadow-blur: Theme.tape || Theme.comic || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.cozy ? 0 : 20px;
             drop-shadow-offset-y: 8px;
             drop-shadow-color: #00000099;
             if Theme.quest: QFrame { x: 0; y: 0; }
             if Theme.fighter: Rectangle { x: 0; y: 0; width: parent.width; height: 2px; background: Fi.p1; }
             if Theme.pinball: Rectangle { x: 0; y: 0; width: parent.width; height: 2px; background: Pb.plasma; }
+            if Theme.phono: Rectangle { x: -1px; y: -1px; width: parent.width + 2px; height: parent.height + 2px; border-radius: 5px; border-width: 1px; border-color: Pn.soot; }
             if Theme.cozy: Rectangle { x: 6px; y: 6px; width: parent.width; height: parent.height; background: #00000059; }
             if Theme.cozy: Rectangle { x: 0; y: 0; width: parent.width; height: parent.height; CzNote { } }
             FocusScope {
@@ -7613,10 +8252,11 @@ export component Select inherits Rectangle {
                     y: i * root.row-h;
                     height: root.row-h;
                     property <bool> pk-hot: it.has-hover || i == root.current-index;
-                    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? 11px : Theme.dash ? 8px : 6px;
+                    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.glass ? 11px : Theme.dash ? 8px : 6px;
                     background: Theme.pocket ? (self.pk-hot ? Pk.l3 : transparent)
                         : Theme.fighter ? (i == root.current-index ? Fi.lit : it.has-hover ? Fi.hover : transparent)
                         : Theme.pinball ? (i == root.current-index || it.has-hover ? Pb.lit-row : transparent)
+                        : Theme.phono ? (i == root.current-index || it.has-hover ? Pn.lit-row : transparent)
                         : Theme.cozy ? (i == root.current-index ? Cz.honey : it.has-hover ? Cz.hover : transparent)
                         : Theme.quest ? transparent : Theme.tape ? (i == root.current-index ? Deck.amber : it.has-hover ? #2a2a2d : transparent)
                         : Theme.answer ? (i == root.current-index || it.has-hover ? Am.lit : transparent)
@@ -7634,6 +8274,7 @@ export component Select inherits Rectangle {
                     if Theme.fighter && i == root.current-index: Rectangle { x: 0; width: 3px; background: Fi.gold; }
                     if Theme.cozy && i == root.current-index: Rectangle { x: 0; width: 3px; background: Cz.ember; }
                     if Theme.pinball && (i == root.current-index || it.has-hover): Rectangle { x: 0; width: 3px; background: Pb.plasma; }
+                    if Theme.phono && (i == root.current-index || it.has-hover): PnPointer { x: 5px; y: (parent.height - 7px) / 2; }
                     if Theme.pocket && (it.has-hover || i == root.current-index): PkPx { x: 5px; y: (parent.height - self.height) / 2; s: 1; source: @image-url("skins/px-pocket/chev.png"); colorize: Pk.l0; }
                     // Quest Menu: the hovered row lit with the glove, the current one gold with a
                     // check.
@@ -7695,8 +8336,8 @@ export component Select inherits Rectangle {
                         }
                     }
                     if !Theme.os95 && !Theme.quest && !Theme.brick: HorizontalLayout {
-                        padding-left: Theme.phos ? 8px : Theme.pocket ? 16px : 10px;
-                        padding-right: 10px;
+                        padding-left: Theme.phos ? 8px : Theme.pocket || Theme.phono ? 16px : 10px;
+                        padding-right: Theme.phono ? 12px : 10px;
                         spacing: Theme.phos ? 6px : 8px;
                         if Theme.phos: Text {
                             width: 8px;
@@ -7713,14 +8354,15 @@ export component Select inherits Rectangle {
                                 : Theme.synth ? (i == root.current-index ? #ffffff : #eef3ee)
                                 : Theme.fighter ? Fi.text
                                 : Theme.pinball ? (i == root.current-index ? Pb.name-sel : Pb.ink)
+                                : Theme.phono ? (i == root.current-index ? Pn.wax : Pn.ink)
                                 : Theme.cozy ? Cz.ink
                                 : Theme.dash && i == root.current-index ? Theme.accent
                                 : Theme.answer ? Am.ink
                                 : i == root.current-index ? Theme.text : Theme.text2;
-                            font-family: Theme.pocket ? Pk.big : Theme.tape || Theme.synth ? Theme.mono : Theme.phos ? Ph.mono : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.fighter ? Fi.body : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
-                            font-weight: Theme.pocket ? 400 : Theme.tape || Theme.dash || Theme.comic || Theme.answer || Theme.fighter ? 700 : Theme.cozy ? 400 : Theme.glass ? (i == root.current-index ? 600 : 500) : Theme.synth ? 500 : 400;
+                            font-family: Theme.pocket ? Pk.big : Theme.tape || Theme.synth ? Theme.mono : Theme.phos ? Ph.mono : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.fighter ? Fi.body : Theme.phono ? Pn.font : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
+                            font-weight: Theme.pocket ? 400 : Theme.tape || Theme.dash || Theme.comic || Theme.answer || Theme.fighter ? 700 : Theme.cozy ? 400 : Theme.phono ? 600 : Theme.glass ? (i == root.current-index ? 600 : 500) : Theme.synth ? 500 : 400;
                             letter-spacing: Theme.tape ? 1.4px : 0;
-                            font-size: Theme.pinball ? 15px : Theme.pocket ? 20px : Theme.tape ? 10.5px : Theme.phos ? 12.5px : Theme.glass ? 12.5px : Theme.dash || Theme.answer ? 12.5px : Theme.synth ? 11.5px : 13px;
+                            font-size: Theme.phono ? 15px : Theme.pinball ? 15px : Theme.pocket ? 20px : Theme.tape ? 10.5px : Theme.phos ? 12.5px : Theme.glass ? 12.5px : Theme.dash || Theme.answer ? 12.5px : Theme.synth ? 11.5px : 13px;
                             vertical-alignment: center;
                             horizontal-stretch: 1;
                             overflow: elide;
@@ -7728,7 +8370,7 @@ export component Select inherits Rectangle {
                         if i == root.current-index && Theme.pocket: PkPx { y: (parent.height - self.height) / 2; source: @image-url("skins/px-pocket/tick.png"); colorize: Pk.l0; }
                         if i == root.current-index && !Theme.tape && !Theme.phos && !Theme.pocket && !Theme.brick: Icon {
                             name: "check";
-                            tint: Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? Am.rec : Theme.synth ? #ffffff : Theme.fighter ? Fi.gold : Theme.pinball ? Pb.plasma : Theme.cozy ? Cz.ink : Theme.accent;
+                            tint: Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.answer ? Am.rec : Theme.synth ? #ffffff : Theme.fighter ? Fi.gold : Theme.phono ? Pn.ink : Theme.pinball ? Pb.plasma : Theme.cozy ? Cz.ink : Theme.accent;
                             width: 13px;
                             height: 13px;
                             y: (parent.height - self.height) / 2;
@@ -8000,21 +8642,21 @@ export component ShortcutBox inherits Rectangle {
     callback cleared();
     callback done();
     property <bool> listening: fs.has-focus;
-    width: Theme.pinball ? 150px : Theme.tape || Theme.fighter || Theme.cozy ? 140px : Theme.phos || Theme.quest ? 150px : Theme.os95 ? 104px : Theme.comic ? 150px : Theme.glass ? 150px : Theme.pocket ? 130px : Theme.brick ? 120px : Theme.answer ? 140px : Theme.synth ? 140px : 200px;
-    height: Theme.pinball ? 28px : Theme.cozy ? 24px : Theme.fighter ? 26px : Theme.tape ? 28px : Theme.phos ? 24px : Theme.os95 ? 21px : Theme.comic ? 30px : Theme.glass ? 30px : Theme.pocket ? 22px : Theme.quest ? 25px : Theme.brick ? 22px : Theme.answer ? 26px : Theme.synth ? 28px : 32px;
-    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.pinball ? 0 : Theme.glass ? 15px : 8px;
+    width: Theme.phono ? 150px : Theme.pinball ? 150px : Theme.tape || Theme.fighter || Theme.cozy ? 140px : Theme.phos || Theme.quest ? 150px : Theme.os95 ? 104px : Theme.comic ? 150px : Theme.glass ? 150px : Theme.pocket ? 130px : Theme.brick ? 120px : Theme.answer ? 140px : Theme.synth ? 140px : 200px;
+    height: Theme.phono ? 28px : Theme.pinball ? 28px : Theme.cozy ? 24px : Theme.fighter ? 26px : Theme.tape ? 28px : Theme.phos ? 24px : Theme.os95 ? 21px : Theme.comic ? 30px : Theme.glass ? 30px : Theme.pocket ? 22px : Theme.quest ? 25px : Theme.brick ? 22px : Theme.answer ? 26px : Theme.synth ? 28px : 32px;
+    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.pinball || Theme.phono ? 0 : Theme.glass ? 15px : 8px;
     // Tape Deck: a sunk well with real key caps. Phosphor: boxed keys joined by "+", and
     // "press the keys" in inverted video while it listens. Desktop 95: a white hot key field. Comic Book: ink key caps on the card,
     // PRESS THE KEYS in a yellow caption while it listens. Spatial Glass: glass key caps.
     // Brick Phone: LCD key caps, an inverted "Press the keys" with a caret while it listens.
-    background: Theme.fighter || Theme.cozy || Theme.pinball ? transparent : Theme.tape ? #1b1410 : Theme.pocket ? (t.has-hover && !listening ? #b3bf6a : transparent) : Theme.phos ? (listening ? Ph.ph : transparent) : Theme.os95 ? #ffffff : Theme.comic ? (t.has-hover && !listening ? Comic.pale : transparent)
+    background: Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? transparent : Theme.tape ? #1b1410 : Theme.pocket ? (t.has-hover && !listening ? #b3bf6a : transparent) : Theme.phos ? (listening ? Ph.ph : transparent) : Theme.os95 ? #ffffff : Theme.comic ? (t.has-hover && !listening ? Comic.pale : transparent)
         : Theme.quest ? (t.has-hover && !listening ? Quest.win-lo : transparent)
         : Theme.glass ? (listening ? #ffffff1f : t.has-hover ? #ffffff14 : transparent)
         : Theme.brick ? (t.has-hover && !listening ? Brick.ghost : transparent)
         : Theme.answer ? transparent
         : Theme.synth ? (listening ? #0b0c0c : transparent)
         : listening ? Theme.accent.with-alpha(0.08) : t.has-hover ? Theme.hover-soft : Theme.raised;
-    border-width: Theme.os95 || Theme.brick || Theme.comic || Theme.pocket || Theme.quest || Theme.answer || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.synth ? (listening ? 2px : 0) : 1px;
+    border-width: Theme.os95 || Theme.brick || Theme.comic || Theme.pocket || Theme.quest || Theme.answer || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.synth ? (listening ? 2px : 0) : 1px;
     // Answering Machine: a small smoked display that reads the keys in red, "NOT SET"
     // dim, and "Press the keys" with a red caret while it listens.
     if Theme.answer: AmSmoke { x: 0; y: 0; width: parent.width; height: parent.height; }
@@ -8303,7 +8945,8 @@ export component ShortcutBox inherits Rectangle {
     if root.listening && Theme.cozy: CzKey { x: 0; y: 0; width: root.width; height: root.height; kind: 1; }
     // Pinball: PRESS THE KEYS on a small dot matrix, NOT SET on a dark plate, plasma key caps.
     if Theme.pinball: PbShortcutArt { x: 0; y: 0; width: root.width; height: root.height; listening: root.listening; keys: root.keys; }
-    if root.listening && !Theme.pinball && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer: HorizontalLayout {
+    if Theme.phono: PnShortcutArt { x: 0; y: 0; width: root.width; height: root.height; listening: root.listening; keys: root.keys; }
+    if root.listening && !Theme.pinball && !Theme.phono && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer: HorizontalLayout {
         alignment: center;
         spacing: 8px;
         Rectangle {
@@ -8415,7 +9058,7 @@ export component ShortcutBox inherits Rectangle {
         horizontal-alignment: right;
         vertical-alignment: center;
     }
-    if !root.listening && root.keys.length == 0 && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball: Text {
+    if !root.listening && root.keys.length == 0 && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball && !Theme.phono: Text {
         text: Theme.tape ? "NOT SET" : Theme.phos ? "not set" : "Not set";
         color: Theme.tape ? #8d7d6a : Theme.glass ? Glass.ink3 : Theme.dim;
         font-family: Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : "Inter Tight";
@@ -8547,7 +9190,7 @@ export component ShortcutBox inherits Rectangle {
             }
         }
     }
-    if !root.listening && root.keys.length > 0 && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball: HorizontalLayout {
+    if !root.listening && root.keys.length > 0 && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.glass && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.answer && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball && !Theme.phono: HorizontalLayout {
         alignment: center;
         spacing: 4px;
         for k in root.keys: Rectangle {
@@ -9011,14 +9654,23 @@ component ScrollDecor inherits Rectangle {
         border-width: 1px;
         border-color: #5e5866;
     }
+    // Phonograph: a brass rod along the edge with a brass carriage for the thumb.
+    if Theme.phono && root.bar && !root.bar95 && !root.ink-rail && !root.pk-rail && !root.quest-rail && !root.rubber && root.range > 1px: Rectangle {
+        x: parent.width - 7.5px;
+        y: 2px;
+        width: 3px;
+        height: root.view-height - 4px;
+        border-radius: 1.5px;
+        background: @linear-gradient(90deg, #4a3209 0%, #b58a35 50%, #4a3209 100%);
+    }
     if root.bar && !root.bar95 && !root.ink-rail && !root.pk-rail && !root.quest-rail && !root.rubber && !Theme.brick && root.range > 1px: Rectangle {
-        x: Theme.pinball ? parent.width - 9px : parent.width - self.width - 2px;
+        x: Theme.phono ? parent.width - 9px : Theme.pinball ? parent.width - 9px : parent.width - self.width - 2px;
         y: (-root.content-y / root.range) * (root.view-height - root.thumb-h);
-        width: Theme.pinball ? 5px : drag.has-hover || drag.pressed ? 6px : Theme.fighter ? 4px : 3px;
+        width: Theme.phono ? 6px : Theme.pinball ? 5px : drag.has-hover || drag.pressed ? 6px : Theme.fighter ? 4px : 3px;
         height: root.thumb-h;
         border-radius: Theme.fighter || Theme.cozy ? 0 : self.width / 2;
         // Fighter Select: a red bar.
-        background: Theme.pinball ? transparent : Theme.cozy ? (drag.pressed || drag.has-hover ? Cz.honey : Cz.parch-dd) : Theme.fighter ? (drag.pressed ? #ff5a6e : Fi.p1) : Theme.synth ? (drag.pressed ? #e94a12 : #ff5a1e) : drag.pressed ? Theme.text.with-alpha(0.33) : drag.has-hover ? Theme.text.with-alpha(0.2) : Theme.text.with-alpha(0.11);
+        background: Theme.phono ? (drag.pressed || drag.has-hover ? @linear-gradient(90deg, #b58a35 0%, #fff3c8 45%, #d1a84f 100%) : @linear-gradient(90deg, #7a5717 0%, #f6e3a1 45%, #b58a35 100%)) : Theme.pinball ? transparent : Theme.cozy ? (drag.pressed || drag.has-hover ? Cz.honey : Cz.parch-dd) : Theme.fighter ? (drag.pressed ? #ff5a6e : Fi.p1) : Theme.synth ? (drag.pressed ? #e94a12 : #ff5a1e) : drag.pressed ? Theme.text.with-alpha(0.33) : drag.has-hover ? Theme.text.with-alpha(0.2) : Theme.text.with-alpha(0.11);
         animate width, background { duration: 120ms; }
         Image {
             visible: Theme.pinball;
@@ -9030,8 +9682,8 @@ component ScrollDecor inherits Rectangle {
             image-fit: fill;
         }
         drag := TouchArea {
-            x: Theme.pinball ? -2px : -6px;
-            width: parent.width + (Theme.pinball ? 6px : 8px);
+            x: Theme.phono ? -2px : Theme.pinball ? -2px : -6px;
+            width: parent.width + (Theme.phono ? 6px : Theme.pinball ? 6px : 8px);
             moved => {
                 if (self.pressed) {
                     root.content-y = clamp(-(parent.y + self.mouse-y - self.pressed-y) / (root.view-height - root.thumb-h) * root.range, -root.range, 0);
@@ -9559,8 +10211,8 @@ export component TranscriptCard inherits Rectangle {
     in property <string> clip-name;
     // Brick Phone: the size of the words on the LCD (bigger in a wide window).
     in property <length> brick-size: 17px;
-    property <length> text-size: Theme.pinball ? 15.5px : Theme.cozy ? 14px : Theme.brick ? root.brick-size : Theme.tape || Theme.synth ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : Theme.comic || Theme.fighter ? 13.5px : Theme.glass ? 14px : Theme.answer ? 13px : 15px;
-    property <string> text-family: Theme.brick ? Brick.words : Theme.tape || Theme.synth ? Theme.mono : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.fighter ? Fi.body : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
+    property <length> text-size: Theme.phono ? 15.5px : Theme.pinball ? 15.5px : Theme.cozy ? 14px : Theme.brick ? root.brick-size : Theme.tape || Theme.synth ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : Theme.comic || Theme.fighter ? 13.5px : Theme.glass ? 14px : Theme.answer ? 13px : 15px;
+    property <string> text-family: Theme.brick ? Brick.words : Theme.tape || Theme.synth ? Theme.mono : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.answer ? "Courier Prime" : Theme.fighter ? Fi.body : Theme.phono ? Pn.font : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
     property <length> scroll-y;
     property <length> line-h: measure.preferred-height;
     property <length> rule-pitch: root.original-view && !root.editing ? root.line-h + 5px : root.line-h;
@@ -9574,14 +10226,14 @@ export component TranscriptCard inherits Rectangle {
         : "$ cat " + root.clip-name + ".txt";
         // Comic Book: a tagged white panel with a thick ink edge, red and thicker while it
         // is typed on (the tag is drawn last, over the edge).
-        border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.synth || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.dash ? 12px : Theme.answer ? 8px : 14px;
+        border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.synth || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.dash ? 12px : Theme.answer ? 8px : 14px;
         // Spatial Glass: the page's pane is the card. Pocket: the LCD is the card. Quest Menu: the page draws the window
         // round it (gold while it is typed on).
         // Brick Phone: a box in a 2px ink frame, a heavy double frame while it is typed on. Answering Machine: message paper,
         // whiter with a red edge while it is typed on. Pocket Synth: the keys sit on the
         // faceplate above a black screen.
         // Fighter Select: the page draws the tagged panel round it.
-        border-width: Theme.tape || Theme.glass || Theme.phos || Theme.os95 || Theme.synth || Theme.pocket || Theme.quest || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.comic ? (root.editing ? 4px : 3px) : Theme.brick ? (root.editing ? 3px : 2px) : 1px;
+        border-width: Theme.tape || Theme.glass || Theme.phos || Theme.os95 || Theme.synth || Theme.pocket || Theme.quest || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.comic ? (root.editing ? 4px : 3px) : Theme.brick ? (root.editing ? 3px : 2px) : 1px;
         border-color: Theme.comic ? (root.editing ? Comic.red : Comic.ink) : Theme.answer ? (root.editing ? Am.rec : Am.paper-edge) : root.editing ? Theme.accent : Theme.card-edge;
         background: Theme.comic ? #ffffff : Theme.answer ? (root.editing ? #fbf7ee : Am.paper) : transparent;
         Rectangle {
@@ -9594,9 +10246,9 @@ export component TranscriptCard inherits Rectangle {
             border-color: Brick.ink;
         }
         VerticalLayout {
-            padding: Theme.tape || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.comic ? 10px : Theme.glass ? 16px : Theme.dash ? 14px : Theme.answer ? 10px : 18px;
-            padding-top: Theme.tape || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.comic ? 7px : Theme.dash ? 10px : Theme.answer ? 2px : 12px;
-            padding-bottom: Theme.tape || Theme.phos || Theme.os95 || Theme.brick || Theme.quest || Theme.pocket || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.comic ? 8px : Theme.glass ? 14px : Theme.answer ? 6px : 12px;
+            padding: Theme.tape || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.comic ? 10px : Theme.glass ? 16px : Theme.dash ? 14px : Theme.answer ? 10px : 18px;
+            padding-top: Theme.tape || Theme.phos || Theme.os95 || Theme.pocket || Theme.quest || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.comic ? 7px : Theme.dash ? 10px : Theme.answer ? 2px : 12px;
+            padding-bottom: Theme.tape || Theme.phos || Theme.os95 || Theme.brick || Theme.quest || Theme.pocket || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.comic ? 8px : Theme.glass ? 14px : Theme.answer ? 6px : 12px;
             spacing: Theme.tape || Theme.phos || Theme.pocket ? 6px : Theme.os95 ? 4px : Theme.glass ? 10px : Theme.quest ? 9px : Theme.brick ? 0 : Theme.answer ? 6px : Theme.synth ? 10px : 8px;
             // Desktop 95: Notepad's toolbar; the window round it (skins/dv-os95-pages.slint)
             // carries the title, and the change count sits in its status bar.
@@ -9604,7 +10256,7 @@ export component TranscriptCard inherits Rectangle {
             HorizontalLayout {
                 property <bool> os-bare: Theme.os95 && !root.editing && (root.transcript == "" || root.transcribing);
                 height: Theme.phos ? 24px : Theme.os95 ? (self.os-bare ? 0 : 27px) : Theme.comic ? 30px : Theme.brick ? 24px : Theme.pocket ? 22px : Theme.quest ? 27px : Theme.answer ? 32px : 28px;
-                spacing: Theme.tape ? 5px : Theme.phos || Theme.quest ? 6px : Theme.os95 ? 4px : Theme.comic ? 6px : Theme.glass || Theme.answer ? 6px : Theme.pocket ? 5px : Theme.brick ? 4px : Theme.synth ? 6px : 0;
+                spacing: Theme.tape ? 5px : Theme.phos || Theme.quest ? 6px : Theme.os95 ? 4px : Theme.comic ? 6px : Theme.glass || Theme.answer ? 6px : Theme.pocket ? 5px : Theme.brick ? 4px : Theme.synth ? 6px : Theme.phono ? 8px : 0;
                 // Pocket: TYPING or TRANSCRIPT on a dark tag (none over the words).
                 if Theme.pocket && (root.editing || root.transcript == "" || root.transcribing): VerticalLayout {
                     alignment: center;
@@ -9638,7 +10290,7 @@ export component TranscriptCard inherits Rectangle {
                 Text {
                     visible: !Theme.comic && !Theme.brick;
                     text: Theme.quest ? (root.summary-view && !root.editing ? "SUMMARY" : "TRANSCRIPT") : (Theme.dash || Theme.answer) && root.editing ? "EDITING" : Theme.answer && root.summary-view ? "SUMMARY" : Theme.answer && root.lang-view ? "TRANSLATION"
-                        : Theme.glass ? "Transcript" : Theme.os95 || Theme.pocket || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? "" : "TRANSCRIPT";
+                        : Theme.glass ? "Transcript" : Theme.os95 || Theme.pocket || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? "" : "TRANSCRIPT";
                     horizontal-stretch: Theme.os95 || Theme.brick || (Theme.pocket && !root.editing && root.transcript != "" && !root.transcribing) || (Theme.quest && root.editing) ? 0 : 1;
                     color: Theme.quest ? Quest.gold : Theme.tape ? Deck.rail : Theme.phos ? Ph.dim : Theme.glass ? Glass.ink : Theme.dash ? (root.editing ? Theme.accent : #56606c) : Theme.answer ? (root.editing ? Am.rec : Am.print) : Theme.synth ? #7a766d : Theme.muted;
                     font-family: Theme.quest ? Quest.label : Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.phos ? Ph.mono : Theme.dash ? "Manrope" : Theme.answer ? "Barlow Condensed" : Theme.synth ? Theme.mono : "Inter Tight";
@@ -9682,20 +10334,20 @@ export component TranscriptCard inherits Rectangle {
                     width: badge.preferred-width + (Theme.quest ? 4px : Theme.tape ? 12px : Theme.phos || Theme.pocket ? 10px : Theme.glass ? 18px : 16px);
                     height: Theme.tape || Theme.phos ? 17px : Theme.comic ? 22px : Theme.glass ? 22px : Theme.pocket ? 14px : 20px;
                     y: (parent.height - self.height) / 2;
-                    border-radius: Theme.pinball ? 3px : Theme.tape || Theme.answer ? 2px : Theme.phos || Theme.pocket || Theme.quest || Theme.fighter || Theme.cozy ? 0 : Theme.comic ? 0 : Theme.glass ? 11px : Theme.synth ? 4px : 10px;
+                    border-radius: Theme.phono ? 2px : Theme.pinball ? 3px : Theme.tape || Theme.answer ? 2px : Theme.phos || Theme.pocket || Theme.quest || Theme.fighter || Theme.cozy ? 0 : Theme.comic ? 0 : Theme.glass ? 11px : Theme.synth ? 4px : 10px;
                     // Spatial Glass: a cyan glass chip. Pocket: a dark tag. Quest Menu: a gold label.
                     // Answering Machine: a red stamp.
                     // Fighter Select: a red tag in the slanted type.
-                    background: Theme.pinball ? transparent : Theme.cozy ? Cz.ember : Theme.fighter ? Fi.p1 : Theme.pocket ? Pk.l3 : Theme.quest ? transparent : Theme.tape ? #efe3c8e6 : Theme.glass ? #9fe3ff1f : Theme.phos ? Ph.amber : Theme.comic ? Comic.red : Theme.dash ? #ffb54726 : Theme.answer ? transparent : Theme.synth ? #0b0c0c : Theme.accent;
-                    border-width: Theme.pinball ? 1px : Theme.cozy ? 0 : Theme.quest ? 0 : Theme.tape ? 1.5px : Theme.fighter ? 2px : Theme.comic ? 2.5px : Theme.glass || Theme.dash || Theme.answer ? 1px : 0;
+                    background: Theme.phono ? Pn.wax : Theme.pinball ? transparent : Theme.cozy ? Cz.ember : Theme.fighter ? Fi.p1 : Theme.pocket ? Pk.l3 : Theme.quest ? transparent : Theme.tape ? #efe3c8e6 : Theme.glass ? #9fe3ff1f : Theme.phos ? Ph.amber : Theme.comic ? Comic.red : Theme.dash ? #ffb54726 : Theme.answer ? transparent : Theme.synth ? #0b0c0c : Theme.accent;
+                    border-width: Theme.phono ? 0 : Theme.pinball ? 1px : Theme.cozy ? 0 : Theme.quest ? 0 : Theme.tape ? 1.5px : Theme.fighter ? 2px : Theme.comic ? 2.5px : Theme.glass || Theme.dash || Theme.answer ? 1px : 0;
                     border-color: Theme.pinball ? #ff7a1a99 : Theme.fighter ? #000000 : Theme.comic ? Comic.ink : Theme.glass ? #9fe3ff73 : Theme.dash ? #ffb54780 : Theme.answer ? Am.rec : Deck.red;
                     badge := Text {
-                        text: Theme.tape || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? root.edit-badge.to-uppercase() : root.edit-badge;
-                        color: Theme.pinball ? Pb.plasma : Theme.cozy ? Cz.cream : Theme.fighter ? #ffffff : Theme.pocket ? Pk.l0 : Theme.quest ? Quest.gold : Theme.tape ? Deck.red : Theme.glass ? Glass.cyan : Theme.phos ? Ph.bg : Theme.comic ? #ffffff : Theme.dash ? #ffb547 : Theme.answer ? Am.rec : Theme.synth ? #ff5a1e : Theme.on-accent;
-                        font-family: Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : Theme.fighter ? Fi.lean : Theme.pocket ? Pk.small : Theme.quest ? Quest.label : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.answer ? "Barlow Condensed" : Theme.synth ? Theme.mono : "Inter Tight";
-                        font-size: Theme.pinball ? 10px : Theme.cozy ? 10px : Theme.pocket ? 8px : Theme.quest ? 11px : Theme.tape ? 9px : Theme.dash ? 10.5px : Theme.phos ? 10.5px : Theme.comic ? 13px : Theme.answer ? 9px : Theme.synth ? 8.5px : 11px;
-                        font-weight: Theme.tape || Theme.glass || Theme.pinball ? 600 : Theme.phos || Theme.pocket || Theme.quest ? 400 : Theme.comic || Theme.fighter || Theme.cozy ? 400 : Theme.answer || Theme.synth ? 700 : 800;
-                        letter-spacing: Theme.cozy || Theme.pinball ? 1.5px : Theme.fighter ? 1.2px : Theme.tape ? 1.3px : Theme.phos ? 0.5px : Theme.comic || Theme.pocket || Theme.synth ? 1px : Theme.answer ? 1.1px : 0;
+                        text: Theme.tape || Theme.phos || Theme.comic || Theme.pocket || Theme.quest || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? root.edit-badge.to-uppercase() : root.edit-badge;
+                        color: Theme.phono ? Pn.wax-ink : Theme.pinball ? Pb.plasma : Theme.cozy ? Cz.cream : Theme.fighter ? #ffffff : Theme.pocket ? Pk.l0 : Theme.quest ? Quest.gold : Theme.tape ? Deck.red : Theme.glass ? Glass.cyan : Theme.phos ? Ph.bg : Theme.comic ? #ffffff : Theme.dash ? #ffb547 : Theme.answer ? Am.rec : Theme.synth ? #ff5a1e : Theme.on-accent;
+                        font-family: Theme.phono ? Pn.caps : Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : Theme.fighter ? Fi.lean : Theme.pocket ? Pk.small : Theme.quest ? Quest.label : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.answer ? "Barlow Condensed" : Theme.synth ? Theme.mono : "Inter Tight";
+                        font-size: Theme.phono ? 8.5px : Theme.pinball ? 10px : Theme.cozy ? 10px : Theme.pocket ? 8px : Theme.quest ? 11px : Theme.tape ? 9px : Theme.dash ? 10.5px : Theme.phos ? 10.5px : Theme.comic ? 13px : Theme.answer ? 9px : Theme.synth ? 8.5px : 11px;
+                        font-weight: Theme.tape || Theme.glass || Theme.pinball ? 600 : Theme.phono ? 700 : Theme.phos || Theme.pocket || Theme.quest ? 400 : Theme.comic || Theme.fighter || Theme.cozy ? 400 : Theme.answer || Theme.synth ? 700 : 800;
+                        letter-spacing: Theme.cozy || Theme.pinball ? 1.5px : Theme.phono ? 1.3px : Theme.fighter ? 1.2px : Theme.tape ? 1.3px : Theme.phos ? 0.5px : Theme.comic || Theme.pocket || Theme.synth ? 1px : Theme.answer ? 1.1px : 0;
                     }
                 }
                 if (Theme.os95 || Theme.brick) && root.editing: Rectangle { horizontal-stretch: 1; }
@@ -9765,18 +10417,19 @@ export component TranscriptCard inherits Rectangle {
                                     TextField {
                                         height: Theme.tape || Theme.phos ? 28px : Theme.os95 || Theme.pocket ? 22px : Theme.comic ? 30px : Theme.glass ? 30px : Theme.brick ? 24px : 34px;
                                         radius: Theme.tape ? 2px : Theme.phos || Theme.quest || Theme.pocket ? 0 : Theme.os95 ? 0 : Theme.comic ? 15px : Theme.glass ? 10px : Theme.brick ? 0 : 8px;
-                                        fill: Theme.pocket ? Pk.l0 : Theme.tape ? #fffaf0 : Theme.phos ? Ph.bg : Theme.os95 ? #ffffff : Theme.comic ? #ffffff : Theme.glass ? #0000003d : Theme.answer ? Am.cream : Theme.brick ? #ffe6aa40 : Theme.quest ? Quest.ink : Theme.synth ? #0b0c0c : Theme.field;
-                                        rest-edge: Theme.pocket ? Pk.l3 : Theme.tape ? #8f8778 : Theme.os95 ? Os.sh : Theme.phos ? Ph.dim : Theme.comic ? Comic.ink : Theme.glass ? #ffffff29 : Theme.quest ? Quest.rule : Theme.synth ? #3a3e3c : Theme.edge;
-                                        ink: Theme.pocket ? Pk.l3 : Theme.tape ? Deck.ink : Theme.phos ? Ph.hi : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.synth ? #eef3ee : Theme.quest ? Quest.white : Theme.text;
-                                        hint: Theme.pocket ? Pk.l2 : Theme.tape ? Deck.ink-soft : Theme.os95 ? #7a7a7a : Theme.comic ? Comic.faint : Theme.glass ? Glass.ink3 : Theme.quest ? Quest.dim : Theme.brick ? Brick.ink2 : Theme.synth ? #8c948e : Theme.dim;
-                                        font-size: Theme.pocket ? 18px : Theme.tape || Theme.phos ? 12px : Theme.os95 ? 12.5px : Theme.glass ? 12.5px : Theme.quest ? 14px : Theme.brick ? 16px : Theme.synth ? 11.5px : 13px;
-                                        family: Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.quest ? Quest.font : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
+                                        fill: Theme.phono ? #fffaf0 : Theme.pocket ? Pk.l0 : Theme.tape ? #fffaf0 : Theme.phos ? Ph.bg : Theme.os95 ? #ffffff : Theme.comic ? #ffffff : Theme.glass ? #0000003d : Theme.answer ? Am.cream : Theme.brick ? #ffe6aa40 : Theme.quest ? Quest.ink : Theme.synth ? #0b0c0c : Theme.field;
+                                        rest-edge: Theme.phono ? Pn.brass-mid : Theme.pocket ? Pk.l3 : Theme.tape ? #8f8778 : Theme.os95 ? Os.sh : Theme.phos ? Ph.dim : Theme.comic ? Comic.ink : Theme.glass ? #ffffff29 : Theme.quest ? Quest.rule : Theme.synth ? #3a3e3c : Theme.edge;
+                                        ink: Theme.phono ? Pn.ink : Theme.pocket ? Pk.l3 : Theme.tape ? Deck.ink : Theme.phos ? Ph.hi : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.synth ? #eef3ee : Theme.quest ? Quest.white : Theme.text;
+                                        hint: Theme.phono ? Pn.faded : Theme.pocket ? Pk.l2 : Theme.tape ? Deck.ink-soft : Theme.os95 ? #7a7a7a : Theme.comic ? Comic.faint : Theme.glass ? Glass.ink3 : Theme.quest ? Quest.dim : Theme.brick ? Brick.ink2 : Theme.synth ? #8c948e : Theme.dim;
+                                        font-size: Theme.phono ? 14px : Theme.pocket ? 18px : Theme.tape || Theme.phos ? 12px : Theme.os95 ? 12.5px : Theme.glass ? 12.5px : Theme.quest ? 14px : Theme.brick ? 16px : Theme.synth ? 11.5px : 13px;
+                                        family: Theme.pocket ? Pk.big : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.quest ? Quest.font : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : Theme.phono ? Pn.font : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
                                         side: Theme.brick ? 6px : 12px;
                                         bare-focus: Theme.phos || Theme.os95 || Theme.pocket || Theme.brick;
                                         edge-width: Theme.quest ? 3px : 1px;
-                                        select-fill: Theme.quest ? Quest.sel : Theme.accent.with-alpha(0.4);
-                                        focus-edge: Theme.glass ? #ffffffa0 : Theme.accent;
-                                        focus-ring: Theme.glass ? #ffffff1a : Theme.quest ? transparent : Theme.synth ? #ff5a1e40 : Theme.accent.with-alpha(0.16);
+                                        select-fill: Theme.quest ? Quest.sel : Theme.phono ? #e8c86e : Theme.accent.with-alpha(0.4);
+                                        focus-edge: Theme.glass ? #ffffffa0 : Theme.phono ? Pn.brass : Theme.accent;
+                                        hint-italic: Theme.phono;
+                                        focus-ring: Theme.glass ? #ffffff1a : Theme.quest || Theme.phono ? transparent : Theme.synth ? #ff5a1e40 : Theme.accent.with-alpha(0.16);
                                         icon: "search";
                                         placeholder: "Search";
                                         label: "Search languages";
@@ -9797,8 +10450,8 @@ export component TranscriptCard inherits Rectangle {
                                         y: i * Theme.menu-h;
                                         width: parent.width;
                                         height: Theme.menu-h;
-                                        border-radius: Theme.phos || Theme.pocket || Theme.cozy || Theme.pinball ? 0 : Theme.os95 ? 0 : Theme.comic ? 0 : Theme.brick ? 0 : Theme.glass ? 12px : Theme.synth ? 0 : 6px;
-                                        background: row-t.has-hover && l.ready ? (Theme.pinball ? #ff7a1a33 : Theme.cozy ? Cz.hover : Theme.pocket ? Pk.l3 : Theme.tape ? Deck.amber.with-alpha(0.3) : Theme.phos ? Ph.ph : Theme.os95 ? Os.navy : Theme.comic ? Comic.wash : Theme.glass ? Glass.lit : Theme.brick ? Brick.ink : Theme.answer ? Am.lit : Theme.synth ? #232625 : Theme.hover) : transparent;
+                                        border-radius: Theme.phos || Theme.pocket || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.os95 ? 0 : Theme.comic ? 0 : Theme.brick ? 0 : Theme.glass ? 12px : Theme.synth ? 0 : 6px;
+                                        background: row-t.has-hover && l.ready ? (Theme.phono ? Pn.lit-row : Theme.pinball ? #ff7a1a33 : Theme.cozy ? Cz.hover : Theme.pocket ? Pk.l3 : Theme.tape ? Deck.amber.with-alpha(0.3) : Theme.phos ? Ph.ph : Theme.os95 ? Os.navy : Theme.comic ? Comic.wash : Theme.glass ? Glass.lit : Theme.brick ? Brick.ink : Theme.answer ? Am.lit : Theme.synth ? #232625 : Theme.hover) : transparent;
                                         property <bool> brick-lit: Theme.brick && row-t.has-hover && l.ready;
                                         border-width: Theme.glass && row-t.has-hover && l.ready ? 1px : 0;
                                         border-color: Glass.lit-edge;
@@ -9825,19 +10478,20 @@ export component TranscriptCard inherits Rectangle {
                                                     : Theme.answer ? (l.ready ? Am.ink : #b1a58d)
                                                     : Theme.synth ? (l.ready ? #eef3ee : #565b58)
                                                     : Theme.pinball ? (l.ready ? Pb.ink : Pb.mute)
+                                                    : Theme.phono ? (l.ready ? Pn.ink : Pn.faded)
                                                     : Theme.cozy ? (l.ready ? Cz.ink : Cz.parch-dd)
                                                     : l.ready ? Theme.text2 : Theme.dim;
-                                                font-family: Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : Theme.pocket ? Pk.big : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : "Inter Tight";
-                                                font-weight: Theme.comic || Theme.answer ? 700 : Theme.synth ? 500 : 400;
-                                                font-size: Theme.pinball ? 15px : Theme.pocket ? 20px : Theme.phos || Theme.answer ? 12.5px : Theme.brick ? 18px : Theme.synth ? 11.5px : 13px;
+                                                font-family: Theme.phono ? Pn.font : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : Theme.pocket ? Pk.big : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Comic Neue" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : "Inter Tight";
+                                                font-weight: Theme.comic || Theme.answer ? 700 : Theme.synth ? 500 : Theme.phono ? 600 : 400;
+                                                font-size: Theme.phono ? 15px : Theme.pinball ? 15px : Theme.pocket ? 20px : Theme.phos || Theme.answer ? 12.5px : Theme.brick ? 18px : Theme.synth ? 11.5px : 13px;
                                                 vertical-alignment: center;
                                             }
                                             Text {
                                                 text: l.native != l.name ? (Theme.pocket ? l.native.to-uppercase() : l.native) : "";
                                                 color: Theme.pocket ? (row-t.has-hover && l.ready ? Pk.l1 : Pk.l2) : Theme.brick ? (lrow.brick-lit ? Brick.lcd1 : Brick.ink) : Theme.tape ? Deck.ink-soft : Theme.phos && row-t.has-hover && l.ready ? Ph.bg2 : Theme.os95 ? (row-t.has-hover && l.ready ? #d8e2ff : Os.note) : Theme.comic ? Comic.sub : Theme.glass ? Glass.ink3 : Theme.cozy ? Cz.brown : Theme.dim;
-                                                font-family: Theme.pocket ? Pk.small : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
+                                                font-family: Theme.pocket ? Pk.small : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.phono ? Pn.caps : Theme.pinball ? Pb.font : Theme.cozy ? Cz.font : "Inter Tight";
                                                 opacity: l.ready ? 1 : 0.6;
-                                                font-size: Theme.pocket ? 8px : 11px;
+                                                font-size: Theme.pocket ? 8px : Theme.phono ? 8.5px : 11px;
                                                 vertical-alignment: center;
                                                 horizontal-stretch: 1;
                                                 overflow: elide;
@@ -9847,7 +10501,7 @@ export component TranscriptCard inherits Rectangle {
                                                 height: 6px;
                                                 y: (parent.height - self.height) / 2;
                                                 border-radius: Theme.phos || Theme.brick ? 0 : 3px;
-                                                background: Theme.pocket ? (row-t.has-hover ? Pk.l0 : Pk.l3) : Theme.tape ? Deck.ink-soft : Theme.phos ? (row-t.has-hover ? Ph.bg : Ph.ph) : Theme.comic ? Comic.red : Theme.glass ? Glass.cyan : Theme.muted;
+                                                background: Theme.pocket ? (row-t.has-hover ? Pk.l0 : Pk.l3) : Theme.tape ? Deck.ink-soft : Theme.phos ? (row-t.has-hover ? Ph.bg : Ph.ph) : Theme.comic ? Comic.red : Theme.glass ? Glass.cyan : Theme.phono ? Pn.wax : Theme.muted;
                                             }
                                             if root.shown-lang == l.code && root.lang-view && Theme.pocket: PkPx { y: (parent.height - self.height) / 2; source: @image-url("skins/px-pocket/tick.png"); colorize: row-t.has-hover ? Pk.l0 : Pk.l3; }
                                             if root.shown-lang == l.code && root.lang-view && Theme.brick: VerticalLayout {
@@ -9856,34 +10510,34 @@ export component TranscriptCard inherits Rectangle {
                                             }
                                             if root.shown-lang == l.code && root.lang-view && !Theme.pocket && !Theme.brick: Icon {
                                                 name: "check";
-                                                tint: Theme.tape ? Deck.red : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.pinball ? Pb.plasma : Theme.cozy ? Cz.ink : Theme.accent;
+                                                tint: Theme.tape ? Deck.red : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.phono ? Pn.ink : Theme.pinball ? Pb.plasma : Theme.cozy ? Cz.ink : Theme.accent;
                                                 width: 13px;
                                                 height: 13px;
                                                 y: (parent.height - self.height) / 2;
                                             }
                                             // Needs a model first: a link to it.
                                             if !l.ready: Rectangle {
-                                                width: install-text.preferred-width + (Theme.pocket ? 8px : (Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 10px : 12px));
-                                                height: Theme.pocket ? 14px : Theme.brick || Theme.fighter || Theme.cozy ? 16px : Theme.pinball ? 20px : 22px;
+                                                width: install-text.preferred-width + (Theme.pocket ? 8px : (Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 10px : 12px));
+                                                height: Theme.pocket ? 14px : Theme.brick || Theme.fighter || Theme.cozy || Theme.phono ? 16px : Theme.pinball ? 20px : 22px;
                                                 y: (parent.height - self.height) / 2;
-                                                border-radius: Theme.tape ? 2px : Theme.phos || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.os95 ? 0 : Theme.comic ? 0 : Theme.glass ? 11px : 5px;
+                                                border-radius: Theme.tape || Theme.phono ? 2px : Theme.phos || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.os95 ? 0 : Theme.comic ? 0 : Theme.glass ? 11px : 5px;
                                                 border-width: Theme.tape || Theme.glass || Theme.brick || Theme.synth ? 1px : Theme.comic ? 2px : 0;
                                                 border-color: Theme.glass ? #ffffff4d : Theme.comic ? Comic.ink : Theme.brick ? Brick.ink : Theme.synth ? #ff5a1e : Deck.red;
                                                 // Fighter Select: a cyan tag with black capitals.
-                                                background: Theme.pinball ? (install-t.has-hover ? #2a2530 : #141118) : Theme.cozy ? (install-t.has-hover ? Cz.wood-hl : Cz.wood-l) : Theme.fighter ? (install-t.has-hover ? #8af0ff : Fi.cyan) : Theme.pocket ? (install-t.has-hover ? Pk.l2 : Pk.l3) : Theme.comic ? (install-t.has-hover ? #a6daf5 : Comic.cyan)
+                                                background: Theme.phono ? (install-t.has-hover ? Pn.wax-hi : Pn.wax) : Theme.pinball ? (install-t.has-hover ? #2a2530 : #141118) : Theme.cozy ? (install-t.has-hover ? Cz.wood-hl : Cz.wood-l) : Theme.fighter ? (install-t.has-hover ? #8af0ff : Fi.cyan) : Theme.pocket ? (install-t.has-hover ? Pk.l2 : Pk.l3) : Theme.comic ? (install-t.has-hover ? #a6daf5 : Comic.cyan)
                                                     : Theme.brick ? (install-t.has-hover ? Brick.ghost : transparent)
                                                     : Theme.os95 ? Os.face : install-t.has-hover ? (Theme.tape ? Deck.red.with-alpha(0.12) : Theme.phos ? Ph.ph : Theme.glass ? #ffffff33 : Theme.accent.with-alpha(0.14))
                                                     : Theme.glass ? #ffffff1a : transparent;
                                                 OsBevel { visible: Theme.os95; kind: install-t.pressed && install-t.has-hover ? 1 : 0; }
                                                 install-text := Text {
-                                                    x: Theme.pocket ? 4px : Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 5px : 6px;
+                                                    x: Theme.pocket ? 4px : Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 5px : 6px;
                                                     y: (parent.height - self.height) / 2;
-                                                    text: Theme.tape || Theme.comic || Theme.pocket || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? "INSTALL" : Theme.phos ? "[install]" : "Install";
-                                                    color: Theme.pinball ? Pb.ghost-ink : Theme.cozy ? Cz.cream : Theme.fighter ? #000000 : Theme.pocket ? Pk.l0 : Theme.brick ? Brick.ink : Theme.tape ? Deck.red : Theme.glass ? Glass.ink : Theme.phos ? (install-t.has-hover ? Ph.bg : Ph.hi) : Theme.os95 ? #000000 : Theme.comic ? Comic.ink : Theme.synth ? #ff5a1e : Theme.accent;
-                                                    font-family: Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : Theme.fighter ? Fi.body : Theme.pocket ? Pk.small : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.caps : Theme.synth ? Theme.mono : "Inter Tight";
-                                                    font-size: Theme.pinball ? 10px : Theme.cozy ? 9px : Theme.fighter ? 9px : Theme.pocket ? 8px : Theme.tape ? 10px : Theme.comic ? 12px : Theme.glass ? 10.5px : Theme.brick ? 7px : Theme.synth ? 8px : 12px;
-                                                    font-weight: Theme.comic || Theme.phos || Theme.pocket || Theme.brick || Theme.cozy ? 400 : Theme.pinball ? 700 : Theme.synth || Theme.fighter ? 700 : 600;
-                                                    letter-spacing: Theme.tape ? 1.6px : Theme.comic || Theme.pocket ? 1px : Theme.brick ? 0.5px : Theme.fighter || Theme.cozy || Theme.pinball ? 1.5px : 0;
+                                                    text: Theme.tape || Theme.comic || Theme.pocket || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? "INSTALL" : Theme.phos ? "[install]" : "Install";
+                                                    color: Theme.phono ? Pn.wax-ink : Theme.pinball ? Pb.ghost-ink : Theme.cozy ? Cz.cream : Theme.fighter ? #000000 : Theme.pocket ? Pk.l0 : Theme.brick ? Brick.ink : Theme.tape ? Deck.red : Theme.glass ? Glass.ink : Theme.phos ? (install-t.has-hover ? Ph.bg : Ph.hi) : Theme.os95 ? #000000 : Theme.comic ? Comic.ink : Theme.synth ? #ff5a1e : Theme.accent;
+                                                    font-family: Theme.phono ? Pn.caps : Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : Theme.fighter ? Fi.body : Theme.pocket ? Pk.small : Theme.tape ? "Oswald" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.caps : Theme.synth ? Theme.mono : "Inter Tight";
+                                                    font-size: Theme.phono ? 8px : Theme.pinball ? 10px : Theme.cozy ? 9px : Theme.fighter ? 9px : Theme.pocket ? 8px : Theme.tape ? 10px : Theme.comic ? 12px : Theme.glass ? 10.5px : Theme.brick ? 7px : Theme.synth ? 8px : 12px;
+                                                    font-weight: Theme.comic || Theme.phos || Theme.pocket || Theme.brick || Theme.cozy ? 400 : Theme.phono ? 700 : Theme.pinball ? 700 : Theme.synth || Theme.fighter ? 700 : 600;
+                                                    letter-spacing: Theme.tape ? 1.6px : Theme.comic || Theme.pocket ? 1px : Theme.brick ? 0.5px : Theme.fighter || Theme.cozy || Theme.pinball ? 1.5px : Theme.phono ? 1.1px : 0;
                                                 }
                                                 install-t := TouchArea {
                                                     mouse-cursor: pointer;
@@ -9956,12 +10610,12 @@ export component TranscriptCard inherits Rectangle {
                     padding-left: Theme.tape ? 4px : Theme.glass ? 2px : 0;
                     opacity: root.original-view || Theme.os95 ? 1 : 0.45;
                     if !Theme.phos && !Theme.quest && !Theme.synth: Text {
-                        text: Theme.tape ? "SHOW MARKS" : Theme.os95 ? "" : Theme.comic || Theme.answer || Theme.brick || Theme.pocket || Theme.fighter || Theme.cozy || Theme.pinball ? "MARKS" : "Show marks";
-                        color: Theme.pinball ? Pb.cap : Theme.cozy ? Cz.brown : Theme.fighter ? Fi.text2 : Theme.pocket ? Pk.l3 : Theme.tape ? Deck.rail : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.answer ? Am.print : Theme.muted;
-                        font-family: Theme.pocket ? Pk.small : Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.caps : Theme.answer ? "Barlow Condensed" : Theme.fighter ? Fi.body : Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : "Inter Tight";
-                        font-size: Theme.pinball ? 9px : Theme.pocket ? 8px : Theme.tape ? 8.5px : Theme.glass ? 11.5px : Theme.brick ? 7px : Theme.answer ? 11px : Theme.fighter ? 9.5px : Theme.cozy ? 10px : 12px;
-                        font-weight: Theme.answer || Theme.fighter || Theme.pinball ? 700 : 400;
-                        letter-spacing: Theme.pinball ? 1px : Theme.tape ? 1.5px : Theme.comic || Theme.pocket ? 1px : Theme.answer || Theme.cozy ? 1.5px : Theme.fighter ? 1.8px : 0;
+                        text: Theme.tape ? "SHOW MARKS" : Theme.os95 ? "" : Theme.comic || Theme.answer || Theme.brick || Theme.pocket || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? "MARKS" : "Show marks";
+                        color: Theme.phono ? Pn.ink-soft : Theme.pinball ? Pb.cap : Theme.cozy ? Cz.brown : Theme.fighter ? Fi.text2 : Theme.pocket ? Pk.l3 : Theme.tape ? Deck.rail : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.answer ? Am.print : Theme.muted;
+                        font-family: Theme.pocket ? Pk.small : Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.caps : Theme.answer ? "Barlow Condensed" : Theme.fighter ? Fi.body : Theme.phono ? Pn.caps : Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : "Inter Tight";
+                        font-size: Theme.phono ? 8.5px : Theme.pinball ? 9px : Theme.pocket ? 8px : Theme.tape ? 8.5px : Theme.glass ? 11.5px : Theme.brick ? 7px : Theme.answer ? 11px : Theme.fighter ? 9.5px : Theme.cozy ? 10px : 12px;
+                        font-weight: Theme.answer || Theme.fighter || Theme.pinball || Theme.phono ? 700 : 400;
+                        letter-spacing: Theme.phono ? 1.7px : Theme.pinball ? 1px : Theme.tape ? 1.5px : Theme.comic || Theme.pocket ? 1px : Theme.answer || Theme.cozy ? 1.5px : Theme.fighter ? 1.8px : 0;
                         vertical-alignment: center;
                     }
                     VerticalLayout {
@@ -9988,11 +10642,11 @@ export component TranscriptCard inherits Rectangle {
                 if (Theme.os95 || Theme.pocket) && !root.editing: Rectangle { horizontal-stretch: 1; }
                 if root.transcript != "" && !root.transcribing && !root.editing: Rectangle {
                     width: Theme.phos ? ph-edit.preferred-width + 6px : Theme.pocket ? pk-edit.preferred-width + 12px : Theme.quest ? q-edit.preferred-width + 20px : edit-row.preferred-width + (Theme.os95 ? 16px : (Theme.comic ? 16px : Theme.brick ? 14px : 20px));
-                    height: Theme.quest || Theme.pinball ? 24px : Theme.tape || Theme.comic || Theme.glass || Theme.synth || Theme.fighter || Theme.cozy ? 28px : Theme.os95 ? 23px : Theme.phos || Theme.brick ? 20px : Theme.pocket ? 18px : 26px;
-                    y: Theme.pinball ? (parent.height - self.height) / 2 : Theme.tape || Theme.glass || Theme.comic || Theme.synth || Theme.fighter || Theme.cozy ? 0 : Theme.phos || Theme.pocket || Theme.quest || Theme.brick ? (parent.height - self.height) / 2 : Theme.os95 ? (parent.height - self.height) / 2 : 1px;
-                    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? 14px : 7px;
+                    height: Theme.quest || Theme.pinball ? 24px : Theme.phono ? 26px : Theme.tape || Theme.comic || Theme.glass || Theme.synth || Theme.fighter || Theme.cozy ? 28px : Theme.os95 ? 23px : Theme.phos || Theme.brick ? 20px : Theme.pocket ? 18px : 26px;
+                    y: Theme.phono ? (parent.height - self.height) / 2 : Theme.pinball ? (parent.height - self.height) / 2 : Theme.tape || Theme.glass || Theme.comic || Theme.synth || Theme.fighter || Theme.cozy ? 0 : Theme.phos || Theme.pocket || Theme.quest || Theme.brick ? (parent.height - self.height) / 2 : Theme.os95 ? (parent.height - self.height) / 2 : 1px;
+                    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 0 : Theme.glass ? 14px : 7px;
                     opacity: root.original-view || Theme.pocket || Theme.quest ? 1 : Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0.38 : 0.45;
-                    background: Theme.pocket ? (edit-touch.has-hover && root.original-view ? #b3bf6a : Pk.l0) : Theme.tape || Theme.comic || Theme.quest || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? transparent : Theme.os95 ? Os.face : Theme.phos ? (edit-touch.has-hover && root.original-view ? Ph.ph : transparent)
+                    background: Theme.pocket ? (edit-touch.has-hover && root.original-view ? #b3bf6a : Pk.l0) : Theme.tape || Theme.comic || Theme.quest || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? transparent : Theme.os95 ? Os.face : Theme.phos ? (edit-touch.has-hover && root.original-view ? Ph.ph : transparent)
                         : Theme.brick ? (edit-touch.has-hover && root.original-view ? Brick.ghost : transparent)
                         : Theme.glass ? (edit-touch.has-hover && root.original-view ? #ffffff3d : #ffffff29)
                         : edit-touch.has-hover && root.original-view ? Theme.hover : Theme.raised;
@@ -10098,6 +10752,14 @@ export component TranscriptCard inherits Rectangle {
                         hover: edit-touch.has-hover && root.original-view;
                         pressed: edit-touch.pressed && edit-touch.has-hover && root.original-view;
                     }
+                    if Theme.phono: PnKey {
+                        x: 0;
+                        y: 0;
+                        width: parent.width;
+                        height: parent.height;
+                        hover: edit-touch.has-hover && root.original-view;
+                        pressed: edit-touch.pressed && edit-touch.has-hover && root.original-view;
+                    }
                     if Theme.fighter: FiKey {
                         x: 0;
                         y: 0;
@@ -10133,15 +10795,15 @@ export component TranscriptCard inherits Rectangle {
                         y: Theme.tape || Theme.os95 || Theme.synth ? (edit-touch.pressed && edit-touch.has-hover ? 1px : 0) : Theme.comic ? (parent.ink-down ? 3px : 1px) : 0;
                         height: Theme.tape ? parent.height * 0.82 : parent.height;
                         spacing: Theme.tape ? 5px : Theme.brick ? 4px : 6px;
-                        Icon { visible: !Theme.brick; name: "pencil"; tint: Theme.pinball ? Pb.ghost-ink : Theme.cozy ? Cz.ink : Theme.fighter ? #e9e4ff : Theme.tape ? Deck.key-ink : Theme.glass ? Glass.ink : Theme.comic ? Comic.ink : Theme.answer ? (root.original-view ? Am.key-ink : #8f877d) : Theme.synth ? #2a2a28 : Theme.text; stroke-width: Theme.comic ? 2.4px : 2px; width: Theme.brick ? 0 : Theme.synth ? 11px : 12px; height: Theme.synth ? 11px : 12px; y: (parent.height - self.height) / 2; }
+                        Icon { visible: !Theme.brick; name: "pencil"; tint: Theme.phono ? Pn.ink : Theme.pinball ? Pb.ghost-ink : Theme.cozy ? Cz.ink : Theme.fighter ? #e9e4ff : Theme.tape ? Deck.key-ink : Theme.glass ? Glass.ink : Theme.comic ? Comic.ink : Theme.answer ? (root.original-view ? Am.key-ink : #8f877d) : Theme.synth ? #2a2a28 : Theme.text; stroke-width: Theme.comic ? 2.4px : 2px; width: Theme.brick ? 0 : Theme.synth ? 11px : 12px; height: Theme.synth ? 11px : 12px; y: (parent.height - self.height) / 2; }
                         if Theme.brick: VerticalLayout { alignment: center; BrickPx { source: @image-url("skins/dv-brick/x-pencil.png"); } }
                         Text {
-                            text: Theme.tape || Theme.comic || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball ? "EDIT" : "Edit";
-                            color: Theme.pinball ? Pb.ghost-ink : Theme.cozy ? Cz.ink : Theme.fighter ? #e9e4ff : Theme.tape ? Deck.key-ink : Theme.glass ? Glass.ink : Theme.comic ? Comic.ink : Theme.answer ? (root.original-view ? Am.key-ink : #8f877d) : Theme.synth ? #2a2a28 : Theme.text;
-                            font-family: Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.answer ? "Barlow Condensed" : Theme.synth ? Theme.mono : Theme.fighter ? Fi.disp : Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : "Inter Tight";
-                            font-size: Theme.pinball ? 11px : Theme.cozy ? 10px : Theme.tape ? 8.5px : Theme.comic || Theme.fighter ? 12.5px : Theme.brick ? 16px : Theme.answer ? 10px : Theme.synth ? 8.5px : 12px;
-                            font-weight: Theme.pinball ? 700 : Theme.tape ? 500 : Theme.comic || Theme.fighter || Theme.cozy ? 400 : Theme.answer ? 700 : Theme.synth ? 700 : 600;
-                            letter-spacing: Theme.pinball ? 2px : Theme.cozy ? 1.5px : Theme.fighter ? 1.4px : Theme.tape ? 1.5px : Theme.comic ? 1px : Theme.answer ? 2px : Theme.synth ? 1.36px : 0;
+                            text: Theme.tape || Theme.comic || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? "EDIT" : "Edit";
+                            color: Theme.phono ? Pn.ink : Theme.pinball ? Pb.ghost-ink : Theme.cozy ? Cz.ink : Theme.fighter ? #e9e4ff : Theme.tape ? Deck.key-ink : Theme.glass ? Glass.ink : Theme.comic ? Comic.ink : Theme.answer ? (root.original-view ? Am.key-ink : #8f877d) : Theme.synth ? #2a2a28 : Theme.text;
+                            font-family: Theme.tape ? "Oswald" : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.answer ? "Barlow Condensed" : Theme.synth ? Theme.mono : Theme.fighter ? Fi.disp : Theme.phono ? Pn.caps : Theme.pinball ? Pb.font : Theme.cozy ? Cz.caps : "Inter Tight";
+                            font-size: Theme.phono ? 9px : Theme.pinball ? 11px : Theme.cozy ? 10px : Theme.tape ? 8.5px : Theme.comic || Theme.fighter ? 12.5px : Theme.brick ? 16px : Theme.answer ? 10px : Theme.synth ? 8.5px : 12px;
+                            font-weight: Theme.phono ? 700 : Theme.pinball ? 700 : Theme.tape ? 500 : Theme.comic || Theme.fighter || Theme.cozy ? 400 : Theme.answer ? 700 : Theme.synth ? 700 : 600;
+                            letter-spacing: Theme.phono ? 1.4px : Theme.pinball ? 2px : Theme.cozy ? 1.5px : Theme.fighter ? 1.4px : Theme.tape ? 1.5px : Theme.comic ? 1px : Theme.answer ? 2px : Theme.synth ? 1.36px : 0;
                             vertical-alignment: center;
                         }
                     }
@@ -10331,19 +10993,20 @@ export component TranscriptCard inherits Rectangle {
                     padding-bottom: Theme.tape || Theme.phos ? 8px : Theme.os95 ? 2px : Theme.pocket && root.editing ? 6px : Theme.brick ? 5px : Theme.synth ? 10px : 0;
                     spacing: 8px;
             if root.transcribing: VerticalLayout {
-                spacing: Theme.comic || Theme.quest || Theme.fighter || Theme.cozy || Theme.pinball ? 12px : 10px;
-                alignment: Theme.os95 || Theme.comic || Theme.quest || Theme.pocket || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? LayoutAlignment.center : LayoutAlignment.start;
-                padding-left: Theme.comic ? 24px : Theme.pocket ? 30px : Theme.brick ? 20px : Theme.fighter || Theme.cozy || Theme.pinball ? 20px : 0;
-                padding-right: Theme.comic ? 28px : Theme.pocket ? 30px : Theme.brick ? 24px : Theme.fighter || Theme.cozy || Theme.pinball ? 20px : 0;
+                spacing: Theme.comic || Theme.quest || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 12px : 10px;
+                alignment: Theme.os95 || Theme.comic || Theme.quest || Theme.pocket || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? LayoutAlignment.center : LayoutAlignment.start;
+                padding-left: Theme.comic ? 24px : Theme.pocket ? 30px : Theme.brick ? 20px : Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 20px : 0;
+                padding-right: Theme.comic ? 28px : Theme.pocket ? 30px : Theme.brick ? 24px : Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? 20px : 0;
                 if Theme.os95: HorizontalLayout { alignment: center; OsPx { source: @image-url("skins/dv-os95/hour.png"); s: 2; } }
                 Text {
                     text: (root.translating ? "Translating " : "Transcribing ") + round(root.transcribe-progress * 100) + "%";
-                    color: Theme.pinball ? Pb.dmd-3 : Theme.cozy ? Cz.ink : Theme.fighter ? #ffffff : Theme.quest ? Quest.white : Theme.tape ? Deck.ink-soft : Theme.phos ? Ph.ph : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.synth ? #dfe5df : Theme.answer ? Am.print : Theme.text2;
-                    font-family: Theme.pinball ? "Pinball Dots" : Theme.cozy ? Cz.title : Theme.fighter ? Fi.lean : Theme.quest ? Quest.font : Theme.tape ? "Caveat" : Theme.dash ? "Manrope" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.pocket ? Pk.big : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : "Inter Tight";
-                    font-size: Theme.pinball ? 16px : Theme.cozy ? 28px : Theme.fighter ? 20px : Theme.quest ? 15px : Theme.tape ? 22px : Theme.phos ? 12.5px : Theme.comic ? 24px : Theme.pocket ? 22px : Theme.brick ? 20px : Theme.synth ? 12px : 14px;
-                    font-weight: Theme.tape ? 700 : Theme.glass ? 500 : 400;
+                    color: Theme.phono ? Pn.ink-soft : Theme.pinball ? Pb.dmd-3 : Theme.cozy ? Cz.ink : Theme.fighter ? #ffffff : Theme.quest ? Quest.white : Theme.tape ? Deck.ink-soft : Theme.phos ? Ph.ph : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink : Theme.synth ? #dfe5df : Theme.answer ? Am.print : Theme.text2;
+                    font-family: Theme.phono ? Pn.font : Theme.pinball ? "Pinball Dots" : Theme.cozy ? Cz.title : Theme.fighter ? Fi.lean : Theme.quest ? Quest.font : Theme.tape ? "Caveat" : Theme.dash ? "Manrope" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.pocket ? Pk.big : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : "Inter Tight";
+                    font-size: Theme.phono ? 18px : Theme.pinball ? 16px : Theme.cozy ? 28px : Theme.fighter ? 20px : Theme.quest ? 15px : Theme.tape ? 22px : Theme.phos ? 12.5px : Theme.comic ? 24px : Theme.pocket ? 22px : Theme.brick ? 20px : Theme.synth ? 12px : 14px;
+                    font-weight: Theme.tape ? 700 : Theme.glass || Theme.phono ? 500 : 400;
+                    font-italic: Theme.phono;
                     letter-spacing: Theme.comic || Theme.fighter || Theme.cozy ? 1.2px : 0;
-                    horizontal-alignment: Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? TextHorizontalAlignment.center : TextHorizontalAlignment.left;
+                    horizontal-alignment: Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? TextHorizontalAlignment.center : TextHorizontalAlignment.left;
                 }
                 // Quest Menu: a gold EXP bar (blue while translating) in an ink well with a
                 // grey rim.
@@ -10391,6 +11054,8 @@ export component TranscriptCard inherits Rectangle {
                     alignment: center;
                     Lanes { value: root.transcribe-progress; }
                 }
+                // Phonograph: the wax being cut, the carriage at its head.
+                if Theme.phono: PnBar { value: root.transcribe-progress; }
                 if Theme.fighter: Rectangle {
                     height: 12px;
                     FiSkew { x: 0; y: 0; width: parent.width; height: parent.height; k: 0.4452; body: #2a0a12; rim: #000000; rim-w: 2px; }
@@ -10403,7 +11068,7 @@ export component TranscriptCard inherits Rectangle {
                         body: root.translating ? @linear-gradient(180deg, #b8f6ff 0%, Fi.cyan 40%, #0f8fb0 100%) : @linear-gradient(180deg, #fff27a 0%, Fi.gold 35%, Fi.gold2 100%);
                     }
                 }
-                if !Theme.os95 && !Theme.quest && !Theme.brick && !Theme.fighter && !Theme.cozy && !Theme.pinball: Rectangle {
+                if !Theme.os95 && !Theme.quest && !Theme.brick && !Theme.fighter && !Theme.cozy && !Theme.pinball && !Theme.phono: Rectangle {
                     height: Theme.tape ? 8px : Theme.glass ? 5px : Theme.phos ? 12px : Theme.comic ? 16px : Theme.answer ? 8px : Theme.pocket ? 10px : Theme.synth ? 8px : 4px;
                     border-radius: Theme.tape || Theme.phos || Theme.comic || Theme.pocket || Theme.synth ? 0 : Theme.glass ? 2.5px : 2px;
                     background: Theme.tape ? #1b1410 : Theme.phos || Theme.pocket ? transparent : Theme.comic ? #ffffff : Theme.glass ? #ffffff29 : Theme.answer ? #3a2a24 : Theme.synth ? #2c302e : Theme.track;
@@ -10452,21 +11117,22 @@ export component TranscriptCard inherits Rectangle {
                 }
             }
             if root.transcript == "" && !root.transcribing: VerticalLayout {
-                alignment: Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? LayoutAlignment.center : LayoutAlignment.start;
+                alignment: Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? LayoutAlignment.center : LayoutAlignment.start;
                 spacing: Theme.brick ? 10px : 12px;
                 Text {
                     text: "No transcript yet";
-                    color: Theme.pinball ? #cfc4d6 : Theme.cozy ? Cz.ink : Theme.fighter ? #ffffff : Theme.pocket ? Pk.l3 : Theme.quest ? Quest.white : Theme.tape ? Deck.ink-soft : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.synth ? #8c948e : Theme.answer ? Am.print : Theme.brick ? Brick.ink : Theme.dim;
-                    font-family: Theme.pinball ? Pb.font : Theme.cozy ? Cz.title : Theme.fighter ? Fi.lean : Theme.pocket ? Pk.big : Theme.quest ? Quest.font : Theme.tape ? "Caveat" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : "Inter Tight";
-                    font-size: Theme.pinball ? 15px : Theme.cozy ? 28px : Theme.fighter ? 20px : Theme.quest ? 15px : Theme.tape || Theme.pocket ? 22px : Theme.phos ? 12.5px : Theme.comic ? 24px : Theme.brick ? 20px : Theme.synth ? 12px : 14px;
-                    font-weight: Theme.tape ? 700 : 400;
+                    color: Theme.phono ? Pn.ink-soft : Theme.pinball ? #cfc4d6 : Theme.cozy ? Cz.ink : Theme.fighter ? #ffffff : Theme.pocket ? Pk.l3 : Theme.quest ? Quest.white : Theme.tape ? Deck.ink-soft : Theme.comic ? Comic.ink : Theme.glass ? Glass.ink2 : Theme.synth ? #8c948e : Theme.answer ? Am.print : Theme.brick ? Brick.ink : Theme.dim;
+                    font-family: Theme.phono ? Pn.font : Theme.pinball ? Pb.font : Theme.cozy ? Cz.title : Theme.fighter ? Fi.lean : Theme.pocket ? Pk.big : Theme.quest ? Quest.font : Theme.tape ? "Caveat" : Theme.phos ? Ph.mono : Theme.os95 ? Os.font : Theme.comic ? "Bangers" : Theme.dash ? "Manrope" : Theme.brick ? Brick.words : Theme.answer ? "Courier Prime" : Theme.synth ? Theme.mono : "Inter Tight";
+                    font-size: Theme.phono ? 18px : Theme.pinball ? 15px : Theme.cozy ? 28px : Theme.fighter ? 20px : Theme.quest ? 15px : Theme.tape || Theme.pocket ? 22px : Theme.phos ? 12.5px : Theme.comic ? 24px : Theme.brick ? 20px : Theme.synth ? 12px : 14px;
+                    font-weight: Theme.tape ? 700 : Theme.phono ? 500 : 400;
+                    font-italic: Theme.phono;
                     letter-spacing: Theme.comic || Theme.fighter || Theme.cozy ? 1.2px : 0;
-                    horizontal-alignment: Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? TextHorizontalAlignment.center : TextHorizontalAlignment.left;
+                    horizontal-alignment: Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? TextHorizontalAlignment.center : TextHorizontalAlignment.left;
                 }
                 if root.can-transcribe: HorizontalLayout {
-                    alignment: Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? LayoutAlignment.center : LayoutAlignment.start;
+                    alignment: Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono ? LayoutAlignment.center : LayoutAlignment.start;
                     Btn {
-                        primary: Theme.tape || Theme.os95 || Theme.comic || Theme.glass || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball;
+                        primary: Theme.tape || Theme.os95 || Theme.comic || Theme.glass || Theme.pocket || Theme.quest || Theme.brick || Theme.answer || Theme.synth || Theme.fighter || Theme.cozy || Theme.pinball || Theme.phono;
                         height: Theme.quest ? 33px : Theme.tape || Theme.glass ? 32px : Theme.phos ? 30px : Theme.os95 || Theme.pocket ? 23px : Theme.comic ? 40px : Theme.brick ? 24px : Theme.answer ? 30px : Theme.synth ? 28px : 36px;
                         text: "Transcribe";
                         enabled: !root.recording;
@@ -10485,7 +11151,7 @@ export component TranscriptCard inherits Rectangle {
                 init => { root.scroll-y = self.content-y; }
                 VerticalLayout {
                     padding-left: 0;
-                    padding-right: Theme.os95 ? 22px : Theme.quest ? 18px : Theme.pinball ? 16px : 10px;
+                    padding-right: Theme.os95 ? 22px : Theme.quest ? 18px : Theme.phono ? 16px : Theme.pinball ? 16px : 10px;
                     padding-top: 2px;
                     padding-bottom: 6px;
                     Rectangle {
@@ -10494,7 +11160,7 @@ export component TranscriptCard inherits Rectangle {
                             width: parent.width;
                             y: 0;
                             text: root.edit-markup(editor.text);
-                            default-color: Theme.pinball ? Pb.ink : Theme.cozy ? Cz.ink : Theme.fighter ? Fi.text2 : Theme.quest ? Quest.white : Theme.tape ? #2f2117 : Theme.phos ? Ph.hi : Theme.comic ? Comic.ink : Theme.glass ? #ffffffeb : Theme.answer ? Am.ink : Theme.synth ? #dfe5df : Theme.text2;
+                            default-color: Theme.phono ? Pn.ink : Theme.pinball ? Pb.ink : Theme.cozy ? Cz.ink : Theme.fighter ? Fi.text2 : Theme.quest ? Quest.white : Theme.tape ? #2f2117 : Theme.phos ? Ph.hi : Theme.comic ? Comic.ink : Theme.glass ? #ffffffeb : Theme.answer ? Am.ink : Theme.synth ? #dfe5df : Theme.text2;
                             default-font-family: Theme.pocket ? Pk.big : Theme.quest ? Quest.font : root.text-family;
                             default-font-size: Theme.pocket ? 20px : Theme.quest ? 14px : root.text-size;
                         }
@@ -10566,7 +11232,7 @@ export component TranscriptCard inherits Rectangle {
                 changed content-y => { root.scroll-y = self.content-y; }
                 init => { root.scroll-y = self.content-y; }
                 VerticalLayout {
-                    padding-right: Theme.os95 ? 22px : Theme.pocket ? 14px : Theme.quest ? 18px : Theme.pinball ? 16px : 10px;
+                    padding-right: Theme.os95 ? 22px : Theme.pocket ? 14px : Theme.quest ? 18px : Theme.phono ? 16px : Theme.pinball ? 16px : 10px;
                     spacing: 8px;
                     if root.summarising && root.summary == "": Text {
                         text: "Summarising";
@@ -10593,7 +11259,7 @@ export component TranscriptCard inherits Rectangle {
                 changed content-y => { root.scroll-y = self.content-y; }
                 init => { root.scroll-y = self.content-y; }
                 VerticalLayout {
-                    padding-right: Theme.os95 ? 22px : Theme.pocket ? 14px : Theme.quest ? 18px : Theme.pinball ? 16px : 10px;
+                    padding-right: Theme.os95 ? 22px : Theme.pocket ? 14px : Theme.quest ? 18px : Theme.phono ? 16px : Theme.pinball ? 16px : 10px;
                     Text {
                         text: root.translation != "" ? root.translation : "Translating";
                         color: Theme.quest ? (root.translation != "" ? Quest.white : Quest.grey) : Theme.tape ? (root.translation != "" ? #2f2117 : Deck.ink-soft) : Theme.phos ? (root.translation != "" ? Ph.ph : Ph.dim)
@@ -10622,7 +11288,7 @@ export component TranscriptCard inherits Rectangle {
                 FlexboxLayout {
                     spacing: Theme.pocket ? 0 : 1px;
                     // Pinball: clear of the wire rail and its 13 px ball.
-                    padding-right: Theme.os95 ? 20px : Theme.pocket ? 14px : Theme.quest ? 18px : Theme.brick ? 9px : Theme.pinball ? 16px : 0;
+                    padding-right: Theme.os95 ? 20px : Theme.pocket ? 14px : Theme.quest ? 18px : Theme.brick ? 9px : Theme.phono ? 16px : Theme.pinball ? 16px : 0;
                     flex-wrap: wrap;
                     alignment: start;
                     // Lines sit at the top; the default spreads them over the card.
@@ -10638,7 +11304,7 @@ export component TranscriptCard inherits Rectangle {
                         // Quest Menu: the word playing on gold.
                         // Pocket Synth: the word playing inverted in orange.
                         // Fighter Select: the word playing on gold.
-                        background: Theme.pinball ? (i == root.current-word ? Pb.plasma : wt.has-hover ? #ffffff14 : transparent) : Theme.cozy ? (i == root.current-word ? Cz.honey : wt.has-hover ? #0000001a : transparent) : Theme.fighter ? (i == root.current-word ? Fi.gold : wt.has-hover ? #ffffff14 : transparent) : Theme.quest ? (i == root.current-word ? Quest.gold : wt.has-hover ? Quest.win-lo : transparent) : Theme.synth ? (i == root.current-word ? #ff5a1e : wt.has-hover ? #ffffff17 : transparent)
+                        background: Theme.phono ? (i == root.current-word ? #e9c873 : wt.has-hover ? #b58a3526 : transparent) : Theme.pinball ? (i == root.current-word ? Pb.plasma : wt.has-hover ? #ffffff14 : transparent) : Theme.cozy ? (i == root.current-word ? Cz.honey : wt.has-hover ? #0000001a : transparent) : Theme.fighter ? (i == root.current-word ? Fi.gold : wt.has-hover ? #ffffff14 : transparent) : Theme.quest ? (i == root.current-word ? Quest.gold : wt.has-hover ? Quest.win-lo : transparent) : Theme.synth ? (i == root.current-word ? #ff5a1e : wt.has-hover ? #ffffff17 : transparent)
                             : Theme.comic ? (i == root.current-word ? Comic.yellow : wt.has-hover ? Comic.pale : transparent)
                             : i == root.current-word ? (Theme.glass ? #ffffff40 : Theme.pocket ? Pk.l3 : Theme.answer ? Am.lit : Theme.accent)
                             : Theme.glass && w.is-silence ? #9fe3ff24
@@ -10700,6 +11366,7 @@ export component TranscriptCard inherits Rectangle {
                                     : w.spoken ? Pk.l2
                                     : Pk.l3)
                                 : Theme.pinball ? (i == root.current-word ? Pb.key-ink : w.is-silence ? Pb.mark : !marks ? (i < root.current-word ? Pb.ink : Pb.body) : w.failed ? Pb.danger : w.pending ? #6f6880 : w.spoken ? Pb.plasma-hi : Pb.body)
+                                : Theme.phono ? (i == root.current-word ? Pn.ink : w.is-silence ? Pn.wax : !marks ? Pn.ink : w.failed ? Pn.wax : w.pending ? Pn.faded : w.spoken ? Pn.wax : Pn.ink)
                                 : Theme.cozy ? (i == root.current-word ? Cz.ink : w.is-silence ? Cz.moss-d : !marks ? Cz.ink : w.failed ? Cz.ember-d : w.pending ? Cz.parch-dd : w.spoken ? Cz.moss-d : Cz.ink)
                                 : Theme.fighter ? (i == root.current-word ? #000000
                                     : w.is-silence ? Fi.cyan
@@ -10722,10 +11389,10 @@ export component TranscriptCard inherits Rectangle {
                                 : w.pending ? Theme.faint
                                 : w.spoken ? Theme.accent
                                 : Theme.text2;
-                            font-family: Theme.pocket ? Pk.big : Theme.quest ? Quest.font : Theme.brick ? Brick.words : Theme.tape || Theme.synth ? Theme.mono : Theme.pinball ? (w.is-silence ? Theme.mono : Pb.font) : Theme.cozy ? Cz.font : Theme.fighter ? Fi.body : Theme.dash ? "Manrope" : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : Theme.comic ? "Comic Neue" : Theme.answer ? (w.is-silence ? "Barlow Condensed" : "Courier Prime") : "Inter Tight";
-                            font-weight: Theme.pinball ? (i == root.current-word ? 700 : 400) : Theme.cozy ? 400 : Theme.fighter ? (i == root.current-word || w.is-silence ? 700 : 600) : Theme.comic || ((Theme.tape || Theme.synth) && w.is-silence) || (Theme.answer && (w.is-silence || i == root.current-word)) ? 700 : Theme.glass && w.is-silence ? 600 : 400;
-                            font-size: Theme.pinball ? (w.is-silence ? 10.5px : 15.5px) : Theme.cozy ? 14px : Theme.fighter ? 13.5px : Theme.pocket ? 20px : Theme.quest ? 14px : Theme.brick ? (w.is-silence ? round(root.brick-size * 0.85 / 1px) * 1px : root.brick-size) : Theme.tape || Theme.synth ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : Theme.comic ? 13.5px : Theme.glass ? (w.is-silence ? 11.5px : 14px) : Theme.answer ? (w.is-silence ? 10px : 13px) : 15px;
-                            font-italic: w.spoken && marks;
+                            font-family: Theme.pocket ? Pk.big : Theme.quest ? Quest.font : Theme.brick ? Brick.words : Theme.tape || Theme.synth ? Theme.mono : Theme.phono ? Pn.font : Theme.pinball ? (w.is-silence ? Theme.mono : Pb.font) : Theme.cozy ? Cz.font : Theme.fighter ? Fi.body : Theme.dash ? "Manrope" : Theme.phos ? Ph.mono : Theme.os95 ? "VT323" : Theme.comic ? "Comic Neue" : Theme.answer ? (w.is-silence ? "Barlow Condensed" : "Courier Prime") : "Inter Tight";
+                            font-weight: Theme.phono ? (w.is-silence ? 500 : 600) : Theme.pinball ? (i == root.current-word ? 700 : 400) : Theme.cozy ? 400 : Theme.fighter ? (i == root.current-word || w.is-silence ? 700 : 600) : Theme.comic || ((Theme.tape || Theme.synth) && w.is-silence) || (Theme.answer && (w.is-silence || i == root.current-word)) ? 700 : Theme.glass && w.is-silence ? 600 : 400;
+                            font-size: Theme.phono ? (w.is-silence ? 13px : 15.5px) : Theme.pinball ? (w.is-silence ? 10.5px : 15.5px) : Theme.cozy ? 14px : Theme.fighter ? 13.5px : Theme.pocket ? 20px : Theme.quest ? 14px : Theme.brick ? (w.is-silence ? round(root.brick-size * 0.85 / 1px) * 1px : root.brick-size) : Theme.tape || Theme.synth ? 12px : Theme.phos ? 12.5px : Theme.os95 ? 19px : Theme.comic ? 13.5px : Theme.glass ? (w.is-silence ? 11.5px : 14px) : Theme.answer ? (w.is-silence ? 10px : 13px) : 15px;
+                            font-italic: (w.spoken && marks) || (Theme.phono && w.is-silence);
                         }
                         wt := TouchArea {
                             mouse-cursor: pointer;

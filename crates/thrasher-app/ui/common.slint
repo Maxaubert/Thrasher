@@ -1748,25 +1748,12 @@ export component CzRule inherits Image {
     colorize: Cz.parch-dd;
 }
 
-// The card a menu sits on: the dark popup, or for Tape Deck a cream J-card insert with
-// the red and amber rule of the cassette label along its top. `sub` is a submenu card.
-export component MenuCard inherits Rectangle {
-    in property <bool> sub;
-    in property <length> shadow-y: 6px;
-    // Phosphor: a box in the second black with a bright edge, no shadow.
-    // Desktop 95: a white drop down list with a black line instead of a grey menu.
-    in property <bool> list;
-    // Brick Phone: the title in the inverted bar on top (Projects, the clip's name, Export),
-    // moved right by `title-indent` for an icon drawn before it.
+// Split out of MenuCard, so its copies share it (see docs/device-themes.md, "Generated code size").
+component MenuCardArt inherits Rectangle {
     in property <string> title;
     in property <length> title-indent;
-    // Answering Machine: a card of message paper.
-    // Fighter Select: a dark panel with a red top edge.
-    background: Theme.tape || Theme.comic || Theme.synth || Theme.pocket || Theme.quest || Theme.cozy ? transparent : Theme.pinball ? Pb.pop : Theme.fighter ? Fi.menu : Theme.brick ? Brick.lcd1 : Theme.phos ? Ph.bg2 : Theme.os95 ? (root.list ? #ffffff : Os.face) : Theme.glass ? Glass.menu : Theme.dash ? #171b21 : Theme.answer ? Am.paper : root.sub ? Theme.raised : Theme.popup;
-    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? 18px : Theme.dash ? 12px : Theme.answer ? 6px : Theme.synth ? 12px : 10px;
-    border-width: Theme.cozy ? 0 : Theme.tape || Theme.comic || Theme.pocket || Theme.quest || Theme.synth ? 0 : Theme.os95 ? (root.list ? 1px : 0) : Theme.brick ? 2px : 1px;
-    border-color: Theme.pinball ? Pb.edge : Theme.os95 ? #000000 : Theme.phos ? Ph.ph : Theme.glass ? #ffffff57 : Theme.dash ? #ffffff33 : Theme.answer ? Am.chip-lip : Theme.edge;
-    drop-shadow-blur: Theme.cozy ? 0 : Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : 20px;
+    in property <bool> list;
+    in property <bool> sub;
     // Brick Phone: the double frame and the title bar.
     BrickMenuFrame {
         visible: Theme.brick;
@@ -1783,8 +1770,6 @@ export component MenuCard inherits Rectangle {
     Rectangle { visible: Theme.pocket; x: 4px; y: 4px; width: parent.width; height: parent.height; background: Pk.l2; }
     Rectangle { visible: Theme.pocket; x: 0; y: 0; width: parent.width; height: parent.height; background: Pk.l0; }
     PkRing { visible: Theme.pocket; x: 0; y: 0; width: parent.width; height: parent.height; }
-    drop-shadow-offset-y: root.shadow-y;
-    drop-shadow-color: #00000099;
     // Comic Book: a white panel with a thick ink edge and a hard shadow.
     InkShadow { visible: Theme.comic; off: 5px; }
     Rectangle { visible: Theme.comic; background: #ffffff; border-width: 3px; border-color: Comic.ink; }
@@ -1808,7 +1793,8 @@ export component MenuCard inherits Rectangle {
         height: 1px;
         background: @linear-gradient(90deg, #62d2ff00 0%, #62d2ff 50%, #62d2ff00 100%);
     }
-    if Theme.tape: Rectangle {
+    Rectangle {
+        visible: Theme.tape;
         background: #0d0805;
         Rectangle {
             x: 1px;
@@ -1830,6 +1816,40 @@ export component MenuCard inherits Rectangle {
         background: #ffffff12;
     }
     Rectangle { visible: Theme.glass; x: 14px; y: 1px; width: parent.width - 28px; height: 1px; background: #ffffff73; }
+}
+
+// The card a menu sits on: the dark popup, or for Tape Deck a cream J-card insert with
+// the red and amber rule of the cassette label along its top. `sub` is a submenu card.
+export component MenuCard inherits Rectangle {
+    in property <bool> sub;
+    in property <length> shadow-y: 6px;
+    // Phosphor: a box in the second black with a bright edge, no shadow.
+    // Desktop 95: a white drop down list with a black line instead of a grey menu.
+    in property <bool> list;
+    // Brick Phone: the title in the inverted bar on top (Projects, the clip's name, Export),
+    // moved right by `title-indent` for an icon drawn before it.
+    in property <string> title;
+    in property <length> title-indent;
+    // Answering Machine: a card of message paper.
+    // Fighter Select: a dark panel with a red top edge.
+    background: Theme.tape || Theme.comic || Theme.synth || Theme.pocket || Theme.quest || Theme.cozy ? transparent : Theme.pinball ? Pb.pop : Theme.fighter ? Fi.menu : Theme.brick ? Brick.lcd1 : Theme.phos ? Ph.bg2 : Theme.os95 ? (root.list ? #ffffff : Os.face) : Theme.glass ? Glass.menu : Theme.dash ? #171b21 : Theme.answer ? Am.paper : root.sub ? Theme.raised : Theme.popup;
+    border-radius: Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick || Theme.fighter || Theme.cozy || Theme.pinball ? 0 : Theme.glass ? 18px : Theme.dash ? 12px : Theme.answer ? 6px : Theme.synth ? 12px : 10px;
+    border-width: Theme.cozy ? 0 : Theme.tape || Theme.comic || Theme.pocket || Theme.quest || Theme.synth ? 0 : Theme.os95 ? (root.list ? 1px : 0) : Theme.brick ? 2px : 1px;
+    border-color: Theme.pinball ? Pb.edge : Theme.os95 ? #000000 : Theme.phos ? Ph.ph : Theme.glass ? #ffffff57 : Theme.dash ? #ffffff33 : Theme.answer ? Am.chip-lip : Theme.edge;
+    drop-shadow-blur: Theme.cozy ? 0 : Theme.tape || Theme.phos || Theme.os95 || Theme.comic || Theme.pocket || Theme.quest || Theme.brick ? 0 : 20px;
+    drop-shadow-offset-y: root.shadow-y;
+    drop-shadow-color: #00000099;
+    // Each skin's frame, in one shared component (the card is copied at every use).
+    MenuCardArt {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        title: root.title;
+        title-indent: root.title-indent;
+        list: root.list;
+        sub: root.sub;
+    }
     @children
 }
 
@@ -5757,7 +5777,8 @@ export component OrderList inherits Rectangle {
         ink: Pk.l1;
     }
     // Brick Phone: an ink frame where the dragged row will land.
-    if Theme.brick && root.dragging >= 0: Rectangle {
+    Rectangle {
+        visible: Theme.brick && root.dragging >= 0;
         x: 0;
         y: root.target * root.row-h + 2px;
         width: root.width;
@@ -5766,7 +5787,8 @@ export component OrderList inherits Rectangle {
         border-color: Brick.ink;
     }
     // Answering Machine: a red insert line where the dragged row will land.
-    if Theme.answer && root.dragging >= 0: Rectangle {
+    Rectangle {
+        visible: Theme.answer && root.dragging >= 0;
         x: 8px;
         y: (root.target > root.dragging ? root.target + 1 : root.target) * root.row-h - 1.5px;
         width: parent.width - 16px;
@@ -5778,7 +5800,8 @@ export component OrderList inherits Rectangle {
     // Fighter Select: a dashed violet slot where the dragged row will land.
     // Cozy Cabin: an empty slot ringed in brown where the dragged row will land.
     // Pinball: a dashed slot where the dragged row will land.
-    if Theme.pinball && root.dragging >= 0: Rectangle {
+    Rectangle {
+        visible: Theme.pinball && root.dragging >= 0;
         x: 0;
         y: root.target * root.row-h;
         width: root.width;
@@ -5787,7 +5810,8 @@ export component OrderList inherits Rectangle {
         border-width: 1.5px;
         border-color: #5a2a0a;
     }
-    if Theme.cozy && root.dragging >= 0: Rectangle {
+    Rectangle {
+        visible: Theme.cozy && root.dragging >= 0;
         x: 0;
         y: root.target * root.row-h + 3px;
         width: root.width;
@@ -5795,7 +5819,8 @@ export component OrderList inherits Rectangle {
         border-width: 3px;
         border-color: #6b4a2e;
     }
-    if Theme.fighter && root.dragging >= 0: Rectangle {
+    Rectangle {
+        visible: Theme.fighter && root.dragging >= 0;
         x: 56px;
         y: root.target * root.row-h;
         width: root.width - 56px;
@@ -5804,7 +5829,8 @@ export component OrderList inherits Rectangle {
         border-color: Fi.edge;
     }
     // Pocket Synth: a dashed orange slot where the dragged row will land.
-    if Theme.synth && root.dragging >= 0: Rectangle {
+    Rectangle {
+        visible: Theme.synth && root.dragging >= 0;
         x: 0;
         y: root.target * root.row-h;
         width: root.width;
@@ -5814,7 +5840,8 @@ export component OrderList inherits Rectangle {
         border-color: #e94a1299;
     }
     // Spatial Glass: a faint slot where the dragged row will land.
-    if Theme.glass && root.dragging >= 0: Rectangle {
+    Rectangle {
+        visible: Theme.glass && root.dragging >= 0;
         y: root.target * root.row-h + 3px;
         height: root.row-h - 6px;
         border-radius: 16px;
@@ -6023,7 +6050,7 @@ export component OrderList inherits Rectangle {
                         : (root.hi ? @image-url("skins/tape/knob@2x.png") : @image-url("skins/tape/knob.png"));
                     image-fit: fill;
                 }
-                if kt.has-hover: Rectangle { border-radius: 14px; background: #ffffff1f; }
+                Rectangle { visible: kt.has-hover; border-radius: 14px; background: #ffffff1f; }
                 Icon {
                     x: (parent.width - self.width) / 2 + (tr.playing ? 0 : 1px);
                     name: tr.playing ? "pause" : "play";
@@ -6043,8 +6070,8 @@ export component OrderList inherits Rectangle {
                 y: 5px;
                 width: parent.width - parent.spine-x;
                 height: 38px;
-                if tr.lifted: Rectangle { x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px; background: Deck.amber; }
-                if tr.lifted: Rectangle { y: parent.height + 2px; height: 4px; background: #00000059; }
+                Rectangle { visible: tr.lifted; x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px; background: Deck.amber; }
+                Rectangle { visible: tr.lifted; y: parent.height + 2px; height: 4px; background: #00000059; }
                 Rectangle { y: 1px; background: #00000099; }
                 Rectangle { border-radius: 3px; background: tr.lifted ? Deck.spine-out : Deck.spine; }
                 Image {
@@ -6522,7 +6549,8 @@ export component OrderList inherits Rectangle {
         // Quest Menu: a party slot: a grip, the place in gold in a slot, a pixel play key, a
         // small waveform, the name, its length or note and an x. The lifted row is lit and
         // ringed in gold.
-        if Theme.quest && i == root.dragging: Rectangle {
+        Rectangle {
+            visible: Theme.quest && i == root.dragging;
             x: -3px;
             y: -3px;
             width: parent.width + 6px;
@@ -6793,7 +6821,7 @@ export component OrderList inherits Rectangle {
             property <color> ink: self.lifted ? Pk.l0 : root.enabled ? Pk.l3 : Pk.l1;
             x: self.lifted ? 6px : 0;
             y: self.lifted ? -4px : 0;
-            if pkr.lifted: Rectangle { x: 4px; y: 4px; background: Pk.l2; }
+            Rectangle { visible: pkr.lifted; x: 4px; y: 4px; background: Pk.l2; }
             Rectangle { visible: pkr.lifted; background: Pk.l3; }
             PkTile { visible: !pkr.lifted; y: parent.height - 2px; height: 2px; source: @image-url("skins/px-pocket/rule-row.png"); }
             HorizontalLayout {
@@ -7025,7 +7053,8 @@ export component OrderList inherits Rectangle {
             y: 0;
             width: parent.width;
             height: root.row-h - 8px;
-            if i == root.dragging: Rectangle {
+            Rectangle {
+                visible: i == root.dragging;
                 x: -3px;
                 y: -3px;
                 width: parent.width + 6px;
@@ -7282,7 +7311,8 @@ export component OrderList inherits Rectangle {
                 }
             }
         }
-        if i < root.rows.length - 1 && root.dragging < 0 && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.dash && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball: Rectangle {
+        Rectangle {
+            visible: i < root.rows.length - 1 && root.dragging < 0 && !Theme.tape && !Theme.phos && !Theme.os95 && !Theme.comic && !Theme.dash && !Theme.pocket && !Theme.quest && !Theme.brick && !Theme.synth && !Theme.fighter && !Theme.cozy && !Theme.pinball;
             x: 10px;
             y: parent.height - 1px;
             width: parent.width - 20px;
@@ -7693,7 +7723,8 @@ export component Select inherits Rectangle {
                         }
                     }
                     Rectangle { visible: Theme.answer && (i == root.current-index || it.has-hover); x: 0; y: 0; width: 3px; height: parent.height; background: Am.rec; }
-                    if Theme.os95: Text {
+                    Text {
+                        visible: Theme.os95;
                         x: 4px;
                         width: parent.width - 8px;
                         text: item;
@@ -8198,7 +8229,8 @@ export component ShortcutBox inherits Rectangle {
             pk-press := Text { text: "PRESS THE KEYS"; color: Pk.l0; font-family: Pk.small; font-size: 8px; letter-spacing: 1px; vertical-alignment: center; }
         }
     }
-    if !root.listening && root.keys.length == 0 && Theme.pocket: Text {
+    Text {
+        visible: !root.listening && root.keys.length == 0 && Theme.pocket;
         x: 0;
         y: 0;
         width: parent.width;
@@ -8242,7 +8274,8 @@ export component ShortcutBox inherits Rectangle {
             vertical-alignment: center;
         }
     }
-    if !root.listening && root.keys.length == 0 && Theme.quest: Text {
+    Text {
+        visible: !root.listening && root.keys.length == 0 && Theme.quest;
         x: 0;
         y: 0;
         width: parent.width;
@@ -8295,7 +8328,8 @@ export component ShortcutBox inherits Rectangle {
             Rectangle { x: parent.width - 8px; y: 4px; width: 2px; height: parent.height - 8px; background: Brick.lcd1; }
         }
     }
-    if !root.listening && root.keys.length == 0 && Theme.brick: Text {
+    Text {
+        visible: !root.listening && root.keys.length == 0 && Theme.brick;
         x: 0;
         y: 0;
         width: parent.width;
@@ -8360,7 +8394,8 @@ export component ShortcutBox inherits Rectangle {
         }
     }
     // Phosphor: dim and flush right, where the key caps end.
-    if !root.listening && root.keys.length == 0 && Theme.phos: Text {
+    Text {
+        visible: !root.listening && root.keys.length == 0 && Theme.phos;
         x: 0;
         y: 0;
         width: parent.width;
@@ -8373,7 +8408,8 @@ export component ShortcutBox inherits Rectangle {
         vertical-alignment: center;
     }
     // Pocket Synth: dim mono words flush right; key caps of the sampler.
-    if !root.listening && root.keys.length == 0 && Theme.synth: Text {
+    Text {
+        visible: !root.listening && root.keys.length == 0 && Theme.synth;
         x: 0;
         y: 0;
         width: parent.width - 2px;
@@ -8406,7 +8442,8 @@ export component ShortcutBox inherits Rectangle {
     }
     // Fighter Select: dim bold words flush right, where the key caps end.
     // Cozy Cabin: Not set in parchment brown flush right, or parchment key caps.
-    if !root.listening && root.keys.length == 0 && Theme.cozy: Text {
+    Text {
+        visible: !root.listening && root.keys.length == 0 && Theme.cozy;
         x: 0;
         y: 0;
         width: parent.width;
@@ -8437,7 +8474,8 @@ export component ShortcutBox inherits Rectangle {
             }
         }
     }
-    if !root.listening && root.keys.length == 0 && Theme.fighter: Text {
+    Text {
+        visible: !root.listening && root.keys.length == 0 && Theme.fighter;
         x: 0;
         y: 0;
         width: parent.width;
@@ -8457,7 +8495,8 @@ export component ShortcutBox inherits Rectangle {
         font-size: Theme.tape ? 11px : Theme.phos ? 12px : 13px;
         letter-spacing: Theme.tape ? 2px : 0;
     }
-    if !root.listening && root.keys.length == 0 && Theme.comic: Text {
+    Text {
+        visible: !root.listening && root.keys.length == 0 && Theme.comic;
         x: 0;
         width: parent.width - 4px;
         height: parent.height;
@@ -8627,6 +8666,17 @@ export component CardPart inherits Rectangle {
     border-bottom-right-radius: root.last ? 14px : 0;
 }
 
+// Split out of CardRow, so its copies share it (see docs/device-themes.md, "Generated code size").
+component CardRowText inherits VerticalLayout {
+    in property <string> label;
+    in property <string> note;
+    alignment: center;
+    spacing: 2px;
+    horizontal-stretch: 1;
+    Text { text: root.label; color: Theme.text; font-size: 14px; overflow: elide; }
+    if root.note != "": Text { text: root.note; color: Theme.dim; font-size: 12px; overflow: elide; }
+}
+
 // One line in a card: a label (and an optional note under it) and its control.
 export component CardRow inherits Rectangle {
     in property <string> label;
@@ -8646,20 +8696,15 @@ export component CardRow inherits Rectangle {
         padding-top: 8px;
         padding-bottom: 8px;
         spacing: 12px;
-        VerticalLayout {
-            alignment: center;
-            spacing: 2px;
-            horizontal-stretch: 1;
-            Text { text: root.label; color: Theme.text; font-size: 14px; overflow: elide; }
-            if root.note != "": Text { text: root.note; color: Theme.dim; font-size: 12px; overflow: elide; }
-        }
+        CardRowText { label: root.label; note: root.note; }
         HorizontalLayout {
             alignment: end;
             spacing: 8px;
             @children
         }
     }
-    if !root.last: Rectangle { height: 1px; background: Theme.divider; }
+    // Zero high on the last row (an `if` here was copied into every use of the row).
+    Rectangle { height: root.last ? 0 : 1px; background: Theme.divider; }
     }
 }
 
@@ -9029,7 +9074,8 @@ component ScrollDecor inherits Rectangle {
         }
     }
     // Pinball: a wire rail along the edge; the ball is the thumb.
-    if Theme.pinball && root.bar && !root.bar95 && !root.ink-rail && !root.pk-rail && !root.quest-rail && !root.rubber && root.range > 1px: Rectangle {
+    Rectangle {
+        visible: Theme.pinball && root.bar && !root.bar95 && !root.ink-rail && !root.pk-rail && !root.quest-rail && !root.rubber && root.range > 1px;
         x: parent.width - 9px;
         y: 2px;
         width: 5px;
@@ -9230,19 +9276,6 @@ export component CardFx inherits Rectangle {
     }
 }
 
-// The round record button: a mic, or a stop square while recording.
-export component RecordButton inherits IconBtn {
-    in property <bool> recording;
-    size: 56px;
-    round: true;
-    radius: Theme.rec-square ? self.size * 0.26 : self.size / 2;
-    filled: true;
-    icon: root.recording ? "stop" : "mic";
-    icon-size: root.recording ? 18px : 24px;
-    label: root.recording ? "Stop and save" : "Record";
-    tip: root.recording ? "Stop" : "Record";
-}
-
 // The recorder: status, time, live level and the record buttons. Mode 0 is a narrow
 // window (one line, a round Record button), 1 the default, 2 a wide window (a tall
 // panel beside the clip list).
@@ -9393,8 +9426,16 @@ export component RecorderCard inherits Rectangle {
             }
             VerticalLayout {
                 alignment: center;
-                RecordButton {
-                    recording: root.recording;
+                // The record button (IconBtn itself: a component inheriting it copies it).
+                IconBtn {
+                    size: 56px;
+                    round: true;
+                    radius: Theme.rec-square ? self.size * 0.26 : self.size / 2;
+                    filled: true;
+                    icon: root.recording ? "stop" : "mic";
+                    icon-size: root.recording ? 18px : 24px;
+                    label: root.recording ? "Stop and save" : "Record";
+                    tip: root.recording ? "Stop" : "Record";
                     clicked => { root.record(); }
                 }
             }
@@ -9495,8 +9536,16 @@ export component RecorderCard inherits Rectangle {
                     clicked => { root.pause(); }
                 }
             }
-            RecordButton {
-                recording: root.recording;
+            // The record button (IconBtn itself: a component inheriting it copies it).
+            IconBtn {
+                size: 56px;
+                round: true;
+                radius: Theme.rec-square ? self.size * 0.26 : self.size / 2;
+                filled: true;
+                icon: root.recording ? "stop" : "mic";
+                icon-size: root.recording ? 18px : 24px;
+                label: root.recording ? "Stop and save" : "Record";
+                tip: root.recording ? "Stop" : "Record";
                 clicked => { root.record(); }
             }
             Rectangle { width: 44px; }
@@ -10202,14 +10251,15 @@ export component TranscriptCard inherits Rectangle {
                 }
                 // Tape Deck: the typed J-card insert from the cassette case, ruled, with its
                 // red margin; an amber frame while it is typed on.
-                if Theme.tape && root.editing: Rectangle { x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px; background: Deck.amber; }
+                Rectangle { visible: Theme.tape && root.editing; x: -2px; y: -2px; width: parent.width + 4px; height: parent.height + 4px; background: Deck.amber; }
                 // Desktop 95: Notepad's white sunken page.
                 if Theme.os95: Rectangle {
                     background: #ffffff;
                     OsBevel { kind: 2; }
                 }
                 // Spatial Glass: you type in a dark well on the lifted pane.
-                if Theme.glass && root.editing: Rectangle {
+                Rectangle {
+                    visible: Theme.glass && root.editing;
                     x: -8px;
                     y: -4px;
                     width: parent.width + 16px;
@@ -10561,7 +10611,8 @@ export component TranscriptCard inherits Rectangle {
                             }
                         }
                         // The text box's own cursor has the (invisible) text colour.
-                        if editor.has-focus && editor.anchor-position-byte-offset == editor.cursor-position-byte-offset: Rectangle {
+                        Rectangle {
+                            visible: editor.has-focus && editor.anchor-position-byte-offset == editor.cursor-position-byte-offset;
                             x: root.caret.x;
                             y: root.caret.y;
                             width: Theme.phos || Theme.synth ? 7.5px : Theme.pocket ? 8px : Theme.comic ? 2.5px : Theme.quest ? 3px : 2px;
@@ -10761,7 +10812,8 @@ export component TranscriptCard inherits Rectangle {
             }
         }
     // Comic Book: the panel's tag across its top left corner.
-    if Theme.comic: Rectangle {
+    Rectangle {
+        visible: Theme.comic;
         x: 0;
         y: 0;
         width: tag-text.preferred-width + 16px;

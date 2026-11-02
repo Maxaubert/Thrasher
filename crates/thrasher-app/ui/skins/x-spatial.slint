@@ -1093,7 +1093,8 @@ export component MainPage inherits Rectangle {
     }
 
     // Messages float just above the ornament, so nothing moves when they come and go.
-    if Main.status != "": Rectangle {
+    Rectangle {
+        visible: Main.status != "";
         x: root.lib-x + (root.lib-w - self.width) / 2;
         y: root.orn-y - self.height - 10px;
         width: min(msg.preferred-width + 28px, root.lib-w - 24px);

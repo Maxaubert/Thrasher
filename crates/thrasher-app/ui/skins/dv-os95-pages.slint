@@ -130,18 +130,23 @@ component Group inherits Rectangle {
     }
 }
 
+// Split out of Line, so its copies share it (see docs/device-themes.md, "Generated code size").
+component LineText inherits VerticalLayout {
+    in property <string> label;
+    in property <string> note;
+    alignment: center;
+    horizontal-stretch: 1;
+    Words { text: root.label; overflow: elide; }
+    if root.note != "": Text { text: root.note; color: Os.note; font-family: Os.font; font-size: 11px; overflow: elide; }
+}
+
 // One line of a group box: its words (and a note in small grey) and its controls.
 component Line inherits HorizontalLayout {
     in property <string> label;
     in property <string> note;
     min-height: 24px;
     spacing: 8px;
-    VerticalLayout {
-        alignment: center;
-        horizontal-stretch: 1;
-        Words { text: root.label; overflow: elide; }
-        if root.note != "": Text { text: root.note; color: Os.note; font-family: Os.font; font-size: 11px; overflow: elide; }
-    }
+    LineText { label: root.label; note: root.note; }
     @children
 }
 
@@ -455,7 +460,8 @@ component Seek inherits Rectangle {
         horizontal-alignment: left;
         vertical-alignment: top;
     }
-    if root.active: Rectangle {
+    Rectangle {
+        visible: root.active;
         x: 4px + root.played * root.inner-w;
         y: 2px;
         width: 1px;
@@ -1467,8 +1473,8 @@ component ShelfTree inherits List {
             accessible-label: f;
             accessible-checked: Pages.model-filter == i;
             accessible-action-default => { Pages.model-filter = i; root.changed(); }
-            if i > 0: Rectangle { x: 10px; y: 0; width: 1px; height: i == 4 ? 11px : parent.height; background: Os.sh; }
-            if i > 0: Rectangle { x: 10px; y: 10px; width: 8px; height: 1px; background: Os.sh; }
+            Rectangle { visible: i > 0; x: 10px; y: 0; width: 1px; height: i == 4 ? 11px : parent.height; background: Os.sh; }
+            Rectangle { visible: i > 0; x: 10px; y: 10px; width: 8px; height: 1px; background: Os.sh; }
             HorizontalLayout {
                 x: i == 0 ? 2px : 22px;
                 spacing: 4px;
@@ -1593,7 +1599,7 @@ export component ModelsPage inherits Frame {
                                 for m in Pages.models: Rectangle {
                                     height: m.header ? 22px : root.wide ? (Pages.downloading == m.index ? 46px : 34px) : (Pages.downloading == m.index ? 62px : 44px);
                                     background: m.header ? #d4d4d4 : m.active ? Os.navy : transparent;
-                                    if !m.header && !m.active: Rectangle { y: parent.height - 1px; height: 1px; background: #e4e4e4; }
+                                    Rectangle { visible: !m.header && !m.active; y: parent.height - 1px; height: 1px; background: #e4e4e4; }
                                     if m.header: HorizontalLayout {
                                         padding-left: 6px;
                                         padding-right: 6px;
@@ -2065,7 +2071,7 @@ export component Widget inherits Rectangle {
     background: Os.face;
     WindowMoveArea { width: 100%; height: 100%; }
     OsBevel { kind: 0; }
-    if Main.recording: Rectangle { border-width: 1px; border-color: #ff4a2a; }
+    Rectangle { visible: Main.recording; border-width: 1px; border-color: #ff4a2a; }
     Rectangle {
         x: 3px;
         y: 3px;

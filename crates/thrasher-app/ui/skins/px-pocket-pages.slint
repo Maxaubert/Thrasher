@@ -117,7 +117,8 @@ export component Bezel inherits Rectangle {
     property <length> body-h: root.height - 36px - 8px;
     property <length> wy: max(-90px, (root.body-h - 576px) / 2);
 
-    if root.cover && !root.wide: Rectangle {
+    Rectangle {
+        visible: root.cover && !root.wide;
         x: 4px;
         y: root.height - root.ctrl-h;
         width: root.width - 8px;
@@ -188,14 +189,16 @@ export component Bezel inherits Rectangle {
         }
     }
 
-    if root.cover && root.wide: Rectangle {
+    Rectangle {
+        visible: root.cover && root.wide;
         x: 4px;
         y: 36px;
         width: 156px;
         height: root.height - 42px;
         background: Pk.sh1;
     }
-    if root.cover && root.wide: Rectangle {
+    Rectangle {
+        visible: root.cover && root.wide;
         x: root.width - 160px;
         y: 36px;
         width: 156px;
@@ -561,7 +564,8 @@ component Strip inherits Rectangle {
         }
         Rectangle { x: 0; width: root.start-x; background: #c3ce7bb3; }
         Rectangle { x: root.end-x; width: parent.width - root.end-x; background: #c3ce7bb3; }
-        if root.active: Rectangle {
+        Rectangle {
+            visible: root.active;
             x: round(root.played * (parent.width - 2px) / 2px) * 2px;
             width: 2px;
             background: Pk.l3;
@@ -1099,6 +1103,17 @@ export component ClipPage inherits Shell {
 
 // ---------- Settings ----------
 
+// Split out of SRow, so its copies share it (see docs/device-themes.md, "Generated code size").
+component SRowText inherits VerticalLayout {
+    in property <string> label;
+    in property <string> note;
+    alignment: center;
+    horizontal-stretch: 1;
+    spacing: 1px;
+    Big { height: 18px; text: root.label; overflow: elide; }
+    if root.note != "": Small { text: root.note.to-uppercase(); letter-spacing: 0.5px; overflow: elide; }
+}
+
 // One line of a card: its name in Jersey (and a note in small caps), its controls on the
 // right, a dotted rule under it.
 component SRow inherits Rectangle {
@@ -1106,18 +1121,13 @@ component SRow inherits Rectangle {
     in property <string> note;
     in property <bool> last;
     min-height: 28px;
-    if !root.last: Dots { y: parent.height - 2px; }
+    // In a box: an `if` here was copied into every use of the row, `visible` on Dots copies Dots.
+    Rectangle { visible: !root.last; x: 0; y: 0; width: parent.width; height: parent.height; Dots { y: parent.height - 2px; } }
     HorizontalLayout {
         padding-top: 2px;
         padding-bottom: 4px;
         spacing: 8px;
-        VerticalLayout {
-            alignment: center;
-            horizontal-stretch: 1;
-            spacing: 1px;
-            Big { height: 18px; text: root.label; overflow: elide; }
-            if root.note != "": Small { text: root.note.to-uppercase(); letter-spacing: 0.5px; overflow: elide; }
-        }
+        SRowText { label: root.label; note: root.note; }
         HorizontalLayout {
             alignment: end;
             spacing: 6px;
@@ -1609,12 +1619,6 @@ component Chip inherits Rectangle {
     t := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
 }
 
-component ModelSearch inherits Field {
-    icon: @image-url("px-pocket/find.png");
-    label: "Search models";
-    placeholder: "Search " + Pages.model-count + " models";
-}
-
 component Compressed inherits HorizontalLayout {
     callback changed();
     spacing: 8px;
@@ -1648,7 +1652,7 @@ export component ModelsPage inherits Shell {
             padding-top: 8px;
             padding-bottom: 8px;
             spacing: 8px;
-            ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+            Field { icon: @image-url("px-pocket/find.png"); label: "Search models"; placeholder: "Search " + Pages.model-count + " models"; text <=> Pages.model-query; edited => { root.filter-changed(); } }
             HorizontalLayout {
                 spacing: 4px;
                 alignment: start;
@@ -1669,7 +1673,7 @@ export component ModelsPage inherits Shell {
                 VerticalLayout {
                     padding: 12px;
                     spacing: 12px;
-                    ModelSearch { text <=> Pages.model-query; edited => { root.filter-changed(); } }
+                    Field { icon: @image-url("px-pocket/find.png"); label: "Search models"; placeholder: "Search " + Pages.model-count + " models"; text <=> Pages.model-query; edited => { root.filter-changed(); } }
                     Small { text: "SHELF"; accessible-role: none; }
                     VerticalLayout {
                         spacing: 4px;

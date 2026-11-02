@@ -73,7 +73,7 @@ component Mini inherits Rectangle {
         height: 6px;
         border-radius: 2px;
         background: r == 1 ? p.raised : p.row;
-        if r == 1: Rectangle { x: 0; width: 2px; background: root.p.accent; }
+        Rectangle { visible: r == 1; x: 0; width: 2px; background: root.p.accent; }
         Rectangle { x: 4px; y: 2px; width: 14px; height: 2px; background: root.p.text; opacity: 0.75; }
         Rectangle { x: 26px; y: 2px; width: 18px; height: 2px; background: root.p.wave; }
     }
@@ -119,7 +119,8 @@ component Tile inherits Rectangle {
         PkRing { x: 1px; y: 1px; width: 108px; height: 68px; }
         if root.on || root.focused: PkRing { x: -1px; y: -1px; width: 112px; height: 72px; ink: Pk.l0; }
         if root.on || root.focused: PkRing { x: -3px; y: -3px; width: 116px; height: 76px; ink: root.on ? Pk.l3 : Pk.l1; }
-        if root.on: Path {
+        Path {
+            visible: root.on;
             x: 110px - 6px - 12px;
             y: 5px;
             width: 12px;
@@ -189,7 +190,8 @@ component Tile inherits Rectangle {
             }
         }
         // Answering Machine: a red lamp instead of the check.
-        if root.on && Theme.answer: Rectangle {
+        Rectangle {
+            visible: root.on && Theme.answer;
             x: 110px - 14px;
             y: 6px;
             width: 8px;
@@ -344,7 +346,8 @@ component Tile inherits Rectangle {
             }
         }
         // The keyboard focus: a red frame round the whole tile, plain on dark and light art.
-        if root.focused: Rectangle {
+        Rectangle {
+            visible: root.focused;
             border-width: 2px;
             border-color: Deck.red;
         }
@@ -453,7 +456,8 @@ component Tile inherits Rectangle {
     // red frame on a hard shadow, its name in a yellow caption and the PICKED stamp; the
     // keyboard focus is a yellow and ink ring.
     if Theme.comic: Rectangle {
-        if root.focused: Rectangle {
+        Rectangle {
+            visible: root.focused;
             x: -5px;
             y: -5px;
             width: 120px;
@@ -483,7 +487,7 @@ component Tile inherits Rectangle {
                     image-fit: fill;
                 }
             }
-            if root.on: Rectangle { border-width: 3.5px; border-color: Comic.red; }
+            Rectangle { visible: root.on; border-width: 3.5px; border-color: Comic.red; }
         }
         Rectangle {
             x: (parent.width - self.width) / 2;
@@ -521,7 +525,8 @@ component Tile inherits Rectangle {
     // Brick Phone: the picture in an ink frame on the LCD, the name under it; the current
     // one on ink in a double frame with its name inverted; a frame round the focused one.
     if Theme.brick: Rectangle {
-        if root.focused || root.hover: Rectangle {
+        Rectangle {
+            visible: root.focused || root.hover;
             x: -4px;
             y: -4px;
             width: 80px;
@@ -529,7 +534,8 @@ component Tile inherits Rectangle {
             border-width: root.focused ? 2px : 1px;
             border-color: root.focused ? Brick.ink : Brick.rule;
         }
-        if root.on: Rectangle {
+        Rectangle {
+            visible: root.on;
             x: -3px;
             y: -3px;
             width: 78px;
@@ -586,7 +592,8 @@ component Tile inherits Rectangle {
     // Pocket Synth: the picture on a pad that sinks while it is held; the current one is an
     // orange pad with a glow, its name orange; an orange ring round the focused one.
     if Theme.synth: Rectangle {
-        if root.focused: Rectangle {
+        Rectangle {
+            visible: root.focused;
             x: -4px;
             y: -4px;
             width: 118px;
@@ -683,7 +690,8 @@ component Tile inherits Rectangle {
                 accessible-role: none;
             }
         }
-        if root.on: Rectangle {
+        Rectangle {
+            visible: root.on;
             x: -6px;
             y: -6px;
             width: 122px;

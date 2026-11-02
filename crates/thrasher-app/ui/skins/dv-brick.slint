@@ -993,7 +993,8 @@ component Lcd inherits Rectangle {
         Soft { big: true; }
     }
     // Messages float just above the foot, inverted, so nothing moves when they come and go.
-    if Main.status != "": Rectangle {
+    Rectangle {
+        visible: Main.status != "";
         x: (parent.width - self.width) / 2;
         y: root.foot-top - self.height - 6px;
         width: min(msg.preferred-width + 20px, parent.width - 24px);

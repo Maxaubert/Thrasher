@@ -1676,7 +1676,8 @@ component Player inherits Rectangle {
                     m2: @image-url("x-phono/rail-m@2x.png");
                     r2: @image-url("x-phono/rail-r@2x.png");
                 }
-                if root.is-active && root.at > 0: Rectangle {
+                Rectangle {
+                    visible: root.is-active && root.at > 0;
                     x: 6px;
                     y: 7px;
                     width: (parent.width - 24px) * root.at;
@@ -1898,7 +1899,8 @@ export component MainPage inherits Rectangle {
     }
 
     // Messages float just above the footer, so nothing moves when they come and go.
-    if Main.status != "": Rectangle {
+    Rectangle {
+        visible: Main.status != "";
         x: (parent.width - self.width) / 2;
         y: parent.height - (root.wide ? 56px : 52px) - self.height - 10px;
         width: min(msg.preferred-width + 28px, parent.width - 32px);

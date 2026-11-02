@@ -218,7 +218,8 @@ export component Spoke inherits Rectangle {
         lo: @image-url("dash/sbtn.png");
         hi: @image-url("dash/sbtn@2x.png");
     }
-    if t.has-hover || root.lit: Rectangle {
+    Rectangle {
+        visible: t.has-hover || root.lit;
         border-radius: root.width / 2;
         background: root.lit ? #62d2ff26 : t.pressed ? #ffffff08 : #ffffff14;
     }

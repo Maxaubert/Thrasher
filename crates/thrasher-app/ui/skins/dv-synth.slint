@@ -1476,7 +1476,8 @@ export component MainPage inherits Rectangle {
                             Rectangle {
                                 width: bank.visible-width;
                                 height: ceil(Main.clips.length / 4) * root.pad-pitch;
-                                if Main.clips.length == 0: Text {
+                                Text {
+                                    visible: Main.clips.length == 0;
                                     y: 0;
                                     height: 40px;
                                     text: "No clips";
@@ -1571,7 +1572,8 @@ export component MainPage inherits Rectangle {
     }
 
     // Messages float just above the footer, so nothing moves when they come and go.
-    if Main.status != "": Rectangle {
+    Rectangle {
+        visible: Main.status != "";
         x: (parent.width - self.width) / 2;
         y: parent.height - (root.wide ? 62px : 60px) - self.height - 10px;
         width: min(msg.preferred-width + 28px, parent.width - 32px);

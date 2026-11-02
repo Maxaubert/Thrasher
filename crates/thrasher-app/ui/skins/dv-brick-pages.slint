@@ -165,10 +165,26 @@ component Pips inherits HorizontalLayout {
     }
 }
 
-// An LCD button with a text, for the places that need a plain one inside a row (the
-// shared Btn draws the same look for this skin).
-component Lb inherits Btn {
-    height: 20px;
+// Split out of SRow, so its copies share it (see docs/device-themes.md, "Generated code size").
+component SRowText inherits VerticalLayout {
+    in property <string> label;
+    in property <bool> big;
+    in property <string> note;
+    alignment: center;
+    spacing: 2px;
+    horizontal-stretch: 1;
+    Words {
+        text: root.label;
+        font-size: root.big ? 18px : 17px;
+        height: 15px;
+        overflow: elide;
+    }
+    if root.note != "": Caps {
+        text: root.note.to-uppercase();
+        font-size: 7px;
+        opacity: 0.75;
+        overflow: elide;
+    }
 }
 
 // A line of settings: its name (and a note in small caps under it), its controls on the
@@ -184,23 +200,7 @@ component SRow inherits Rectangle {
         padding-top: 2px;
         padding-bottom: 3px;
         spacing: 6px;
-        VerticalLayout {
-            alignment: center;
-            spacing: 2px;
-            horizontal-stretch: 1;
-            Words {
-                text: root.label;
-                font-size: root.big ? 18px : 17px;
-                height: 15px;
-                overflow: elide;
-            }
-            if root.note != "": Caps {
-                text: root.note.to-uppercase();
-                font-size: 7px;
-                opacity: 0.75;
-                overflow: elide;
-            }
-        }
+        SRowText { label: root.label; big: root.big; note: root.note; }
         HorizontalLayout {
             alignment: end;
             spacing: 4px;
@@ -224,12 +224,6 @@ component Sec inherits HorizontalLayout {
         horizontal-stretch: 1;
         Rectangle { x: 0; y: (parent.height - 2px) / 2; height: 2px; background: Brick.ink; }
     }
-}
-
-// A field on the LCD.
-component Field inherits TextField {
-    height: 24px;
-    side: 6px;
 }
 
 // ---------- The handset ----------
@@ -496,255 +490,58 @@ component SendKey inherits Rectangle {
     }
 }
 
-// The handset round a page: the shell, the bezel and the amber LCD with its title row
-// and soft key labels; under it the soft keys, the rocker and the green and red keys
-// (portrait), or the keypad on the left wing and the rocker and the call keys on the
-// right (wide). The page's contents go in the LCD (the children).
-component Phone inherits Rectangle {
+// Split out of Phone, so its copies share it (see docs/device-themes.md, "Generated code size").
+component PhoneKeys inherits Rectangle {
     in property <bool> wide;
-    // The LCD's title row: the page's name, a note in small caps and an inverted tag on
-    // the right.
-    in property <string> title;
-    in property <string> note;
-    in property <string> tag;
-    // The soft keys: their words ("" for a blank key that does nothing), accessible names
-    // and tips; and the LCD's labels for them along its foot (the middle one is the
-    // rocker's: 1 shows up and down arrows round it, 2 left and right).
     in property <string> soft-l;
+    in property <length> ctrl-y;
+    in property <length> key-w;
     in property <string> soft-l-label;
-    in property <string> soft-l-tip: root.soft-l-label;
-    in property <bool> soft-l-enabled: true;
+    in property <string> soft-l-tip;
+    in property <bool> soft-l-enabled;
     in property <string> soft-r;
     in property <string> soft-r-label;
-    in property <string> soft-r-tip: root.soft-r-label;
-    in property <bool> soft-r-enabled: true;
-    in property <string> lcd-l;
-    in property <string> lcd-m;
-    in property <int> lcd-arrows;
-    in property <string> lcd-r;
-    in property <bool> lcd-r-on;
-    // The green key: 0 off (it only shows), 1 a key, 2 Export (with its list).
-    in property <int> green;
-    in property <string> green-word;
-    in property <string> green-label;
-    in property <string> green-tip: root.green-label;
-    in property <bool> green-enabled: true;
-    in property <image> green-icon;
-    in property <image> green-icon2;
-    in property <image> green-big;
-    in property <image> green-big2;
-    // The red key goes back.
-    in property <string> red-label: "Back";
-    in property <string> red-tip: "Back";
-    // The rocker (see Rocker) and the wide wing's captions.
+    in property <string> soft-r-tip;
+    in property <bool> soft-r-enabled;
     in property <int> rocker;
     in property <bool> playing;
+    in property <length> pad-y;
+    in property <length> bez-x;
+    in property <length> bez-bottom;
+    in property <length> wing-y;
     in property <string> cap-n;
+    in property <float> k;
     in property <string> cap-g;
-    in property <string> cap-r: "END TO GO BACK";
-    // A message floating over the LCD just above its foot.
-    in property <string> toast;
+    in property <string> cap-r;
+    in property <int> green;
+    in property <length> green-x;
+    in property <length> green-y;
+    in property <length> green-w;
+    in property <length> green-h;
+    in property <string> green-label;
+    in property <string> green-tip;
+    in property <bool> green-enabled;
+    in property <image> green-big;
+    in property <image> green-icon;
+    in property <image> green-big2;
+    in property <image> green-icon2;
+    in property <string> green-word;
+    in property <length> lcd-x;
+    in property <length> lcd-w;
+    in property <length> pad-top;
+    in property <length> head-h;
+    in property <string> red-label;
+    in property <string> red-tip;
     callback soft-left();
     callback soft-right();
-    callback green-clicked();
-    callback red-clicked();
     callback up();
     callback down();
     callback left();
     callback right();
     callback ok();
+    callback green-clicked();
     callback export(int);
-
-    property <length> bez-x: Hand.bez-x(root.wide);
-    property <length> bez-w: root.width - 2 * root.bez-x;
-    property <length> bez-h: Hand.bez-h(root.height, root.wide, 0);
-    property <length> bez-bottom: 58px + root.bez-h;
-    property <length> lcd-x: root.bez-x + 10px;
-    property <length> lcd-w: root.bez-w - 20px;
-    property <length> lcd-h: root.bez-h - 24px;
-    property <length> pad-x: root.wide ? 12px : 8px;
-    property <length> pad-top: root.wide ? 8px : 6px;
-    property <length> head-h: root.wide ? 26px : 22px;
-    property <length> soft-h: root.wide ? 20px : 18px;
-    // Portrait: the soft keys and the call keys beside the rocker.
-    property <length> ctrl-y: root.bez-bottom + 12px;
-    property <length> key-w: Hand.soft-w(root.width, false);
-    // Wide: the right wing closes up on a short window.
-    property <float> k: Hand.wing-k(root.height);
-    property <length> wing-y: Hand.wing-y(root.height);
-    property <length> pad-y: 58px + max(30px, (root.bez-h - 252px) / 2 - 55px + 22px);
-    // Where the green key sits.
-    property <length> green-x: root.wide ? root.width - 166px : 20px;
-    property <length> green-y: root.wide ? root.wing-y + 134px + 46px * root.k : root.ctrl-y + 44px;
-    property <length> green-w: root.wide ? 136px : root.key-w;
-    property <length> green-h: root.wide ? 54px : 32px;
-    background: Brick.bg;
-
-    Art {
-        x: root.wide ? 52px : 36px;
-        y: 0;
-        width: 34px;
-        height: 40px;
-        lo: @image-url("dv-brick/antenna.png");
-        hi: @image-url("dv-brick/antenna@2x.png");
-    }
-    Shell {
-        x: 0;
-        y: 12px;
-        width: root.width;
-        height: root.height - 12px;
-        rt: root.wide ? 40px : 34px;
-        rb: root.wide ? 40px : 52px;
-    }
-    Top {
-        x: 0;
-        y: 12px;
-        width: root.width;
-        wide: root.wide;
-    }
-    Art {
-        x: (parent.width - self.width) / 2;
-        y: root.wide ? 34px : 50px;
-        width: root.wide ? 72px : 62px;
-        height: root.wide ? 10px : 7px;
-        lo: root.wide ? @image-url("dv-brick/ear-w.png") : @image-url("dv-brick/ear-p.png");
-        hi: root.wide ? @image-url("dv-brick/ear-w@2x.png") : @image-url("dv-brick/ear-p@2x.png");
-    }
-    Bezel {
-        x: root.bez-x;
-        y: 58px;
-        width: root.bez-w;
-        height: root.bez-h;
-        big: root.wide;
-    }
-    LcdGlass {
-        x: root.lcd-x;
-        y: 72px;
-        width: root.lcd-w;
-        height: root.lcd-h;
-        // The title row: the signal bars (the input level), the name, a note, a tag and
-        // the battery, over a 2 px rule.
-        Rectangle {
-            x: root.pad-x;
-            y: root.pad-top;
-            width: parent.width - 2 * root.pad-x;
-            height: root.head-h;
-            Rectangle { x: 0; y: parent.height - 2px; height: 2px; background: Brick.ink; }
-            HorizontalLayout {
-                height: parent.height - 2px;
-                spacing: 8px;
-                VerticalLayout {
-                    alignment: center;
-                    Sig {
-                        n: 4;
-                        lo: 3px;
-                        top: 10px;
-                        bar: 3px;
-                        gap: 1px;
-                    }
-                }
-                Words {
-                    text: root.title;
-                    font-size: root.wide ? 26px : 22px;
-                    horizontal-stretch: 1;
-                    overflow: elide;
-                }
-                if root.note != "": Caps { text: root.note.to-uppercase(); }
-                if root.tag != "": VerticalLayout { alignment: center; Tag { text: root.tag; } }
-                VerticalLayout { alignment: center; Battery { } }
-            }
-        }
-        // The page.
-        Rectangle {
-            x: root.pad-x;
-            y: root.pad-top + root.head-h + 6px;
-            width: parent.width - 2 * root.pad-x;
-            height: parent.height - root.pad-top - root.head-h - 6px - root.soft-h;
-            @children
-        }
-        // The soft key labels along the foot.
-        Rectangle {
-            x: 0;
-            y: parent.height - root.soft-h;
-            width: parent.width;
-            height: root.soft-h;
-            background: #3b1f051f;
-            Rectangle { x: 0; y: 0; height: 1px; background: #3b1f054d; }
-            Words {
-                x: root.wide ? 14px : 10px;
-                y: 0;
-                height: parent.height;
-                text: root.lcd-l;
-                font-size: root.wide ? 17px : 16px;
-                accessible-role: none;
-            }
-            HorizontalLayout {
-                x: (parent.width - self.width) / 2;
-                y: 0;
-                width: self.preferred-width;
-                height: parent.height;
-                spacing: 4px;
-                if root.lcd-arrows > 0: VerticalLayout {
-                    alignment: center;
-                    BrickPx { source: root.lcd-arrows == 1 ? @image-url("dv-brick/x-tri.png") : @image-url("dv-brick/x-lf.png"); }
-                }
-                Words {
-                    text: root.lcd-m;
-                    font-size: root.wide ? 17px : 16px;
-                    accessible-role: none;
-                }
-                if root.lcd-arrows > 0: VerticalLayout {
-                    alignment: center;
-                    BrickPx { source: root.lcd-arrows == 1 ? @image-url("dv-brick/x-trid.png") : @image-url("dv-brick/x-rt.png"); }
-                }
-            }
-            if root.lcd-r != "": Rectangle {
-                x: parent.width - (root.wide ? 14px : 10px) - self.width + (root.lcd-r-on ? 4px : 0);
-                y: root.lcd-r-on ? 1px : 0;
-                width: rlab.preferred-width + (root.lcd-r-on ? 8px : 0);
-                height: parent.height - (root.lcd-r-on ? 1px : 0);
-                background: root.lcd-r-on ? Brick.ink : transparent;
-                rlab := Words {
-                    x: root.lcd-r-on ? 4px : 0;
-                    y: 0;
-                    height: parent.height;
-                    text: root.lcd-r;
-                    color: root.lcd-r-on ? Brick.lcd1 : Brick.ink;
-                    font-size: root.wide ? 17px : 16px;
-                    accessible-role: none;
-                }
-            }
-        }
-        // A message, inverted, just above the foot.
-        if root.toast != "": Rectangle {
-            x: (parent.width - self.width) / 2;
-            y: parent.height - root.soft-h - 12px - self.height;
-            width: min(toast-text.preferred-width + 20px, parent.width - 24px);
-            height: root.wide ? 24px : 22px;
-            background: Brick.ink;
-            Rectangle {
-                x: -2px;
-                y: -2px;
-                width: parent.width + 4px;
-                height: parent.height + 4px;
-                border-width: 2px;
-                border-color: Brick.lcd1;
-            }
-            toast-text := Words {
-                x: 10px;
-                width: parent.width - 20px;
-                height: parent.height;
-                text: root.toast;
-                color: Brick.lcd1;
-                font-size: root.wide ? 18px : 16px;
-                horizontal-alignment: center;
-                overflow: elide;
-            }
-        }
-        LcdCorners { x: 0; y: 0; width: parent.width; height: parent.height; }
-    }
-
-    // ----- Portrait keys -----
+    callback red-clicked();
     if !root.wide && root.soft-l == "": KeyFace {
         x: 20px;
         y: root.ctrl-y;
@@ -954,6 +751,363 @@ component Phone inherits Rectangle {
     }
 }
 
+// Split out of Phone, so its copies share it (see docs/device-themes.md, "Generated code size").
+component PhoneFoot inherits Rectangle {
+    in property <length> soft-h;
+    in property <bool> wide;
+    in property <string> lcd-l;
+    in property <int> lcd-arrows;
+    in property <string> lcd-m;
+    in property <string> lcd-r;
+    in property <bool> lcd-r-on;
+    in property <string> toast;
+    Rectangle {
+        x: 0;
+        y: parent.height - root.soft-h;
+        width: parent.width;
+        height: root.soft-h;
+        background: #3b1f051f;
+        Rectangle { x: 0; y: 0; height: 1px; background: #3b1f054d; }
+        Words {
+            x: root.wide ? 14px : 10px;
+            y: 0;
+            height: parent.height;
+            text: root.lcd-l;
+            font-size: root.wide ? 17px : 16px;
+            accessible-role: none;
+        }
+        HorizontalLayout {
+            x: (parent.width - self.width) / 2;
+            y: 0;
+            width: self.preferred-width;
+            height: parent.height;
+            spacing: 4px;
+            if root.lcd-arrows > 0: VerticalLayout {
+                alignment: center;
+                BrickPx { source: root.lcd-arrows == 1 ? @image-url("dv-brick/x-tri.png") : @image-url("dv-brick/x-lf.png"); }
+            }
+            Words {
+                text: root.lcd-m;
+                font-size: root.wide ? 17px : 16px;
+                accessible-role: none;
+            }
+            if root.lcd-arrows > 0: VerticalLayout {
+                alignment: center;
+                BrickPx { source: root.lcd-arrows == 1 ? @image-url("dv-brick/x-trid.png") : @image-url("dv-brick/x-rt.png"); }
+            }
+        }
+        if root.lcd-r != "": Rectangle {
+            x: parent.width - (root.wide ? 14px : 10px) - self.width + (root.lcd-r-on ? 4px : 0);
+            y: root.lcd-r-on ? 1px : 0;
+            width: rlab.preferred-width + (root.lcd-r-on ? 8px : 0);
+            height: parent.height - (root.lcd-r-on ? 1px : 0);
+            background: root.lcd-r-on ? Brick.ink : transparent;
+            rlab := Words {
+                x: root.lcd-r-on ? 4px : 0;
+                y: 0;
+                height: parent.height;
+                text: root.lcd-r;
+                color: root.lcd-r-on ? Brick.lcd1 : Brick.ink;
+                font-size: root.wide ? 17px : 16px;
+                accessible-role: none;
+            }
+        }
+    }
+    // A message, inverted, just above the foot.
+    if root.toast != "": Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - root.soft-h - 12px - self.height;
+        width: min(toast-text.preferred-width + 20px, parent.width - 24px);
+        height: root.wide ? 24px : 22px;
+        background: Brick.ink;
+        Rectangle {
+            x: -2px;
+            y: -2px;
+            width: parent.width + 4px;
+            height: parent.height + 4px;
+            border-width: 2px;
+            border-color: Brick.lcd1;
+        }
+        toast-text := Words {
+            x: 10px;
+            width: parent.width - 20px;
+            height: parent.height;
+            text: root.toast;
+            color: Brick.lcd1;
+            font-size: root.wide ? 18px : 16px;
+            horizontal-alignment: center;
+            overflow: elide;
+        }
+    }
+}
+
+// Split out of Phone, so its copies share it (see docs/device-themes.md, "Generated code size").
+component PhoneHead inherits Rectangle {
+    in property <length> pad-x;
+    in property <length> pad-top;
+    in property <length> head-h;
+    in property <string> title;
+    in property <bool> wide;
+    in property <string> note;
+    in property <string> tag;
+    Rectangle {
+        x: root.pad-x;
+        y: root.pad-top;
+        width: parent.width - 2 * root.pad-x;
+        height: root.head-h;
+        Rectangle { x: 0; y: parent.height - 2px; height: 2px; background: Brick.ink; }
+        HorizontalLayout {
+            height: parent.height - 2px;
+            spacing: 8px;
+            VerticalLayout {
+                alignment: center;
+                Sig {
+                    n: 4;
+                    lo: 3px;
+                    top: 10px;
+                    bar: 3px;
+                    gap: 1px;
+                }
+            }
+            Words {
+                text: root.title;
+                font-size: root.wide ? 26px : 22px;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+            if root.note != "": Caps { text: root.note.to-uppercase(); }
+            if root.tag != "": VerticalLayout { alignment: center; Tag { text: root.tag; } }
+            VerticalLayout { alignment: center; Battery { } }
+        }
+    }
+}
+
+// The handset round a page: the shell, the bezel and the amber LCD with its title row
+// and soft key labels; under it the soft keys, the rocker and the green and red keys
+// (portrait), or the keypad on the left wing and the rocker and the call keys on the
+// right (wide). The page's contents go in the LCD (the children).
+component Phone inherits Rectangle {
+    in property <bool> wide;
+    // The LCD's title row: the page's name, a note in small caps and an inverted tag on
+    // the right.
+    in property <string> title;
+    in property <string> note;
+    in property <string> tag;
+    // The soft keys: their words ("" for a blank key that does nothing), accessible names
+    // and tips; and the LCD's labels for them along its foot (the middle one is the
+    // rocker's: 1 shows up and down arrows round it, 2 left and right).
+    in property <string> soft-l;
+    in property <string> soft-l-label;
+    in property <string> soft-l-tip: root.soft-l-label;
+    in property <bool> soft-l-enabled: true;
+    in property <string> soft-r;
+    in property <string> soft-r-label;
+    in property <string> soft-r-tip: root.soft-r-label;
+    in property <bool> soft-r-enabled: true;
+    in property <string> lcd-l;
+    in property <string> lcd-m;
+    in property <int> lcd-arrows;
+    in property <string> lcd-r;
+    in property <bool> lcd-r-on;
+    // The green key: 0 off (it only shows), 1 a key, 2 Export (with its list).
+    in property <int> green;
+    in property <string> green-word;
+    in property <string> green-label;
+    in property <string> green-tip: root.green-label;
+    in property <bool> green-enabled: true;
+    in property <image> green-icon;
+    in property <image> green-icon2;
+    in property <image> green-big;
+    in property <image> green-big2;
+    // The red key goes back.
+    in property <string> red-label: "Back";
+    in property <string> red-tip: "Back";
+    // The rocker (see Rocker) and the wide wing's captions.
+    in property <int> rocker;
+    in property <bool> playing;
+    in property <string> cap-n;
+    in property <string> cap-g;
+    in property <string> cap-r: "END TO GO BACK";
+    // A message floating over the LCD just above its foot.
+    in property <string> toast;
+    callback soft-left();
+    callback soft-right();
+    callback green-clicked();
+    callback red-clicked();
+    callback up();
+    callback down();
+    callback left();
+    callback right();
+    callback ok();
+    callback export(int);
+
+    property <length> bez-x: Hand.bez-x(root.wide);
+    property <length> bez-w: root.width - 2 * root.bez-x;
+    property <length> bez-h: Hand.bez-h(root.height, root.wide, 0);
+    property <length> bez-bottom: 58px + root.bez-h;
+    property <length> lcd-x: root.bez-x + 10px;
+    property <length> lcd-w: root.bez-w - 20px;
+    property <length> lcd-h: root.bez-h - 24px;
+    property <length> pad-x: root.wide ? 12px : 8px;
+    property <length> pad-top: root.wide ? 8px : 6px;
+    property <length> head-h: root.wide ? 26px : 22px;
+    property <length> soft-h: root.wide ? 20px : 18px;
+    // Portrait: the soft keys and the call keys beside the rocker.
+    property <length> ctrl-y: root.bez-bottom + 12px;
+    property <length> key-w: Hand.soft-w(root.width, false);
+    // Wide: the right wing closes up on a short window.
+    property <float> k: Hand.wing-k(root.height);
+    property <length> wing-y: Hand.wing-y(root.height);
+    property <length> pad-y: 58px + max(30px, (root.bez-h - 252px) / 2 - 55px + 22px);
+    // Where the green key sits.
+    property <length> green-x: root.wide ? root.width - 166px : 20px;
+    property <length> green-y: root.wide ? root.wing-y + 134px + 46px * root.k : root.ctrl-y + 44px;
+    property <length> green-w: root.wide ? 136px : root.key-w;
+    property <length> green-h: root.wide ? 54px : 32px;
+    background: Brick.bg;
+
+    Art {
+        x: root.wide ? 52px : 36px;
+        y: 0;
+        width: 34px;
+        height: 40px;
+        lo: @image-url("dv-brick/antenna.png");
+        hi: @image-url("dv-brick/antenna@2x.png");
+    }
+    Shell {
+        x: 0;
+        y: 12px;
+        width: root.width;
+        height: root.height - 12px;
+        rt: root.wide ? 40px : 34px;
+        rb: root.wide ? 40px : 52px;
+    }
+    Top {
+        x: 0;
+        y: 12px;
+        width: root.width;
+        wide: root.wide;
+    }
+    Art {
+        x: (parent.width - self.width) / 2;
+        y: root.wide ? 34px : 50px;
+        width: root.wide ? 72px : 62px;
+        height: root.wide ? 10px : 7px;
+        lo: root.wide ? @image-url("dv-brick/ear-w.png") : @image-url("dv-brick/ear-p.png");
+        hi: root.wide ? @image-url("dv-brick/ear-w@2x.png") : @image-url("dv-brick/ear-p@2x.png");
+    }
+    Bezel {
+        x: root.bez-x;
+        y: 58px;
+        width: root.bez-w;
+        height: root.bez-h;
+        big: root.wide;
+    }
+    LcdGlass {
+        x: root.lcd-x;
+        y: 72px;
+        width: root.lcd-w;
+        height: root.lcd-h;
+        // The title row: the signal bars (the input level), the name, a note, a tag and
+        // the battery, over a 2 px rule.
+        PhoneHead {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            pad-x: root.pad-x;
+            pad-top: root.pad-top;
+            head-h: root.head-h;
+            title: root.title;
+            wide: root.wide;
+            note: root.note;
+            tag: root.tag;
+        }
+        // The page.
+        Rectangle {
+            x: root.pad-x;
+            y: root.pad-top + root.head-h + 6px;
+            width: parent.width - 2 * root.pad-x;
+            height: parent.height - root.pad-top - root.head-h - 6px - root.soft-h;
+            @children
+        }
+        // The soft key labels along the foot.
+        PhoneFoot {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            soft-h: root.soft-h;
+            wide: root.wide;
+            lcd-l: root.lcd-l;
+            lcd-arrows: root.lcd-arrows;
+            lcd-m: root.lcd-m;
+            lcd-r: root.lcd-r;
+            lcd-r-on: root.lcd-r-on;
+            toast: root.toast;
+        }
+        LcdCorners { x: 0; y: 0; width: parent.width; height: parent.height; }
+    }
+
+    // ----- Portrait keys -----
+    PhoneKeys {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        wide: root.wide;
+        soft-l: root.soft-l;
+        ctrl-y: root.ctrl-y;
+        key-w: root.key-w;
+        soft-l-label: root.soft-l-label;
+        soft-l-tip: root.soft-l-tip;
+        soft-l-enabled: root.soft-l-enabled;
+        soft-r: root.soft-r;
+        soft-r-label: root.soft-r-label;
+        soft-r-tip: root.soft-r-tip;
+        soft-r-enabled: root.soft-r-enabled;
+        rocker: root.rocker;
+        playing: root.playing;
+        pad-y: root.pad-y;
+        bez-x: root.bez-x;
+        bez-bottom: root.bez-bottom;
+        wing-y: root.wing-y;
+        cap-n: root.cap-n;
+        k: root.k;
+        cap-g: root.cap-g;
+        cap-r: root.cap-r;
+        green: root.green;
+        green-x: root.green-x;
+        green-y: root.green-y;
+        green-w: root.green-w;
+        green-h: root.green-h;
+        green-label: root.green-label;
+        green-tip: root.green-tip;
+        green-enabled: root.green-enabled;
+        green-big: root.green-big;
+        green-icon: root.green-icon;
+        green-big2: root.green-big2;
+        green-icon2: root.green-icon2;
+        green-word: root.green-word;
+        lcd-x: root.lcd-x;
+        lcd-w: root.lcd-w;
+        pad-top: root.pad-top;
+        head-h: root.head-h;
+        red-label: root.red-label;
+        red-tip: root.red-tip;
+        soft-left => { root.soft-left(); }
+        soft-right => { root.soft-right(); }
+        up => { root.up(); }
+        down => { root.down(); }
+        left => { root.left(); }
+        right => { root.right(); }
+        ok => { root.ok(); }
+        green-clicked => { root.green-clicked(); }
+        export(a0) => { root.export(a0); }
+        red-clicked => { root.red-clicked(); }
+    }
+}
+
 // ---------- One clip ----------
 
 // The clip's waveform in an ink frame: the kept part dark, what has played solid, the
@@ -987,12 +1141,14 @@ component Strip inherits Rectangle {
             y: round((parent.height - self.height) / 2 / 1px) * 1px;
             background: self.f < Pages.trim-start || self.f > Pages.trim-end ? #3b1f0540 : self.f <= root.played ? Brick.ink : #3b1f0580;
         }
-        if root.active: Rectangle {
+        Rectangle {
+            visible: root.active;
             x: root.played * parent.width - 1px;
             width: 2px;
             background: Brick.ink;
         }
-        if root.active: Path {
+        Path {
+            visible: root.active;
             x: root.played * parent.width - 4px;
             y: 0;
             width: 8px;
@@ -1048,7 +1204,7 @@ component Speed inherits HorizontalLayout {
                     accessible-label: v + "×";
                     accessible-checked: i == Pages.speed-index;
                     accessible-action-default => { Pages.speed-index = i; root.picked(i); }
-                    if i > 0: Rectangle { x: 0; width: 1px; background: Brick.ink; }
+                    Rectangle { visible: i > 0; x: 0; width: 1px; background: Brick.ink; }
                     cell := Words {
                         x: (i > 0 ? 1px : 0) + 4px;
                         y: 0;
@@ -1260,7 +1416,8 @@ export component ClipPage inherits Rectangle {
             }
             if Pages.renaming: VerticalLayout {
                 padding: 2px;
-                Field {
+                TextField {
+                    side: 6px;
                     height: 26px;
                     font-size: 20px;
                     label: "Clip name";
@@ -1361,7 +1518,8 @@ export component ClipPage inherits Rectangle {
                     }
                     if Pages.renaming: VerticalLayout {
                         padding: 2px;
-                        Field {
+                        TextField {
+                            side: 6px;
                             height: 28px;
                             font-size: 22px;
                             label: "Clip name";
@@ -1598,7 +1756,7 @@ component TransSection inherits VerticalLayout {
         }
         if !Pages.ai-ready && Pages.ai-download < 0: VerticalLayout {
             alignment: center;
-            Lb { text: "Download"; primary: true; clicked => { root.download-ai(0); } }
+            Btn { height: 20px; text: "Download"; primary: true; clicked => { root.download-ai(0); } }
         }
     }
     if Main.can-ai: SRow {
@@ -1609,7 +1767,7 @@ component TransSection inherits VerticalLayout {
         if !Pages.translator-ready && Pages.translator-download >= 0: Words { text: "Downloading " + round(Pages.translator-download * 100) + "%"; }
         if !Pages.translator-ready && Pages.translator-download < 0: VerticalLayout {
             alignment: center;
-            Lb { text: "Download"; primary: true; clicked => { root.download-ai(1); } }
+            Btn { height: 20px; text: "Download"; primary: true; clicked => { root.download-ai(1); } }
         }
     }
     Sec { n: 6; title: "YOUR VOICE"; }
@@ -1774,7 +1932,7 @@ export component SettingsPage inherits Rectangle {
                             }
                             VerticalLayout {
                                 alignment: center;
-                                Lb { text: "Change"; enabled: !Main.recording; clicked => { root.change-folder(); } }
+                                Btn { height: 20px; text: "Change"; enabled: !Main.recording; clicked => { root.change-folder(); } }
                             }
                         }
                         // The file name: its field, then the next name or what is wrong with it.
@@ -1790,7 +1948,8 @@ export component SettingsPage inherits Rectangle {
                                 VerticalLayout {
                                     padding-left: 3px;
                                     padding-right: 3px;
-                                    Field {
+                                    TextField {
+                                        side: 6px;
                                         height: 24px;
                                         label: "File name";
                                         text: Pages.name-template;
@@ -2030,7 +2189,9 @@ export component ModelsPage inherits Rectangle {
                 padding-bottom: 6px;
                 spacing: 6px;
                 Caps { text: "FIND A MODEL"; opacity: 0.75; height: 10px; }
-                Field {
+                TextField {
+                    height: 24px;
+                    side: 6px;
                     icon: "search";
                     label: "Search models";
                     placeholder: "Search " + Pages.model-count + " models";
@@ -2047,7 +2208,9 @@ export component ModelsPage inherits Rectangle {
             VerticalLayout {
                 horizontal-stretch: 1;
                 spacing: 5px;
-                if !root.wide: Field {
+                if !root.wide: TextField {
+                    height: 24px;
+                    side: 6px;
                     icon: "search";
                     label: "Search models";
                     placeholder: "Search " + Pages.model-count + " models";
@@ -2104,15 +2267,16 @@ export component ModelsPage inherits Rectangle {
                                         }
                                         if m.downloaded && !m.active: VerticalLayout {
                                             alignment: center;
-                                            Lb { text: "Use"; clicked => { root.use-model(m.index); } }
+                                            Btn { height: 20px; text: "Use"; clicked => { root.use-model(m.index); } }
                                         }
                                         if Pages.downloading == m.index: VerticalLayout {
                                             alignment: center;
-                                            Lb { text: "Cancel"; clicked => { root.cancel-download(); } }
+                                            Btn { height: 20px; text: "Cancel"; clicked => { root.cancel-download(); } }
                                         }
                                         if !m.downloaded && Pages.downloading != m.index: VerticalLayout {
                                             alignment: center;
-                                            Lb {
+                                            Btn {
+                                                height: 20px;
                                                 text: "Download";
                                                 primary: true;
                                                 enabled: Pages.downloading < 0;
@@ -2228,7 +2392,8 @@ export component MergePage inherits Rectangle {
                     VerticalLayout {
                         padding: 2px;
                         padding-bottom: 10px;
-                        Field {
+                        TextField {
+                            side: 6px;
                             height: 26px;
                             font-size: 20px;
                             text <=> Pages.merge-name;
@@ -2262,7 +2427,9 @@ export component MergePage inherits Rectangle {
                     if !root.wide: VerticalLayout {
                         padding: 2px;
                         padding-bottom: 8px;
-                        Field {
+                        TextField {
+                            height: 24px;
+                            side: 6px;
                             text <=> Pages.merge-name;
                             placeholder: "Name";
                             label: "Name of the merged clip";
@@ -2401,7 +2568,8 @@ export component AskPage inherits Rectangle {
 
         VerticalLayout {
             spacing: 8px;
-            Field {
+            TextField {
+                side: 6px;
                 height: root.wide ? 26px : 26px;
                 icon: "message";
                 placeholder: "Ask about your clips";
@@ -2740,7 +2908,8 @@ export component Dialog inherits Rectangle {
                     padding-left: 3px;
                     padding-right: 3px;
                     padding-top: 2px;
-                    Field {
+                    TextField {
+                        side: 6px;
                         height: 24px;
                         label: root.field;
                         text <=> Main.dialog-text;

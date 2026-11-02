@@ -285,7 +285,8 @@ component Scan inherits Rectangle {
             y: (root.height - self.height) / 2;
             background: self.f < Pages.trim-start || self.f > Pages.trim-end ? Ph.faint : self.f <= root.played ? Ph.ph : Ph.dim;
         }
-        if root.active: Rectangle {
+        Rectangle {
+            visible: root.active;
             x: root.played * (parent.width - 1px);
             width: 1px;
             background: Ph.hi;
@@ -522,14 +523,17 @@ component Parts inherits VerticalLayout {
     callback rename(int);
     spacing: 4px;
     Rule { word: Pages.parts-busy ? "PARTS  WORKING" : "PARTS"; }
-    OrderList {
-        rows: Pages.parts;
-        menu: true;
-        enabled: !Pages.parts-busy && !Main.recording;
-        opacity: self.enabled ? 1 : 0.5;
-        moved(a, b) => { root.moved(a, b); }
-        act(i) => { root.take-out(i); }
-        rename(i) => { root.rename(i); }
+    // The fade sits on a box: opacity on OrderList itself copies all of it.
+    Rectangle {
+        opacity: !Pages.parts-busy && !Main.recording ? 1 : 0.5;
+        OrderList {
+            rows: Pages.parts;
+            menu: true;
+            enabled: !Pages.parts-busy && !Main.recording;
+            moved(a, b) => { root.moved(a, b); }
+            act(i) => { root.take-out(i); }
+            rename(i) => { root.rename(i); }
+        }
     }
 }
 
@@ -859,6 +863,16 @@ component Section inherits VerticalLayout {
     @children
 }
 
+// Split out of Line, so its copies share it (see docs/device-themes.md, "Generated code size").
+component LineText inherits VerticalLayout {
+    in property <string> label;
+    in property <string> note;
+    alignment: center;
+    spacing: 0;
+    Mono { text: root.label; overflow: elide; }
+    if root.note != "": Mono { text: root.note; color: Ph.dim; font-size: 10px; overflow: elide; }
+}
+
 // One line of a section: its name (and a note under it), a dotted leader, and its controls.
 component Line inherits Rectangle {
     in property <string> label;
@@ -868,12 +882,7 @@ component Line inherits Rectangle {
         padding-top: 3px;
         padding-bottom: 3px;
         spacing: 8px;
-        VerticalLayout {
-            alignment: center;
-            spacing: 0;
-            Mono { text: root.label; overflow: elide; }
-            if root.note != "": Mono { text: root.note; color: Ph.dim; font-size: 10px; overflow: elide; }
-        }
+        LineText { label: root.label; note: root.note; }
         Rectangle {
             horizontal-stretch: 1;
             min-width: 10px;

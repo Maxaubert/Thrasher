@@ -756,7 +756,8 @@ component Tile inherits Rectangle {
             top: Pose.top[root.k];
             low: Pose.low[root.k];
         }
-        if root.item.transcribed: Rectangle {
+        Rectangle {
+            visible: root.item.transcribed;
             x: 0;
             y: 6px;
             width: tx.preferred-width + 12px;
@@ -910,7 +911,8 @@ component Tile inherits Rectangle {
     }
     // The P1 cursor: four gold corners round the tile and the P1 badge on top, dimmed
     // every other half second while recording.
-    if root.selected: Rectangle {
+    Rectangle {
+        visible: root.selected;
         x: -7px;
         y: -7px;
         width: root.width + 14px;
@@ -1473,7 +1475,8 @@ export component MainPage inherits Rectangle {
     }
     // Messages float just above the footer on a name plate, so nothing moves when they
     // come and go.
-    if Main.status != "": Rectangle {
+    Rectangle {
+        visible: Main.status != "";
         x: (parent.width - self.width) / 2;
         y: parent.height - root.foot-h - 10px - self.height;
         width: min(msg.preferred-width + 28px, parent.width - 32px);

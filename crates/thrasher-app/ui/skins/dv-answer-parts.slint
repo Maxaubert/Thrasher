@@ -563,7 +563,8 @@ export component Micro inherits Rectangle {
         hi: root.big ? @image-url("dv-answer/mc-w@2x.png") : @image-url("dv-answer/mc-p@2x.png");
     }
     // The label over MC 60, above its red rule.
-    if root.label != "": Rectangle {
+    Rectangle {
+        visible: root.label != "";
         x: (root.big ? 33.6px : 21.72px) * root.zoom;
         y: (root.big ? 27.9px : 20.72px) * root.zoom;
         width: (root.big ? 140.8px : 98.56px) * root.zoom;

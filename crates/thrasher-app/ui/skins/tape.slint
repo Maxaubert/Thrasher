@@ -511,7 +511,8 @@ component Row inherits Rectangle {
         width: root.width - root.knob-d - (root.big ? 10px : 7px) - (root.out ? 6px : 0);
         height: root.spine-h;
         // The amber edge and the shadow of the spine pulled out.
-        if root.out: Rectangle {
+        Rectangle {
+            visible: root.out;
             x: -1px;
             y: 3px;
             width: parent.width + 2px;
@@ -519,7 +520,8 @@ component Row inherits Rectangle {
             border-radius: 5px;
             background: #00000059;
         }
-        if root.out: Rectangle {
+        Rectangle {
+            visible: root.out;
             x: -2px;
             y: -2px;
             width: parent.width + 4px;
@@ -527,7 +529,7 @@ component Row inherits Rectangle {
             border-radius: 5px;
             background: root.selected ? Deck.amber : Deck.amber.with-alpha(0.55);
         }
-        if !root.out: Rectangle { y: 1px; border-radius: 3px; background: #00000099; }
+        Rectangle { visible: !root.out; y: 1px; border-radius: 3px; background: #00000099; }
         Rectangle {
             border-radius: 3px;
             background: root.out ? #f8ecd2 : #e8dbbd;
@@ -909,7 +911,7 @@ component Player inherits Walnut {
                     background: @linear-gradient(180deg, #ece7dc 0%, #c9c1b2 76%, #8f8778 76%, #6f685b 100%);
                     opacity: root.shown >= 0 ? 1 : 0.6;
                     Rectangle { y: 0; height: 1px; background: #ffffff; }
-                    if pk.has-hover && root.shown >= 0: Rectangle { background: #ffffff12; }
+                    Rectangle { visible: pk.has-hover && root.shown >= 0; background: #ffffff12; }
                     Icon {
                         y: (parent.height * 0.76 - self.height) / 2 + 1px;
                         name: root.is-active && Main.playing ? "pause" : "play";
@@ -1121,7 +1123,8 @@ export component MainPage inherits VerticalLayout {
     // when they come and go.
     Rectangle {
         height: 0;
-        if Main.status != "": Rectangle {
+        Rectangle {
+            visible: Main.status != "";
             x: (parent.width - self.width) / 2;
             y: -54px - self.height - 8px;
             width: min(msg.preferred-width + 24px, parent.width - 32px);

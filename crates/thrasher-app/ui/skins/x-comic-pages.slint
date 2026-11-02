@@ -53,7 +53,8 @@ component Key inherits Rectangle {
         background: root.on ? Comic.yellow : root.face;
         border-width: root.line;
         border-color: Comic.ink;
-        if t.has-hover && root.enabled && !root.down: Rectangle {
+        Rectangle {
+            visible: t.has-hover && root.enabled && !root.down;
             x: root.line;
             y: root.line;
             width: parent.width - 2 * root.line;
@@ -133,7 +134,8 @@ component Panel inherits Box {
     in property <bool> red-tag;
     line: 3px;
     @children
-    if root.tag != "": Rectangle {
+    Rectangle {
+        visible: root.tag != "";
         x: 0;
         y: 0;
         width: tg.preferred-width + 16px;
@@ -169,7 +171,8 @@ component Field inherits Rectangle {
     public function grab() { f.grab(); }
     height: 36px;
     property <length> r: root.round ? root.height / 2 : 0;
-    if f.has-focus || root.invalid: Rectangle {
+    Rectangle {
+        visible: f.has-focus || root.invalid;
         x: -5px;
         y: -5px;
         width: parent.width + 10px;
@@ -649,12 +652,14 @@ component Strip inherits Rectangle {
             clip: true;
             Dots { width: 100%; height: 100%; kind: 2; }
         }
-        if root.active: Rectangle {
+        Rectangle {
+            visible: root.active;
             x: root.played * parent.width - 1.5px;
             width: 3px;
             background: Comic.ink;
         }
-        if root.active: Path {
+        Path {
+            visible: root.active;
             x: root.played * parent.width - 7px;
             y: 0;
             width: 14px;
@@ -773,7 +778,7 @@ component Speed inherits VerticalLayout {
                 accessible-label: v + "×";
                 accessible-checked: i == Pages.speed-index;
                 accessible-action-default => { Pages.speed-index = i; root.picked(i); }
-                if i > 0: Rectangle { x: 0; width: 2px; background: Comic.ink; }
+                Rectangle { visible: i > 0; x: 0; width: 2px; background: Comic.ink; }
                 Text {
                     y: 1px;
                     text: v;
@@ -1297,7 +1302,7 @@ component Row inherits Rectangle {
     in property <string> note;
     in property <bool> first;
     min-height: 42px;
-    if !root.first: Rectangle { y: 0; x: 2px; width: parent.width - 4px; height: 2px; background: Comic.rule; }
+    Rectangle { visible: !root.first; y: 0; x: 2px; width: parent.width - 4px; height: 2px; background: Comic.rule; }
     HorizontalLayout {
         padding-left: 4px;
         padding-right: 2px;
@@ -1721,7 +1726,7 @@ export component SettingsPage inherits VerticalLayout {
                                     accessible-role: button;
                                     accessible-label: "Browse models";
                                     accessible-action-default => { root.go(4); }
-                                    if model-touch.has-hover: Rectangle { y: 2px; height: parent.height - 2px; background: Comic.pale; }
+                                    Rectangle { visible: model-touch.has-hover; y: 2px; height: parent.height - 2px; background: Comic.pale; }
                                     model-touch := TouchArea { mouse-cursor: pointer; clicked => { root.go(4); } }
                                     model-row := Row {
                                         width: 100%;

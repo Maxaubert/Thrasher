@@ -148,7 +148,8 @@ export component InkBtn inherits Rectangle {
         radius: root.round ? root.height / 2 : 0;
         opacity: root.enabled ? 1 : 0.45;
         // Hover: a light wash over the face.
-        if t.has-hover && root.enabled && !root.down: Rectangle {
+        Rectangle {
+            visible: t.has-hover && root.enabled && !root.down;
             x: root.line;
             y: root.line;
             width: parent.width - 2 * root.line;
@@ -368,7 +369,7 @@ export component PlayDot inherits Rectangle {
         border-width: 2.5px;
         border-color: Comic.ink;
         opacity: root.enabled ? 1 : 0.6;
-        if t.has-hover && root.enabled: Rectangle { border-radius: root.width / 2; background: root.hot ? #ffffff26 : #0000000f; }
+        Rectangle { visible: t.has-hover && root.enabled; border-radius: root.width / 2; background: root.hot ? #ffffff26 : #0000000f; }
         Glyph {
             x: (parent.width - self.width) / 2 + (root.pause ? 0 : 1px);
             name: root.pause ? "pause" : "play";

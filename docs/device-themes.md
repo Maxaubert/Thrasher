@@ -820,9 +820,9 @@ theme "Fighter Select", index 19 in `Theme.names`, after Pocket Synth), art in
   picker (its STAGE word is left out when the toolbar is squeezed); while recording, Import is
   PAUSE and RESUME (Import is not offered then).
 - The clips are a select grid of fighter tiles: the mockup's eight stick fighters and backdrops by
-  clip number, TRANSCRIBED, play, the name plate (the name on one or two lines, when it was made
-  with "+ system", on a line of its own when the tile is narrow, the waveform, the length, the
-  menu). The highlighted clip has the P1 cursor;
+  clip number, TRANSCRIBED, play, the name plate (the name and when it was made with "+ system",
+  each on one line and elided, so every plate is the same height (Max, 2026-11-03), the
+  waveform, the length, the menu). The highlighted clip has the P1 cursor;
   it and the picked ones have a red frame and plate. Columns as fit tiles of about 86 px
   (portrait) or 130 px (wide), rows as tall as fill the view. Up and Down still step one clip.
 - The footer is REPLAY with a four segment super meter; LV is how many segments are full.
@@ -858,7 +858,7 @@ theme "Fighter Select", index 19 in `Theme.names`, after Pocket Synth), art in
   with the backdrop, as one opaque gradient, so crossing strokes do not brighten as two
   see-through paths would.
 - **`max-height` did not stop a wrapping Text** in a VerticalLayout from taking three lines: the
-  plate measures the name on one line in a hidden Text and gives it one or two lines' height.
+  plate measures the name on one line in a hidden Text and gives it one or two lines' height. (Since 2026-11-03 the name is always one line, elided.)
 - **Checks:** `SLINT_DEBUG_PERFORMANCE=refresh_lazy,console` prints frames per second to the
   trace: every skin draws about 60 frames a second while recording, so what costs is how much
   each frame covers. A temporary bit mask from an environment variable that hides parts of

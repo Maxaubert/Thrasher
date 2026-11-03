@@ -701,23 +701,6 @@ component Tile inherits Rectangle {
         menu.show-at(root.width - 8px - 210px, root.height - 14px);
     }
     // The name on one line, measured, so the plate knows when it takes two.
-    one-line := Text {
-        visible: false;
-        text: root.item.name;
-        font-family: F.body;
-        font-weight: 700;
-        font-size: root.big ? 12.5px : 11.5px;
-        letter-spacing: root.big ? 0 : -0.2px;
-        accessible-role: none;
-    }
-    one-meta := Text {
-        visible: false;
-        text: root.item.when + " + system";
-        font-family: F.body;
-        font-weight: 600;
-        font-size: 9.5px;
-        accessible-role: none;
-    }
     // The frame: a violet rim outside the black edge; red and wider when lit.
     Rectangle {
         x: root.lit ? -3px : -1px;
@@ -844,15 +827,11 @@ component Tile inherits Rectangle {
                 font-weight: 700;
                 font-size: root.big ? 12.5px : 11.5px;
                 letter-spacing: root.big ? 0 : -0.2px;
-                wrap: word-wrap;
+                // One line on every card, so all plates are the same height; long names elide.
                 overflow: elide;
-                // One line, or two when it does not fit on one; longer names elide.
-                height: one-line.preferred-width > root.width - 16px ? 2 * one-line.preferred-height : one-line.preferred-height;
             }
-            // When it was made, and "+ system" after it, or on a line of its own when both
-            // do not fit (narrow tiles), so it is never cut off.
             Text {
-                text: root.item.when + (root.item.has-system ? (one-meta.preferred-width > root.width - 16px ? "\n+ system" : " + system") : "");
+                text: root.item.when + (root.item.has-system ? " + system" : "");
                 color: F.dim;
                 font-family: F.body;
                 font-weight: 600;

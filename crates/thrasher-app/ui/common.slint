@@ -9430,7 +9430,9 @@ export component WindowFx inherits Rectangle {
 // every use, as it always has children) does not copy these repeaters into every use.
 // A theme picked in the settings gallery (gallery.slint) can build a new settings page;
 // the gallery's strip asks the page's Scroller to scroll by `shift` (bumping `shifts`) so
-// the picked tile lands where it was. Only a Scroller with keeps-gallery does it.
+// the picked tile lands where it was. Only a Scroller with keeps-gallery does it. When the
+// page is too short to scroll that far down, it gets empty room at its end (`pad-h`, the
+// content height it needs), which goes again as the user scrolls back up.
 export global PageHold {
     in-out property <length> shift;
     in-out property <int> shifts;
@@ -9439,8 +9441,16 @@ export global PageHold {
 component ScrollDecor inherits Rectangle {
     in property <bool> hold;
     property <int> shifts: PageHold.shifts;
+    out property <length> pad-h;
     changed shifts => {
-        if (root.hold) { root.content-y = clamp(root.content-y + PageHold.shift, min(0px, -root.range), 0px); }
+        if (root.hold) {
+            let want = min(0px, root.content-y + PageHold.shift);
+            if (root.view-height - want > root.content-height) { root.pad-h = root.view-height - want; }
+            root.content-y = want;
+        }
+    }
+    changed content-y => {
+        if (root.pad-h > 0) { root.pad-h = min(root.pad-h, root.view-height - root.content-y); }
     }
     in property <bool> fade;
     in property <bool> bar;
@@ -9735,10 +9745,13 @@ export component Scroller inherits Rectangle {
         height: parent.height;
         mouse-drag-pan-enabled: false;
         @children
+        // The room a gallery pick adds at the end (ScrollDecor's pad-h); a layout, so the
+        // Flickable counts it in its content height.
+        VerticalLayout { min-height: decor.pad-h; }
     }
     in property <bool> bar95;
     in property <bool> pk-rail;
-    ScrollDecor {
+    decor := ScrollDecor {
         x: 0;
         y: 0;
         width: parent.width;

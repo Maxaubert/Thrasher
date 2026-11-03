@@ -1071,6 +1071,18 @@ flavour labels kept: WRITING, THE PANTRY, FIND A MODEL, WORKBENCH, NEW CLIP, ORD
   vdash" sh tools/skin-art/cut.sh px-cozy OUT`, the 1x cut used): Export's arrow, the Back
   arrow, a small x, pencil, bin, grip, and the dotted rule and dash tiles. No new fonts.
 
+**The ink frame on every page (2026-11-03, Max's choice, open question 22):** the pages'
+`Page` (`px-cozy-pages.slint`) puts its content 3px in and draws the main page's 3px ink edge
+round it, so the title bar, flame, name, minimise and close sit on exactly the same pixels on
+every page (measured at 420x600 and 520x600: 0 px of movement opening and leaving settings, a
+clip, the models, merge and Ask; before, 3 lp up and out). The questions, the speaking card
+and the drop cover dim the whole window as on the main page, so they keep no frame of their
+own; the widget keeps its own edge. With 6 lp less room: the wide clip page's groove takes the
+6 lp (`root.height - 6px - 520px`), and the portrait transport row closes up below 470 wide
+(spacing 5 instead of 9, `Transport.tight`), because Loop already ran about 14 lp past the window's
+edge at 420 wide and the frame would have hidden about 20. Cost: about 19 KB of `app.rs` (`Page` is
+used with children, so its five rectangles are in each of the five pages).
+
 **Mockup faults fixed, not copied (Cozy Cabin pages):** the dropdowns size to their choice
 (the mockup's Export format and Stop recording after chips cut their words), the clip name on
 the delete question sits on a label as wide as the name, the merge sum elides instead of
@@ -2462,9 +2474,10 @@ the vertical hold was clamped away when the new page could not scroll that far. 
 - Still not held: a tile that would need room above the page's top (Pinball to Ember: 25
   lp). That would need a blank band over the header. Also a tile the strip cannot scroll to:
   the first tile, the end of a strip, or the wide pages that put the gallery elsewhere.
-- Cozy Cabin's main title bar sits 3 lp further in than on its other pages (the main page's
-  ink frame, `px-cozy.slint` `padding: 3px`), so it jumps when Settings opens. Fixing it
-  changes one of the two settled looks, so it is waiting for Max (docs/open-questions.md).
+- Cozy Cabin's main title bar sat 3 lp further in than on its other pages (the main page's
+  ink frame, `px-cozy.slint` `padding: 3px`), so it jumped when Settings opened. Max chose the
+  frame on every page (2026-11-03); see "The ink frame on every page" in the Cozy Cabin
+  section.
 - Cost: `app.rs` +0.22 MB (the spacer in each of the about 130 inlined Scrollers), exe
   +59 KB.
 

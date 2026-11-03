@@ -1032,6 +1032,8 @@ export component SettingsPage inherits Frame {
     property <[string]> row-b: Main.can-ai ? ["AI", "Your voice", "Window"] : ["Your voice", "Window"];
     property <int> first-b: Main.can-ai ? 4 : 5;
     pure function shows(k: int) -> bool { return root.wide || root.tab == k; }
+    // A gallery pick may have left room at the sheet's end; another tab does not keep it.
+    changed tab => { sheet.drop-pad(); }
 
     PageWin {
         wide: root.wide;
@@ -1078,7 +1080,7 @@ export component SettingsPage inherits Frame {
                 vertical-stretch: 1;
                 // Portrait: the sheet under the tabs.
                 if !root.wide: OsBevel { kind: 0; }
-                Scroller {
+                sheet := Scroller {
                     keeps-gallery: true;
                     x: root.wide ? 0 : 2px;
                     y: root.wide ? 0 : 2px;

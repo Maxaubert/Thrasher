@@ -86,3 +86,15 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
     Windows runners have 16 GB. Options: a self-hosted runner on this PC, CI for
     `thrasher-core` only, or fmt plus core tests only. Until then the checks are run
     locally on every PR (release tests, fmt, clippy).
+
+## Added 2026-11-03
+
+22. **Cozy Cabin's title bar jumps 3 px when Settings opens.** The main page has an ink
+    frame with a 3 px inset around its title bar (`skins/px-cozy.slint`). The other Cozy
+    pages (settings, clip, models, merge, Ask) have no frame. Which look should all pages
+    share: (a) give the other pages the frame too, which costs them 3 px of content on each
+    side, or (b) take the frame off the main page's title row? Until then it still jumps
+    (`fix/switch-jump`, docs/device-themes.md section 4).
+    **Answered 2026-11-03:** (a), the ink frame on every page. Every Cozy page now sits in
+    the main page's 3 px ink frame, so the title bar does not move (docs/device-themes.md,
+    Cozy Cabin pages).

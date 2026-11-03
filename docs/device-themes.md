@@ -1071,6 +1071,18 @@ flavour labels kept: WRITING, THE PANTRY, FIND A MODEL, WORKBENCH, NEW CLIP, ORD
   vdash" sh tools/skin-art/cut.sh px-cozy OUT`, the 1x cut used): Export's arrow, the Back
   arrow, a small x, pencil, bin, grip, and the dotted rule and dash tiles. No new fonts.
 
+**The ink frame on every page (2026-11-03, Max's choice, open question 22):** the pages'
+`Page` (`px-cozy-pages.slint`) puts its content 3px in and draws the main page's 3px ink edge
+round it, so the title bar, flame, name, minimise and close sit on exactly the same pixels on
+every page (measured at 420x600 and 520x600: 0 px of movement opening and leaving settings, a
+clip, the models, merge and Ask; before, 3 lp up and out). The questions, the speaking card
+and the drop cover dim the whole window as on the main page, so they keep no frame of their
+own; the widget keeps its own edge. With 6 lp less room: the wide clip page's groove takes the
+6 lp (`root.height - 6px - 520px`), and the portrait transport row closes up below 470 wide
+(spacing 5 instead of 9, `Transport.tight`), because Loop already ran about 14 lp past the window's
+edge at 420 wide and the frame would have hidden about 20. Cost: about 19 KB of `app.rs` (`Page` is
+used with children, so its five rectangles are in each of the five pages).
+
 **Mockup faults fixed, not copied (Cozy Cabin pages):** the dropdowns size to their choice
 (the mockup's Export format and Stop recording after chips cut their words), the clip name on
 the delete question sits on a label as wide as the name, the merge sum elides instead of
@@ -2443,6 +2455,39 @@ own settings page, so picking a theme builds a new page. Two things keep the gal
   page that fits), and the wide pages that put the gallery elsewhere (Phosphor side by side,
   Desktop 95's tabs).
 - Cost: app.rs +0.1 MB, exe +13 KB.
+
+**Lesson: hold the window position, not the place in the strip (2026-11-03,
+`fix/switch-jump`).** Max still saw the UI move on a switch. Frame captures at his 2.25x
+scale showed no animation and no window movement: every switch lands in one frame, but
+the settled tile was somewhere else. The place in tiles is not enough, because each skin
+puts its strip somewhere else in the window (page margins, `pad`, the shrinking gap). And
+the vertical hold was clamped away when the new page could not scroll that far. Now:
+- Sideways: the strip also stores the picked tile's window x (`Gallery.hold-x`). In
+  `changed cur-pos` it scrolls so the tile lands there, as far as the tile stays fully in
+  view and the strip can scroll (a first tile can't go left of the strip's start).
+- Down past the end: when a page is too short to scroll as far as the shift needs (Desktop
+  95's Appearance tab at 420 and 520 wide), ScrollDecor sets `pad-h`. The Scroller's empty
+  `VerticalLayout { min-height: decor.pad-h; }` then makes the content that tall, so the
+  room is at the end. It shrinks again as the user scrolls back up. A Flickable puts an
+  out-of-range `content-y` straight back, so overshooting alone does not work. Only layout
+  children count towards its content height.
+- A page that swaps its content inside the same Scroller must drop that room
+  (`Scroller.drop-pad()`): Desktop 95 does it on a tab change. Without it the Recording tab
+  opened scrolled 48 lp down into the empty room, its top cut off (review, 2026-11-03).
+- A resize drops the room too (ScrollDecor notes the view's height and width when it adds
+  it). Without that, Desktop 95 at 1100x700 held 113 lp down, made 900 tall, stayed scrolled
+  113 lp down with nothing left to scroll, so the top of the page could not be reached; at
+  600x700 or 420x600 the user could scroll 48 to 116 lp into empty room on a page that
+  does not scroll when opened fresh (review, 2026-11-03).
+- Still not held: a tile that would need room above the page's top (Pinball to Ember: 25
+  lp). That would need a blank band over the header. Also a tile the strip cannot scroll to:
+  the first tile, the end of a strip, or the wide pages that put the gallery elsewhere.
+- Cozy Cabin's main title bar sat 3 lp further in than on its other pages (the main page's
+  ink frame, `px-cozy.slint` `padding: 3px`), so it jumped when Settings opened. Max chose the
+  frame on every page (2026-11-03); see "The ink frame on every page" in the Cozy Cabin
+  section.
+- Cost: `app.rs` +0.22 MB (the spacer in each of the about 130 inlined Scrollers), exe
+  +59 KB.
 
 **Adding a skin's tile** (one line): when a skin's name goes into `Theme.names`, add its
 line to `Gallery.devices` in `ui/gallery.slint`:

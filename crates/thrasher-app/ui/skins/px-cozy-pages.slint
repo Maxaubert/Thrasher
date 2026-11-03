@@ -31,10 +31,22 @@ component Tile inherits Image {
     image-rendering: pixelated;
 }
 
-// A page: the plank wall.
+// A page: the plank wall in the main page's 3px ink frame, so the title bar sits where the
+// main page's does (Max, 2026-11-03).
 component Page inherits Rectangle {
     background: Cz.wood;
     Tile { source: @image-url("px-cozy/wood.png"); }
+    Rectangle {
+        x: 3px;
+        y: 3px;
+        width: parent.width - 6px;
+        height: parent.height - 6px;
+        @children
+    }
+    Rectangle { x: 0; y: 0; width: parent.width; height: 3px; background: Cz.ink; }
+    Rectangle { x: 0; y: parent.height - 3px; width: parent.width; height: 3px; background: Cz.ink; }
+    Rectangle { x: 0; y: 3px; width: 3px; height: parent.height - 6px; background: Cz.ink; }
+    Rectangle { x: parent.width - 3px; y: 3px; width: 3px; height: parent.height - 6px; background: Cz.ink; }
 }
 
 // A nail head: dark with a light top left.
@@ -785,9 +797,11 @@ component Transport inherits HorizontalLayout {
     callback skip(float);
     callback speed-changed(int);
     callback refocus();
+    // A narrow window: closer keys, so Loop fits inside the ink frame at 420 wide.
+    in property <bool> tight;
     property <bool> playing: Main.active-clip == Main.selected && Main.playing;
     vertical-stretch: 0;
-    spacing: 9px;
+    spacing: root.tight ? 5px : 9px;
     VerticalLayout {
         alignment: end;
         Skip { icon: "rewind"; label: "Back 5 seconds"; clicked => { root.skip(-5); root.refocus(); } }
@@ -1029,6 +1043,7 @@ export component ClipPage inherits Page {
                 tapped => { root.refocus(); }
             }
             Transport {
+                tight: root.narrow;
                 toggle-play => { root.toggle-play(); }
                 skip(s) => { root.skip(s); }
                 speed-changed(i) => { root.speed-changed(i); }
@@ -1211,7 +1226,7 @@ export component ClipPage inherits Page {
                         }
                     }
                     Groove {
-                        height: clamp(root.height - 520px, 66px, 96px);
+                        height: clamp(root.height - 6px - 520px, 66px, 96px);
                         vertical-stretch: 0;
                         trimmed(a, b) => { root.trim-changed(a, b); }
                         tapped => { root.refocus(); }

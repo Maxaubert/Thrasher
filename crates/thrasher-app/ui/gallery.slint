@@ -53,10 +53,11 @@ export global Gallery {
     in property <[ThemeTile]> shown;
     // A pick builds a new settings page when the skin changes. These keep the gallery
     // where it was: each strip's place in tiles (scroll offset / pitch, so it holds for
-    // any tile size) and the window y of the picked tile, while `hold` is set.
+    // any tile size) and the window x and y of the picked tile, while `hold` is set.
     in-out property <float> classic-at;
     in-out property <float> devices-at;
     in-out property <bool> hold;
+    in-out property <length> hold-x;
     in-out property <length> hold-y;
 }
 
@@ -918,6 +919,7 @@ component Strip inherits VerticalLayout {
     function pick(i: int) {
         let t = root.tiles[i].index;
         Gallery.hold = t != Theme.current;
+        Gallery.hold-x = view.absolute-position.x + root.pad + i * root.pitch - root.x-off;
         Gallery.hold-y = view.absolute-position.y + root.tile-y;
         root.picked(t);
         if (Theme.current != t) { Gallery.hold = false; }
@@ -926,10 +928,16 @@ component Strip inherits VerticalLayout {
         if (Gallery.hold) { root.at = root.classic ? Gallery.classic-at : Gallery.devices-at; }
     }
     // The current tile is placed (on a new page too, once it is built): bring it back to
-    // where it was picked; the page's Scroller (keeps-gallery) adds the shift.
+    // where it was picked; the page's Scroller (keeps-gallery) adds the shift. Sideways the
+    // strip scrolls so the tile keeps its window x, as far as the tile stays in view (each
+    // skin places its strip in its own spot, so the place in tiles alone moved it).
     changed cur-pos => {
         if (Gallery.hold && root.cur-pos >= 0) {
             Gallery.hold = false;
+            let left = root.cur-pos * root.pitch;
+            let o = view.absolute-position.x + root.pad + left - Gallery.hold-x;
+            root.moving = false;
+            root.off = max(0px, min(root.max-off, max(left + root.tile-w + root.end-pad - root.view-w, min(left, o))));
             PageHold.shift = Gallery.hold-y - view.absolute-position.y - root.tile-y;
             PageHold.shifts += 1;
         }

@@ -2471,6 +2471,14 @@ the vertical hold was clamped away when the new page could not scroll that far. 
   room is at the end. It shrinks again as the user scrolls back up. A Flickable puts an
   out-of-range `content-y` straight back, so overshooting alone does not work. Only layout
   children count towards its content height.
+- A page that swaps its content inside the same Scroller must drop that room
+  (`Scroller.drop-pad()`): Desktop 95 does it on a tab change. Without it the Recording tab
+  opened scrolled 48 lp down into the empty room, its top cut off (review, 2026-11-03).
+- A resize drops the room too (ScrollDecor notes the view's height and width when it adds
+  it). Without that, Desktop 95 at 1100x700 held 113 lp down, made 900 tall, stayed scrolled
+  113 lp down with nothing left to scroll, so the top of the page could not be reached; at
+  600x700 or 420x600 the user could scroll 48 to 116 lp into empty room on a page that
+  does not scroll when opened fresh (review, 2026-11-03).
 - Still not held: a tile that would need room above the page's top (Pinball to Ember: 25
   lp). That would need a blank band over the header. Also a tile the strip cannot scroll to:
   the first tile, the end of a strip, or the wide pages that put the gallery elsewhere.

@@ -9445,12 +9445,34 @@ component ScrollDecor inherits Rectangle {
     changed shifts => {
         if (root.hold) {
             let want = min(0px, root.content-y + PageHold.shift);
-            if (root.view-height - want > root.content-height) { root.pad-h = root.view-height - want; }
+            if (root.view-height - want > root.content-height) {
+                root.pad-h = root.view-height - want;
+                root.pad-view = root.view-height;
+                root.pad-w = root.width;
+            }
             root.content-y = want;
         }
     }
+    // The view's size when the room was added. A resize drops the room: a taller view
+    // could not scroll back out of it (the top of the page cut off), a narrower or wider
+    // one (Desktop 95 going wide) has other content.
+    property <length> pad-view;
+    property <length> pad-w;
+    function size-changed() {
+        if (root.pad-h > 0 && (root.view-height != root.pad-view || root.width != root.pad-w)) { root.drop-pad(); }
+    }
+    changed view-height => { root.size-changed(); }
+    changed width => { root.size-changed(); }
     changed content-y => {
         if (root.pad-h > 0) { root.pad-h = min(root.pad-h, root.view-height - root.content-y); }
+    }
+    // The page shows other content (a Desktop 95 tab): the room goes at once, and the
+    // scroll stays inside the new content.
+    public function drop-pad() {
+        if (root.pad-h > 0) {
+            root.pad-h = 0;
+            root.content-y = max(root.content-y, min(0px, root.view-height - root.content-height));
+        }
     }
     in property <bool> fade;
     in property <bool> bar;
@@ -9737,6 +9759,8 @@ export component Scroller inherits Rectangle {
     in property <bool> rubber;
     // A settings page with the theme gallery: it scrolls to keep a picked tile in place.
     in property <bool> keeps-gallery;
+    // Drops the room a gallery pick added at the end, for a page that swaps its content.
+    public function drop-pad() { decor.drop-pad(); }
     horizontal-stretch: 1;
     vertical-stretch: 1;
     min-height: 50px;

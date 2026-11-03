@@ -2425,6 +2425,25 @@ across the whole page when it is wide, the other cards stay in their columns und
   themes unchanged (static ones pixel for pixel; the animated ones differ only by their
   animation, as much as two runs of the old build do).
 
+**The gallery holds still over a switch (2026-11-03, Max's choice):** a device skin has its
+own settings page, so picking a theme builds a new page. Two things keep the gallery in place:
+- Sideways: on a pick, both strips store where they are in tiles (`Gallery.classic-at`,
+  `devices-at`: scroll offset / pitch, so it holds for Brick Phone's 72 px tiles and the 4 px
+  pads) and the new strips open there, clamped at the end, and moved only as far as it takes
+  to keep the current tile in view. Opening Settings normally still scrolls to the current theme.
+- Up and down: the strip stores the picked tile's window y (`Gallery.hold-y`). When the new
+  page's current tile is placed (`changed cur-pos`, which runs after the whole new page is
+  built and before it is drawn, so there is no one-frame jump), the strip puts the shift in
+  `PageHold` (common.slint) and the page's Scroller adds it, clamped to its scroll range.
+  Only a Scroller with `keeps-gallery: true` does that: **every settings page with a
+  ThemeGallery sets it on its Scroller** (one line; the logic is in the shared ScrollDecor).
+  A switch that keeps the page (the classic themes) shifts by 0.
+- Where it cannot hold: the page cannot scroll above its top (a tile that sits higher on the
+  new page, from the top of Settings) or past its end (Desktop 95's Appearance tab, a wide
+  page that fits), and the wide pages that put the gallery elsewhere (Phosphor side by side,
+  Desktop 95's tabs).
+- Cost: app.rs +0.1 MB, exe +13 KB.
+
 **Adding a skin's tile** (one line): when a skin's name goes into `Theme.names`, add its
 line to `Gallery.devices` in `ui/gallery.slint`:
 

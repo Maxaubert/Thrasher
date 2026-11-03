@@ -1736,6 +1736,7 @@ export component AppWindow inherits Window {
             }
             PageHeader { title: "Settings"; back => { root.go(root.settings-back); } }
             Scroller {
+                keeps-gallery: true;
                 vertical-stretch: 1;
                 fade: true;
                 VerticalLayout {

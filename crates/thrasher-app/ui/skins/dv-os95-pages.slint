@@ -1079,6 +1079,7 @@ export component SettingsPage inherits Frame {
                 // Portrait: the sheet under the tabs.
                 if !root.wide: OsBevel { kind: 0; }
                 Scroller {
+                    keeps-gallery: true;
                     x: root.wide ? 0 : 2px;
                     y: root.wide ? 0 : 2px;
                     width: parent.width - (root.wide ? 0 : 4px);

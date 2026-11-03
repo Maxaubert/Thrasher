@@ -1826,6 +1826,7 @@ export component SettingsPage inherits Rectangle {
         down => { sc.content-y = max(min(0px, sc.visible-height - sc.content-height), sc.content-y - 60px); }
 
         sc := Scroller {
+            keeps-gallery: true;
             VerticalLayout {
                 alignment: start;
                 padding-right: 10px;

@@ -1266,6 +1266,7 @@ export component SettingsPage inherits VerticalLayout {
     Title { wide: root.wide; mode: "SETUP"; }
     PageHead { title: "Settings"; back => { root.back(); } }
     Scroller {
+        keeps-gallery: true;
         vertical-stretch: 1;
         VerticalLayout {
             padding-left: 12px;

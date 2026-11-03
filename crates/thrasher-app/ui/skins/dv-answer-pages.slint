@@ -1526,6 +1526,7 @@ export component SettingsPage inherits VerticalLayout {
             spacing: root.wide ? 12px : 10px;
             TopKeys { back => { root.back(); } }
             Scroller {
+                keeps-gallery: true;
                 vertical-stretch: 1;
                 rubber: true;
                 // Portrait: one column, Appearance, Recording, Files, Transcription, AI,

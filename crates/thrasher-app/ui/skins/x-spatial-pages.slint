@@ -1032,6 +1032,7 @@ export component SettingsPage inherits Rectangle {
 
     Room { wide: root.wide; }
     Scroller {
+        keeps-gallery: true;
         y: root.top;
         height: root.height - root.top;
         VerticalLayout {

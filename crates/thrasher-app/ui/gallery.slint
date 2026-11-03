@@ -12,7 +12,7 @@
 // where the strip is. Fighter Select draws select rows: name plates, the current tile in a
 // red frame with the P1 cursor and tag, a red scroll bar.
 
-import { Theme, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Glass, Quest, QPx, Brick, Am, Palette, Icon, IconBtn, Win, Pk, PkRing, PkTile, SynKey, Fi, FiSkew, Cz, CzWell } from "common.slint";
+import { Theme, PageHold, Deck, Ph, Os, OsBevel, OsDotted, Comic, InkShadow, Glass, Quest, QPx, Brick, Am, Palette, Icon, IconBtn, Win, Pk, PkRing, PkTile, SynKey, Fi, FiSkew, Cz, CzWell } from "common.slint";
 import { Pb } from "skins/x-pinball-parts.slint";
 import { Pn, PnDisc } from "skins/x-phono-parts.slint";
 
@@ -51,6 +51,13 @@ export global Gallery {
     // Theme.names, both in the order of Theme.names and with their place there.
     in property <[ThemeTile]> classic;
     in property <[ThemeTile]> shown;
+    // A pick builds a new settings page when the skin changes. These keep the gallery
+    // where it was: each strip's place in tiles (scroll offset / pitch, so it holds for
+    // any tile size) and the window y of the picked tile, while `hold` is set.
+    in-out property <float> classic-at;
+    in-out property <float> devices-at;
+    in-out property <bool> hold;
+    in-out property <length> hold-y;
 }
 
 // A classic theme's tile picture: its main page in miniature, plain rectangles in its
@@ -872,8 +879,14 @@ component Strip inherits VerticalLayout {
     property <int> cur-pos: -1;
     // Where the current theme was when the page opened: the strip opens scrolled to it.
     property <int> start: -1;
+    // After a pick that built a new page: where the strip was then, in tiles; it opens there,
+    // moved only as far as it takes to keep the current tile in view (a narrower strip).
+    property <float> at: -1;
+    property <length> at-off: root.start < 0 ? root.at * root.pitch : max(root.start * root.pitch + root.tile-w + root.end-pad - root.view-w, min(root.at * root.pitch, root.start * root.pitch));
+    // The tiles' y in the strip.
+    property <length> tile-y: Theme.tape ? 2px : Theme.os95 ? 4px : Theme.brick ? 5px : Theme.fighter || Theme.cozy ? 12px : 6px;
     // The scroll offset; a binding to the start until the strip is moved.
-    property <length> off: root.start < 0 || root.start * root.pitch + root.tile-w + root.end-pad <= root.view-w ? 0 : min(root.max-off, root.start * root.pitch - root.fade-w);
+    property <length> off: root.at >= 0 ? root.at-off : root.start < 0 || root.start * root.pitch + root.tile-w + root.end-pad <= root.view-w ? 0 : min(root.max-off, root.start * root.pitch - root.fade-w);
     // Where the strip is going, and where it is drawn while it slides there.
     property <length> to-off: clamp(root.off, 0, root.max-off);
     property <length> x-off: root.to-off;
@@ -895,6 +908,30 @@ component Strip inherits VerticalLayout {
             root.scroll-to(i * root.pitch - root.fade-w);
         } else if (i * root.pitch + root.tile-w + edge > root.to-off + root.view-w) {
             root.scroll-to(i * root.pitch + root.tile-w + edge - root.view-w);
+        }
+    }
+    // Remember where the strip is, for the page a pick may build.
+    public function keep() {
+        if (root.classic) { Gallery.classic-at = root.to-off / root.pitch; } else { Gallery.devices-at = root.to-off / root.pitch; }
+    }
+    // Pick tile i. When that builds a new page, the page scrolls so the tile lands where it was.
+    function pick(i: int) {
+        let t = root.tiles[i].index;
+        Gallery.hold = t != Theme.current;
+        Gallery.hold-y = view.absolute-position.y + root.tile-y;
+        root.picked(t);
+        if (Theme.current != t) { Gallery.hold = false; }
+    }
+    init => {
+        if (Gallery.hold) { root.at = root.classic ? Gallery.classic-at : Gallery.devices-at; }
+    }
+    // The current tile is placed (on a new page too, once it is built): bring it back to
+    // where it was picked; the page's Scroller (keeps-gallery) adds the shift.
+    changed cur-pos => {
+        if (Gallery.hold && root.cur-pos >= 0) {
+            Gallery.hold = false;
+            PageHold.shift = Gallery.hold-y - view.absolute-position.y - root.tile-y;
+            PageHold.shifts += 1;
         }
     }
     function move(i: int) {
@@ -1089,7 +1126,7 @@ component Strip inherits VerticalLayout {
                 if (e.text == Key.UpArrow) { root.up(); return accept; }
                 if (e.text == Key.DownArrow) { root.down(); return accept; }
                 if ((e.text == Key.Return || e.text == " ") && root.cursor >= 0 && root.cursor < root.n) {
-                    root.picked(root.tiles[root.cursor].index);
+                    root.pick(root.cursor);
                     return accept;
                 }
                 reject
@@ -1106,7 +1143,7 @@ component Strip inherits VerticalLayout {
             }
             for tile[i] in root.tiles: Tile {
                 x: root.pad + i * root.pitch - root.x-off;
-                y: Theme.tape ? 2px : Theme.os95 ? 4px : Theme.brick ? 5px : Theme.fighter || Theme.cozy ? 12px : 6px;
+                y: root.tile-y;
                 tile: tile;
                 classic: root.classic;
                 focused: keys.has-focus && i == root.cursor;
@@ -1125,7 +1162,7 @@ component Strip inherits VerticalLayout {
                 }
                 picked => {
                     root.cursor = i;
-                    root.picked(tile.index);
+                    root.pick(i);
                 }
             }
         }
@@ -1204,14 +1241,14 @@ export component ThemeGallery inherits VerticalLayout {
         title: "Classic";
         tiles: Gallery.classic;
         classic: true;
-        picked(i) => { root.picked(i); }
+        picked(i) => { classic.keep(); devices.keep(); root.picked(i); }
         down => { devices.focus-in(); }
     }
     devices := Strip {
         title: "Devices";
         tiles: Gallery.shown;
         divided: true;
-        picked(i) => { root.picked(i); }
+        picked(i) => { classic.keep(); devices.keep(); root.picked(i); }
         up => { classic.focus-in(); }
     }
 }
@@ -1225,14 +1262,14 @@ export component ThemeGallerySide inherits HorizontalLayout {
         title: "Classic";
         tiles: Gallery.classic;
         classic: true;
-        picked(i) => { root.picked(i); }
+        picked(i) => { classic.keep(); devices.keep(); root.picked(i); }
         down => { devices.focus-in(); }
     }
     devices := Strip {
         horizontal-stretch: 1;
         title: "Devices";
         tiles: Gallery.shown;
-        picked(i) => { root.picked(i); }
+        picked(i) => { classic.keep(); devices.keep(); root.picked(i); }
         up => { classic.focus-in(); }
     }
 }

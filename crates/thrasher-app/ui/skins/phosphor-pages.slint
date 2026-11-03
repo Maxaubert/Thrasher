@@ -935,6 +935,7 @@ export component SettingsPage inherits Rectangle {
         Title { back-word: "back"; tty: "tty3"; settings: false; back => { root.back(); } }
         Heading { title: "SETUP"; }
         Scroller {
+            keeps-gallery: true;
             VerticalLayout {
                 padding-left: 14px;
                 padding-right: root.wide ? 14px : 18px;

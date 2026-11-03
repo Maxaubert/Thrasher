@@ -9428,7 +9428,20 @@ export component WindowFx inherits Rectangle {
 // The Scroller's decorations: the fade strips at its edges and each skin's scroll bar.
 // One shared component, placed over the Scroller's list, so the Scroller (inlined at
 // every use, as it always has children) does not copy these repeaters into every use.
+// A theme picked in the settings gallery (gallery.slint) can build a new settings page;
+// the gallery's strip asks the page's Scroller to scroll by `shift` (bumping `shifts`) so
+// the picked tile lands where it was. Only a Scroller with keeps-gallery does it.
+export global PageHold {
+    in-out property <length> shift;
+    in-out property <int> shifts;
+}
+
 component ScrollDecor inherits Rectangle {
+    in property <bool> hold;
+    property <int> shifts: PageHold.shifts;
+    changed shifts => {
+        if (root.hold) { root.content-y = clamp(root.content-y + PageHold.shift, min(0px, -root.range), 0px); }
+    }
     in property <bool> fade;
     in property <bool> bar;
     in property <bool> ink-rail;
@@ -9712,6 +9725,8 @@ export component Scroller inherits Rectangle {
     in property <bool> quest-rail;
     // The Answering Machine's sunk track with a rubber thumb instead of the thin bar.
     in property <bool> rubber;
+    // A settings page with the theme gallery: it scrolls to keep a picked tile in place.
+    in property <bool> keeps-gallery;
     horizontal-stretch: 1;
     vertical-stretch: 1;
     min-height: 50px;
@@ -9735,6 +9750,7 @@ export component Scroller inherits Rectangle {
         rubber: root.rubber;
         bar95: root.bar95;
         pk-rail: root.pk-rail;
+        hold: root.keeps-gallery;
         content-y <=> fl.content-y;
         content-height: fl.content-height;
         view-height: fl.height;

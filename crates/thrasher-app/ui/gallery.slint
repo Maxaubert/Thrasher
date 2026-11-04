@@ -900,6 +900,11 @@ component Strip inherits VerticalLayout {
         root.moving = true;
         root.off = clamp(o, 0, root.max-off);
     }
+    // The scroll bar's thumb is at `pos` of `span` (its free run): follow it, no slide.
+    function drag-bar(pos: length, span: length) {
+        root.moving = false;
+        root.off = span > 0 ? clamp(pos / span * root.max-off, 0, root.max-off) : 0;
+    }
     function page(by: int) {
         root.scroll-to((round(root.to-off / root.pitch) + by * root.per) * root.pitch);
     }
@@ -1236,6 +1241,30 @@ component Strip inherits VerticalLayout {
                     height: 13px;
                     source: 1phx < 0.7px ? @image-url("skins/x-pinball/ball@2x.png") : @image-url("skins/x-pinball/ball.png");
                     image-fit: fill;
+                }
+            }
+            // Drag the thumb, or press the track to bring the thumb's middle there and drag on.
+            // The thumb's run (Quest Menu: 3px in from each end; Pocket Synth: the row of
+            // lights) and width, as drawn above.
+            property <length> rail-x: Theme.synth ? (self.width - root.n * 9px + 4px) / 2 : Theme.quest ? 3px : 0;
+            property <length> rail-w: Theme.synth ? root.n * 9px - 4px : Theme.quest ? self.width - 6px : self.width;
+            property <length> run-w: Theme.synth ? 0 : Theme.quest ? max(30px, (self.width - 6px) * root.view-w / max(root.content-w, 1px)) : self.thumb-w;
+            property <length> grab;
+            TouchArea {
+                // A few px over and under the thin bars, so they are easy to catch.
+                y: Theme.os95 ? 0 : -4px;
+                height: parent.height + (Theme.os95 ? 0 : 8px);
+                pointer-event(e) => {
+                    if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                        let tx = parent.rail-x + (root.max-off > 0 ? root.x-off / root.max-off * (parent.rail-w - parent.run-w) : 0);
+                        parent.grab = self.mouse-x >= tx && self.mouse-x <= tx + parent.run-w ? self.mouse-x - tx : parent.run-w / 2;
+                        root.drag-bar(self.mouse-x - parent.grab - parent.rail-x, parent.rail-w - parent.run-w);
+                    }
+                }
+                moved => {
+                    if (self.pressed) {
+                        root.drag-bar(self.mouse-x - parent.grab - parent.rail-x, parent.rail-w - parent.run-w);
+                    }
                 }
             }
         }

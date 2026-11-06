@@ -1,6 +1,6 @@
 """Cuts the theme gallery thumbnails (docs/device-themes.md, section 4).
 
-    python tools/skin-art/thumbs.py            (all 15 device skins)
+    python tools/skin-art/thumbs.py            (all 12 device skins)
     python tools/skin-art/thumbs.py tape x-dash
 
 Each device skin's mockup screenshot, docs/mockups/device-themes/<skin>.png, holds the
@@ -21,6 +21,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 SRC = os.path.join(ROOT, "docs", "mockups", "device-themes")
 OUT = os.path.join(ROOT, "crates", "thrasher-app", "ui", "skins", "thumbs")
 SIZES = {"": (104, 64), "@2x": (208, 128)}
+# Skins Max removed (2026-11-06); their mockups stay in docs, but they get no tile.
+REMOVED = {"phosphor", "x-spatial", "x-fighter"}
 
 
 def diff(a, b):
@@ -47,6 +49,7 @@ def window(im):
 def main(names):
     os.makedirs(OUT, exist_ok=True)
     files = sorted(glob.glob(os.path.join(SRC, "*.png")))
+    files = [f for f in files if os.path.basename(f)[:-4] not in REMOVED]
     if names:
         files = [f for f in files if os.path.basename(f)[:-4] in names]
     total = 0

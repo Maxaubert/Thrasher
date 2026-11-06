@@ -1,6 +1,6 @@
 # Builds the Desktop 95 fonts: Pixelify Sans 400, 500 and 700 as static instances with a
 # new "5" (the original reads as S), renamed "Pixel 95" and subset to Latin. VT323, the
-# timer font, is the Latin subset Phosphor ships. SRC_DIR holds PixelifySans.ttf (the
+# timer font, is the Latin subset in ui/fonts. SRC_DIR holds PixelifySans.ttf (the
 # variable font) from github.com/google/fonts (ofl/pixelifysans). Needs
 # fontTools.
 #   python tools/skin-art/dv-os95-fonts.py SRC_DIR OUT_DIR
@@ -90,8 +90,8 @@ for w, style in ((400, "Regular"), (500, "Medium"), (700, "Bold")):
     do_subset(tmp, os.path.join(OUT, f"Pixel95-{w}.ttf"))
     os.remove(tmp)
 
-# VT323 (the timer and the scope's tags) is shared with Phosphor, which ships its Latin
-# subset as ui/fonts/VT323-400.ttf; that covers the printable ASCII used here, so this
-# script does not build it.
+# VT323 (the timer and the scope's tags) is the Latin subset in ui/fonts/VT323-400.ttf
+# (made for Phosphor, removed 2026-11-06); that covers the printable ASCII used here, so
+# this script does not build it.
 for n in os.listdir(OUT):
     print(n, os.path.getsize(os.path.join(OUT, n)))

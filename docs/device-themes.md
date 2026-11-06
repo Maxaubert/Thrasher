@@ -2428,7 +2428,7 @@ two groups, Classic and Devices. Clicking one switches at once. The thumbnails c
 the mockup screenshots.
 
 Max picked layout **B, strips** (2026-10-29), mockup in `mockups/device-themes/gallery/`:
-one sideways strip per group with page arrows, a thin scroll bar and a fade, so the card
+one sideways strip per group with page arrows (dropped for drag to scroll on 2026-11-06), a thin scroll bar and a fade, so the card
 stays about 250 px tall. Tiles 104x64 (device art at 1x and 2x, 64 colours, about 153 KB
 in all); classic tiles are drawn live from the palette. Only built skins are listed.
 
@@ -2436,10 +2436,10 @@ in all); classic tiles are drawn live from the palette. Only built skins are lis
 (`app.slint`, so every skin without its own pages) and the Tape Deck one
 (`skins/tape-pages.slint`). It replaces the Theme dropdown; the Appearance card now runs
 across the whole page when it is wide, the other cards stay in their columns under it.
-- One strip per group. Page arrows and the scroll bar show only while a strip has more
-  than fits; when everything fits, the gap shrinks (12 px, not under 4 px) so no tile is
-  cut. The mouse wheel scrolls the strip under the pointer until its end, then the page.
-  A strip opens scrolled to the current theme.
+- One strip per group. The scroll bar shows only while a strip has more than fits (the
+  page arrows are gone, see below); when everything fits, the gap shrinks (12 px, not under
+  4 px) so no tile is cut. The mouse wheel scrolls the strip under the pointer until its
+  end, then the page. A strip opens scrolled to the current theme.
 - Tiles are radio buttons named after the theme (`accessible-checked` on the current
   one). Each strip is one Tab stop: Left and Right move the focus ring, Home, End,
   Page Up and Page Down jump, Up and Down go to the other group, Enter or Space picks.
@@ -2458,6 +2458,32 @@ across the whole page when it is wide, the other cards stay in their columns und
 - Cost: exe +0.36 MB (55.54 to 55.91 MB, with 6 device tiles). Main pages of all 14
   themes unchanged (static ones pixel for pixel; the animated ones differ only by their
   animation, as much as two runs of the old build do).
+
+**Drag to scroll, no page arrows (2026-11-06, Max):** "remove the left right buttons. and
+implement drag to scroll the theme list in addition to the scrollbar we already got."
+- The previous and next IconBtns are gone from both strips' heads in every skin. The head
+  keeps its fixed height (26, 24, 22 or 30 px by skin), so nothing below moved; the title,
+  count, plates and rules stay as they were.
+- Pressing a strip (on a tile or a gap) and moving over 5 lp drags it, 1:1 with the pointer,
+  no slide and no fling (`Strip.touch`, `moving = false` like the scroll bar's `drag-bar`).
+  A move that is more up or down than sideways, or on a strip that fits, does not scroll.
+  After any move over 5 lp the release picks nothing; a press and release within 5 lp is
+  still a click. Keys, the wheel and the scroll bar drag are unchanged.
+- How: a Slint TouchArea's `input_event_filter_before_children` updates its `mouse-x` and
+  `mouse-y` on every event, also while a child holds the grab. So the strip's wheel
+  TouchArea (`area`, round the tiles) always knows the pointer, and Tile only forwards its
+  `pointer-event` (`callback touch(PointerEvent)`). The TouchArea's click comes before its
+  Up event, so the drag state is cleared on Up, after the tile's `picked` checked it. A
+  Flickable was not used: it holds the press for 100 ms, stops intercepting 500 ms after the
+  press, starts at 8 px, flings on release and would replace the `x-off` hold logic.
+- Cost: exe -60 KB (96.00 to 95.94 MB), `app.rs` -0.76 MB (slint-compiler).
+- Checked on the hidden desktop (Ember, Tape Deck, Desktop 95, Comic Book, Pocket Synth,
+  Pinball, Cozy Cabin at 520x700 and 420x600): drags on a tile and from a gap move the strip
+  by the pointer's distance (clamped at the ends), vertical drags move nothing, no drag
+  picked a theme, a click with a 3 lp wobble picks, and wheel, bar drag, Tab, End, Home, Up
+  and Down still scroll. Main and clip pages of all 20 themes at both sizes match the build
+  before pixel for pixel, but for the moving backgrounds of six classic themes (as two runs
+  of the old build differ). Release rustc peak 22.2 GB.
 
 **The gallery holds still over a switch (2026-11-03, Max's choice):** a device skin has its
 own settings page, so picking a theme builds a new page. Two things keep the gallery in place:

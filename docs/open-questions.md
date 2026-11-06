@@ -98,3 +98,15 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
     **Answered 2026-11-03:** (a), the ink frame on every page. Every Cozy page now sits in
     the main page's 3 px ink frame, so the title bar does not move (docs/device-themes.md,
     Cozy Cabin pages).
+
+## Added 2026-11-06
+
+23. **Download the device themes on demand?** The exe is 111 MB; Ember and the classic
+    themes alone were about 35 MB before the first device theme (estimate from the size
+    notes in docs/device-themes.md, not measured), so the 15 device themes are about 75 to
+    80 MB. Memory does not change: only the shown theme is drawn. Single themes cannot be
+    downloaded: Slint compiles every theme into the exe as Rust code, so it would take
+    the slint-interpreter and a rebuilt UI (slower start, more memory). The workable
+    option was two builds, a small one that swaps itself for the full one when a device
+    theme is picked (needs a public download place; the repo is private).
+    **Answered 2026-11-06:** keep one full app with every theme.

@@ -34,7 +34,8 @@ pub struct Settings {
     pub export_dir: Option<PathBuf>,
     /// Clean up the voice (noise suppression, automatic gain) when exporting.
     pub clean_voice: bool,
-    /// The window's close button hides Thrasher to the tray instead of quitting.
+    /// The window's close button hides Thrasher to the tray instead of quitting. Off by
+    /// default (Max, 2026-11-06): closing quits.
     pub close_to_tray: bool,
     /// A recording stops by itself after this many minutes, so one left running by
     /// mistake cannot fill the disk. 0 means no limit.
@@ -72,7 +73,7 @@ impl Default for Settings {
             export_format: "flac".into(),
             export_dir: None,
             clean_voice: false,
-            close_to_tray: true,
+            close_to_tray: false,
             max_recording_minutes: 120,
             window: None,
             theme: "Ember".into(),

@@ -1538,33 +1538,6 @@ impl App {
     }
 }
 
-/// A round icon: ring with a dot. Orange while recording, light otherwise.
-fn dot_image(size: u32, recording: bool) -> slint::Image {
-    let mut buf = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::new(size, size);
-    let (r, g, b) = if recording {
-        (0xff, 0x6a, 0x1a)
-    } else {
-        (0xf1, 0xec, 0xe8)
-    };
-    let scale = size as f32 / 32.0;
-    let c = (size as f32 - 1.0) / 2.0;
-    for (i, px) in buf.make_mut_slice().iter_mut().enumerate() {
-        let (x, y) = ((i as u32 % size) as f32, (i as u32 / size) as f32);
-        let d = ((x - c).powi(2) + (y - c).powi(2)).sqrt() / scale;
-        // Ring with a filled centre, anti-aliased edges.
-        let ring = (1.0 - ((d - 13.0).abs() - 1.5).clamp(0.0, 1.0)) * (d <= 15.5) as u8 as f32;
-        let dot = (8.5 - d).clamp(0.0, 1.0);
-        let a = ring.max(dot);
-        *px = slint::Rgba8Pixel {
-            r,
-            g,
-            b,
-            a: (a * 255.0) as u8,
-        };
-    }
-    slint::Image::from_rgba8(buf)
-}
-
 /// The global record hotkey. The manager must stay alive for it to stay registered.
 #[derive(Default)]
 struct Hotkey {
@@ -1681,7 +1654,6 @@ fn main() -> Result<(), slint::PlatformError> {
     thrasher_core::merge::clean_leftovers(&library);
     let live_model = Rc::new(VecModel::from(vec![0.06; LIVE_BARS]));
     ui.set_live(ModelRc::from(live_model.clone()));
-    ui.set_window_icon(dot_image(64, true));
 
     let app = Rc::new(RefCell::new(App {
         settings,
@@ -3617,7 +3589,6 @@ fn main() -> Result<(), slint::PlatformError> {
     // Tray icon. With it, closing the window can hide it instead of quitting.
     let tray = Tray::new().ok();
     if let Some(tray) = &tray {
-        tray.set_image(dot_image(32, false));
         tray.on_toggle_record({
             let weak = ui.as_weak();
             move || weak.unwrap().global::<Main>().invoke_toggle_record()
@@ -3653,7 +3624,6 @@ fn main() -> Result<(), slint::PlatformError> {
             if last != Some(rec) {
                 last = Some(rec);
                 tray.set_recording(rec);
-                tray.set_image(dot_image(32, rec));
             }
         });
         std::mem::forget(sync);

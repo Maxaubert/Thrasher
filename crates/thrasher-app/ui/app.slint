@@ -142,15 +142,14 @@ import {
 // What the app reaches from Rust.
 export { ModelRow, WordRow, OrderRow, SearchHit, LangRow, AskSource, ClipRow, Theme, Fx, Main, Tour, Snow, Gallery, ThemeTile }
 
-// The notification-area icon. Its image is drawn in Rust (orange dot while recording).
+// The notification-area icon: the app icon, with a red dot while recording.
 export component Tray inherits SystemTrayIcon {
-    in property <image> image;
     in property <bool> recording;
     callback toggle-record();
     callback show-window();
     callback show-widget();
     callback quit();
-    icon: image;
+    icon: recording ? @image-url("icon/thrasher-rec-64.png") : @image-url("icon/thrasher-64.png");
     tooltip: recording ? "Thrasher: recording" : "Thrasher";
     clicked => { show-window(); }
     Menu {
@@ -176,8 +175,7 @@ export component Tray inherits SystemTrayIcon {
 
 export component AppWindow inherits Window {
     title: "Thrasher";
-    in property <image> window-icon;
-    icon: window-icon;
+    icon: @image-url("icon/thrasher-64.png");
     background: compact ? transparent : Theme.bg;
     // The Car Dashboard's pages, menus and dialogs are set in Manrope.
     default-font-family: Theme.pages == 6 ? "Manrope" : "Inter Tight";

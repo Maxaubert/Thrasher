@@ -8,6 +8,13 @@ cargo run --release -p thrasher-app
 
 Needs only Rust (stable, MSVC). This is what CI builds and tests.
 
+The app icon (Max's design, 2026-11-06; sources in `assets/icon/`) is built into
+`thrasher.exe` by `crates/thrasher-app/build.rs` (`winresource`, which needs `rc.exe` from
+the Windows SDK; Visual Studio installs it). The window and the tray use
+`crates/thrasher-app/ui/icon/thrasher-64.png`; while recording the tray shows
+`thrasher-rec-64.png` (the icon with a red dot). The `.ico` and both PNGs are made from
+`assets/icon/thrasher-colored.png` with its empty margin trimmed to 24 px of 1254.
+
 Debug builds of `thrasher-app` and `thrasher-ui` carry line tables only
 (`[profile.dev.package.*]` in the root `Cargo.toml`): with full debug info the test exe
 passed the linker's program database limit (`LNK1140`) once the generated UI code grew

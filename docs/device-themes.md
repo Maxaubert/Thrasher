@@ -59,7 +59,7 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
 ### Skins
 
 - `Theme` gets a `skin` next to the palette: `classic` for the 8 current themes, or one of
-  the 15 device skins.
+  the device skins (15 built, 12 since Max removed three on 2026-11-06).
 - The main page today is one `AppWindow` block in `app.slint` (5,500 lines). It is split
   into five regions: `TitleBar`, `Recorder`, `Toolbar`, `ClipRow` and `Player`. Each takes
   the same inputs and callbacks, collected in shared structs (`RecState`, `ClipRowData`,
@@ -2423,7 +2423,7 @@ Rules (added to the ones above):
 
 ## 4. Theme picker
 
-With 23 themes, a dropdown is too long. Settings gets a theme gallery: small thumbnails in
+With 23 themes (20 since 2026-11-06), a dropdown is too long. Settings gets a theme gallery: small thumbnails in
 two groups, Classic and Devices. Clicking one switches at once. The thumbnails come from
 the mockup screenshots.
 

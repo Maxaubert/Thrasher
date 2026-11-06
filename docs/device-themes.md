@@ -2428,9 +2428,9 @@ two groups, Classic and Devices. Clicking one switches at once. The thumbnails c
 the mockup screenshots.
 
 Max picked layout **B, strips** (2026-10-29), mockup in `mockups/device-themes/gallery/`:
-one sideways strip per group with page arrows (dropped for drag to scroll on 2026-11-06), a thin scroll bar and a fade, so the card
-stays about 250 px tall. Tiles 104x64 (device art at 1x and 2x, 64 colours, about 153 KB
-in all); classic tiles are drawn live from the palette. Only built skins are listed.
+one sideways strip per group with page arrows (dropped for drag to scroll on 2026-11-06),
+a thin scroll bar and a fade, so the card stays about 250 px tall. Tiles 104x64 (device
+art at 1x and 2x, 64 colours, about 153 KB in all); classic tiles are drawn live from the palette. Only built skins are listed.
 
 **Built in step 4 (2026-10-29):** `ui/gallery.slint`, used by the classic settings page
 (`app.slint`, so every skin without its own pages) and the Tape Deck one

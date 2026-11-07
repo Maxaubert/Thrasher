@@ -27,6 +27,8 @@ RequestExecutionLevel user
 SetCompressor /SOLID lzma
 SetCompressorDictSize 64
 ManifestDPIAware true
+; A file that cannot be replaced fails the install instead of silently keeping the old one.
+AllowSkipFiles off
 
 VIProductVersion "${VERSION}.0"
 VIAddVersionKey "ProductName" "${APP}"
@@ -49,9 +51,11 @@ VIAddVersionKey "LegalCopyright" "Max Aubert"
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "English"
 
-; A running Thrasher (or one of its workers) from this folder locks its files.
+; A running Thrasher (or one of its workers) from this folder locks its files. The installer
+; is 32-bit, and a 32-bit PowerShell cannot read a 64-bit process's Path, so use the 64-bit
+; one through Sysnative (v1.0.0's first build left the old exe in place because of this).
 !macro StopThrasher
-  nsExec::Exec `powershell -NoProfile -NonInteractive -Command "Get-Process thrasher,thrasher-transcribe,thrasher-ask -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like '$INSTDIR\*' } | Stop-Process -Force; Start-Sleep -Milliseconds 500"`
+  nsExec::Exec `"$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "Get-Process thrasher,thrasher-transcribe,thrasher-ask -ErrorAction SilentlyContinue | Where-Object { $$_.Path -like '$INSTDIR\*' } | Stop-Process -Force; Start-Sleep -Milliseconds 500"`
   Pop $0
 !macroend
 

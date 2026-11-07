@@ -2501,7 +2501,8 @@ own settings page, so picking a theme builds a new page. Two things keep the gal
 - Where it cannot hold: the page cannot scroll above its top (a tile that sits higher on the
   new page, from the top of Settings) or past its end (Desktop 95's Appearance tab, a wide
   page that fits), and the wide pages that put the gallery elsewhere (Phosphor side by side,
-  Desktop 95's tabs).
+  Desktop 95's tabs). Above the top and past a strip's start or end are held since
+  2026-11-07 with room (see "Room above the page and past a strip's ends" below).
 - Cost: app.rs +0.1 MB, exe +13 KB.
 
 **Lesson: hold the window position, not the place in the strip (2026-11-03,
@@ -2530,12 +2531,76 @@ the vertical hold was clamped away when the new page could not scroll that far. 
 - Still not held: a tile that would need room above the page's top (Pinball to Ember: 25
   lp). That would need a blank band over the header. Also a tile the strip cannot scroll to:
   the first tile, the end of a strip, or the wide pages that put the gallery elsewhere.
+  (Both held since 2026-11-07, see the next part.)
 - Cozy Cabin's main title bar sat 3 lp further in than on its other pages (the main page's
   ink frame, `px-cozy.slint` `padding: 3px`), so it jumped when Settings opened. Max chose the
   frame on every page (2026-11-03); see "The ink frame on every page" in the Cozy Cabin
   section.
 - Cost: `app.rs` +0.22 MB (the spacer in each of the about 130 inlined Scrollers), exe
   +59 KB.
+
+**Room above the page and past a strip's ends (2026-11-07, `fix/gallery-shift-3`).** Max
+saw the gallery move on a switch to or from Desktop 95 and Comic Book (and Phosphor, since
+removed). Measured on the hidden desktop at 420x600 and 520x700 (UI Automation rectangles of
+the clicked tile, the window, the Back button and both strips, before and after each click):
+the window never moves (same GetWindowRect on every switch) and every switch lands in one
+frame. What moved was the tile, for two reasons:
+- **Each skin's page puts the gallery at its own height.** The Devices tile's window y with
+  the page at its top (the same at both sizes): Brick Phone 270, Pocket 289, the classic
+  page 290, Answering Machine 293, Tape Deck 298, Pocket Synth 304, Quest Menu 310, Car
+  Dashboard 314, Comic Book 314, Phonograph 319, Cozy Cabin 322, Pinball 322, Desktop 95
+  338 (its title bar, Back row and two tab rows). A switch to a page whose gallery sits
+  higher needs that page scrolled above its top, and a Flickable cannot. Desktop 95 is the
+  lowest page and its Appearance tab is too short to scroll at 420x600 and 520x700, so every
+  switch out of it moved the gallery up: to Tape Deck 40 lp, Comic Book 23.6, Cozy Cabin 16,
+  Ember 48. Comic Book sits in the middle: Comic Book to Tape Deck moved up 16.4, to Ember
+  20.9; Cozy Cabin to Comic Book 7.6. Over a row of clicks the gallery crept up and never
+  came back down.
+- **Each strip starts at its own x** (Comic Book 18.7, Pinball 21.8, Car Dashboard 25.8, the
+  classic page 28, Tape Deck 32, Cozy Cabin 36, Desktop 95 40 with its list's 4 px pad,
+  Pocket 44) with its own pitch (Comic Book's gap is 10). A tile near a strip's start that
+  had to sit further right than offset 0 puts it could not: Desktop 95 to Comic Book 25.3 lp
+  at 520 wide, Desktop 95 to Ember 12, Ember to Comic Book 13.3, Desktop 95 to Tape Deck 8,
+  Cozy Cabin to Ember 8, Pocket to Tape Deck 12.
+
+The fix keeps every page as it was when opened and adds room only after a pick that needs it:
+- **Room above the content** (`ScrollDecor.top-h`): when the shift would scroll the page
+  above its top, the Scroller's Flickable moves down by the rest (`y: top-h`, its height
+  shorter by as much), so the page shows an empty band of its own background between the
+  header and the first card. Scrolling down uses the band up first (the content moves as in
+  any scroll, the band does not come back); a resize or `drop-pad()` (a Desktop 95 tab)
+  drops it. It is the top twin of `pad-h`.
+- **Room before the first tile or after the last** (`Strip.room`): the strip may now scroll
+  past its start or end to hold the tile, so a few tiles stand further in, with no fade on
+  that side; the scroll bar, the Pocket Synth's lights and the bar's press use the offset
+  clamped to the strip (`bar-off`). The wheel, keys and the bar drop the room with the
+  strip's next move; a drag starts from it and does not jump.
+
+After (same switches, fresh Settings): every vertical shift is 0 (one of 0.4 lp, under one
+device px: Comic Book 314.2 and Car Dashboard 313.8). Still moving sideways, where the tile
+would have to sit outside the new strip's visible part: Comic Book to Tape Deck 13.3 lp (Tape
+Deck's first tile would sit left of its strip, which starts at 32, not 18.7), Comic Book to
+Ember 9.3, Pinball to Ember 6.2 (the same at the first tile), Tape Deck to Pocket 16 at 420
+wide and Ember to Desktop 95 12.4 at 420 wide (the narrower strip's right edge). Main, clip
+and settings pages of all 20 themes at 520x700 match the build before pixel for pixel, but
+for the six animated classic backgrounds (as two runs of the old build differ). Exe 95.94 to
+95.50 MB. Release rustc peak 21.6 GB.
+
+Review fixes (2026-11-07, same branch), found with double clicks, keyboard picks, the wheel
+and resizes at 420x600 and 1100x700:
+- `reveal` (a click or keyboard focus on a tile) now only scrolls towards the tile, so a
+  tile standing in a pick's room past an end is not pushed back. A second click on a tile
+  that sits under the edge fade still scrolls it clear, as before the room (Desktop 95 to
+  Comic Book double click at 420: 11.1 lp, the build before 25.3).
+- The wheel into a strip's room jumped the strip out of it (12 lp the wrong way); it now
+  leaves the strip and passes the wheel on, and the wheel the other way lands inside.
+- A resize kept the strip's room (`room-w`), so a strip that now fits stayed offset; it goes
+  on a resize, like `top-h`.
+- A pick on the same page while `top-h` or `pad-h` was set: the shift now counts `top-h`,
+  and the room above clears `pad-h` (whose size check would have dropped both).
+- After the fixes every tested pick at 420x600 holds dy 0; at 1100x700 too. Left: the
+  sideways shifts listed above, and at 1100x700 the wide pages that place the gallery
+  elsewhere (as before).
 
 **Adding a skin's tile** (one line): when a skin's name goes into `Theme.names`, add its
 line to `Gallery.devices` in `ui/gallery.slint`:

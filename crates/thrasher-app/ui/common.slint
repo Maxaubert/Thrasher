@@ -8135,7 +8135,9 @@ export component WindowFx inherits Rectangle {
 // the gallery's strip asks the page's Scroller to scroll by `shift` (bumping `shifts`) so
 // the picked tile lands where it was. Only a Scroller with keeps-gallery does it. When the
 // page is too short to scroll that far down, it gets empty room at its end (`pad-h`, the
-// content height it needs), which goes again as the user scrolls back up.
+// content height it needs), which goes again as the user scrolls back up. When the tile sat
+// lower than the page's top puts it, the view moves down instead (`top-h`, room above the
+// content), which goes as the user scrolls down.
 export global PageHold {
     in-out property <length> shift;
     in-out property <int> shifts;
@@ -8146,8 +8148,19 @@ component ScrollDecor inherits Rectangle {
     property <int> shifts: PageHold.shifts;
     out property <length> pad-h;
     changed shifts => {
-        if (root.hold) {
-            let want = min(0px, root.content-y + PageHold.shift);
+        // Where the content's top goes, below the view's top (room above it counted).
+        let s = root.top-h + root.content-y + PageHold.shift;
+        if (root.hold && s > 0.5px) {
+            // The tile sat lower than this page's top puts it: room above the content, none
+            // at its end (its size check would drop both).
+            root.pad-h = 0;
+            root.top-h = s;
+            root.top-view = root.height;
+            root.top-w = root.width;
+            root.content-y = 0;
+        } else if (root.hold) {
+            root.top-h = 0;
+            let want = min(0px, s);
             if (root.view-height - want > root.content-height) {
                 root.pad-h = root.view-height - want;
                 root.pad-view = root.view-height;
@@ -8163,20 +8176,34 @@ component ScrollDecor inherits Rectangle {
     property <length> pad-w;
     function size-changed() {
         if (root.pad-h > 0 && (root.view-height != root.pad-view || root.width != root.pad-w)) { root.drop-pad(); }
+        if (root.top-h > 0 && (root.height != root.top-view || root.width != root.top-w)) { root.top-h = 0; }
     }
     changed view-height => { root.size-changed(); }
+    changed height => { root.size-changed(); }
     changed width => { root.size-changed(); }
     changed content-y => {
         if (root.pad-h > 0) { root.pad-h = min(root.pad-h, root.view-height - root.content-y); }
+        // Scrolling down uses up the room above first: the content moves as in any scroll,
+        // and the room does not come back.
+        if (root.top-h > 0 && root.content-y < 0) {
+            let t = min(root.top-h, -root.content-y);
+            root.top-h -= t;
+            root.content-y += t;
+        }
     }
     // The page shows other content (a Desktop 95 tab): the room goes at once, and the
     // scroll stays inside the new content.
     public function drop-pad() {
+        root.top-h = 0;
         if (root.pad-h > 0) {
             root.pad-h = 0;
             root.content-y = max(root.content-y, min(0px, root.view-height - root.content-height));
         }
     }
+    // The room above the content after a pick (see `shifts`), and the view's size then.
+    out property <length> top-h;
+    property <length> top-view;
+    property <length> top-w;
     in property <bool> fade;
     in property <bool> bar;
     in property <bool> ink-rail;
@@ -8466,9 +8493,12 @@ export component Scroller inherits Rectangle {
     horizontal-stretch: 1;
     vertical-stretch: 1;
     min-height: 50px;
+    // A pick that needs the page lower than its top moves the view down instead
+    // (ScrollDecor's top-h), as room above the content.
     fl := Flickable {
+        y: decor.top-h;
         width: parent.width;
-        height: parent.height;
+        height: parent.height - decor.top-h;
         mouse-drag-pan-enabled: false;
         @children
         // The room a gallery pick adds at the end (ScrollDecor's pad-h); a layout, so the

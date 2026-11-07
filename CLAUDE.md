@@ -35,3 +35,14 @@ A polished, dark, minimalist audio recorder for Windows, written in Rust. Replac
 ## Quality bar
 
 `cargo fmt`, `cargo clippy -- -D warnings`, tests (use a fake audio device so CI needs no hardware), GitHub Actions on Windows.
+
+## Build, test, release
+- Typecheck/lint: `cargo fmt --all --check` and `cargo clippy --release -p thrasher-app -- -D warnings`
+- Unit: `cargo test --release -p thrasher-app` (never a debug build: rustc passes 30 GB)
+- E2E (headless): hidden-desktop scripts, `docs/building.md` "Debugging"    Run when: `crates/thrasher-app/ui/**`, `src/main.rs`
+- Build / package: `docs/building.md` "Installer and releases", then `installer/build.ps1`   Artifact: `Thrasher-Setup-x64-<version>.exe`
+- Known failures to tolerate: GitHub CI cannot build the UI (16 GB runners, open question 21)
+- Version source: root `Cargo.toml` `[workspace.package] version`   Release: by hand, `gh release create v<version>` (no release.yml)
+- Install locally after merge: `installer\dist\Thrasher-Setup-x64-<version>.exe /S`   Confirm version: Apps list or the exe's file version
+- Deploy: installer via GitHub Releases
+- Signing: unsigned

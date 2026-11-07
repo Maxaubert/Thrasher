@@ -7,7 +7,6 @@
 #   sh tools/skin-art/cut.sh px-quest OUT_DIR (the Quest Menu, into ui/skins/px-quest/)
 #   sh tools/skin-art/cut.sh dv-brick OUT_DIR (the Brick Phone, into ui/skins/dv-brick/)
 #   sh tools/skin-art/cut.sh dv-synth OUT_DIR (the Pocket Synth, into ui/skins/dv-synth/)
-#   sh tools/skin-art/cut.sh x-fighter OUT_DIR (Fighter Select, into ui/skins/x-fighter/)
 #   sh tools/skin-art/cut.sh px-cozy OUT_DIR  (the Cozy Cabin, into ui/skins/px-cozy/)
 #   sh tools/skin-art/cut.sh x-phono OUT_DIR  (the Phonograph, into ui/skins/x-phono/)
 #
@@ -28,7 +27,6 @@ case $SKIN in
 tape) PIECES="cassette:cassette:354:126 cassette-clip:cassette-clip:354:126 reels:reels:352:44 vu-face:vu-face:184:106 vu-over:vu-over:184:106
   walnut:walnut-grain:153:4 alu:alu-lines:4:2 spine:spine-lines:4:5 grille:grille:7:4 dial:dial:52:52
   knob:knob:36:36 knob-sel:knob-sel:36:36 screw:screw:7:7 led:led:21:21" ;;
-phosphor) PIECES="vig-tl:vig-tl:200:200 vig-tr:vig-tr:200:200 vig-bl:vig-bl:200:200 vig-br:vig-br:200:200 halo:halo:30:30 dash:dash:6:1 vdash:vdash:1:6 dither:dither:4:4" ;;
 # Desktop 95: two tiles (1x and 2x used) and pixel icons (only the 1x cut is used).
 dv-os95) PIECES="desk:desk:4:4 checker:checker:2:2 floppy:floppy:16:15 balloon:balloon:16:13 widget:widget:16:14
   wave:wave:13:13 note:note:10:11 folder:folder:16:11 mic:mic:8:11 dot:dot:12:12 stop:stop:12:12 recpause:recpause:12:12
@@ -45,12 +43,6 @@ x-comic) PIECES="logo:logo:214:52 picked:picked:60:26 rec-p:rec-p:128:128 rec-w:
   dots-red:dots-red:5:5 wrec:wrec:70:70 wstop:wstop:140:70 plus-l:plus-l:150:150 plus-s:plus-s:88:88
   logo-s:logo-s:112:34 title-settings:title-settings:113:36 title-models:title-models:96:36
   title-ask:title-ask:53:36 title-merge:title-merge:149:36 inuse:inuse:64:30" ;;
-# Spatial Glass: the rooms and the shadows are used at 1x only (they are
-# blurred, so scaling them up costs nothing); the shadows are nine-slice images.
-x-spatial) PIECES="room-p:room-p:200:310 room-w:room-w:500:310 shadow-pane:shadow-pane:196:204 shadow-near:shadow-near:220:226
-  shadow-pill:shadow-pill:180:140 shadow-tab:shadow-tab:108:80 orb-s:orb-s:170:170 orb-l:orb-l:242:242
-  rb-28:rb-28:48:48 rb-30:rb-30:50:50 rb-34:rb-34:54:54 logo:logo:40:40 thumb:thumb:27:27 ring-s:ring-s:110:110 ring-l:ring-l:220:220
-  widget-room:widget-room:240:124 orb-w:orb-w:142:142 ring-w:ring-w:96:96" ;;
 dash) PIECES="gauge-p:gauge-p:188:188 gauge-w:gauge-w:270:270 wheel-p:wheel-p:200:192 wheel-w:wheel-w:400:244
   rec:rec:128:128 rec-on:rec-on:128:128 sbtn:sbtn:42:42 chip:chip:20:20 cover:cover:38:38 logo:logo:16:16
   lamp-ok:lamp-ok:22:22 lamp-rec:lamp-rec:22:22 lamp-pause:lamp-pause:22:22 gauge-c:gauge-c:188:188 ctile:ctile:20:20" ;;
@@ -128,10 +120,6 @@ dv-synth) PIECES="oled-p-l:oled-p-l:26:116 oled-p-m:oled-p-m:2:116 oled-p-r:oled
   led-off:led-off:18:18 led-on:led-on:18:18 led-w:led-w:18:18 step-off:led-off:17:17 step-on:led-on:17:17
   tbtn:tbtn:26:26 dots:dots:24:24 screw:screw:9:9 knob-44:knob-44:52:52 knob-62:knob-62:70:70 knob-30:knob-30:38:38
   knob-32:knob-32:40:40 grille:grille:277:10 brush:brush:3:1" ;;
-# Fighter Select: the record diamond (FIGHT, and STOP while recording) at both sizes,
-# the floor at 1x and 2x; the soft glows (stage, selbg) are used at 1x only, stretched.
-x-fighter) PIECES="rec-p:rec-p:96:96 stop-p:stop-p:96:96 rec-w:rec-w:170:170 stop-w:stop-w:170:170
-  floor:floor:480:120 stage:stage:200:280 selbg:selbg:240:200" ;;
 # Cozy Cabin: pixel art one css pixel per art pixel, the wood and parchment tiles at three
 # times, the window scene and the lit lantern as frame strips; only the 1x cut is used.
 px-cozy) PIECES="gear:gear:7:7 min:min:7:6 close:close:7:5 play:play:5:9 pause:pause:5:9 down:down:5:3

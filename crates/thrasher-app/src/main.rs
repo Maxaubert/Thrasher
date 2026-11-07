@@ -2515,24 +2515,19 @@ fn main() -> Result<(), slint::PlatformError> {
         let weak = ui.as_weak();
         move |text| {
             {
-                // Tape Deck types the tags in a darker amber, readable on its cream card; Phosphor
-                // in its amber, as its pause tags show outside the editor; Desktop 95 in the blue
-                // of its links, on Notepad's white page; the Comic Book letters them in blue, as it
-                // shows them; Spatial Glass in its cyan; Pocket in the LCD's mid green; the Quest
-                // Menu in its blue, as its dialogue box shows them; the Pocket Synth in the orange
-                // of its screens.
+                // Tape Deck types the tags in a darker amber, readable on its cream card; Desktop
+                // 95 in the blue of its links, on Notepad's white page; the Comic Book letters
+                // them in blue, as it shows them; Pocket in the LCD's mid green; the Quest Menu in
+                // its blue, as its dialogue box shows them; the Pocket Synth in the orange of its
+                // screens.
                 let ui = weak.unwrap();
                 let theme = ui.global::<Theme>();
                 let accent = if theme.get_tape() {
                     slint::Color::from_rgb_u8(0xc6, 0x6a, 0x12)
-                } else if theme.get_phos() {
-                    slint::Color::from_rgb_u8(0xff, 0xb8, 0x4d)
                 } else if theme.get_os95() {
                     slint::Color::from_rgb_u8(0x1c, 0x3f, 0xa8)
                 } else if theme.get_comic() {
                     slint::Color::from_rgb_u8(0x2a, 0x6f, 0xdb)
-                } else if theme.get_glass() {
-                    slint::Color::from_rgb_u8(0x9f, 0xe3, 0xff)
                 } else if theme.get_pocket() {
                     slint::Color::from_rgb_u8(0x4e, 0x61, 0x27)
                 } else if theme.get_quest() {
@@ -2542,9 +2537,6 @@ fn main() -> Result<(), slint::PlatformError> {
                     slint::Color::from_rgb_u8(0x86, 0x79, 0x5f)
                 } else if theme.get_synth() {
                     slint::Color::from_rgb_u8(0xff, 0x5a, 0x1e)
-                } else if theme.get_fighter() {
-                    // Fighter Select types them in the cyan of its pause tags.
-                    slint::Color::from_rgb_u8(0x27, 0xe0, 0xff)
                 } else if theme.get_cozy() {
                     // The Cozy Cabin writes them in moss ink.
                     slint::Color::from_rgb_u8(0x4c, 0x6c, 0x20)
@@ -3973,23 +3965,21 @@ fn export_reporter(weak: slint::Weak<AppWindow>) -> impl Fn(f32) {
 }
 
 /// Steps per second of each theme's effect, in the order of `Theme.names`; 0 for none.
-const EFFECT_FPS: [f32; 23] = [
+const EFFECT_FPS: [f32; 20] = [
     0.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0,
 ];
 
 /// Steps per second of motion that runs only while recording (not paused), such as the Tape
-/// Deck reels (12), the Phosphor status lamp blinking (4), the Comic Book's boiling STOP
-/// burst (6), the Pocket status dot blinking (4), the Quest Menu's blinking glove and lamp
-/// (4), the Brick Phone's blinking LCD dot (4), the Answering Machine's micro cassette
-/// reels and NEW lamp (12), the Pocket Synth's blinking status square (4), the Fighter
-/// Select's blinking P1 cursor (4), the Cozy Cabin's fireflies, lantern flame and status dot
-/// (8), the Pinball display's blinking status lamp (4) and the Phonograph's turning mandrel
-/// hub and cylinder sheen (12); the clock stands still otherwise, so a still page costs
-/// nothing.
-const RECORDING_FPS: [f32; 23] = [
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0, 4.0, 0.0, 6.0, 0.0, 0.0, 4.0, 4.0, 4.0, 12.0,
-    4.0, 4.0, 8.0, 4.0, 12.0,
+/// Deck reels (12), the Comic Book's boiling STOP burst (6), the Pocket status dot blinking
+/// (4), the Quest Menu's blinking glove and lamp (4), the Brick Phone's blinking LCD dot (4),
+/// the Answering Machine's micro cassette reels and NEW lamp (12), the Pocket Synth's
+/// blinking status square (4), the Cozy Cabin's fireflies, lantern flame and status dot (8),
+/// the Pinball display's blinking status lamp (4) and the Phonograph's turning mandrel hub
+/// and cylinder sheen (12); the clock stands still otherwise, so a still page costs nothing.
+const RECORDING_FPS: [f32; 20] = [
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0, 0.0, 6.0, 0.0, 4.0, 4.0, 4.0, 12.0, 4.0, 8.0,
+    4.0, 12.0,
 ];
 
 /// Advances `Fx.t`, the clock of the theme effects, twice as fast while recording. It
@@ -4489,6 +4479,9 @@ mod tests {
         let names = slint_list(common, "out property <[string]> names:");
         let skins = slint_list(common, "out property <[int]> skins:");
         assert_eq!(names.len(), skins.len());
+        // The effect clocks are read by the place in Theme.names.
+        assert_eq!(names.len(), super::EFFECT_FPS.len());
+        assert_eq!(names.len(), super::RECORDING_FPS.len());
         let ui = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("ui");
         let mut tiles = Vec::new();
         for line in gallery
@@ -4513,7 +4506,7 @@ mod tests {
         }
         // The art of every device skin is there, so a new one needs only its line.
         let thumbs = std::fs::read_dir(ui.join("skins/thumbs")).unwrap().count();
-        assert_eq!(thumbs, 30);
+        assert_eq!(thumbs, 24);
     }
 
     #[test]

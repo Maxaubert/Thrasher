@@ -17,13 +17,10 @@ import "./fonts/Caveat-700.ttf";
 import "./fonts/Oswald-500.ttf";
 import "./fonts/Oswald-600.ttf";
 import "./fonts/VT323-400.ttf";
-import "./fonts/IBMPlexMono-Regular.ttf";
 import "./fonts/Pixel95-400.ttf";
 import "./fonts/Pixel95-700.ttf";
 import "./fonts/Bangers-400.ttf";
 import "./fonts/ComicNeue-700.ttf";
-import "./fonts/SpatialFigures-300.ttf";
-import "./fonts/SpatialFigures-400.ttf";
 import "./fonts/Manrope-500.ttf";
 import "./fonts/Manrope-700.ttf";
 import "./fonts/Manrope-800.ttf";
@@ -42,9 +39,6 @@ import "./fonts/CourierPrime-400.ttf";
 import "./fonts/CourierPrime-700.ttf";
 import "./fonts/MemoSegments-400.ttf";
 import "./fonts/SynthFigures-700.ttf";
-import "./fonts/Anton-400.ttf";
-import "./fonts/FighterOblique-400.ttf";
-import "./fonts/FighterFigures-400.ttf";
 import "./fonts/Tiny5-400.ttf";
 import "./fonts/CozyFigures-400.ttf";
 import "./fonts/BarlowCondensed-400.ttf";
@@ -65,17 +59,14 @@ import {
 import { ThemeGallery, Gallery, ThemeTile } from "gallery.slint";
 import { MainPage as ClassicMain } from "skins/classic.slint";
 import { MainPage as TapeMain } from "skins/tape.slint";
-import { MainPage as PhosphorMain } from "skins/phosphor.slint";
 import { MainPage as Os95Main } from "skins/dv-os95.slint";
 import { MainPage as ComicMain } from "skins/x-comic.slint";
-import { MainPage as SpatialMain } from "skins/x-spatial.slint";
 import { MainPage as DashMain } from "skins/x-dash.slint";
 import { MainPage as PocketMain } from "skins/px-pocket.slint";
 import { MainPage as QuestMain } from "skins/px-quest.slint";
 import { MainPage as BrickMain } from "skins/dv-brick.slint";
 import { MainPage as AnswerMain } from "skins/dv-answer.slint";
 import { MainPage as SynthMain } from "skins/dv-synth.slint";
-import { MainPage as FighterMain } from "skins/x-fighter.slint";
 import { MainPage as CozyMain } from "skins/px-cozy.slint";
 import { MainPage as PinballMain } from "skins/x-pinball.slint";
 import { MainPage as PhonoMain } from "skins/x-phono.slint";
@@ -84,10 +75,6 @@ import {
     Widget as TapeWidget, Dialog as TapeDialog, Speaking as TapeSpeaking, Drop as TapeDrop,
 } from "skins/tape-pages.slint";
 import {
-    ClipPage as PhosClip, SettingsPage as PhosSettings, ModelsPage as PhosModels, MergePage as PhosMerge, AskPage as PhosAsk,
-    Widget as PhosWidget, Dialog as PhosDialog, Speaking as PhosSpeaking, Drop as PhosDrop,
-} from "skins/phosphor-pages.slint";
-import {
     ClipPage as Os95Clip, SettingsPage as Os95Settings, ModelsPage as Os95Models, MergePage as Os95Merge, AskPage as Os95Ask,
     Widget as Os95Widget, Dialog as Os95Dialog, Speaking as Os95Speaking, Drop as Os95Drop,
 } from "skins/dv-os95-pages.slint";
@@ -95,10 +82,6 @@ import {
     ClipPage as ComicClip, SettingsPage as ComicSettings, ModelsPage as ComicModels, MergePage as ComicMerge, AskPage as ComicAsk,
     Widget as ComicWidget, Dialog as ComicDialog, Speaking as ComicSpeaking, Drop as ComicDrop,
 } from "skins/x-comic-pages.slint";
-import {
-    ClipPage as SpatialClip, SettingsPage as SpatialSettings, ModelsPage as SpatialModels, MergePage as SpatialMerge, AskPage as SpatialAsk,
-    Widget as SpatialWidget, Dialog as SpatialDialog, Speaking as SpatialSpeaking, Drop as SpatialDrop,
-} from "skins/x-spatial-pages.slint";
 import {
     ClipPage as DashClip, SettingsPage as DashSettings, ModelsPage as DashModels, MergePage as DashMerge, AskPage as DashAsk,
     Widget as DashWidget, Dialog as DashDialog, Speaking as DashSpeaking, Drop as DashDrop,
@@ -123,10 +106,6 @@ import {
     ClipPage as SynthClip, SettingsPage as SynthSettings, ModelsPage as SynthModels, MergePage as SynthMerge, AskPage as SynthAsk,
     Widget as SynthWidget, Dialog as SynthDialog, Speaking as SynthSpeaking, Drop as SynthDrop,
 } from "skins/dv-synth-pages.slint";
-import {
-    ClipPage as FighterClip, SettingsPage as FighterSettings, ModelsPage as FighterModels, MergePage as FighterMerge, AskPage as FighterAsk,
-    Widget as FighterWidget, Dialog as FighterDialog, Speaking as FighterSpeaking, Drop as FighterDrop,
-} from "skins/x-fighter-pages.slint";
 import {
     ClipPage as CozyClip, SettingsPage as CozySettings, ModelsPage as CozyModels, MergePage as CozyMerge, AskPage as CozyAsk,
     Widget as CozyWidget, Dialog as CozyDialog, Speaking as CozySpeaking, Drop as CozyDrop,
@@ -710,28 +689,25 @@ export component AppWindow inherits Window {
         }
 
         if compact && Theme.pages == 1: TapeWidget { }
-        if compact && Theme.pages == 2: PhosWidget { }
         if compact && Theme.pages == 3: Os95Widget { }
         if compact && Theme.pages == 4: ComicWidget { }
-        if compact && Theme.pages == 5: SpatialWidget { }
         if compact && Theme.pages == 6: DashWidget { }
         if compact && Theme.pages == 7: PocketWidget { }
         if compact && Theme.pages == 8: QuestWidget { }
         if compact && Theme.pages == 9: BrickWidget { }
         if compact && Theme.pages == 10: AnswerWidget { }
         if compact && Theme.pages == 11: SynthWidget { }
-        if compact && Theme.pages == 12: FighterWidget { }
         if compact && Theme.pages == 13: CozyWidget { }
         if compact && Theme.pages == 14: PinballWidget { }
         if compact && Theme.pages == 15: PhonoWidget { }
 
         // ---------- Clips (main) ----------
         // The theme's skin builds it (ui/skins); the state and actions are in Main.
-        // The other pages by `Theme.pages`: Tape Deck's own (1), Phosphor's (2), Desktop 95's (3),
-        // the Comic Book's (4), Spatial Glass's (5), the Car Dashboard's (6), Pocket's (7), the
-        // Quest Menu's (8), the Brick Phone's (9), the Answering Machine's (10), the Pocket Synth's
-        // (11), Fighter Select's (12), the Cozy Cabin's (13), Pinball's (14), and the classic ones
-        // (0) for every other skin until it gets its own.
+        // The other pages by `Theme.pages`: Tape Deck's own (1), Desktop 95's (3), the Comic
+        // Book's (4), the Car Dashboard's (6), Pocket's (7), the Quest Menu's (8), the Brick
+        // Phone's (9), the Answering Machine's (10), the Pocket Synth's (11), the Cozy Cabin's
+        // (13), Pinball's (14), the Phonograph's (15), and the classic ones (0) for every other
+        // skin until it gets its own.
         if !compact && page == 0 && Theme.skin == 0: ClassicMain {
             narrow: root.narrow;
             wide: root.wide;
@@ -750,15 +726,6 @@ export component AppWindow inherits Window {
             ask-delete(i) => { root.ask-delete(i); }
             refocus => { keys.focus(); }
         }
-        if !compact && page == 0 && Theme.skin == 2: PhosphorMain {
-            narrow: root.narrow;
-            wide: root.wide;
-            tall: root.tall;
-            go(p) => { root.go(p); }
-            ask-rename(i) => { root.ask-rename(i); }
-            ask-delete(i) => { root.ask-delete(i); }
-            refocus => { keys.focus(); }
-        }
         if !compact && page == 0 && Theme.skin == 3: Os95Main {
             narrow: root.narrow;
             wide: root.wide;
@@ -769,15 +736,6 @@ export component AppWindow inherits Window {
             refocus => { keys.focus(); }
         }
         if !compact && page == 0 && Theme.skin == 4: ComicMain {
-            narrow: root.narrow;
-            wide: root.wide;
-            tall: root.tall;
-            go(p) => { root.go(p); }
-            ask-rename(i) => { root.ask-rename(i); }
-            ask-delete(i) => { root.ask-delete(i); }
-            refocus => { keys.focus(); }
-        }
-        if !compact && page == 0 && Theme.skin == 5: SpatialMain {
             narrow: root.narrow;
             wide: root.wide;
             tall: root.tall;
@@ -832,15 +790,6 @@ export component AppWindow inherits Window {
             refocus => { keys.focus(); }
         }
         if !compact && page == 0 && Theme.skin == 11: SynthMain {
-            narrow: root.narrow;
-            wide: root.wide;
-            tall: root.tall;
-            go(p) => { root.go(p); }
-            ask-rename(i) => { root.ask-rename(i); }
-            ask-delete(i) => { root.ask-delete(i); }
-            refocus => { keys.focus(); }
-        }
-        if !compact && page == 0 && Theme.skin == 12: FighterMain {
             narrow: root.narrow;
             wide: root.wide;
             tall: root.tall;
@@ -1389,62 +1338,6 @@ export component AppWindow inherits Window {
             plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
         }
 
-        if !compact && page == 1 && root.selected >= 0 && Theme.pages == 2: PhosClip {
-            narrow: root.narrow;
-            wide: root.wide;
-            go(p) => { root.go(p); }
-            refocus => { keys.focus(); }
-            leave-editor(p) => { root.leave-editor(p); }
-            start-edit => { root.start-edit(); }
-            ask-delete(i) => { root.ask-delete(i); }
-            rename-selected(t) => { root.rename-selected(t); }
-            toggle-play => { root.toggle-play(); }
-            skip(s) => { root.skip(s); }
-            speed-changed(i) => { root.speed-changed(i); }
-            trim-changed(a, b) => { root.trim-changed(a, b); }
-            clean-voice-changed(on) => { root.clean-voice-changed(on); }
-            parts-move(a, b) => { root.parts-move(a, b); }
-            part-take-out(i) => { root.part-take-out(i); }
-            rename-part(i) => { root.ask-rename-part(i); }
-            choose-lang(c) => { root.choose-lang(c); }
-            lang-filter(t) => { root.lang-filter(t); }
-            install-for(k) => { root.install-for(k); }
-            summarise => { root.summarise-selected(); }
-            edit-changed(t) => { root.edit-changed(t); }
-            apply-transcript(t) => { root.apply-transcript(t); }
-            transcribe => { root.transcribe-selected(); }
-            seek-word(i) => { root.seek-word(i); }
-            edit-markup(t) => { return root.edit-markup(t); }
-            plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
-        }
-        if !compact && page == 1 && root.selected >= 0 && Theme.pages == 5: SpatialClip {
-            narrow: root.narrow;
-            wide: root.wide;
-            go(p) => { root.go(p); }
-            refocus => { keys.focus(); }
-            leave-editor(p) => { root.leave-editor(p); }
-            start-edit => { root.start-edit(); }
-            ask-delete(i) => { root.ask-delete(i); }
-            rename-selected(t) => { root.rename-selected(t); }
-            toggle-play => { root.toggle-play(); }
-            skip(s) => { root.skip(s); }
-            speed-changed(i) => { root.speed-changed(i); }
-            trim-changed(a, b) => { root.trim-changed(a, b); }
-            clean-voice-changed(on) => { root.clean-voice-changed(on); }
-            parts-move(a, b) => { root.parts-move(a, b); }
-            part-take-out(i) => { root.part-take-out(i); }
-            rename-part(i) => { root.ask-rename-part(i); }
-            choose-lang(c) => { root.choose-lang(c); }
-            lang-filter(t) => { root.lang-filter(t); }
-            install-for(k) => { root.install-for(k); }
-            summarise => { root.summarise-selected(); }
-            edit-changed(t) => { root.edit-changed(t); }
-            apply-transcript(t) => { root.apply-transcript(t); }
-            transcribe => { root.transcribe-selected(); }
-            seek-word(i) => { root.seek-word(i); }
-            edit-markup(t) => { return root.edit-markup(t); }
-            plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
-        }
         if !compact && page == 1 && root.selected >= 0 && Theme.pages == 6: DashClip {
             narrow: root.narrow;
             wide: root.wide;
@@ -1586,34 +1479,6 @@ export component AppWindow inherits Window {
             plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
         }
         if !compact && page == 1 && root.selected >= 0 && Theme.pages == 11: SynthClip {
-            narrow: root.narrow;
-            wide: root.wide;
-            go(p) => { root.go(p); }
-            refocus => { keys.focus(); }
-            leave-editor(p) => { root.leave-editor(p); }
-            start-edit => { root.start-edit(); }
-            ask-delete(i) => { root.ask-delete(i); }
-            rename-selected(t) => { root.rename-selected(t); }
-            toggle-play => { root.toggle-play(); }
-            skip(s) => { root.skip(s); }
-            speed-changed(i) => { root.speed-changed(i); }
-            trim-changed(a, b) => { root.trim-changed(a, b); }
-            clean-voice-changed(on) => { root.clean-voice-changed(on); }
-            parts-move(a, b) => { root.parts-move(a, b); }
-            part-take-out(i) => { root.part-take-out(i); }
-            rename-part(i) => { root.ask-rename-part(i); }
-            choose-lang(c) => { root.choose-lang(c); }
-            lang-filter(t) => { root.lang-filter(t); }
-            install-for(k) => { root.install-for(k); }
-            summarise => { root.summarise-selected(); }
-            edit-changed(t) => { root.edit-changed(t); }
-            apply-transcript(t) => { root.apply-transcript(t); }
-            transcribe => { root.transcribe-selected(); }
-            seek-word(i) => { root.seek-word(i); }
-            edit-markup(t) => { return root.edit-markup(t); }
-            plain-selection(t, a, b) => { return root.plain-selection(t, a, b); }
-        }
-        if !compact && page == 1 && root.selected >= 0 && Theme.pages == 12: FighterClip {
             narrow: root.narrow;
             wide: root.wide;
             go(p) => { root.go(p); }
@@ -2172,32 +2037,6 @@ export component AppWindow inherits Window {
             ask(q, all) => { root.ask(q, all); }
             open-source(i) => { root.open-source(i); }
         }
-        if !compact && page == 3 && Theme.pages == 5: SpatialSettings {
-            wide: root.wide;
-            back => { root.go(root.settings-back); }
-            go(p) => { root.go(p); }
-            refocus => { keys.focus(); }
-            theme-changed(i) => { root.theme-changed(i); }
-            mic-changed(i) => { root.mic-changed(i); }
-            system-changed(on) => { root.system-changed(on); }
-            recording-limit-changed(i) => { root.recording-limit-changed(i); }
-            hotkey-captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
-            hotkey-accepted(t) => { root.hotkey-accepted(t); }
-            open-folder => { root.open-folder(); }
-            change-folder => { root.change-folder(); }
-            template-edited(t) => { root.template-edited(t); }
-            template-accepted(t) => { root.template-accepted(t); }
-            export-format-changed(i) => { root.export-format-changed(i); }
-            clean-voice-changed(on) => { root.clean-voice-changed(on); }
-            language-changed(i) => { root.language-changed(i); }
-            auto-transcribe-changed(on) => { root.auto-transcribe-changed(on); }
-            ai-names-changed(on) => { root.ai-names-changed(on); }
-            max-pause-changed(i) => { root.max-pause-changed(i); }
-            ai-model-changed(i) => { root.ai-model-changed(i); }
-            download-ai(k) => { root.download-ai(k); }
-            close-to-tray-changed(on) => { root.close-to-tray-changed(on); }
-            start-with-windows-changed(on) => { root.start-with-windows-changed(on); }
-        }
         if !compact && page == 3 && Theme.pages == 6: DashSettings {
             wide: root.wide;
             back => { root.go(root.settings-back); }
@@ -2355,32 +2194,6 @@ export component AppWindow inherits Window {
             close-to-tray-changed(on) => { root.close-to-tray-changed(on); }
             start-with-windows-changed(on) => { root.start-with-windows-changed(on); }
         }
-        if !compact && page == 3 && Theme.pages == 12: FighterSettings {
-            wide: root.wide;
-            back => { root.go(root.settings-back); }
-            go(p) => { root.go(p); }
-            refocus => { keys.focus(); }
-            theme-changed(i) => { root.theme-changed(i); }
-            mic-changed(i) => { root.mic-changed(i); }
-            system-changed(on) => { root.system-changed(on); }
-            recording-limit-changed(i) => { root.recording-limit-changed(i); }
-            hotkey-captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
-            hotkey-accepted(t) => { root.hotkey-accepted(t); }
-            open-folder => { root.open-folder(); }
-            change-folder => { root.change-folder(); }
-            template-edited(t) => { root.template-edited(t); }
-            template-accepted(t) => { root.template-accepted(t); }
-            export-format-changed(i) => { root.export-format-changed(i); }
-            clean-voice-changed(on) => { root.clean-voice-changed(on); }
-            language-changed(i) => { root.language-changed(i); }
-            auto-transcribe-changed(on) => { root.auto-transcribe-changed(on); }
-            ai-names-changed(on) => { root.ai-names-changed(on); }
-            max-pause-changed(i) => { root.max-pause-changed(i); }
-            ai-model-changed(i) => { root.ai-model-changed(i); }
-            download-ai(k) => { root.download-ai(k); }
-            close-to-tray-changed(on) => { root.close-to-tray-changed(on); }
-            start-with-windows-changed(on) => { root.start-with-windows-changed(on); }
-        }
         if !compact && page == 3 && Theme.pages == 13: CozySettings {
             wide: root.wide;
             back => { root.go(root.settings-back); }
@@ -2467,14 +2280,6 @@ export component AppWindow inherits Window {
             cancel-download => { root.cancel-download(); }
             download-model(i) => { root.download-model(i); }
         }
-        if !compact && page == 4 && Theme.pages == 5: SpatialModels {
-            wide: root.wide;
-            back => { root.go(root.models-back); }
-            filter-changed => { root.models-filter-changed(); }
-            use-model(i) => { root.use-model(i); }
-            cancel-download => { root.cancel-download(); }
-            download-model(i) => { root.download-model(i); }
-        }
         if !compact && page == 4 && Theme.pages == 6: DashModels {
             wide: root.wide;
             back => { root.go(root.models-back); }
@@ -2524,14 +2329,6 @@ export component AppWindow inherits Window {
             cancel-download => { root.cancel-download(); }
             download-model(i) => { root.download-model(i); }
         }
-        if !compact && page == 4 && Theme.pages == 12: FighterModels {
-            wide: root.wide;
-            back => { root.go(root.models-back); }
-            filter-changed => { root.models-filter-changed(); }
-            use-model(i) => { root.use-model(i); }
-            cancel-download => { root.cancel-download(); }
-            download-model(i) => { root.download-model(i); }
-        }
         if !compact && page == 4 && Theme.pages == 13: CozyModels {
             wide: root.wide;
             back => { root.go(root.models-back); }
@@ -2557,14 +2354,6 @@ export component AppWindow inherits Window {
             download-model(i) => { root.download-model(i); }
         }
         if !compact && page == 5 && Theme.pages == 1: TapeMerge {
-            wide: root.wide;
-            go(p) => { root.go(p); }
-            move(a, b) => { root.merge-move(a, b); }
-            remove(i) => { root.merge-remove(i); }
-            play(i) => { root.merge-play(i); }
-            run(name) => { root.merge-run(name); }
-        }
-        if !compact && page == 5 && Theme.pages == 5: SpatialMerge {
             wide: root.wide;
             go(p) => { root.go(p); }
             move(a, b) => { root.merge-move(a, b); }
@@ -2614,14 +2403,6 @@ export component AppWindow inherits Window {
             run(name) => { root.merge-run(name); }
         }
         if !compact && page == 5 && Theme.pages == 11: SynthMerge {
-            wide: root.wide;
-            go(p) => { root.go(p); }
-            move(a, b) => { root.merge-move(a, b); }
-            remove(i) => { root.merge-remove(i); }
-            play(i) => { root.merge-play(i); }
-            run(name) => { root.merge-run(name); }
-        }
-        if !compact && page == 5 && Theme.pages == 12: FighterMerge {
             wide: root.wide;
             go(p) => { root.go(p); }
             move(a, b) => { root.merge-move(a, b); }
@@ -2708,60 +2489,6 @@ export component AppWindow inherits Window {
             open-source(i) => { root.open-source(i); }
         }
 
-        if !compact && page == 3 && Theme.pages == 2: PhosSettings {
-            wide: root.wide;
-            back => { root.go(root.settings-back); }
-            go(p) => { root.go(p); }
-            refocus => { keys.focus(); }
-            theme-changed(i) => { root.theme-changed(i); }
-            mic-changed(i) => { root.mic-changed(i); }
-            system-changed(on) => { root.system-changed(on); }
-            recording-limit-changed(i) => { root.recording-limit-changed(i); }
-            hotkey-captured(text, ctrl, alt, shift, meta) => { return root.hotkey-captured(text, ctrl, alt, shift, meta); }
-            hotkey-accepted(t) => { root.hotkey-accepted(t); }
-            open-folder => { root.open-folder(); }
-            change-folder => { root.change-folder(); }
-            template-edited(t) => { root.template-edited(t); }
-            template-accepted(t) => { root.template-accepted(t); }
-            export-format-changed(i) => { root.export-format-changed(i); }
-            clean-voice-changed(on) => { root.clean-voice-changed(on); }
-            language-changed(i) => { root.language-changed(i); }
-            auto-transcribe-changed(on) => { root.auto-transcribe-changed(on); }
-            ai-names-changed(on) => { root.ai-names-changed(on); }
-            max-pause-changed(i) => { root.max-pause-changed(i); }
-            ai-model-changed(i) => { root.ai-model-changed(i); }
-            download-ai(k) => { root.download-ai(k); }
-            close-to-tray-changed(on) => { root.close-to-tray-changed(on); }
-            start-with-windows-changed(on) => { root.start-with-windows-changed(on); }
-        }
-        if !compact && page == 4 && Theme.pages == 2: PhosModels {
-            wide: root.wide;
-            back => { root.go(root.models-back); }
-            filter-changed => { root.models-filter-changed(); }
-            use-model(i) => { root.use-model(i); }
-            cancel-download => { root.cancel-download(); }
-            download-model(i) => { root.download-model(i); }
-        }
-        if !compact && page == 5 && Theme.pages == 2: PhosMerge {
-            wide: root.wide;
-            go(p) => { root.go(p); }
-            move(a, b) => { root.merge-move(a, b); }
-            remove(i) => { root.merge-remove(i); }
-            play(i) => { root.merge-play(i); }
-            run(name) => { root.merge-run(name); }
-        }
-        if !compact && page == 6 && Theme.pages == 2: PhosAsk {
-            wide: root.wide;
-            go(p) => { root.go(p); }
-            ask(q, all) => { root.ask(q, all); }
-            open-source(i) => { root.open-source(i); }
-        }
-        if !compact && page == 6 && Theme.pages == 5: SpatialAsk {
-            wide: root.wide;
-            go(p) => { root.go(p); }
-            ask(q, all) => { root.ask(q, all); }
-            open-source(i) => { root.open-source(i); }
-        }
         if !compact && page == 6 && Theme.pages == 6: DashAsk {
             wide: root.wide;
             go(p) => { root.go(p); }
@@ -2794,12 +2521,6 @@ export component AppWindow inherits Window {
             open-source(i) => { root.open-source(i); }
         }
         if !compact && page == 6 && Theme.pages == 11: SynthAsk {
-            wide: root.wide;
-            go(p) => { root.go(p); }
-            ask(q, all) => { root.ask(q, all); }
-            open-source(i) => { root.open-source(i); }
-        }
-        if !compact && page == 6 && Theme.pages == 12: FighterAsk {
             wide: root.wide;
             go(p) => { root.go(p); }
             ask(q, all) => { root.ask(q, all); }
@@ -3256,10 +2977,8 @@ export component AppWindow inherits Window {
     }
 
     if root.speaking && !root.compact && Theme.pages == 1: TapeSpeaking { cancel => { root.cancel-speaking(); } }
-    if root.speaking && !root.compact && Theme.pages == 2: PhosSpeaking { cancel => { root.cancel-speaking(); } }
     if root.speaking && !root.compact && Theme.pages == 3: Os95Speaking { cancel => { root.cancel-speaking(); } }
     if root.speaking && !root.compact && Theme.pages == 4: ComicSpeaking { cancel => { root.cancel-speaking(); } }
-    if root.speaking && !root.compact && Theme.pages == 5: SpatialSpeaking { cancel => { root.cancel-speaking(); } }
     if root.speaking && !root.compact && Theme.pages == 6: DashSpeaking { cancel => { root.cancel-speaking(); } }
     if root.speaking && !root.compact && Theme.pages == 7: PocketSpeaking { cancel => { root.cancel-speaking(); } }
     if root.speaking && !root.compact && Theme.pages == 8: QuestSpeaking { cancel => { root.cancel-speaking(); } }
@@ -3270,7 +2989,6 @@ export component AppWindow inherits Window {
     }
     if root.speaking && !root.compact && Theme.pages == 10: AnswerSpeaking { cancel => { root.cancel-speaking(); } }
     if root.speaking && !root.compact && Theme.pages == 11: SynthSpeaking { cancel => { root.cancel-speaking(); } }
-    if root.speaking && !root.compact && Theme.pages == 12: FighterSpeaking { cancel => { root.cancel-speaking(); } }
     if root.speaking && !root.compact && Theme.pages == 13: CozySpeaking { cancel => { root.cancel-speaking(); } }
     if root.speaking && !root.compact && Theme.pages == 14: PinballSpeaking { cancel => { root.cancel-speaking(); } }
     if root.speaking && !root.compact && Theme.pages == 15: PhonoSpeaking { cancel => { root.cancel-speaking(); } }
@@ -3316,7 +3034,6 @@ export component AppWindow inherits Window {
     }
 
     if root.dropping && !root.compact && Theme.pages == 1: TapeDrop { }
-    if root.dropping && !root.compact && Theme.pages == 2: PhosDrop { }
     if root.dropping && !root.compact && Theme.pages == 3: Os95Drop { }
     if root.dialog-shown && Theme.pages == 3: Os95Dialog {
         title: root.dialog-title;
@@ -3330,7 +3047,6 @@ export component AppWindow inherits Window {
         discard => { root.discard-edit(); }
     }
     if root.dropping && !root.compact && Theme.pages == 4: ComicDrop { }
-    if root.dropping && !root.compact && Theme.pages == 5: SpatialDrop { }
     if root.dropping && !root.compact && Theme.pages == 6: DashDrop { }
     if root.dropping && !root.compact && Theme.pages == 7: PocketDrop { }
     if root.dropping && !root.compact && Theme.pages == 8: QuestDrop { }
@@ -3340,7 +3056,6 @@ export component AppWindow inherits Window {
     }
     if root.dropping && !root.compact && Theme.pages == 10: AnswerDrop { }
     if root.dropping && !root.compact && Theme.pages == 11: SynthDrop { }
-    if root.dropping && !root.compact && Theme.pages == 12: FighterDrop { }
     if root.dropping && !root.compact && Theme.pages == 13: CozyDrop { }
     if root.dropping && !root.compact && Theme.pages == 14: PinballDrop { }
     if root.dropping && !root.compact && Theme.pages == 15: PhonoDrop { }
@@ -3355,29 +3070,7 @@ export component AppWindow inherits Window {
         confirm => { root.confirm-dialog(); }
         discard => { root.discard-edit(); }
     }
-    if root.dialog-shown && Theme.pages == 2: PhosDialog {
-        title: root.dialog-title;
-        note: root.dialog-note;
-        field: root.dialog-field;
-        ok: root.dialog-ok;
-        ok-enabled: root.dialog-ok-enabled;
-        clip-name: root.dialog == 2 && root.delete-count <= 1 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length ? root.clips[root.dialog-clip].name : "";
-        close => { root.close-dialog(); }
-        confirm => { root.confirm-dialog(); }
-        discard => { root.discard-edit(); }
-    }
     if root.dialog-shown && Theme.pages == 4: ComicDialog {
-        title: root.dialog-title;
-        note: root.dialog-note;
-        field: root.dialog-field;
-        ok: root.dialog-ok;
-        ok-enabled: root.dialog-ok-enabled;
-        clip-name: root.dialog == 2 && root.delete-count <= 1 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length ? root.clips[root.dialog-clip].name : "";
-        close => { root.close-dialog(); }
-        confirm => { root.confirm-dialog(); }
-        discard => { root.discard-edit(); }
-    }
-    if root.dialog-shown && Theme.pages == 5: SpatialDialog {
         title: root.dialog-title;
         note: root.dialog-note;
         field: root.dialog-field;
@@ -3446,17 +3139,6 @@ export component AppWindow inherits Window {
         discard => { root.discard-edit(); }
     }
     if root.dialog-shown && Theme.pages == 11: SynthDialog {
-        title: root.dialog-title;
-        note: root.dialog-note;
-        field: root.dialog-field;
-        ok: root.dialog-ok;
-        ok-enabled: root.dialog-ok-enabled;
-        clip-name: root.dialog == 2 && root.delete-count <= 1 && root.dialog-clip >= 0 && root.dialog-clip < root.clips.length ? root.clips[root.dialog-clip].name : "";
-        close => { root.close-dialog(); }
-        confirm => { root.confirm-dialog(); }
-        discard => { root.discard-edit(); }
-    }
-    if root.dialog-shown && Theme.pages == 12: FighterDialog {
         title: root.dialog-title;
         note: root.dialog-note;
         field: root.dialog-field;

@@ -1,6 +1,13 @@
 # Device themes: spec and implementation plan
 
 Status: approved by Max 2026-10-28 (full device look on every page, Tape Deck pilot). Owner: Max Aubert.
+Phosphor, Spatial Glass and Fighter Select were removed by Max on 2026-11-06 (branch
+`fix/remove-three-themes`): 12 device themes remain. Their notes below are kept as history;
+their mockups stay in `docs/mockups/device-themes/`. Skin numbers were not renumbered (2, 5
+and 12 are free); `Theme.names` and the palettes lost the three entries, and a saved theme
+name that no longer exists opens in Ember. Release `app.rs` 180.0 to 147.9 MB, exe 111.3 to
+96.0 MB, release rustc of the UI peaked at 22.1 GB; every other theme's main, clip and
+settings pages matched main pixel for pixel at 520x700 and 420x600 (but for the gallery).
 
 ## 1. What and why
 
@@ -16,7 +23,7 @@ side by side). They are the design source.
 | # | Theme | File | Kind |
 |---|---|---|---|
 | 1 | Tape Deck | `tape` | Retro hardware |
-| 2 | Phosphor | `phosphor` | Terminal |
+| 2 | ~~Phosphor~~ (removed by Max 2026-11-06) | `phosphor` | Terminal |
 | 3 | Pocket | `px-pocket` | Pixel handheld |
 | 4 | Quest Menu | `px-quest` | Pixel RPG menu |
 | 5 | Cozy Cabin | `px-cozy` | Pixel world |
@@ -26,10 +33,10 @@ side by side). They are the design source.
 | 9 | Brick Phone | `dv-brick` | Retro hardware |
 | 10 | Phonograph | `x-phono` | Antique |
 | 11 | Pinball | `x-pinball` | Game |
-| 12 | Fighter Select | `x-fighter` | Game |
+| 12 | ~~Fighter Select~~ (removed by Max 2026-11-06) | `x-fighter` | Game |
 | 13 | Comic Book | `x-comic` | Print |
 | 14 | Car Dashboard | `x-dash` | Modern |
-| 15 | Spatial Glass | `x-spatial` | Modern |
+| 15 | ~~Spatial Glass~~ (removed by Max 2026-11-06) | `x-spatial` | Modern |
 
 The 8 current themes (Ember to Cyberpunk) stay as they are.
 
@@ -52,7 +59,7 @@ The 8 current themes (Ember to Cyberpunk) stay as they are.
 ### Skins
 
 - `Theme` gets a `skin` next to the palette: `classic` for the 8 current themes, or one of
-  the 15 device skins.
+  the device skins (15 built, 12 since Max removed three on 2026-11-06).
 - The main page today is one `AppWindow` block in `app.slint` (5,500 lines). It is split
   into five regions: `TitleBar`, `Recorder`, `Toolbar`, `ClipRow` and `Player`. Each takes
   the same inputs and callbacks, collected in shared structs (`RecState`, `ClipRowData`,
@@ -807,6 +814,11 @@ visited in turn in one run, Ember on the same exe, 2026-10-31):
   The Pocket Synth main page differs only by its scroll thumb, now orange.
 - Not verified headless: a model download and the AI download, dropping files (shown with
   THRASHER_TEST_COVER), the answer while thinking.
+**History: Fighter Select was removed by Max on 2026-11-06.** Its skin, art (`ui/skins/x-fighter/`),
+fonts (Anton, Fighter Oblique, Fighter Figures), shared parts (`Fi`, `Pose`, `FiKey` and the
+rest) and gallery tile are gone; skin and pages number 12 is free. The notes down to the
+next skin are kept for their lessons.
+
 **Built in step 5, Fighter Select main page (2026-10-30):** `ui/skins/x-fighter.slint` (skin 12,
 theme "Fighter Select", index 19 in `Theme.names`, after Pocket Synth), art in
 `ui/skins/x-fighter/` (12 PNGs, 0.10 MB) from `tools/skin-art/x-fighter.html`
@@ -1723,6 +1735,12 @@ step 3 was.
   `opt-level = "s"` for the app crate only, the same change is +6.82 MB (29.73 to
   36.55 MB, and the whole exe 4.7 MB smaller). A choice for Max before the other skins.
 
+**History: Phosphor was removed by Max on 2026-11-06.** Its skin, art (`ui/skins/phosphor/`),
+IBM Plex Mono, shared parts (`Ph`, `PhKey`, `PhDash`, `PhShade`, the widgets' bracketed
+`key` and `tail`) and gallery tile are gone; skin and pages number 2 is free. VT323 stays
+(Desktop 95 and the transcript use it). The notes down to Spatial Glass are kept for their
+lessons.
+
 **Built in step 5, Phosphor main page (2026-10-29):**
 - `ui/skins/phosphor.slint` (skin 2, theme "Phosphor", palette 9). The other pages use the
   classic blocks in the Phosphor palette for now: `app.slint` picks those by `Theme.pages`
@@ -1849,6 +1867,10 @@ step 3 was.
   44.8 vs 43.6 MB, wide 55.4 vs 51.7 MB.
 - Exe +2.35 MB (44.83 to 47.18 MB): fonts 0.09 MB, art 0.46 MB, generated code about
   1.8 MB. Ember and Tape Deck main pages at 520x700 and 1100x700 match before and after.
+
+**History: Spatial Glass was removed by Max on 2026-11-06.** Its skin, art (`ui/skins/x-spatial/`),
+Spatial Figures, the `Glass` colours and gallery tile are gone; skin and pages number 5 is
+free. The notes down to the next skin are kept for their lessons.
 
 **Built in step 5, Spatial Glass main page (2026-10-29):** `ui/skins/x-spatial.slint`
 (skin 5, theme "Spatial Glass", index 12 in `Theme.names`), art in `ui/skins/x-spatial/`,
@@ -2401,7 +2423,7 @@ Rules (added to the ones above):
 
 ## 4. Theme picker
 
-With 23 themes, a dropdown is too long. Settings gets a theme gallery: small thumbnails in
+With 23 themes (20 since 2026-11-06), a dropdown is too long. Settings gets a theme gallery: small thumbnails in
 two groups, Classic and Devices. Clicking one switches at once. The thumbnails come from
 the mockup screenshots.
 
@@ -2427,7 +2449,7 @@ across the whole page when it is wide, the other cards stay in their columns und
   switches on click, no Apply. A tile scrolled into view (by key or on opening) clears the
   edge fade; the Ember fade is solid strips on whole device pixels, as a see-through
   gradient left bright specks on tile edges in the software renderer.
-- Device art: `ui/skins/thumbs/<skin>.png` and `<skin>@2x.png` for all 15 skins (2x when
+- Device art: `ui/skins/thumbs/<skin>.png` and `<skin>@2x.png` for all 12 skins (15 until three were removed on 2026-11-06; 2x when
   `1phx < 0.7px`, like the other skin art), cut by `python tools/skin-art/thumbs.py`
   from `mockups/device-themes/<skin>.png` (the wide window, 1000x620, scaled and quantised
   to 64 colours). Re-run it when a mockup screenshot changes.

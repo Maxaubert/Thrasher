@@ -383,7 +383,8 @@ The old colour themes (Volt, Glacier, Mint, Violet, Signal, Chalk) are removed (
 
 ### Device themes (2026-10-28 to 2026-11-02)
 
-Spec and per-skin notes: [device-themes.md](device-themes.md). 15 device skins on top of
+Spec and per-skin notes: [device-themes.md](device-themes.md). 12 device skins (15 until
+Max removed Phosphor, Spatial Glass and Fighter Select on 2026-11-06) on top of
 the classic themes, each with its own main page and the full device look on every other
 page (clip, settings, models, merge, Ask, dialogs, menus, widget), chosen in a theme
 gallery in Settings.

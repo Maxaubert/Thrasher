@@ -81,6 +81,7 @@ for now, so nothing is blocked. Answer whenever; the most important are first.
 20. **Phosphor's bracketed keys** (`[r]ename`, `[t]r`, `[m]arks`) look like keyboard
     shortcuts, but most of those letters do nothing. Add the shortcuts, or draw them
     without the bracketed letter? For now they stay as mocked up.
+    **Answered (moot), 2026-11-06:** Max removed Phosphor, and the bracketed keys went with it.
 21. **CI cannot build the UI any more.** Besides the billing block (question 1), a release
     rustc of the generated UI needs about 25 to 27 GB and a debug one over 30 GB; GitHub's
     Windows runners have 16 GB. Options: a self-hosted runner on this PC, CI for

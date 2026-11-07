@@ -1,6 +1,6 @@
 // The theme gallery of the settings page (docs/device-themes.md, section 4; mockup
 // docs/mockups/device-themes/gallery/gallery.html, layout B): one sideways strip per
-// group, Classic and Devices, with page arrows, a thin scroll bar and a fade. A click
+// group, Classic and Devices, dragged sideways, with a thin scroll bar and a fade. A click
 // switches the theme at once. The classic tiles are the main page drawn live from the
 // palette; the device tiles are pictures in skins/thumbs (tools/skin-art/thumbs.py).
 // Drawn in the Ember look, or the Tape Deck or Desktop 95 or Comic Book look while that
@@ -10,7 +10,7 @@
 // frame. The Pocket Synth draws its tiles as pads, the current one lit orange, and a row of
 // LEDs for where the strip is.
 
-import { Theme, PageHold, Deck, Os, OsBevel, OsDotted, Comic, InkShadow, Quest, QPx, Brick, Am, Palette, Icon, IconBtn, Win, Pk, PkRing, PkTile, SynKey, Cz, CzWell } from "common.slint";
+import { Theme, PageHold, Deck, Os, OsBevel, OsDotted, Comic, InkShadow, Quest, QPx, Brick, Am, Palette, Icon, Win, Pk, PkRing, PkTile, SynKey, Cz, CzWell } from "common.slint";
 import { Pb } from "skins/x-pinball-parts.slint";
 import { Pn, PnDisc } from "skins/x-phono-parts.slint";
 
@@ -91,6 +91,7 @@ component Tile inherits Rectangle {
     in property <bool> classic;
     in property <bool> focused;
     callback picked();
+    callback touch(PointerEvent);
     out property <bool> on: root.tile.index == Theme.current;
     property <bool> hover: t.has-hover;
     property <bool> down: t.pressed && t.has-hover;
@@ -684,6 +685,8 @@ component Tile inherits Rectangle {
 
     t := TouchArea {
         mouse-cursor: pointer;
+        // The strip reads the press and moves for its drag to scroll.
+        pointer-event(e) => { root.touch(e); }
         clicked => { root.picked(); }
     }
 }
@@ -711,7 +714,7 @@ component Fade inherits Rectangle {
     }
 }
 
-// One group: its head (name, count, page arrows), the strip of tiles and its scroll bar.
+// One group: its head (name and count), the strip of tiles and its scroll bar.
 component Strip inherits VerticalLayout {
     in property <string> title;
     in property <[ThemeTile]> tiles;
@@ -771,8 +774,37 @@ component Strip inherits VerticalLayout {
         root.moving = false;
         root.off = span > 0 ? clamp(pos / span * root.max-off, 0, root.max-off) : 0;
     }
-    function page(by: int) {
-        root.scroll-to((round(root.to-off / root.pitch) + by * root.per) * root.pitch);
+    // Drag to scroll: a press on the strip (a tile or a gap) that moves over 5px sideways
+    // drags it, 1:1 with the pointer and no slide. A move that is more up or down than
+    // sideways (or a strip that fits) does not scroll. Either way the release picks no tile.
+    property <bool> held;
+    // 0 not yet moved, 1 dragging sideways, 2 moved but not dragging.
+    property <int> drag;
+    property <length> press-x;
+    property <length> press-y;
+    property <length> press-off;
+    // A press, move or release on the strip; `area` has the pointer's place in the strip.
+    function touch(e: PointerEvent) {
+        if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+            root.held = true;
+            root.drag = 0;
+            root.press-x = area.mouse-x;
+            root.press-y = area.mouse-y;
+            root.press-off = root.to-off;
+        } else if (e.kind == PointerEventKind.move && root.held) {
+            let dx = area.mouse-x - root.press-x;
+            if (root.drag == 0 && (abs(dx) > 5px || abs(area.mouse-y - root.press-y) > 5px)) {
+                root.drag = root.scrolls && abs(dx) >= abs(area.mouse-y - root.press-y) ? 1 : 2;
+            }
+            if (root.drag == 1) {
+                root.moving = false;
+                root.off = clamp(root.press-off - dx, 0, root.max-off);
+            }
+        } else if (e.kind == PointerEventKind.cancel || (e.kind == PointerEventKind.up && e.button == PointerEventButton.left)) {
+            // After the tile's click, which comes first.
+            root.held = false;
+            root.drag = 0;
+        }
     }
     function reveal(i: int) {
         let edge = max(root.end-pad, root.fade-w);
@@ -930,41 +962,6 @@ component Strip inherits VerticalLayout {
             }
         }
         Rectangle { horizontal-stretch: 1; }
-        // Always in the layout, so the width does not depend on whether it scrolls.
-        HorizontalLayout {
-            visible: root.scrolls;
-            spacing: Theme.tape ? 3px : 2px;
-            VerticalLayout {
-                alignment: center;
-                IconBtn {
-                    size: Theme.os95 ? 22px : Theme.pocket ? 18px : Theme.quest ? 27px : Theme.brick ? 18px : Theme.answer ? 24px : 26px;
-                    height: Theme.tape ? 22px : Theme.os95 || Theme.pocket ? 18px : Theme.comic ? 24px : Theme.quest ? 27px : Theme.brick ? 18px : Theme.answer ? 22px : 26px;
-                    round: !Theme.comic && !Theme.brick && !Theme.answer;
-                    icon: "back";
-                    icon-size: Theme.tape ? 11px : 13px;
-                    tint: Theme.muted;
-                    label: "Previous " + root.title + " themes";
-                    tip: "Previous";
-                    enabled: root.x-off > 0.5px;
-                    clicked => { root.page(-1); }
-                }
-            }
-            VerticalLayout {
-                alignment: center;
-                IconBtn {
-                    size: Theme.os95 ? 22px : Theme.pocket ? 18px : Theme.quest ? 27px : Theme.brick ? 18px : Theme.answer ? 24px : 26px;
-                    height: Theme.tape ? 22px : Theme.os95 || Theme.pocket ? 18px : Theme.comic ? 24px : Theme.quest ? 27px : Theme.brick ? 18px : Theme.answer ? 22px : 26px;
-                    round: !Theme.comic && !Theme.brick && !Theme.answer;
-                    icon: "chevron";
-                    icon-size: Theme.tape ? 11px : 13px;
-                    tint: Theme.muted;
-                    label: "More " + root.title + " themes";
-                    tip: "More";
-                    enabled: root.x-off < root.max-off - 0.5px;
-                    clicked => { root.page(1); }
-                }
-            }
-        }
     }
 
     // The strip.
@@ -1002,8 +999,10 @@ component Strip inherits VerticalLayout {
                 reject
             }
         }
-        // The mouse wheel scrolls the strip under it while it can move, then the page.
-        TouchArea {
+        // The mouse wheel scrolls the strip under it while it can move, then the page. A press
+        // here or on a tile drags the strip (`touch`); its mouse-x follows a tile's press too.
+        area := TouchArea {
+            pointer-event(e) => { root.touch(e); }
             scroll-event(e) => {
                 let d = e.delta-x != 0 ? e.delta-x : e.delta-y;
                 let next = clamp(root.to-off - d, 0, root.max-off);
@@ -1030,9 +1029,12 @@ component Strip inherits VerticalLayout {
                         root.cur-pos = -1;
                     }
                 }
+                touch(e) => { root.touch(e); }
                 picked => {
-                    root.cursor = i;
-                    root.pick(i);
+                    if (root.drag == 0) {
+                        root.cursor = i;
+                        root.pick(i);
+                    }
                 }
             }
         }

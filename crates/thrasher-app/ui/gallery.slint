@@ -758,8 +758,12 @@ component Strip inherits VerticalLayout {
     // The scroll offset; a binding to the start until the strip is moved.
     property <length> off: root.at >= 0 ? root.at-off : root.start < 0 || root.start * root.pitch + root.tile-w + root.end-pad <= root.view-w ? 0 : min(root.max-off, root.start * root.pitch - root.fade-w);
     // Where the strip is going, and where it is drawn while it slides there.
-    property <length> to-off: clamp(root.off, 0, root.max-off);
+    property <length> to-off: clamp(root.off, -root.room, root.max-off + root.room);
+    // Room past the strip's start or end that a pick left to hold its tile (see `cur-pos`).
+    property <length> room;
     property <length> x-off: root.to-off;
+    // Where the scroll bar shows it: room past an end does not move the thumb.
+    property <length> bar-off: clamp(root.x-off, 0, root.max-off);
     property <bool> moving;
     animate x-off { duration: root.moving ? 180ms : 0ms; easing: ease-out; }
     // The tile under the keyboard focus.
@@ -798,7 +802,7 @@ component Strip inherits VerticalLayout {
             }
             if (root.drag == 1) {
                 root.moving = false;
-                root.off = clamp(root.press-off - dx, 0, root.max-off);
+                root.off = clamp(root.press-off - dx, min(0px, root.press-off), max(root.max-off, root.press-off));
             }
         } else if (e.kind == PointerEventKind.cancel || (e.kind == PointerEventKind.up && e.button == PointerEventButton.left)) {
             // After the tile's click, which comes first.
@@ -839,8 +843,12 @@ component Strip inherits VerticalLayout {
             Gallery.hold = false;
             let left = root.cur-pos * root.pitch;
             let o = view.absolute-position.x + root.pad + left - Gallery.hold-x;
+            let want = max(left + root.tile-w + root.end-pad - root.view-w, min(left, o));
             root.moving = false;
-            root.off = max(0px, min(root.max-off, max(left + root.tile-w + root.end-pad - root.view-w, min(left, o))));
+            // A strip that scrolls may go past its start or end to hold the tile: room before
+            // the first tile or after the last, gone with the strip's next move.
+            root.room = root.scrolls ? abs(want - clamp(want, 0, root.max-off)) : 0;
+            root.off = root.scrolls ? want : 0;
             PageHold.shift = Gallery.hold-y - view.absolute-position.y - root.tile-y;
             PageHold.shifts += 1;
         }
@@ -1075,7 +1083,7 @@ component Strip inherits VerticalLayout {
                 vertical-alignment: top;
             }
             if Theme.pocket: PkTile { x: 0; y: 0; width: parent.width; height: parent.height; source: @image-url("skins/px-pocket/dith.png"); }
-            property <int> led-on: round(root.x-off / root.pitch);
+            property <int> led-on: round(root.bar-off / root.pitch);
             for k in Theme.synth ? root.n : 0: Rectangle {
                 x: (parent.width - root.n * 9px + 4px) / 2 + k * 9px;
                 y: 0;
@@ -1085,7 +1093,7 @@ component Strip inherits VerticalLayout {
                 background: k == parent.led-on ? #ff5a1e : #c4c0b6;
             }
             if !Theme.synth: Rectangle {
-                x: Theme.quest ? 3px + (root.max-off > 0 ? root.x-off / root.max-off * (parent.width - 6px - self.width) : 0) : root.max-off > 0 ? root.x-off / root.max-off * (parent.width - self.width) : 0;
+                x: Theme.quest ? 3px + (root.max-off > 0 ? root.bar-off / root.max-off * (parent.width - 6px - self.width) : 0) : root.max-off > 0 ? root.bar-off / root.max-off * (parent.width - self.width) : 0;
                 y: Theme.phono ? -2px : Theme.pinball ? -4px : Theme.tape ? -1px : Theme.quest ? 3px : Theme.answer ? -3px : 0;
                 width: Theme.quest ? max(30px, (parent.width - 6px) * root.view-w / max(root.content-w, 1px)) : parent.thumb-w;
                 height: Theme.phono ? 8px : Theme.pinball ? 13px : Theme.tape ? 6px : Theme.os95 ? 16px : Theme.comic ? 5px : Theme.pocket ? 6px : Theme.brick ? 5px : Theme.answer ? 12px : 3px;
@@ -1114,7 +1122,7 @@ component Strip inherits VerticalLayout {
                 height: parent.height + (Theme.os95 ? 0 : 8px);
                 pointer-event(e) => {
                     if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
-                        let tx = parent.rail-x + (root.max-off > 0 ? root.x-off / root.max-off * (parent.rail-w - parent.run-w) : 0);
+                        let tx = parent.rail-x + (root.max-off > 0 ? root.bar-off / root.max-off * (parent.rail-w - parent.run-w) : 0);
                         parent.grab = self.mouse-x >= tx && self.mouse-x <= tx + parent.run-w ? self.mouse-x - tx : parent.run-w / 2;
                         root.drag-bar(self.mouse-x - parent.grab - parent.rail-x, parent.rail-w - parent.run-w);
                     }

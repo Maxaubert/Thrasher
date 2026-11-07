@@ -759,8 +759,13 @@ component Strip inherits VerticalLayout {
     property <length> off: root.at >= 0 ? root.at-off : root.start < 0 || root.start * root.pitch + root.tile-w + root.end-pad <= root.view-w ? 0 : min(root.max-off, root.start * root.pitch - root.fade-w);
     // Where the strip is going, and where it is drawn while it slides there.
     property <length> to-off: clamp(root.off, -root.room, root.max-off + root.room);
-    // Room past the strip's start or end that a pick left to hold its tile (see `cur-pos`).
+    // Room past the strip's start or end that a pick left to hold its tile (see `cur-pos`),
+    // and the strip's width then: a resize drops it.
     property <length> room;
+    property <length> room-w;
+    changed view-w => {
+        if (root.view-w != root.room-w) { root.room = 0; }
+    }
     property <length> x-off: root.to-off;
     // Where the scroll bar shows it: room past an end does not move the thumb.
     property <length> bar-off: clamp(root.x-off, 0, root.max-off);
@@ -812,9 +817,10 @@ component Strip inherits VerticalLayout {
     }
     function reveal(i: int) {
         let edge = max(root.end-pad, root.fade-w);
-        if (i * root.pitch - root.fade-w < root.to-off) {
+        // Only towards the tile: a tile in a pick's room past an end is in view already.
+        if (max(0px, i * root.pitch - root.fade-w) < root.to-off - 0.5px) {
             root.scroll-to(i * root.pitch - root.fade-w);
-        } else if (i * root.pitch + root.tile-w + edge > root.to-off + root.view-w) {
+        } else if (min(root.max-off, i * root.pitch + root.tile-w + edge - root.view-w) > root.to-off + 0.5px) {
             root.scroll-to(i * root.pitch + root.tile-w + edge - root.view-w);
         }
     }
@@ -848,6 +854,7 @@ component Strip inherits VerticalLayout {
             // A strip that scrolls may go past its start or end to hold the tile: room before
             // the first tile or after the last, gone with the strip's next move.
             root.room = root.scrolls ? abs(want - clamp(want, 0, root.max-off)) : 0;
+            root.room-w = root.view-w;
             root.off = root.scrolls ? want : 0;
             PageHold.shift = Gallery.hold-y - view.absolute-position.y - root.tile-y;
             PageHold.shifts += 1;
@@ -1013,7 +1020,8 @@ component Strip inherits VerticalLayout {
             pointer-event(e) => { root.touch(e); }
             scroll-event(e) => {
                 let d = e.delta-x != 0 ? e.delta-x : e.delta-y;
-                let next = clamp(root.to-off - d, 0, root.max-off);
+                // Never further into a pick's room past an end; out of it, the strip lands inside.
+                let next = clamp(root.to-off - d, min(0px, root.to-off), max(root.max-off, root.to-off));
                 if (!root.scrolls || abs(next - root.to-off) < 0.5px) { return reject; }
                 root.scroll-to(next);
                 accept

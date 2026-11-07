@@ -2586,6 +2586,22 @@ and settings pages of all 20 themes at 520x700 match the build before pixel for 
 for the six animated classic backgrounds (as two runs of the old build differ). Exe 95.94 to
 95.50 MB. Release rustc peak 21.6 GB.
 
+Review fixes (2026-11-07, same branch), found with double clicks, keyboard picks, the wheel
+and resizes at 420x600 and 1100x700:
+- `reveal` (a click or keyboard focus on a tile) now only scrolls towards the tile, so a
+  tile standing in a pick's room past an end is not pushed back. A second click on a tile
+  that sits under the edge fade still scrolls it clear, as before the room (Desktop 95 to
+  Comic Book double click at 420: 11.1 lp, the build before 25.3).
+- The wheel into a strip's room jumped the strip out of it (12 lp the wrong way); it now
+  leaves the strip and passes the wheel on, and the wheel the other way lands inside.
+- A resize kept the strip's room (`room-w`), so a strip that now fits stayed offset; it goes
+  on a resize, like `top-h`.
+- A pick on the same page while `top-h` or `pad-h` was set: the shift now counts `top-h`,
+  and the room above clears `pad-h` (whose size check would have dropped both).
+- After the fixes every tested pick at 420x600 holds dy 0; at 1100x700 too. Left: the
+  sideways shifts listed above, and at 1100x700 the wide pages that place the gallery
+  elsewhere (as before).
+
 **Adding a skin's tile** (one line): when a skin's name goes into `Theme.names`, add its
 line to `Gallery.devices` in `ui/gallery.slint`:
 

@@ -7,3 +7,4 @@
 /models
 /installer/dist
 /installer/stage
+/installer/stage-gpu

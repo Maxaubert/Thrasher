@@ -5010,7 +5010,7 @@ dependencies = [
 
 [[package]]
 name = "thrasher-app"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "chrono",
  "directories",
@@ -5026,7 +5026,7 @@ dependencies = [
 
 [[package]]
 name = "thrasher-ask"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "llama-cpp-2",
  "serde",
@@ -5035,7 +5035,7 @@ dependencies = [
 
 [[package]]
 name = "thrasher-core"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "chrono",
  "claxon",
@@ -5059,7 +5059,7 @@ dependencies = [
 
 [[package]]
 name = "thrasher-ui"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "slint",
  "slint-build",

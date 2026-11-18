@@ -14,6 +14,16 @@ Unicode true
 !ifndef OUTFILE
   !define OUTFILE "Thrasher-Setup-x64-${VERSION}.exe"
 !endif
+; The CUDA pack the "NVIDIA GPU acceleration" part downloads (build.ps1 fills these in).
+!ifndef GPU_URL
+  !error "Pass /DGPU_URL=<pack zip URL>"
+!endif
+!ifndef GPU_SHA256
+  !error "Pass /DGPU_SHA256=<pack zip SHA-256>"
+!endif
+!ifndef GPU_MB
+  !error "Pass /DGPU_MB=<pack size in MB>"
+!endif
 
 !define APP "Thrasher"
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Thrasher"
@@ -44,6 +54,7 @@ VIAddVersionKey "LegalCopyright" "Max Aubert"
 !define MUI_FINISHPAGE_RUN_TEXT "Start Thrasher"
 
 !insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -63,6 +74,8 @@ Section "Thrasher" SecMain
   SectionIn RO
   !insertmacro StopThrasher
   SetOutPath "$INSTDIR"
+  ; cuBLAS from an earlier GPU install would sit unused next to the CPU workers below.
+  Delete "$INSTDIR\cublas*.dll"
   File "${STAGE}\*.*"
   WriteUninstaller "$INSTDIR\uninstall.exe"
 
@@ -80,6 +93,34 @@ Section "Thrasher" SecMain
   SectionGetSize ${SecMain} $0
   WriteRegDWORD HKCU "${UNINST_KEY}" "EstimatedSize" $0
 SectionEnd
+
+; Swaps the CPU workers for CUDA ones from the public pack repo (the Thrasher repo is
+; private). Only selected when an NVIDIA driver is present (.onInit). A failed download
+; keeps the CPU workers, so transcription and the AI still work, only slower.
+Section "NVIDIA GPU acceleration (downloads ${GPU_MB} MB)" SecGpu
+  InitPluginsDir
+  SetOutPath "$PLUGINSDIR"
+  File "gpu-pack.ps1"
+  SetOutPath "$INSTDIR"
+  DetailPrint "Downloading the GPU pack (${GPU_MB} MB)..."
+  nsExec::ExecToLog `"$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\gpu-pack.ps1" -Url "${GPU_URL}" -Sha256 "${GPU_SHA256}" -Dest "$INSTDIR" -Work "$PLUGINSDIR"`
+  Pop $0
+  StrCmp $0 "0" gpu_done
+    MessageBox MB_OK|MB_ICONEXCLAMATION "GPU acceleration could not be installed (see the details). Thrasher is installed and uses the CPU for transcription and the AI. Run the installer again to retry." /SD IDOK
+  gpu_done:
+SectionEnd
+
+!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} "The recorder, with transcription and the local AI on the CPU."
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecGpu} "Runs transcription and the local AI on an NVIDIA graphics card, many times faster. Downloads NVIDIA cuBLAS and the CUDA workers (${GPU_MB} MB)."
+!insertmacro MUI_FUNCTION_DESCRIPTION_END
+
+; nvcuda.dll is the NVIDIA driver's CUDA library. Without it the CUDA workers cannot run,
+; so the GPU part starts unticked (and stays off in a silent install).
+Function .onInit
+  IfFileExists "$WINDIR\Sysnative\nvcuda.dll" +2 0
+    SectionSetFlags ${SecGpu} 0
+FunctionEnd
 
 ; Removes the program only. Recordings, settings and downloaded models stay.
 Section "Uninstall"

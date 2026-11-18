@@ -92,29 +92,48 @@ Models are downloaded from the app (Settings, under Transcription) into
 
 Releases are built on this PC (GitHub's runners cannot build the UI, question 21) and
 published by hand as `Thrasher-Setup-x64-<version>.exe` (NSIS, `installer/`). Since
-2026-11-07 (v1.0.0) the installer is meant for any PC, so the workers are built portable:
+2026-11-07 (v1.0.0) the installer is meant for any PC, so the workers are built portable.
+Since v1.0.1 (2026-11-18) the CUDA parts are a separate download:
 
 ```
-export CMAKE_CUDA_ARCHITECTURES="75;80;86;89;120"   # RTX 20 series to RTX 50, PTX for newer
-export GGML_NATIVE=OFF                              # whisper.cpp: no tuning for this CPU
 cargo build --release -p thrasher-app
-cargo build --release -p thrasher-app --features whisper-cuda --bin thrasher-transcribe
-cargo build --release -p thrasher-ask --features cuda
-powershell -File installer/build.ps1               # -> installer/dist/
+powershell -File installer/build-workers.ps1   # CUDA workers -> target/release/cuda/, then CPU workers -> target/release/
+powershell -File installer/build.ps1           # -> installer/dist/: the Setup and the GPU pack zip
 ```
 
-(plus the CMake and `LIBCLANG_PATH` lines above). llama.cpp already turns `GGML_NATIVE` off
-unless rustc targets the native CPU. `build.ps1` reads the version from the root
-`Cargo.toml` and packs the three exes with NVIDIA's cuBLAS (`cublas64_13.dll` and
-`cublasLt64_13.dll`, about 520 MB, the only CUDA files the workers load; the CUDA runtime
-is linked in) and the Visual C++ runtime DLLs. Transcription and the AI then need only an
-NVIDIA card with a driver for CUDA 13. The installer is per user
-(`%LOCALAPPDATA%\Programs\Thrasher`, no admin), adds a Start menu shortcut and an
-uninstaller, and stops a running Thrasher from that folder first. Uninstalling leaves
-recordings, settings and models alone and clears "Start with Windows".
+(plus the CMake and `LIBCLANG_PATH` lines above). `build-workers.ps1` sets
+`CMAKE_CUDA_ARCHITECTURES="75;80;86;89;120"` (RTX 20 series to RTX 50, PTX for newer) and
+`GGML_NATIVE=OFF`; llama.cpp already turns `GGML_NATIVE` off unless rustc targets the
+native CPU. It builds the CUDA workers first, copies them to `release\cuda\`, then builds
+the CPU workers (`--features whisper` and `--features llm`), which stay in `release\`.
+
+`build.ps1` reads the version from the root `Cargo.toml` and makes two files:
+
+- `Thrasher-Setup-x64-<version>.exe`: `thrasher.exe`, the CPU workers and the Visual C++
+  runtime DLLs. Works on any PC.
+- `Thrasher-GPU-CUDA-x64-<version>.zip`: the CUDA workers and NVIDIA's cuBLAS
+  (`cublas64_13.dll` and `cublasLt64_13.dll`, about 550 MB, the only CUDA files the
+  workers load; the CUDA runtime is linked in).
+
+The Setup has an "NVIDIA GPU acceleration" part. It is ticked when the NVIDIA driver's
+`nvcuda.dll` is present (also in a silent install) and unticked otherwise. It downloads
+the zip with `installer/gpu-pack.ps1`, checks the SHA-256 that `build.ps1` baked into the
+Setup, and only then replaces the CPU workers with the CUDA ones. Any failure keeps the
+CPU workers, so transcription and the AI still work, only slower. The zip is hosted in
+the **public** repo `Maxaubert/thrasher-gpu-pack`, because this repo is private and its
+release assets need a login. Before v1.0.1 the Setup carried everything (781 MB).
+
+The installer is per user (`%LOCALAPPDATA%\Programs\Thrasher`, no admin), adds a Start
+menu shortcut and an uninstaller, and stops a running Thrasher from that folder first.
+Uninstalling leaves recordings, settings and models alone and clears "Start with Windows".
 
 Silent install: `Thrasher-Setup-x64-<version>.exe /S` (`/D=<folder>` last to change the
-folder). Release: `gh release create v<version> installer/dist/Thrasher-Setup-x64-<version>.exe`.
+folder). Release, pack first (`build.ps1` prints both commands):
+
+```
+gh release create v<version> -R Maxaubert/thrasher-gpu-pack installer/dist/Thrasher-GPU-CUDA-x64-<version>.zip
+gh release create v<version> installer/dist/Thrasher-Setup-x64-<version>.exe
+```
 
 ## Speaking new words (voice cloning)
 

@@ -1,9 +1,9 @@
 # Packs the release build into installer\dist\:
 #   Thrasher-Setup-x64-<version>.exe     app + CPU workers + Visual C++ runtime
 #   Thrasher-GPU-CUDA-x64-<version>.zip  CUDA workers + NVIDIA cuBLAS (~550 MB of the old installer)
-# The installer's "NVIDIA GPU acceleration" part downloads the zip from the public repo
-# Maxaubert/thrasher-gpu-pack (Thrasher itself is private, so its own releases need a
-# login) and checks it against the SHA-256 this script bakes in.
+# The installer's "NVIDIA GPU acceleration" part downloads the zip from this repo's own
+# GitHub release (Maxaubert/Thrasher, public since 2026-11-23) and checks it against the
+# SHA-256 this script bakes in.
 # Build first: thrasher.exe (cargo build --release -p thrasher-app), then
 # installer\build-workers.ps1 (docs/building.md, "Installer and releases").
 
@@ -17,7 +17,7 @@ if (-not $cuda) { throw 'CUDA_PATH is not set; the CUDA toolkit is needed for cu
 $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
 $crt = Get-ChildItem "$vs\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT" -Directory | Sort-Object FullName | Select-Object -Last 1
 $nsis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
-$packRepo = 'Maxaubert/thrasher-gpu-pack'
+$packRepo = 'Maxaubert/Thrasher'
 $packName = "Thrasher-GPU-CUDA-x64-$version.zip"
 $packUrl = "https://github.com/$packRepo/releases/download/v$version/$packName"
 
@@ -72,6 +72,5 @@ Remove-Item $stage, $gpuStage -Recurse -Force
 Get-Item $out, $pack | Select-Object FullName, @{ n = 'MB'; e = { [math]::Round($_.Length / 1MB, 1) } }
 
 Write-Host ''
-Write-Host 'Publish the pack BEFORE the installer, or its GPU part fails to download:'
-Write-Host "  gh release create v$version -R $packRepo `"$pack`" --title `"Thrasher $version GPU pack`" --notes `"CUDA workers and cuBLAS for Thrasher $version.`""
-Write-Host "  gh release create v$version `"$out`""
+Write-Host 'Publish ONE release with both files (the installer downloads the zip from it):'
+Write-Host "  gh release create v$version `"$out`" `"$pack`""

@@ -119,20 +119,19 @@ The Setup has an "NVIDIA GPU acceleration" part. It is ticked when the NVIDIA dr
 `nvcuda.dll` is present (also in a silent install) and unticked otherwise. It downloads
 the zip with `installer/gpu-pack.ps1`, checks the SHA-256 that `build.ps1` baked into the
 Setup, and only then replaces the CPU workers with the CUDA ones. Any failure keeps the
-CPU workers, so transcription and the AI still work, only slower. The zip is hosted in
-the **public** repo `Maxaubert/thrasher-gpu-pack`, because this repo is private and its
-release assets need a login. Before v1.0.1 the Setup carried everything (781 MB).
+CPU workers, so transcription and the AI still work, only slower. The zip is a
+second file on the same GitHub release as the Setup (this repo is public since 2026-11-23;
+v1.0.1 used a separate `thrasher-gpu-pack` repo). Before v1.0.1 the Setup carried everything (781 MB).
 
 The installer is per user (`%LOCALAPPDATA%\Programs\Thrasher`, no admin), adds a Start
 menu shortcut and an uninstaller, and stops a running Thrasher from that folder first.
 Uninstalling leaves recordings, settings and models alone and clears "Start with Windows".
 
 Silent install: `Thrasher-Setup-x64-<version>.exe /S` (`/D=<folder>` last to change the
-folder). Release, pack first (`build.ps1` prints both commands):
+folder). Release: one command with both files (`build.ps1` prints it):
 
 ```
-gh release create v<version> -R Maxaubert/thrasher-gpu-pack installer/dist/Thrasher-GPU-CUDA-x64-<version>.zip
-gh release create v<version> installer/dist/Thrasher-Setup-x64-<version>.exe
+gh release create v<version> installer/dist/Thrasher-Setup-x64-<version>.exe installer/dist/Thrasher-GPU-CUDA-x64-<version>.zip
 ```
 
 ## Speaking new words (voice cloning)

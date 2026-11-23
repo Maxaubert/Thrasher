@@ -77,6 +77,13 @@ Run the tests with `cargo test --release -p thrasher-app` (a debug build of the 
 30 GB of RAM). The spec and plan are in [docs/plan.md](docs/plan.md), the themes in
 [docs/device-themes.md](docs/device-themes.md).
 
+## Code signing
+
+The Setup is **not signed yet**, so Windows SmartScreen may warn on first run ("More info", then
+"Run anyway"). Free signing for open source projects is available through
+[SignPath Foundation](https://signpath.org/); Thrasher plans to apply for it now that the code is
+public and MIT licensed. Until then, check the download against the SHA-256 shown on the release page.
+
 ## Licence
 
 Thrasher is open source under the [MIT licence](LICENSE).

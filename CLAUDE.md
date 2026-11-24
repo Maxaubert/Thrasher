@@ -1,6 +1,6 @@
 # Thrasher
 
-A polished, dark, minimalist audio recorder for Windows, written in Rust. Replaces a small Python recorder. Private repo `Maxaubert/Thrasher`.
+A polished, dark, minimalist audio recorder for Windows, written in Rust. Replaces a small Python recorder. Public repo `Maxaubert/Thrasher` (was private until 2026-11-23).
 
 ## Where things are
 
@@ -42,7 +42,7 @@ A polished, dark, minimalist audio recorder for Windows, written in Rust. Replac
 - E2E (headless): hidden-desktop scripts, `docs/building.md` "Debugging"    Run when: `crates/thrasher-app/ui/**`, `src/main.rs`
 - Build / package: `docs/building.md` "Installer and releases" (`installer/build-workers.ps1`, then `installer/build.ps1`)   Artifacts: `Thrasher-Setup-x64-<version>.exe` + `Thrasher-GPU-CUDA-x64-<version>.zip`
 - Known failures to tolerate: GitHub CI cannot build the UI (16 GB runners, open question 21)
-- Version source: root `Cargo.toml` `[workspace.package] version`   Release: by hand, GPU pack zip to the public `Maxaubert/thrasher-gpu-pack` first, then `gh release create v<version>` (no release.yml)
+- Version source: root `Cargo.toml` `[workspace.package] version`   Release: by hand, one `gh release create v<version>` with the Setup and the GPU pack zip (no release.yml)
 - Install locally after merge: `installer\dist\Thrasher-Setup-x64-<version>.exe /S`   Confirm version: Apps list or the exe's file version
 - Deploy: installer via GitHub Releases
 - Signing: unsigned

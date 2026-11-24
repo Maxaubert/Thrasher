@@ -8,7 +8,7 @@
   [![Release v1.0.0](https://img.shields.io/badge/release-v1.0.0-ff6a00?style=flat-square)](https://github.com/Maxaubert/Thrasher/releases/latest)
   [![Windows 10 | 11](https://img.shields.io/badge/Windows-10%20%7C%2011-ff6a00?style=flat-square)](https://github.com/Maxaubert/Thrasher/releases/latest)
   [![Built with Rust](https://img.shields.io/badge/built%20with-Rust-ff6a00?style=flat-square)](docs/building.md)
-  [![Licence: not decided](https://img.shields.io/badge/licence-not%20decided-ff6a00?style=flat-square)](#licence)
+  [![Licence: MIT](https://img.shields.io/badge/licence-MIT-ff6a00?style=flat-square)](LICENSE)
 
   [Download](https://github.com/Maxaubert/Thrasher/releases/latest) · [Releases](https://github.com/Maxaubert/Thrasher/releases) · [Developer docs](docs/plan.md)
 </div>
@@ -77,10 +77,18 @@ Run the tests with `cargo test --release -p thrasher-app` (a debug build of the 
 30 GB of RAM). The spec and plan are in [docs/plan.md](docs/plan.md), the themes in
 [docs/device-themes.md](docs/device-themes.md).
 
+## Code signing
+
+The Setup is **not signed yet**, so Windows SmartScreen may warn on first run ("More info", then
+"Run anyway"). Free signing for open source projects is available through
+[SignPath Foundation](https://signpath.org/); Thrasher plans to apply for it now that the code is
+public and MIT licensed. Until then, check the download against the SHA-256 shown on the release page.
+
 ## Licence
 
-Not decided yet. The repository is private.
+Thrasher is open source under the [MIT licence](LICENSE).
 
 Typed-in words are spoken by **OmniVoice** by k2-fsa, which Thrasher downloads on first use: code
 Apache-2.0, model weights [CC-BY-NC 4.0](https://huggingface.co/k2-fsa/OmniVoice). Speech made
-with it may **not be used commercially**, so Thrasher as a whole cannot be sold while it uses it.
+with it may **not be used commercially**. The MIT licence covers the Thrasher code only, not
+OmniVoice or its weights, which are downloaded separately and keep their own terms.
